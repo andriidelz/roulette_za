@@ -1,0 +1,160 @@
+package models
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+// Опція вибору у рулетці
+type BetOption string
+
+const (
+	Red   BetOption = "red"
+	Black BetOption = "black"
+	Zero  BetOption = "zero"
+)
+
+// Користувач
+type User struct {
+	ID           uint    `gorm:"primaryKey"`
+	TelegramID   int64   `gorm:"uniqueIndex"`
+	Username     string  `gorm:"size:255"`
+	FirstName    string  `gorm:"size:255"`
+	LastName     string  `gorm:"size:255"`
+	LanguageCode string  `gorm:"size:10"`
+	Balance      float64 `gorm:"default:0"`
+	TodayBets    int     `gorm:"default:0"` // Лічильник ставок за день для перевірки ліміту Zero
+	Banned       bool    `gorm:"default:false"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+// Гра (рунд)
+type Game struct {
+	ID        uint      `gorm:"primaryKey"`
+	Result    BetOption `gorm:"size:10"`
+	Hash      string    `gorm:"size:64;index"` // Хеш для верифікації
+	CreatedAt time.Time
+}
+
+// Ставка користувача
+type Bet struct {
+	ID        uint      `gorm:"primaryKey"`
+	UserID    uint      `gorm:"index"`
+	User      User      `gorm:"foreignKey:UserID"`
+	GameID    uint      `gorm:"index"`
+	Game      Game      `gorm:"foreignKey:GameID"`
+	Option    BetOption `gorm:"size:10"`
+	Won       bool      `gorm:"default:false"`
+	Points    int       `gorm:"default:0"` // Отримані бали
+	CreatedAt time.Time
+}
+
+// Статистика користувача
+type UserStats struct {
+	ID            uint `gorm:"primaryKey"`
+	UserID        uint `gorm:"uniqueIndex"`
+	User          User `gorm:"foreignKey:UserID"`
+	TotalBets     int  `gorm:"default:0"`
+	WonBets       int  `gorm:"default:0"`
+	TotalPoints   int  `gorm:"default:0"`
+	DailyBets     int  `gorm:"default:0"`
+	WeeklyBets    int  `gorm:"default:0"`
+	MonthlyBets   int  `gorm:"default:0"`
+	DailyPoints   int  `gorm:"default:0"`
+	WeeklyPoints  int  `gorm:"default:0"`
+	MonthlyPoints int  `gorm:"default:0"`
+	LastReset     time.Time
+	UpdatedAt     time.Time
+}
+
+// Тижневий рейтинг
+type WeeklyRating struct {
+	ID         uint    `gorm:"primaryKey"`
+	UserID     uint    `gorm:"index"`
+	User       User    `gorm:"foreignKey:UserID"`
+	Week       int     `gorm:"index"` // Номер тижня року
+	Year       int     `gorm:"index"`
+	Points     int     `gorm:"default:0"`
+	Bets       int     `gorm:"default:0"`
+	Efficiency float64 `gorm:"default:0"` // Points / Bets
+	Position   int     `gorm:"default:0"` // Позиція в рейтингу
+	Prize      float64 `gorm:"default:0"` // Виграш
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+// Супер рейтинг (на основі позицій в тижневих рейтингах)
+type SuperRating struct {
+	ID        uint    `gorm:"primaryKey"`
+	UserID    uint    `gorm:"index"`
+	User      User    `gorm:"foreignKey:UserID"`
+	Period    string  `gorm:"size:20;index"` // Квартал або півріччя (напр. "2025-Q1", "2025-H1")
+	Points    int     `gorm:"default:0"`     // Сума балів за входження в топ-100
+	Positions int     `gorm:"default:0"`     // Кількість входжень у топ-100
+	Position  int     `gorm:"default:0"`     // Позиція в супер-рейтингу
+	Prize     float64 `gorm:"default:0"`     // Виграш
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// Налаштування бота
+type Setting struct {
+	ID           uint   `gorm:"primaryKey"`
+	Key          string `gorm:"size:255;uniqueIndex"`
+	Value        string `gorm:"type:text"`
+	DefaultValue string `gorm:"type:text"`
+	Description  string `gorm:"type:text"`
+}
+
+// Мовні локалізації
+type Localization struct {
+	ID       uint   `gorm:"primaryKey"`
+	Key      string `gorm:"size:255;index"`
+	Language string `gorm:"size:10;index"`
+	Value    string `gorm:"type:text"`
+}
+
+// Призовий фонд за тиждень
+type PrizeFund struct {
+	ID        uint    `gorm:"primaryKey"`
+	Week      int     `gorm:"index"` // Номер тижня року
+	Year      int     `gorm:"index"`
+	Amount    float64 `gorm:"default:0"`
+	TopCount  int     `gorm:"default:100"` // Кількість призових місць
+	Processed bool    `gorm:"default:false"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// Сповіщення користувача
+type Notification struct {
+	ID        uint   `gorm:"primaryKey"`
+	UserID    uint   `gorm:"index"`
+	User      User   `gorm:"foreignKey:UserID"`
+	Type      string `gorm:"size:50;index"`
+	Message   string `gorm:"type:text"`
+	Read      bool   `gorm:"default:false"`
+	CreatedAt time.Time
+}
+
+// Запит на виведення коштів
+type Withdrawal struct {
+	ID        uint `gorm:"primaryKey"`
+	UserID    uint `gorm:"index"`
+	User      User `gorm:"foreignKey:UserID"`
+	Amount    float64
+	Status    string `gorm:"size:20;index"` // pending, approved, rejected
+	Wallet    string `gorm:"size:255"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// HashEntry представляє запис хешу в базі даних
+type HashEntry struct {
+	gorm.Model
+	Number  int64  // Випадкове число (0-36)
+	SaltHEX string // Сіль у шістнадцятковому форматі
+	Hash    string // Хеш, обчислений на основі числа та солі
+}
