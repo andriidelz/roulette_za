@@ -20,6 +20,8 @@ type GameHandler struct {
 	mutex            sync.RWMutex
 	waitingPlayers   map[int64]bool             // Карта игроков, ожидающих результатов
 	activeBets       map[int64]models.BetOption // Карта активных ставок игроков
+	lastCheckedID    uint                       // ID последнего проверенного хеша
+	stopChan         chan struct{}              // Канал для остановки проверки хешей
 }
 
 // NewGameHandler создает новый обработчик игры
@@ -29,35 +31,115 @@ func NewGameHandler(bot *Bot, service service.Service) *GameHandler {
 		service:        service,
 		waitingPlayers: make(map[int64]bool),
 		activeBets:     make(map[int64]models.BetOption),
+		stopChan:       make(chan struct{}),
 	}
 
-	// Получаем последний хеш при инициализации
-	handler.updateCurrentHash()
+	// Загружаем последний хеш при инициализации
+	handler.loadLatestHash()
+
+	// Запускаем периодическую проверку новых хешей
+	go handler.startHashCheckLoop()
 
 	return handler
 }
 
-// updateCurrentHash обновляет текущий хеш
-func (h *GameHandler) updateCurrentHash() {
-	entries, _, err := h.service.GetHashEntries(1, 1)
-	if err != nil || len(entries) == 0 {
-		log.Printf("Error getting current hash: %v", err)
+// loadLatestHash загружает последний хеш из базы данных
+func (h *GameHandler) loadLatestHash() {
+	entry, err := h.service.GetLatestHashEntry()
+	if err != nil {
+		log.Printf("Error loading latest hash: %v", err)
 		return
 	}
 
 	h.mutex.Lock()
-	defer h.mutex.Unlock()
-	h.currentHashEntry = &entries[0]
-	log.Printf("Updated current hash: %v (Number: %d)", h.currentHashEntry.Hash, h.currentHashEntry.Number)
+	h.currentHashEntry = entry
+	h.lastCheckedID = entry.ID
+	h.mutex.Unlock()
+
+	log.Printf("Loaded latest hash #%d", entry.ID)
+}
+
+// startHashCheckLoop запускает цикл проверки новых хешей
+func (h *GameHandler) startHashCheckLoop() {
+	ticker := time.NewTicker(5 * time.Second) // Проверяем каждые 5 секунд
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-h.stopChan:
+			return
+		case <-ticker.C:
+			h.checkForNewHash()
+		}
+	}
+}
+
+// Stop останавливает проверку хешей
+func (h *GameHandler) Stop() {
+	close(h.stopChan)
+}
+
+// checkForNewHash проверяет наличие нового хеша в базе данных
+func (h *GameHandler) checkForNewHash() {
+	// Получаем последний хеш
+	entry, err := h.service.GetLatestHashEntry()
+	if err != nil {
+		log.Printf("Error getting latest hash: %v", err)
+		return
+	}
+
+	h.mutex.RLock()
+	lastID := h.lastCheckedID
+	h.mutex.RUnlock()
+
+	// Проверяем, появился ли новый хеш
+	if entry.ID > lastID {
+		h.mutex.Lock()
+
+		// Сохраняем предыдущий хеш для определения результатов
+		prevHashEntry := h.currentHashEntry
+
+		// Обновляем текущий хеш
+		h.currentHashEntry = entry
+		h.lastCheckedID = entry.ID
+
+		// Копируем карты ожидающих игроков и ставок для обработки
+		waitingPlayers := make(map[int64]bool)
+		activeBets := make(map[int64]models.BetOption)
+
+		for userID, waiting := range h.waitingPlayers {
+			if waiting {
+				waitingPlayers[userID] = true
+			}
+		}
+
+		for userID, betOption := range h.activeBets {
+			activeBets[userID] = betOption
+		}
+
+		// Очищаем карты после копирования
+		h.waitingPlayers = make(map[int64]bool)
+		h.activeBets = make(map[int64]models.BetOption)
+		h.mutex.Unlock()
+
+		// Если был предыдущий хеш, определяем результаты для игроков
+		if prevHashEntry != nil && len(waitingPlayers) > 0 {
+			go h.processGameResults(prevHashEntry, waitingPlayers, activeBets)
+		}
+
+		// Отправляем уведомление о начале нового раунда
+		go h.notifyNewRound(entry.ID)
+	}
 }
 
 // HandleNewHash обрабатывает событие нового хеша (вызывается ротатором)
 func (h *GameHandler) HandleNewHash(hashEntry *models.HashEntry) {
+	h.mutex.Lock()
+
 	// Сохраняем предыдущий хеш для определения результатов
 	prevHashEntry := h.currentHashEntry
 
 	// Обновляем текущий хеш
-	h.mutex.Lock()
 	h.currentHashEntry = hashEntry
 
 	// Копируем карты ожидающих игроков и ставок для обработки
@@ -80,12 +162,12 @@ func (h *GameHandler) HandleNewHash(hashEntry *models.HashEntry) {
 	h.mutex.Unlock()
 
 	// Если был предыдущий хеш, определяем результаты для игроков
-	if prevHashEntry != nil {
+	if prevHashEntry != nil && len(waitingPlayers) > 0 {
 		go h.processGameResults(prevHashEntry, waitingPlayers, activeBets)
 	}
 
 	// Отправляем уведомление о начале нового раунда
-	go h.notifyNewRound()
+	go h.notifyNewRound(hashEntry.ID)
 }
 
 // processGameResults обрабатывает результаты игры для предыдущего хеша
@@ -120,18 +202,32 @@ func (h *GameHandler) processGameResults(hashEntry *models.HashEntry, waitingPla
 	}
 	if err := h.service.SaveGame(game); err != nil {
 		log.Printf("Error saving game: %v", err)
+		return
+	}
+
+	// Отправляем общее сообщение о результате всем игрокам
+	// var resultMsg string
+	var langKey string
+
+	switch result {
+	case models.Red:
+		langKey = "redresult"
+	case models.Black:
+		langKey = "blackresult"
+	case models.Zero:
+		langKey = "zeroresult"
 	}
 
 	// Обрабатываем ставки игроков
 	for userID, betOption := range activeBets {
 		if waitingPlayers[userID] {
-			go h.processBetResult(userID, betOption, result, game.ID)
+			go h.processBetResult(userID, betOption, result, game.ID, langKey)
 		}
 	}
 }
 
 // processBetResult обрабатывает результат ставки для конкретного игрока
-func (h *GameHandler) processBetResult(userID int64, betOption, result models.BetOption, gameID uint) {
+func (h *GameHandler) processBetResult(userID int64, betOption, result models.BetOption, gameID uint, resultKey string) {
 	user, err := h.service.GetUser(userID)
 	if err != nil {
 		log.Printf("Error getting user %d: %v", userID, err)
@@ -164,7 +260,15 @@ func (h *GameHandler) processBetResult(userID int64, betOption, result models.Be
 	}
 
 	// Определяем текст результата
-	resultText := ""
+	language := user.LanguageCode
+	if language == "" {
+		language = "en" // Украинский по умолчанию
+	}
+
+	// Получаем локализированный текст для результата рулетки
+	resultText := h.service.GetText(resultKey, language)
+
+	// Определяем сообщение о результате ставки
 	var winStatus string
 	if won {
 		if result == models.Zero {
@@ -176,40 +280,74 @@ func (h *GameHandler) processBetResult(userID int64, betOption, result models.Be
 		winStatus = "lose"
 	}
 
-	// Получаем локализированный текст для результата
-	language := user.LanguageCode
-	if language == "" {
-		language = "uk" // Украинский по умолчанию
-	}
-
 	// Готовим информацию о выигрыше/проигрыше
+	var betResultText string
+
 	switch winStatus {
 	case "win":
-		resultText = h.service.GetText("win", language)
-		resultText = fmt.Sprintf(resultText, getOptionText(betOption, language), points)
+		winTemplate := h.service.GetText("win", language)
+		betResultText = fmt.Sprintf(winTemplate, getOptionText(betOption, language), points)
 	case "win_zero":
-		resultText = h.service.GetText("win_zero", language)
-		resultText = fmt.Sprintf(resultText, points)
+		winZeroTemplate := h.service.GetText("win_zero", language)
+		betResultText = fmt.Sprintf(winZeroTemplate, points)
 	case "lose":
-		resultText = h.service.GetText("lose", language)
-		resultText = fmt.Sprintf(resultText, getOptionText(betOption, language), getOptionText(result, language))
+		loseTemplate := h.service.GetText("lose", language)
+		betResultText = fmt.Sprintf(loseTemplate, getOptionText(betOption, language), getOptionText(result, language))
 	}
 
-	// Отправляем сообщение о результате и предлагаем сделать новую ставку
+	// Отправляем результат игры: сначала сообщение о цвете рулетки, затем результат ставки
 	h.bot.SendMessage(userID, MessageOptions{
-		Text:          resultText,
+		Text: resultText,
+	})
+
+	// Небольшая задержка между сообщениями
+	time.Sleep(500 * time.Millisecond)
+
+	// Теперь отправляем результат ставки и предлагаем сделать новую
+	h.bot.SendMessage(userID, MessageOptions{
+		Text:          betResultText,
 		ReplyKeyboard: h.createBetKeyboard(language, userID),
 	})
 }
 
 // notifyNewRound отправляет уведомление о начале нового раунда всем активным игрокам
-func (h *GameHandler) notifyNewRound() {
-	// Здесь можно добавить дополнительную логику для уведомления игроков о новом раунде
-	// Например, отправку сообщения всем активным пользователям
+func (h *GameHandler) notifyNewRound(roundID uint) {
+	// Здесь можно добавить логику для уведомления активных игроков о новом раунде
+	// Например, если игрок недавно делал ставку, можно отправить ему сообщение о новом раунде
+
+	log.Printf("New round #%d started", roundID)
+
+	// Если есть предыдущие игроки, можно отправить им уведомление
+	// Но тут нужно решить, как хранить список активных игроков
 }
 
 // MakeBet позволяет игроку сделать ставку
 func (h *GameHandler) MakeBet(userID int64, betOption models.BetOption) {
+	// Проверяем, есть ли текущий хеш (то есть, идет ли сейчас раунд)
+	h.mutex.RLock()
+	currentHash := h.currentHashEntry
+	h.mutex.RUnlock()
+
+	if currentHash == nil {
+		// Если текущего хеша нет, значит рулетка еще не запущена
+		user, err := h.service.GetUser(userID)
+		if err != nil {
+			log.Printf("Error getting user %d: %v", userID, err)
+			return
+		}
+
+		language := user.LanguageCode
+		if language == "" {
+			language = "en"
+		}
+
+		errorText := h.service.GetText("error", language)
+		h.bot.SendMessage(userID, MessageOptions{
+			Text: errorText + " Рулетка еще не запущена. Пожалуйста, подождите.",
+		})
+		return
+	}
+
 	// Проверяем, может ли пользователь сделать ставку на Zero
 	if betOption == models.Zero {
 		canBetZero, remaining, err := h.service.CanBetZero(userID)
@@ -229,7 +367,7 @@ func (h *GameHandler) MakeBet(userID int64, betOption models.BetOption) {
 
 			language := user.LanguageCode
 			if language == "" {
-				language = "uk"
+				language = "en"
 			}
 
 			zeroLimitText := h.service.GetText("zero_limit", language)
@@ -258,15 +396,28 @@ func (h *GameHandler) MakeBet(userID int64, betOption models.BetOption) {
 
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
 
-	// Получаем локализированное сообщение о принятии ставки
+	// Получаем локализированное сообщение о принятии ставки и информацию о раунде
 	nomorebidsText := h.service.GetText("nomorebids", language)
+
+	// Определяем, сколько примерно времени осталось до нового хеша
+	// Это приблизительно, так как мы не знаем точно, когда был создан текущий хеш
+	remainingTime := 30 - time.Since(currentHash.CreatedAt).Seconds()
+	timeMsg := ""
+
+	if remainingTime > 15 {
+		nextBidText := h.service.GetText("nextbid15", language)
+		timeMsg = fmt.Sprintf(nextBidText, currentHash.ID)
+	} else if remainingTime > 0 {
+		nextBidText := h.service.GetText("nextbid5", language)
+		timeMsg = fmt.Sprintf(nextBidText, currentHash.ID)
+	}
 
 	// Отправляем сообщение о принятии ставки
 	h.bot.SendMessage(userID, MessageOptions{
-		Text: nomorebidsText,
+		Text: nomorebidsText + "\n\n" + timeMsg,
 	})
 }
 
@@ -275,11 +426,37 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	user := message.From
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
+
+	// Проверяем, есть ли текущий хеш
+	h.mutex.RLock()
+	currentHash := h.currentHashEntry
+	h.mutex.RUnlock()
 
 	// Получаем локализированный текст инструкций
 	instructionsText := h.service.GetText("game_instructions", language)
+
+	// Если есть текущий хеш, добавляем информацию о текущем раунде
+	if currentHash != nil {
+		// Определяем, сколько примерно времени осталось до нового хеша
+		remainingTime := 30 - time.Since(currentHash.CreatedAt).Seconds()
+		if remainingTime > 0 {
+			var timeMsg string
+			if remainingTime > 15 {
+				nextBidText := h.service.GetText("nextbid15", language)
+				timeMsg = fmt.Sprintf(nextBidText, currentHash.ID)
+			} else {
+				nextBidText := h.service.GetText("nextbid5", language)
+				timeMsg = fmt.Sprintf(nextBidText, currentHash.ID)
+			}
+
+			instructionsText += "\n\n" + timeMsg
+		}
+	} else {
+		// Если текущего хеша нет, добавляем сообщение об ожидании
+		instructionsText += "\n\nОжидаем начала игры. Пожалуйста, подождите немного."
+	}
 
 	// Отправляем сообщение с инструкциями и клавиатурой для ставок
 	h.bot.SendMessage(message.Chat.ID, MessageOptions{
@@ -341,7 +518,7 @@ func (h *GameHandler) sendErrorMessage(userID int64, key string) {
 
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
 
 	errorText := h.service.GetText(key, language)

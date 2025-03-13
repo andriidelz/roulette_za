@@ -43,6 +43,7 @@ type Service interface {
 
 	GenerateHashEntry() (*models.HashEntry, error)
 	GetHashEntries(page, limit int) ([]models.HashEntry, int, error)
+	GetLatestHashEntry() (*models.HashEntry, error)
 
 	SaveGame(game *models.Game) error
 	SaveBet(bet *models.Bet) error
@@ -447,6 +448,20 @@ func (s *ServiceImpl) GetHashEntries(page, limit int) ([]models.HashEntry, int, 
 	totalPages := int((total + int64(limit) - 1) / int64(limit))
 
 	return entries, totalPages, nil
+}
+
+// GetLatestHashEntry получает последний хеш из базы данных
+func (s *ServiceImpl) GetLatestHashEntry() (*models.HashEntry, error) {
+	entries, err := s.repo.GetHashEntries(0, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("no hash entries found")
+	}
+
+	return &entries[0], nil
 }
 
 // SaveGame сохраняет информацию об игре в БД

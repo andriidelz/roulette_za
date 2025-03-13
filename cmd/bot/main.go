@@ -5,12 +5,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"roulette/internal/bot"
 	"roulette/internal/config"
 	"roulette/internal/repository"
-	"roulette/internal/rotator"
 	"roulette/internal/service"
 
 	"github.com/joho/godotenv"
@@ -45,18 +43,7 @@ func main() {
 		log.Fatalf("Failed to create bot: %v", err)
 	}
 
-	// Получаем обработчик игры из бота
-	gameHandler := telegramBot.GetGameHandler()
-
-	// Создаем ротатор с интервалом 30 секунд
-	rotationInterval := 30 * time.Second
-	hashRotator := rotator.NewRotator(svc, rotationInterval)
-
-	// Регистрируем игровой обработчик для получения уведомлений о новых хешах
-	hashRotator.RegisterNotifier(gameHandler)
-
-	// Запускаем ротатор в фоновом режиме
-	go hashRotator.Start()
+	// Удалены строки создания и запуска ротатора
 
 	// Запускаем бота
 	if err := telegramBot.Start(); err != nil {
@@ -68,9 +55,8 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	// Останавливаем бота и ротатор
+	// Останавливаем бота
 	telegramBot.Stop()
-	hashRotator.Stop()
 
-	log.Println("Bot and rotator stopped gracefully")
+	log.Println("Bot stopped gracefully")
 }

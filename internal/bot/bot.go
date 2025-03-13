@@ -113,6 +113,9 @@ func (b *Bot) Stop() {
 	// Отменяем контекст
 	b.cancel()
 
+	// Останавливаем игровой обработчик
+	b.gameHandler.Stop()
+
 	b.initialized = false
 	log.Println("Bot stopped")
 }
