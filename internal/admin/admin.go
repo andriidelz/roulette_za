@@ -148,6 +148,17 @@ func (a *AdminPanel) setupRoutes() {
 		admin.GET("/localizations", a.localizationsList)
 		admin.GET("/localization/:key", a.localizationEdit)
 		admin.POST("/localization/:key", a.localizationSave)
+
+		admin.GET("/hashes", a.hashesPage)
+
+		// API ендпоінти
+		api := a.router.Group("/admin/api")
+		api.Use(a.ipFilterMiddleware(), a.authRequired())
+		{
+			api.GET("/hashes", a.getHashesAPI)
+			api.GET("/hashes/:id", a.getHashDetailsAPI)
+			api.POST("/verify-hash", a.verifyHashAPI)
+		}
 	}
 }
 
