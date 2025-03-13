@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -65,14 +65,14 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/admin">Адмін-панель Рулетки</a>
+            <a class="navbar-brand" href="/admin">Roulette Admin Panel</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Вихід</a>
+                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
                     </li>
                 </ul>
             </div>
@@ -84,37 +84,37 @@
             <ul class="nav flex-column">
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "dashboard"}}active{{end}}" href="/admin">
-                        <i class="bi bi-speedometer2"></i> Головна
+                        <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "users"}}active{{end}}" href="/admin/users">
-                        <i class="bi bi-people"></i> Користувачі
+                        <i class="bi bi-people"></i> Users
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "stats"}}active{{end}}" href="/admin/stats">
-                        <i class="bi bi-bar-chart"></i> Статистика
+                        <i class="bi bi-bar-chart"></i> Statistics
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
-                        <i class="bi bi-trophy"></i> Рейтинги
+                        <i class="bi bi-trophy"></i> Ratings
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "withdrawals"}}active{{end}}" href="/admin/withdrawals">
-                        <i class="bi bi-cash-coin"></i> Виведення коштів
+                        <i class="bi bi-cash-coin"></i> Withdrawals
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "hashes"}}active{{end}}" href="/admin/hashes">
-                        <i class="bi bi-hash"></i> Хеші рулетки
+                        <i class="bi bi-hash"></i> Roulette Hashes
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "settings"}}active{{end}}" href="/admin/settings">
-                        <i class="bi bi-gear"></i> Налаштування
+                        <i class="bi bi-gear"></i> Settings
                     </a>
                 </li>
             </ul>
@@ -124,18 +124,18 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12">
-                        <h1 class="mb-4">Управління користувачами</h1>
+                        <h1 class="mb-4">User Management</h1>
                     </div>
                 </div>
 
                 <div class="card">
                     <div class="card-header">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Список користувачів</h5>
+                            <h5 class="mb-0">User List</h5>
                             <div>
                                 <form class="d-flex" action="/admin/users" method="GET">
-                                    <input class="form-control me-2" type="search" placeholder="Пошук" name="query">
-                                    <button class="btn btn-outline-primary" type="submit">Пошук</button>
+                                    <input class="form-control me-2" type="search" placeholder="Search" name="query">
+                                    <button class="btn btn-outline-primary" type="submit">Search</button>
                                 </form>
                             </div>
                         </div>
@@ -147,12 +147,12 @@
                                     <tr>
                                         <th>ID</th>
                                         <th>Telegram ID</th>
-                                        <th>Ім'я користувача</th>
-                                        <th>Ім'я</th>
-                                        <th>Баланс</th>
-                                        <th>Ставок сьогодні</th>
-                                        <th>Статус</th>
-                                        <th>Дії</th>
+                                        <th>Username</th>
+                                        <th>First Name</th>
+                                        <th>Balance</th>
+                                        <th>Bets Today</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -167,17 +167,17 @@
                                             <td>{{ .TodayBets }}</td>
                                             <td>
                                                 {{ if .Banned }}
-                                                <span class="badge bg-danger">Заблокований</span>
+                                                <span class="badge bg-danger">Banned</span>
                                                 {{ else }}
-                                                <span class="badge bg-success">Активний</span>
+                                                <span class="badge bg-success">Active</span>
                                                 {{ end }}
                                             </td>
                                             <td>
-                                                <a href="/admin/user/{{ .ID }}" class="btn btn-sm btn-outline-primary">Деталі</a>
+                                                <a href="/admin/user/{{ .ID }}" class="btn btn-sm btn-outline-primary">Details</a>
                                                 {{ if .Banned }}
-                                                <button class="btn btn-sm btn-outline-success unban-user" data-id="{{ .ID }}">Розблокувати</button>
+                                                <button class="btn btn-sm btn-outline-success unban-user" data-id="{{ .ID }}">Unban</button>
                                                 {{ else }}
-                                                <button class="btn btn-sm btn-outline-danger ban-user" data-id="{{ .ID }}">Заблокувати</button>
+                                                <button class="btn btn-sm btn-outline-danger ban-user" data-id="{{ .ID }}">Ban</button>
                                                 {{ end }}
                                             </td>
                                         </tr>
@@ -186,7 +186,7 @@
                                         <tr>
                                             <td colspan="8" class="text-center">
                                                 <div class="alert alert-info mb-0">
-                                                    <i class="bi bi-info-circle me-2"></i>Користувачів не знайдено
+                                                    <i class="bi bi-info-circle me-2"></i>No users found
                                                 </div>
                                             </td>
                                         </tr>
@@ -198,30 +198,30 @@
                     <div class="card-footer">
                         <nav>
                             <ul class="pagination justify-content-center">
-                                <!-- Попередня сторінка -->
+                                <!-- Previous page -->
                                 {{ if gt .page 1 }}
                                 <li class="page-item">
-                                    <a class="page-link" href="/admin/users?page={{ .prevPage }}">Попередня</a>
+                                    <a class="page-link" href="/admin/users?page={{ .prevPage }}">Previous</a>
                                 </li>
                                 {{ else }}
                                 <li class="page-item disabled">
-                                    <span class="page-link">Попередня</span>
+                                    <span class="page-link">Previous</span>
                                 </li>
                                 {{ end }}
                                 
-                                <!-- Поточна сторінка -->
+                                <!-- Current page -->
                                 <li class="page-item active">
-                                    <span class="page-link">{{ .page }} з {{ .totalPages }}</span>
+                                    <span class="page-link">{{ .page }} of {{ .totalPages }}</span>
                                 </li>
                                 
-                                <!-- Наступна сторінка -->
+                                <!-- Next page -->
                                 {{ if lt .page .totalPages }}
                                 <li class="page-item">
-                                    <a class="page-link" href="/admin/users?page={{ .nextPage }}">Наступна</a>
+                                    <a class="page-link" href="/admin/users?page={{ .nextPage }}">Next</a>
                                 </li>
                                 {{ else }}
                                 <li class="page-item disabled">
-                                    <span class="page-link">Наступна</span>
+                                    <span class="page-link">Next</span>
                                 </li>
                                 {{ end }}
                             </ul>
@@ -234,35 +234,35 @@
 
     <footer class="bg-light py-3 mt-auto">
         <div class="container text-center">
-            <p class="mb-0">© 2025 Телеграм-бот "Рулетка"</p>
+            <p class="mb-0">© 2025 "Roulette" Telegram Bot</p>
         </div>
     </footer>
 
     <script>
     $(document).ready(function() {
-        // Обробник блокування користувача
+        // Ban user handler
         $('.ban-user').click(function() {
             var userId = $(this).data('id');
-            if (confirm('Ви впевнені, що хочете заблокувати цього користувача?')) {
+            if (confirm('Are you sure you want to ban this user?')) {
                 $.post('/admin/user/' + userId + '/ban', function(data) {
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert('Помилка: ' + data.error);
+                        alert('Error: ' + data.error);
                     }
                 });
             }
         });
         
-        // Обробник розблокування користувача
+        // Unban user handler
         $('.unban-user').click(function() {
             var userId = $(this).data('id');
-            if (confirm('Ви впевнені, що хочете розблокувати цього користувача?')) {
+            if (confirm('Are you sure you want to unban this user?')) {
                 $.post('/admin/user/' + userId + '/unban', function(data) {
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert('Помилка: ' + data.error);
+                        alert('Error: ' + data.error);
                     }
                 });
             }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -65,14 +65,14 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/admin">Адмін-панель Рулетки</a>
+            <a class="navbar-brand" href="/admin">Roulette Admin Panel</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Вихід</a>
+                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
                     </li>
                 </ul>
             </div>
@@ -84,37 +84,37 @@
             <ul class="nav flex-column">
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "dashboard"}}active{{end}}" href="/admin">
-                        <i class="bi bi-speedometer2"></i> Головна
+                        <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "users"}}active{{end}}" href="/admin/users">
-                        <i class="bi bi-people"></i> Користувачі
+                        <i class="bi bi-people"></i> Users
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "stats"}}active{{end}}" href="/admin/stats">
-                        <i class="bi bi-bar-chart"></i> Статистика
+                        <i class="bi bi-bar-chart"></i> Statistics
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
-                        <i class="bi bi-trophy"></i> Рейтинги
+                        <i class="bi bi-trophy"></i> Ratings
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "withdrawals"}}active{{end}}" href="/admin/withdrawals">
-                        <i class="bi bi-cash-coin"></i> Виведення коштів
+                        <i class="bi bi-cash-coin"></i> Withdrawals
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "hashes"}}active{{end}}" href="/admin/hashes">
-                        <i class="bi bi-hash"></i> Хеші рулетки
+                        <i class="bi bi-hash"></i> Roulette Hashes
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "settings"}}active{{end}}" href="/admin/settings">
-                        <i class="bi bi-gear"></i> Налаштування
+                        <i class="bi bi-gear"></i> Settings
                     </a>
                 </li>
             </ul>
@@ -124,7 +124,7 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12">
-                        <h1 class="mb-4">Рейтинги</h1>
+                        <h1 class="mb-4">Ratings</h1>
                     </div>
                 </div>
 
@@ -132,19 +132,19 @@
                     <div class="col-lg-6">
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">Тижневі рейтинги</h5>
-                                <a href="#" class="btn btn-sm btn-primary">Створити новий</a>
+                                <h5 class="mb-0">Weekly Ratings</h5>
+                                <a href="#" class="btn btn-sm btn-primary">Create New</a>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
                                     <table class="table table-hover">
                                         <thead>
                                             <tr>
-                                                <th>Рік</th>
-                                                <th>Тиждень</th>
-                                                <th>Призовий фонд</th>
-                                                <th>Статус</th>
-                                                <th>Дії</th>
+                                                <th>Year</th>
+                                                <th>Week</th>
+                                                <th>Prize Pool</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -152,27 +152,27 @@
                                                 <td>2025</td>
                                                 <td>10</td>
                                                 <td>1000$</td>
-                                                <td><span class="badge bg-warning">Активний</span></td>
+                                                <td><span class="badge bg-warning">Active</span></td>
                                                 <td>
-                                                    <a href="/admin/rating/2025/10" class="btn btn-sm btn-outline-primary">Деталі</a>
+                                                    <a href="/admin/rating/2025/10" class="btn btn-sm btn-outline-primary">Details</a>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td>2025</td>
                                                 <td>9</td>
                                                 <td>1000$</td>
-                                                <td><span class="badge bg-success">Завершений</span></td>
+                                                <td><span class="badge bg-success">Completed</span></td>
                                                 <td>
-                                                    <a href="/admin/rating/2025/9" class="btn btn-sm btn-outline-primary">Деталі</a>
+                                                    <a href="/admin/rating/2025/9" class="btn btn-sm btn-outline-primary">Details</a>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td>2025</td>
                                                 <td>8</td>
                                                 <td>1000$</td>
-                                                <td><span class="badge bg-success">Завершений</span></td>
+                                                <td><span class="badge bg-success">Completed</span></td>
                                                 <td>
-                                                    <a href="/admin/rating/2025/8" class="btn btn-sm btn-outline-primary">Деталі</a>
+                                                    <a href="/admin/rating/2025/8" class="btn btn-sm btn-outline-primary">Details</a>
                                                 </td>
                                             </tr>
                                         </tbody>
@@ -185,35 +185,35 @@
                     <div class="col-lg-6">
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">Супер рейтинги</h5>
-                                <a href="#" class="btn btn-sm btn-primary">Створити новий</a>
+                                <h5 class="mb-0">Super Ratings</h5>
+                                <a href="#" class="btn btn-sm btn-primary">Create New</a>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
                                     <table class="table table-hover">
                                         <thead>
                                             <tr>
-                                                <th>Період</th>
-                                                <th>Призовий фонд</th>
-                                                <th>Статус</th>
-                                                <th>Дії</th>
+                                                <th>Period</th>
+                                                <th>Prize Pool</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr>
                                                 <td>2025-Q1</td>
                                                 <td>5000$</td>
-                                                <td><span class="badge bg-warning">Активний</span></td>
+                                                <td><span class="badge bg-warning">Active</span></td>
                                                 <td>
-                                                    <a href="/admin/super-rating/2025-Q1" class="btn btn-sm btn-outline-primary">Деталі</a>
+                                                    <a href="/admin/super-rating/2025-Q1" class="btn btn-sm btn-outline-primary">Details</a>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td>2024-Q4</td>
                                                 <td>5000$</td>
-                                                <td><span class="badge bg-success">Завершений</span></td>
+                                                <td><span class="badge bg-success">Completed</span></td>
                                                 <td>
-                                                    <a href="/admin/super-rating/2024-Q4" class="btn btn-sm btn-outline-primary">Деталі</a>
+                                                    <a href="/admin/super-rating/2024-Q4" class="btn btn-sm btn-outline-primary">Details</a>
                                                 </td>
                                             </tr>
                                         </tbody>
@@ -228,25 +228,25 @@
                     <div class="col-12">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="mb-0">Налаштування поточного тижневого рейтингу</h5>
+                                <h5 class="mb-0">Current Weekly Rating Settings</h5>
                             </div>
                             <div class="card-body">
                                 <form>
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
-                                            <label for="prizeAmount" class="form-label">Призовий фонд</label>
+                                            <label for="prizeAmount" class="form-label">Prize Pool</label>
                                             <div class="input-group">
                                                 <input type="number" class="form-control" id="prizeAmount" value="1000">
                                                 <span class="input-group-text">$</span>
                                             </div>
                                         </div>
                                         <div class="col-md-6 mb-3">
-                                            <label for="topCount" class="form-label">Кількість призових місць</label>
+                                            <label for="topCount" class="form-label">Number of Prize Places</label>
                                             <input type="number" class="form-control" id="topCount" value="100">
                                         </div>
                                     </div>
-                                    <button type="submit" class="btn btn-primary">Зберегти</button>
-                                    <button type="button" class="btn btn-success">Розподілити призи</button>
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                    <button type="button" class="btn btn-success">Distribute Prizes</button>
                                 </form>
                             </div>
                         </div>
@@ -258,7 +258,7 @@
 
     <footer class="bg-light py-3 mt-auto">
         <div class="container text-center">
-            <p class="mb-0">© 2025 Телеграм-бот "Рулетка"</p>
+            <p class="mb-0">© 2025 "Roulette" Telegram Bot</p>
         </div>
     </footer>
 </body>

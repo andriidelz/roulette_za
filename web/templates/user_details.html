@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -65,14 +65,14 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/admin">Адмін-панель Рулетки</a>
+            <a class="navbar-brand" href="/admin">Roulette Admin Panel</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Вихід</a>
+                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
                     </li>
                 </ul>
             </div>
@@ -84,37 +84,37 @@
             <ul class="nav flex-column">
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "dashboard"}}active{{end}}" href="/admin">
-                        <i class="bi bi-speedometer2"></i> Головна
+                        <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "users"}}active{{end}}" href="/admin/users">
-                        <i class="bi bi-people"></i> Користувачі
+                        <i class="bi bi-people"></i> Users
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "stats"}}active{{end}}" href="/admin/stats">
-                        <i class="bi bi-bar-chart"></i> Статистика
+                        <i class="bi bi-bar-chart"></i> Statistics
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
-                        <i class="bi bi-trophy"></i> Рейтинги
+                        <i class="bi bi-trophy"></i> Ratings
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "withdrawals"}}active{{end}}" href="/admin/withdrawals">
-                        <i class="bi bi-cash-coin"></i> Виведення коштів
+                        <i class="bi bi-cash-coin"></i> Withdrawals
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "hashes"}}active{{end}}" href="/admin/hashes">
-                        <i class="bi bi-hash"></i> Хеші рулетки
+                        <i class="bi bi-hash"></i> Roulette Hashes
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "settings"}}active{{end}}" href="/admin/settings">
-                        <i class="bi bi-gear"></i> Налаштування
+                        <i class="bi bi-gear"></i> Settings
                     </a>
                 </li>
             </ul>
@@ -125,9 +125,9 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h1>Профіль користувача</h1>
+                            <h1>User Profile</h1>
                             <a href="/admin/users" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-left"></i> Назад до списку
+                                <i class="bi bi-arrow-left"></i> Back to List
                             </a>
                         </div>
                     </div>
@@ -137,7 +137,7 @@
                     <div class="col-md-4 mb-4">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="mb-0">Основна інформація</h5>
+                                <h5 class="mb-0">Basic Information</h5>
                             </div>
                             <div class="card-body">
                                 <div class="mb-3 text-center">
@@ -157,28 +157,28 @@
                                             <td>{{ .user.TelegramID }}</td>
                                         </tr>
                                         <tr>
-                                            <th>Ім'я:</th>
+                                            <th>First Name:</th>
                                             <td>{{ .user.FirstName }}</td>
                                         </tr>
                                         <tr>
-                                            <th>Прізвище:</th>
+                                            <th>Last Name:</th>
                                             <td>{{ .user.LastName }}</td>
                                         </tr>
                                         <tr>
-                                            <th>Мова:</th>
+                                            <th>Language:</th>
                                             <td>{{ .user.LanguageCode }}</td>
                                         </tr>
                                         <tr>
-                                            <th>Дата реєстрації:</th>
+                                            <th>Registration Date:</th>
                                             <td>{{ .user.CreatedAt.Format "02.01.2006 15:04" }}</td>
                                         </tr>
                                         <tr>
-                                            <th>Статус:</th>
+                                            <th>Status:</th>
                                             <td>
                                                 {{ if .user.Banned }}
-                                                <span class="badge bg-danger">Заблокований</span>
+                                                <span class="badge bg-danger">Banned</span>
                                                 {{ else }}
-                                                <span class="badge bg-success">Активний</span>
+                                                <span class="badge bg-success">Active</span>
                                                 {{ end }}
                                             </td>
                                         </tr>
@@ -187,11 +187,11 @@
                                 <div class="d-grid gap-2 mt-3">
                                     {{ if .user.Banned }}
                                     <button class="btn btn-success unban-user" data-id="{{ .user.ID }}">
-                                        <i class="bi bi-unlock"></i> Розблокувати
+                                        <i class="bi bi-unlock"></i> Unban
                                     </button>
                                     {{ else }}
                                     <button class="btn btn-danger ban-user" data-id="{{ .user.ID }}">
-                                        <i class="bi bi-lock"></i> Заблокувати
+                                        <i class="bi bi-lock"></i> Ban
                                     </button>
                                     {{ end }}
                                 </div>
@@ -202,38 +202,38 @@
                     <div class="col-md-4 mb-4">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="mb-0">Фінансова інформація</h5>
+                                <h5 class="mb-0">Financial Information</h5>
                             </div>
                             <div class="card-body">
                                 <table class="table">
                                     <tbody>
                                         <tr>
-                                            <th>Поточний баланс:</th>
+                                            <th>Current Balance:</th>
                                             <td>{{ .user.Balance }}</td>
                                         </tr>
                                         <tr>
-                                            <th>Зароблено балів:</th>
+                                            <th>Total Points Earned:</th>
                                             <td>{{ .stats.TotalPoints }}</td>
                                         </tr>
                                         <tr>
-                                            <th>Баланс за тиждень:</th>
+                                            <th>Weekly Balance:</th>
                                             <td>{{ .stats.WeeklyPoints }}</td>
                                         </tr>
                                     </tbody>
                                 </table>
                                 <div class="mt-3">
-                                    <h6>Операції з балансом</h6>
+                                    <h6>Balance Operations</h6>
                                     <form id="balance-form" class="mt-2">
                                         <div class="mb-3">
-                                            <label for="amount" class="form-label">Сума</label>
+                                            <label for="amount" class="form-label">Amount</label>
                                             <input type="number" class="form-control" id="amount" name="amount" step="0.01" required>
                                         </div>
                                         <div class="d-grid gap-2">
                                             <button type="button" class="btn btn-success" id="add-balance">
-                                                <i class="bi bi-plus-circle"></i> Поповнити
+                                                <i class="bi bi-plus-circle"></i> Add
                                             </button>
                                             <button type="button" class="btn btn-warning" id="subtract-balance">
-                                                <i class="bi bi-dash-circle"></i> Зняти
+                                                <i class="bi bi-dash-circle"></i> Subtract
                                             </button>
                                         </div>
                                     </form>
@@ -245,21 +245,21 @@
                     <div class="col-md-4 mb-4">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="mb-0">Статистика</h5>
+                                <h5 class="mb-0">Statistics</h5>
                             </div>
                             <div class="card-body">
                                 <table class="table">
                                     <tbody>
                                         <tr>
-                                            <th>Всього ставок:</th>
+                                            <th>Total Bets:</th>
                                             <td>{{ .stats.TotalBets }}</td>
                                         </tr>
                                         <tr>
-                                            <th>Виграшних ставок:</th>
+                                            <th>Winning Bets:</th>
                                             <td>{{ .stats.WonBets }}</td>
                                         </tr>
                                         <tr>
-                                            <th>Ефективність:</th>
+                                            <th>Efficiency:</th>
                                             <td>
                                                 {{ if gt .stats.TotalBets 0 }}
                                                     {{ printf "%.2f" (multiply (divide .stats.WonBets .stats.TotalBets) 100) }}%
@@ -269,24 +269,24 @@
                                             </td>
                                         </tr>
                                         <tr>
-                                            <th>Ставок сьогодні:</th>
+                                            <th>Bets Today:</th>
                                             <td>{{ .user.TodayBets }}</td>
                                         </tr>
                                         <tr>
-                                            <th>Ставок за тиждень:</th>
+                                            <th>Bets This Week:</th>
                                             <td>{{ .stats.WeeklyBets }}</td>
                                         </tr>
                                         <tr>
-                                            <th>Ставок за місяць:</th>
+                                            <th>Bets This Month:</th>
                                             <td>{{ .stats.MonthlyBets }}</td>
                                         </tr>
                                         <tr>
-                                            <th>Позиція в рейтингу:</th>
+                                            <th>Ranking Position:</th>
                                             <td>
                                                 {{ if .rating }}
                                                     {{ .rating.Position }}
                                                 {{ else }}
-                                                    Не в рейтингу
+                                                    Not ranked
                                                 {{ end }}
                                             </td>
                                         </tr>
@@ -301,7 +301,7 @@
                     <div class="col-12">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="mb-0">Останні ставки</h5>
+                                <h5 class="mb-0">Recent Bets</h5>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -309,11 +309,11 @@
                                         <thead>
                                             <tr>
                                                 <th>ID</th>
-                                                <th>Дата</th>
-                                                <th>Ставка</th>
-                                                <th>Результат</th>
-                                                <th>Виграш</th>
-                                                <th>Бали</th>
+                                                <th>Date</th>
+                                                <th>Bet</th>
+                                                <th>Result</th>
+                                                <th>Win</th>
+                                                <th>Points</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -324,9 +324,9 @@
                                                     <td>{{ .CreatedAt.Format "02.01.2006 15:04" }}</td>
                                                     <td>
                                                         {{ if eq .Option "red" }}
-                                                        <span class="badge bg-danger">Червоне</span>
+                                                        <span class="badge bg-danger">Red</span>
                                                         {{ else if eq .Option "black" }}
-                                                        <span class="badge bg-dark">Чорне</span>
+                                                        <span class="badge bg-dark">Black</span>
                                                         {{ else }}
                                                         <span class="badge bg-success">Zero</span>
                                                         {{ end }}
@@ -334,21 +334,21 @@
                                                     <td>
                                                         {{ if .Game }}
                                                             {{ if eq .Game.Result "red" }}
-                                                            <span class="badge bg-danger">Червоне</span>
+                                                            <span class="badge bg-danger">Red</span>
                                                             {{ else if eq .Game.Result "black" }}
-                                                            <span class="badge bg-dark">Чорне</span>
+                                                            <span class="badge bg-dark">Black</span>
                                                             {{ else }}
                                                             <span class="badge bg-success">Zero</span>
                                                             {{ end }}
                                                         {{ else }}
-                                                            <span class="badge bg-secondary">Невідомо</span>
+                                                            <span class="badge bg-secondary">Unknown</span>
                                                         {{ end }}
                                                     </td>
                                                     <td>
                                                         {{ if .Won }}
-                                                        <span class="text-success"><i class="bi bi-check-circle"></i> Виграш</span>
+                                                        <span class="text-success"><i class="bi bi-check-circle"></i> Win</span>
                                                         {{ else }}
-                                                        <span class="text-danger"><i class="bi bi-x-circle"></i> Програш</span>
+                                                        <span class="text-danger"><i class="bi bi-x-circle"></i> Loss</span>
                                                         {{ end }}
                                                     </td>
                                                     <td>{{ .Points }}</td>
@@ -356,7 +356,7 @@
                                                 {{ end }}
                                             {{ else }}
                                                 <tr>
-                                                    <td colspan="6" class="text-center">Ставок не знайдено</td>
+                                                    <td colspan="6" class="text-center">No bets found</td>
                                                 </tr>
                                             {{ end }}
                                         </tbody>
@@ -372,73 +372,73 @@
 
     <footer class="bg-light py-3 mt-auto">
         <div class="container text-center">
-            <p class="mb-0">© 2025 Телеграм-бот "Рулетка"</p>
+            <p class="mb-0">© 2025 "Roulette" Telegram Bot</p>
         </div>
     </footer>
 
     <script>
     $(document).ready(function() {
-        // Обробник блокування користувача
+        // Ban user handler
         $('.ban-user').click(function() {
             var userId = $(this).data('id');
-            if (confirm('Ви впевнені, що хочете заблокувати цього користувача?')) {
+            if (confirm('Are you sure you want to ban this user?')) {
                 $.post('/admin/user/' + userId + '/ban', function(data) {
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert('Помилка: ' + data.error);
+                        alert('Error: ' + data.error);
                     }
                 });
             }
         });
         
-        // Обробник розблокування користувача
+        // Unban user handler
         $('.unban-user').click(function() {
             var userId = $(this).data('id');
-            if (confirm('Ви впевнені, що хочете розблокувати цього користувача?')) {
+            if (confirm('Are you sure you want to unban this user?')) {
                 $.post('/admin/user/' + userId + '/unban', function(data) {
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert('Помилка: ' + data.error);
+                        alert('Error: ' + data.error);
                     }
                 });
             }
         });
         
-        // Обробник поповнення балансу
+        // Add balance handler
         $('#add-balance').click(function() {
             var amount = $('#amount').val();
             if (!amount || amount <= 0) {
-                alert('Будь ласка, введіть коректну суму');
+                alert('Please enter a valid amount');
                 return;
             }
             
-            if (confirm('Ви впевнені, що хочете поповнити баланс на ' + amount + '?')) {
+            if (confirm('Are you sure you want to add ' + amount + ' to the balance?')) {
                 $.post('/admin/user/{{ .user.ID }}/add-balance', { amount: amount }, function(data) {
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert('Помилка: ' + data.error);
+                        alert('Error: ' + data.error);
                     }
                 });
             }
         });
         
-        // Обробник зняття з балансу
+        // Subtract balance handler
         $('#subtract-balance').click(function() {
             var amount = $('#amount').val();
             if (!amount || amount <= 0) {
-                alert('Будь ласка, введіть коректну суму');
+                alert('Please enter a valid amount');
                 return;
             }
             
-            if (confirm('Ви впевнені, що хочете зняти з балансу ' + amount + '?')) {
+            if (confirm('Are you sure you want to subtract ' + amount + ' from the balance?')) {
                 $.post('/admin/user/{{ .user.ID }}/subtract-balance', { amount: amount }, function(data) {
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert('Помилка: ' + data.error);
+                        alert('Error: ' + data.error);
                     }
                 });
             }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -112,14 +112,14 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/admin">Адмін-панель Рулетки</a>
+            <a class="navbar-brand" href="/admin">Roulette Admin Panel</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Вихід</a>
+                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
                     </li>
                 </ul>
             </div>
@@ -131,37 +131,37 @@
             <ul class="nav flex-column">
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "dashboard"}}active{{end}}" href="/admin">
-                        <i class="bi bi-speedometer2"></i> Головна
+                        <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "users"}}active{{end}}" href="/admin/users">
-                        <i class="bi bi-people"></i> Користувачі
+                        <i class="bi bi-people"></i> Users
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "stats"}}active{{end}}" href="/admin/stats">
-                        <i class="bi bi-bar-chart"></i> Статистика
+                        <i class="bi bi-bar-chart"></i> Statistics
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
-                        <i class="bi bi-trophy"></i> Рейтинги
+                        <i class="bi bi-trophy"></i> Ratings
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "withdrawals"}}active{{end}}" href="/admin/withdrawals">
-                        <i class="bi bi-cash-coin"></i> Виведення коштів
+                        <i class="bi bi-cash-coin"></i> Withdrawals
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "hashes"}}active{{end}}" href="/admin/hashes">
-                        <i class="bi bi-hash"></i> Хеші рулетки
+                        <i class="bi bi-hash"></i> Roulette Hashes
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "settings"}}active{{end}}" href="/admin/settings">
-                        <i class="bi bi-gear"></i> Налаштування
+                        <i class="bi bi-gear"></i> Settings
                     </a>
                 </li>
             </ul>
@@ -172,21 +172,21 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h1>Хеші рулетки</h1>
+                            <h1>Roulette Hashes</h1>
                             <div>
                                 <button id="refresh-hashes" class="btn btn-outline-primary refresh-button">
-                                    <i class="bi bi-arrow-clockwise"></i> Оновити
+                                    <i class="bi bi-arrow-clockwise"></i> Refresh
                                 </button>
                                 <div class="btn-group ms-2">
                                     <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="autoRefreshDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="bi bi-clock"></i> Авто-оновлення
+                                        <i class="bi bi-clock"></i> Auto-refresh
                                     </button>
                                     <ul class="dropdown-menu" aria-labelledby="autoRefreshDropdown">
-                                        <li><a class="dropdown-item auto-refresh" href="#" data-seconds="0">Вимкнено</a></li>
-                                        <li><a class="dropdown-item auto-refresh" href="#" data-seconds="5">Кожні 5 секунд</a></li>
-                                        <li><a class="dropdown-item auto-refresh" href="#" data-seconds="15">Кожні 15 секунд</a></li>
-                                        <li><a class="dropdown-item auto-refresh" href="#" data-seconds="30">Кожні 30 секунд</a></li>
-                                        <li><a class="dropdown-item auto-refresh" href="#" data-seconds="60">Кожну хвилину</a></li>
+                                        <li><a class="dropdown-item auto-refresh" href="#" data-seconds="0">Off</a></li>
+                                        <li><a class="dropdown-item auto-refresh" href="#" data-seconds="5">Every 5 seconds</a></li>
+                                        <li><a class="dropdown-item auto-refresh" href="#" data-seconds="15">Every 15 seconds</a></li>
+                                        <li><a class="dropdown-item auto-refresh" href="#" data-seconds="30">Every 30 seconds</a></li>
+                                        <li><a class="dropdown-item auto-refresh" href="#" data-seconds="60">Every minute</a></li>
                                     </ul>
                                 </div>
                             </div>
@@ -196,9 +196,9 @@
 
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Список хешів</h5>
+                        <h5 class="mb-0">Hash List</h5>
                         <div id="auto-refresh-status" class="text-muted small">
-                            Авто-оновлення: <span id="refresh-interval-text">вимкнено</span>
+                            Auto-refresh: <span id="refresh-interval-text">off</span>
                         </div>
                     </div>
                     <div class="card-body">
@@ -207,12 +207,12 @@
                                 <thead>
                                     <tr>
                                         <th>ID/Base62</th>
-                                        <th>Число</th>
-                                        <th>Колір</th>
-                                        <th>Хеш</th>
-                                        <th>Сіль (HEX)</th>
-                                        <th>Створено</th>
-                                        <th>Дії</th>
+                                        <th>Number</th>
+                                        <th>Color</th>
+                                        <th>Hash</th>
+                                        <th>Salt (HEX)</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="hashes-table-body">
@@ -223,9 +223,9 @@
                                             <td>{{ .Number }}</td>
                                             <td>
                                                 {{ if eq .Color "red" }}
-                                                <span><span class="color-indicator color-red"></span>Червоне</span>
+                                                <span><span class="color-indicator color-red"></span>Red</span>
                                                 {{ else if eq .Color "black" }}
-                                                <span><span class="color-indicator color-black"></span>Чорне</span>
+                                                <span><span class="color-indicator color-black"></span>Black</span>
                                                 {{ else }}
                                                 <span><span class="color-indicator color-green"></span>Zero</span>
                                                 {{ end }}
@@ -247,7 +247,7 @@
                                         <tr>
                                             <td colspan="7" class="text-center">
                                                 <div class="alert alert-info mb-0">
-                                                    <i class="bi bi-info-circle me-2"></i>Хеші не знайдено
+                                                    <i class="bi bi-info-circle me-2"></i>No hashes found
                                                 </div>
                                             </td>
                                         </tr>
@@ -300,12 +300,12 @@
         </main>
     </div>
 
-    <!-- Модальне вікно для деталей хешу -->
+    <!-- Hash Details Modal -->
     <div class="modal fade" id="hashDetailsModal" tabindex="-1" aria-labelledby="hashDetailsModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="hashDetailsModalLabel">Деталі хешу</h5>
+                    <h5 class="modal-title" id="hashDetailsModalLabel">Hash Details</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -314,67 +314,67 @@
                         <div class="p-2 bg-light rounded" id="modal-id"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Число:</label>
+                        <label class="form-label">Number:</label>
                         <div class="p-2 bg-light rounded" id="modal-number"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Колір:</label>
+                        <label class="form-label">Color:</label>
                         <div class="p-2 bg-light rounded" id="modal-color"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Хеш:</label>
+                        <label class="form-label">Hash:</label>
                         <div class="p-2 bg-light rounded hash-label-full" id="modal-hash"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Сіль (HEX):</label>
+                        <label class="form-label">Salt (HEX):</label>
                         <div class="p-2 bg-light rounded hash-label-full" id="modal-salt"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Створено:</label>
+                        <label class="form-label">Created:</label>
                         <div class="p-2 bg-light rounded" id="modal-created"></div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
-                    <button type="button" class="btn btn-primary" id="verify-modal-hash">Перевірити</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="verify-modal-hash">Verify</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Модальне вікно для перевірки хешу -->
+    <!-- Hash Verification Modal -->
     <div class="modal fade" id="verifyHashModal" tabindex="-1" aria-labelledby="verifyHashModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="verifyHashModalLabel">Перевірка хешу</h5>
+                    <h5 class="modal-title" id="verifyHashModalLabel">Hash Verification</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div id="verify-result" class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
-                        Для перевірки хешу натисніть кнопку "Перевірити"
+                        Click "Verify" to check the hash
                     </div>
                     <div class="mb-3">
-                        <label for="verify-number" class="form-label">Число:</label>
+                        <label for="verify-number" class="form-label">Number:</label>
                         <input type="number" class="form-control" id="verify-number" min="0" max="36">
                     </div>
                     <div class="mb-3">
-                        <label for="verify-salt" class="form-label">Сіль (HEX):</label>
+                        <label for="verify-salt" class="form-label">Salt (HEX):</label>
                         <input type="text" class="form-control" id="verify-salt">
                     </div>
                     <div class="mb-3">
-                        <label for="verify-hash" class="form-label">Хеш (оригінальний):</label>
+                        <label for="verify-hash" class="form-label">Hash (original):</label>
                         <input type="text" class="form-control" id="verify-hash" readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="verify-computed-hash" class="form-label">Обчислений хеш:</label>
+                        <label for="verify-computed-hash" class="form-label">Computed Hash:</label>
                         <input type="text" class="form-control" id="verify-computed-hash" readonly>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
-                    <button type="button" class="btn btn-primary" id="do-verify-hash">Перевірити</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="do-verify-hash">Verify</button>
                 </div>
             </div>
         </div>
@@ -382,7 +382,7 @@
 
     <footer class="bg-light py-3 mt-auto">
         <div class="container text-center">
-            <p class="mb-0">© 2025 Телеграм-бот "Рулетка"</p>
+            <p class="mb-0">© 2025 "Roulette" Telegram Bot</p>
         </div>
     </footer>
 
@@ -392,7 +392,7 @@
         let autoRefreshInterval = null;
         let refreshSeconds = 0;
 
-        // Функція для оновлення таблиці хешів
+        // Function to update hash table
         function refreshHashes() {
             $('#refresh-hashes').addClass('spinning');
             
@@ -407,23 +407,23 @@
                 },
                 error: function() {
                     $('#refresh-hashes').removeClass('spinning');
-                    alert('Помилка при оновленні даних');
+                    alert('Error updating data');
                 }
             });
         }
 
-        // Оновлення таблиці хешів
+        // Update hash table
         function updateHashesTable(entries) {
             let tableBody = '';
             
             if (entries && entries.length > 0) {
                 entries.forEach(function(entry) {
                     let colorClass = 'color-black';
-                    let colorText = 'Чорне';
+                    let colorText = 'Black';
                     
                     if (entry.Color === 'red') {
                         colorClass = 'color-red';
-                        colorText = 'Червоне';
+                        colorText = 'Red';
                     } else if (entry.Color === 'zero') {
                         colorClass = 'color-green';
                         colorText = 'Zero';
@@ -455,7 +455,7 @@
                 <tr>
                     <td colspan="7" class="text-center">
                         <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle me-2"></i>Хеші не знайдено
+                            <i class="bi bi-info-circle me-2"></i>No hashes found
                         </div>
                     </td>
                 </tr>
@@ -466,11 +466,11 @@
             attachEventListeners();
         }
 
-        // Оновлення пагінації
+        // Update pagination
         function updatePagination(currentPage, totalPages) {
             let pagination = '';
             
-            // Попередня сторінка
+            // Previous page
             if (currentPage > 1) {
                 pagination += `
                 <li class="page-item">
@@ -487,15 +487,15 @@
                 `;
             }
             
-            // Визначаємо, які сторінки показувати
+            // Determine which pages to show
             let pagesToShow = [];
             if (totalPages <= 7) {
-                // Якщо загальна кількість сторінок не більше 7, показуємо всі
+                // If total pages is not more than 7, show all
                 for (let i = 1; i <= totalPages; i++) {
                     pagesToShow.push(i);
                 }
             } else {
-                // Інакше показуємо поточну сторінку, 2 попередніх, 2 наступних, першу та останню
+                // Otherwise show current page, 2 previous, 2 next, first and last
                 pagesToShow.push(1);
                 
                 let start = currentPage - 2;
@@ -509,7 +509,7 @@
                 }
                 
                 if (start > 2) {
-                    pagesToShow.push(-1); // Додаємо "..."
+                    pagesToShow.push(-1); // Add "..."
                 }
                 
                 for (let i = start; i <= end; i++) {
@@ -517,13 +517,13 @@
                 }
                 
                 if (end < totalPages - 1) {
-                    pagesToShow.push(-1); // Додаємо "..."
+                    pagesToShow.push(-1); // Add "..."
                 }
                 
                 pagesToShow.push(totalPages);
             }
             
-            // Додаємо сторінки до пагінації
+            // Add pages to pagination
             for (let page of pagesToShow) {
                 if (page === -1) {
                     pagination += '<li class="page-item disabled"><span class="page-link">...</span></li>';
@@ -534,7 +534,7 @@
                 }
             }
             
-            // Наступна сторінка
+            // Next page
             if (currentPage < totalPages) {
                 pagination += `
                 <li class="page-item">
@@ -554,9 +554,9 @@
             $('#pagination').html(pagination);
         }
 
-        // Налаштування авто-оновлення
+        // Auto-refresh setup
         function setupAutoRefresh(seconds) {
-            // Зупиняємо попереднє оновлення, якщо воно було
+            // Stop previous refresh if it exists
             if (autoRefreshInterval) {
                 clearInterval(autoRefreshInterval);
                 autoRefreshInterval = null;
@@ -564,29 +564,29 @@
             
             refreshSeconds = seconds;
             
-            // Оновлюємо статус
+            // Update status
             if (seconds > 0) {
-                $('#refresh-interval-text').text(`кожні ${seconds} ${getSecondsText(seconds)}`);
+                $('#refresh-interval-text').text(`every ${seconds} ${getSecondsText(seconds)}`);
                 autoRefreshInterval = setInterval(refreshHashes, seconds * 1000);
             } else {
-                $('#refresh-interval-text').text('вимкнено');
+                $('#refresh-interval-text').text('off');
             }
         }
 
-        // Отримання правильного відмінка для секунд
+        // Get proper seconds text
         function getSecondsText(seconds) {
             if (seconds % 10 === 1 && seconds % 100 !== 11) {
-                return 'секунду';
+                return 'second';
             } else if ([2, 3, 4].includes(seconds % 10) && ![12, 13, 14].includes(seconds % 100)) {
-                return 'секунди';
+                return 'seconds';
             } else {
-                return 'секунд';
+                return 'seconds';
             }
         }
 
-        // Привязуємо обробники подій
+        // Attach event handlers
         function attachEventListeners() {
-            // Перегляд деталей хешу
+            // View hash details
             $('.view-details').click(function() {
                 const hashId = $(this).data('id');
                 
@@ -599,11 +599,11 @@
                         $('#modal-number').text(data.Number);
                         
                         let colorClass = 'color-black';
-                        let colorText = 'Чорне';
+                        let colorText = 'Black';
                         
                         if (data.Color === 'red') {
                             colorClass = 'color-red';
-                            colorText = 'Червоне';
+                            colorText = 'Red';
                         } else if (data.Color === 'zero') {
                             colorClass = 'color-green';
                             colorText = 'Zero';
@@ -614,16 +614,16 @@
                         $('#modal-salt').text(data.SaltHEX);
                         $('#modal-created').text(data.CreatedAt);
                         
-                        // Зберігаємо ID для перевірки
+                        // Save ID for verification
                         $('#verify-modal-hash').data('id', data.ID);
                     },
                     error: function() {
-                        alert('Помилка при отриманні деталей хешу');
+                        alert('Error getting hash details');
                     }
                 });
             });
             
-            // Перевірка хешу
+            // Verify hash
             $('.verify-hash').click(function() {
                 const hashId = $(this).data('id');
                 
@@ -638,21 +638,21 @@
                         $('#verify-computed-hash').val('');
                         
                         $('#verify-result').removeClass('alert-success alert-danger').addClass('alert-info');
-                        $('#verify-result').html('<i class="bi bi-info-circle me-2"></i>Для перевірки хешу натисніть кнопку "Перевірити"');
+                        $('#verify-result').html('<i class="bi bi-info-circle me-2"></i>Click "Verify" to check the hash');
                         
                         $('#verifyHashModal').modal('show');
                     },
                     error: function() {
-                        alert('Помилка при отриманні деталей хешу');
+                        alert('Error getting hash details');
                     }
                 });
             });
         }
 
-        // Прикріплюємо обробники до статичних елементів
+        // Attach handlers to static elements
         attachEventListeners();
 
-        // Подія перевірки хешу з модального вікна
+        // Verify hash from modal
         $('#verify-modal-hash').click(function() {
             const hashId = $(this).data('id');
             
@@ -667,25 +667,25 @@
                     $('#verify-computed-hash').val('');
                     
                     $('#verify-result').removeClass('alert-success alert-danger').addClass('alert-info');
-                    $('#verify-result').html('<i class="bi bi-info-circle me-2"></i>Для перевірки хешу натисніть кнопку "Перевірити"');
+                    $('#verify-result').html('<i class="bi bi-info-circle me-2"></i>Click "Verify" to check the hash');
                     
                     $('#hashDetailsModal').modal('hide');
                     $('#verifyHashModal').modal('show');
                 },
                 error: function() {
-                    alert('Помилка при отриманні деталей хешу');
+                    alert('Error getting hash details');
                 }
             });
         });
         
-        // Безпосередня перевірка хешу
+        // Direct hash verification
         $('#do-verify-hash').click(function() {
             const number = $('#verify-number').val();
             const salt = $('#verify-salt').val();
             const originalHash = $('#verify-hash').val();
             
             if (!number || !salt || !originalHash) {
-                alert('Заповніть всі поля');
+                alert('Fill in all fields');
                 return;
             }
             
@@ -704,24 +704,24 @@
                     
                     if (data.valid) {
                         $('#verify-result').removeClass('alert-info alert-danger').addClass('alert-success');
-                        $('#verify-result').html('<i class="bi bi-check-circle me-2"></i>Хеш валідний! Дані автентичні.');
+                        $('#verify-result').html('<i class="bi bi-check-circle me-2"></i>Valid hash! Data is authentic.');
                     } else {
                         $('#verify-result').removeClass('alert-info alert-success').addClass('alert-danger');
-                        $('#verify-result').html('<i class="bi bi-x-circle me-2"></i>Хеш невалідний! Дані можуть бути підробленими.');
+                        $('#verify-result').html('<i class="bi bi-x-circle me-2"></i>Invalid hash! Data may be tampered with.');
                     }
                 },
                 error: function() {
-                    alert('Помилка при перевірці хешу');
+                    alert('Error verifying hash');
                 }
             });
         });
         
-        // Ручне оновлення хешів
+        // Manual hash refresh
         $('#refresh-hashes').click(function() {
             refreshHashes();
         });
         
-        // Налаштування авто-оновлення
+        // Auto-refresh setup
         $('.auto-refresh').click(function(e) {
             e.preventDefault();
             const seconds = parseInt($(this).data('seconds'));

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -65,14 +65,14 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/admin">Адмін-панель Рулетки</a>
+            <a class="navbar-brand" href="/admin">Roulette Admin Panel</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Вихід</a>
+                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
                     </li>
                 </ul>
             </div>
@@ -84,37 +84,37 @@
             <ul class="nav flex-column">
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "dashboard"}}active{{end}}" href="/admin">
-                        <i class="bi bi-speedometer2"></i> Головна
+                        <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "users"}}active{{end}}" href="/admin/users">
-                        <i class="bi bi-people"></i> Користувачі
+                        <i class="bi bi-people"></i> Users
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "stats"}}active{{end}}" href="/admin/stats">
-                        <i class="bi bi-bar-chart"></i> Статистика
+                        <i class="bi bi-bar-chart"></i> Statistics
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
-                        <i class="bi bi-trophy"></i> Рейтинги
+                        <i class="bi bi-trophy"></i> Ratings
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "withdrawals"}}active{{end}}" href="/admin/withdrawals">
-                        <i class="bi bi-cash-coin"></i> Виведення коштів
+                        <i class="bi bi-cash-coin"></i> Withdrawals
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "hashes"}}active{{end}}" href="/admin/hashes">
-                        <i class="bi bi-hash"></i> Хеші рулетки
+                        <i class="bi bi-hash"></i> Roulette Hashes
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "settings"}}active{{end}}" href="/admin/settings">
-                        <i class="bi bi-gear"></i> Налаштування
+                        <i class="bi bi-gear"></i> Settings
                     </a>
                 </li>
             </ul>
@@ -124,7 +124,7 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12">
-                        <h1 class="mb-4">Статистика</h1>
+                        <h1 class="mb-4">Statistics</h1>
                     </div>
                 </div>
 
@@ -132,26 +132,26 @@
                     <div class="col-md-6 mb-4">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="mb-0">Статистика за сьогодні</h5>
+                                <h5 class="mb-0">Today's Statistics</h5>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
                                     <table class="table table-hover">
                                         <tbody>
                                             <tr>
-                                                <th>Всього ставок:</th>
+                                                <th>Total Bets:</th>
                                                 <td>100</td>
                                             </tr>
                                             <tr>
-                                                <th>Виграшних ставок:</th>
+                                                <th>Winning Bets:</th>
                                                 <td>45</td>
                                             </tr>
                                             <tr>
-                                                <th>Програшних ставок:</th>
+                                                <th>Losing Bets:</th>
                                                 <td>55</td>
                                             </tr>
                                             <tr>
-                                                <th>Відсоток виграшів:</th>
+                                                <th>Win Percentage:</th>
                                                 <td>45%</td>
                                             </tr>
                                         </tbody>
@@ -164,26 +164,26 @@
                     <div class="col-md-6 mb-4">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="mb-0">Статистика за тиждень</h5>
+                                <h5 class="mb-0">Weekly Statistics</h5>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
                                     <table class="table table-hover">
                                         <tbody>
                                             <tr>
-                                                <th>Всього ставок:</th>
+                                                <th>Total Bets:</th>
                                                 <td>700</td>
                                             </tr>
                                             <tr>
-                                                <th>Виграшних ставок:</th>
+                                                <th>Winning Bets:</th>
                                                 <td>320</td>
                                             </tr>
                                             <tr>
-                                                <th>Програшних ставок:</th>
+                                                <th>Losing Bets:</th>
                                                 <td>380</td>
                                             </tr>
                                             <tr>
-                                                <th>Відсоток виграшів:</th>
+                                                <th>Win Percentage:</th>
                                                 <td>45.7%</td>
                                             </tr>
                                         </tbody>
@@ -198,11 +198,11 @@
                     <div class="col-12 mb-4">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="mb-0">Статистика виграшів</h5>
+                                <h5 class="mb-0">Win Statistics</h5>
                             </div>
                             <div class="card-body">
                                 <div class="alert alert-info">
-                                    <i class="bi bi-info-circle"></i> Тут буде відображатися графік статистики виграшів за період.
+                                    <i class="bi bi-info-circle"></i> A chart of win statistics for the period will be displayed here.
                                 </div>
                             </div>
                         </div>
@@ -214,7 +214,7 @@
 
     <footer class="bg-light py-3 mt-auto">
         <div class="container text-center">
-            <p class="mb-0">© 2025 Телеграм-бот "Рулетка"</p>
+            <p class="mb-0">© 2025 "Roulette" Telegram Bot</p>
         </div>
     </footer>
 </body>

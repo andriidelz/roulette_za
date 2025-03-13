@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -65,14 +65,14 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/admin">Адмін-панель Рулетки</a>
+            <a class="navbar-brand" href="/admin">Roulette Admin Panel</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Вихід</a>
+                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
                     </li>
                 </ul>
             </div>
@@ -84,37 +84,37 @@
             <ul class="nav flex-column">
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "dashboard"}}active{{end}}" href="/admin">
-                        <i class="bi bi-speedometer2"></i> Головна
+                        <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "users"}}active{{end}}" href="/admin/users">
-                        <i class="bi bi-people"></i> Користувачі
+                        <i class="bi bi-people"></i> Users
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "stats"}}active{{end}}" href="/admin/stats">
-                        <i class="bi bi-bar-chart"></i> Статистика
+                        <i class="bi bi-bar-chart"></i> Statistics
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
-                        <i class="bi bi-trophy"></i> Рейтинги
+                        <i class="bi bi-trophy"></i> Ratings
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "withdrawals"}}active{{end}}" href="/admin/withdrawals">
-                        <i class="bi bi-cash-coin"></i> Виведення коштів
+                        <i class="bi bi-cash-coin"></i> Withdrawals
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "hashes"}}active{{end}}" href="/admin/hashes">
-                        <i class="bi bi-hash"></i> Хеші рулетки
+                        <i class="bi bi-hash"></i> Roulette Hashes
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "settings"}}active{{end}}" href="/admin/settings">
-                        <i class="bi bi-gear"></i> Налаштування
+                        <i class="bi bi-gear"></i> Settings
                     </a>
                 </li>
             </ul>
@@ -124,16 +124,16 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12">
-                        <h1 class="mb-4">Виведення коштів</h1>
+                        <h1 class="mb-4">Withdrawals</h1>
                     </div>
                 </div>
 
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Запити на виведення коштів</h5>
+                        <h5 class="mb-0">Withdrawal Requests</h5>
                         <div>
-                            <button class="btn btn-sm btn-success">Підтвердити всі</button>
-                            <button class="btn btn-sm btn-danger">Відхилити всі</button>
+                            <button class="btn btn-sm btn-success">Approve All</button>
+                            <button class="btn btn-sm btn-danger">Reject All</button>
                         </div>
                     </div>
                     <div class="card-body">
@@ -142,12 +142,12 @@
                                 <thead>
                                     <tr>
                                         <th>ID</th>
-                                        <th>Користувач</th>
-                                        <th>Сума</th>
-                                        <th>Гаманець</th>
-                                        <th>Створено</th>
-                                        <th>Статус</th>
-                                        <th>Дії</th>
+                                        <th>User</th>
+                                        <th>Amount</th>
+                                        <th>Wallet</th>
+                                        <th>Created</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -161,19 +161,19 @@
                                             <td>{{ .CreatedAt }}</td>
                                             <td>
                                                 {{ if eq .Status "pending" }}
-                                                <span class="badge bg-warning">В очікуванні</span>
+                                                <span class="badge bg-warning">Pending</span>
                                                 {{ else if eq .Status "approved" }}
-                                                <span class="badge bg-success">Підтверджено</span>
+                                                <span class="badge bg-success">Approved</span>
                                                 {{ else }}
-                                                <span class="badge bg-danger">Відхилено</span>
+                                                <span class="badge bg-danger">Rejected</span>
                                                 {{ end }}
                                             </td>
                                             <td>
                                                 {{ if eq .Status "pending" }}
-                                                <button class="btn btn-sm btn-success approve-withdrawal" data-id="{{ .ID }}">Підтвердити</button>
-                                                <button class="btn btn-sm btn-danger reject-withdrawal" data-id="{{ .ID }}">Відхилити</button>
+                                                <button class="btn btn-sm btn-success approve-withdrawal" data-id="{{ .ID }}">Approve</button>
+                                                <button class="btn btn-sm btn-danger reject-withdrawal" data-id="{{ .ID }}">Reject</button>
                                                 {{ else }}
-                                                <button class="btn btn-sm btn-secondary" disabled>Оброблено</button>
+                                                <button class="btn btn-sm btn-secondary" disabled>Processed</button>
                                                 {{ end }}
                                             </td>
                                         </tr>
@@ -182,7 +182,7 @@
                                         <tr>
                                             <td colspan="7" class="text-center">
                                                 <div class="alert alert-info mb-0">
-                                                    <i class="bi bi-info-circle me-2"></i>Наразі немає запитів на виведення коштів
+                                                    <i class="bi bi-info-circle me-2"></i>No withdrawal requests at this time
                                                 </div>
                                             </td>
                                         </tr>
@@ -195,11 +195,11 @@
 
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0">Історія виведення коштів</h5>
+                        <h5 class="mb-0">Withdrawal History</h5>
                     </div>
                     <div class="card-body">
                         <div class="alert alert-info">
-                            <i class="bi bi-info-circle me-2"></i>Тут буде відображатися історія виведення коштів.
+                            <i class="bi bi-info-circle me-2"></i>The withdrawal history will be displayed here.
                         </div>
                     </div>
                 </div>
@@ -209,35 +209,35 @@
 
     <footer class="bg-light py-3 mt-auto">
         <div class="container text-center">
-            <p class="mb-0">© 2025 Телеграм-бот "Рулетка"</p>
+            <p class="mb-0">© 2025 "Roulette" Telegram Bot</p>
         </div>
     </footer>
 
     <script>
     $(document).ready(function() {
-        // Обробник підтвердження виведення коштів
+        // Approve withdrawal handler
         $('.approve-withdrawal').click(function() {
             var withdrawalId = $(this).data('id');
-            if (confirm('Ви впевнені, що хочете підтвердити виведення коштів?')) {
+            if (confirm('Are you sure you want to approve this withdrawal?')) {
                 $.post('/admin/withdrawal/' + withdrawalId + '/approve', function(data) {
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert('Помилка: ' + data.error);
+                        alert('Error: ' + data.error);
                     }
                 });
             }
         });
         
-        // Обробник відхилення виведення коштів
+        // Reject withdrawal handler
         $('.reject-withdrawal').click(function() {
             var withdrawalId = $(this).data('id');
-            if (confirm('Ви впевнені, що хочете відхилити виведення коштів? Кошти будуть повернуті на баланс користувача.')) {
+            if (confirm('Are you sure you want to reject this withdrawal? The funds will be returned to the user\'s balance.')) {
                 $.post('/admin/withdrawal/' + withdrawalId + '/reject', function(data) {
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert('Помилка: ' + data.error);
+                        alert('Error: ' + data.error);
                     }
                 });
             }
