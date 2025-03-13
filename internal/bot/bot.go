@@ -1,4 +1,3 @@
-// internal/bot/bot.go
 package bot
 
 import (
@@ -6,9 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
+	"roulette/internal/models"
 	"roulette/internal/service"
-	"roulette/internal/utils"
 
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
@@ -22,9 +22,10 @@ type Bot struct {
 	initialized bool
 	ctx         context.Context
 	cancel      context.CancelFunc
+	gameHandler *GameHandler // Обработчик игры
 }
 
-// Константи для команд і callback-запитів
+// Константы для команд и callback-запитов
 const (
 	CommandStart       = "start"
 	CommandHelp        = "help"
@@ -43,7 +44,7 @@ const (
 	CallbackBack     = "back"
 )
 
-// NewBot створює новий екземпляр бота
+// NewBot создает новый экземпляр бота
 func NewBot(token string, service service.Service) (*Bot, error) {
 	bot, err := telego.NewBot(token)
 	if err != nil {
@@ -52,28 +53,33 @@ func NewBot(token string, service service.Service) (*Bot, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	return &Bot{
+	b := &Bot{
 		bot:     bot,
 		service: service,
 		ctx:     ctx,
 		cancel:  cancel,
-	}, nil
+	}
+
+	// Инициализируем обработчик игры после создания бота
+	b.gameHandler = NewGameHandler(b, service)
+
+	return b, nil
 }
 
-// Start запускає бота
+// Start запускает бота
 func (b *Bot) Start() error {
 	if b.initialized {
 		return fmt.Errorf("bot already started")
 	}
 
-	// Отримуємо інформацію про бота
+	// Получаем информацию о боте
 	me, err := b.bot.GetMe()
 	if err != nil {
 		return fmt.Errorf("failed to get bot info: %w", err)
 	}
 	log.Printf("Bot started: @%s", me.Username)
 
-	// Початок отримання оновлень
+	// Начало получения обновлений
 	updates, err := b.bot.UpdatesViaLongPolling(&telego.GetUpdatesParams{
 		Timeout: 60,
 		Offset:  0,
@@ -83,90 +89,182 @@ func (b *Bot) Start() error {
 	}
 	b.updates = updates
 
-	// Запускаємо обробку оновлень у фоновому режимі
+	// Запускаем обработку обновлений в фоновом режиме
 	go b.processUpdates()
 
 	b.initialized = true
 	return nil
 }
 
-// Stop зупиняє бота
+// GetGameHandler возвращает обработчик игры для регистрации в ротаторе
+func (b *Bot) GetGameHandler() *GameHandler {
+	return b.gameHandler
+}
+
+// Stop останавливает бота
 func (b *Bot) Stop() {
 	if !b.initialized {
 		return
 	}
 
-	// Зупиняємо довгий поллінг
+	// Останавливаем длинный поллинг
 	b.bot.StopLongPolling()
 
-	// Відміняємо контекст
+	// Отменяем контекст
 	b.cancel()
 
 	b.initialized = false
 	log.Println("Bot stopped")
 }
 
-// processUpdates обробляє оновлення від телеграма
+// processUpdates обрабатывает обновления от телеграма
 func (b *Bot) processUpdates() {
 	for update := range b.updates {
 		b.handleUpdate(update)
 	}
 }
 
-// handleUpdate обробляє одне оновлення
+// handleUpdate обрабатывает одно обновление
 func (b *Bot) handleUpdate(update telego.Update) {
-	// Обробка повідомлень
+	// Обработка сообщений
 	if update.Message != nil && update.Message.Text != "" {
 		b.handleMessage(update.Message)
 		return
 	}
 
-	// Обробка callback-запитів
+	// Обработка callback-запитов
 	if update.CallbackQuery != nil {
 		b.handleCallbackQuery(update.CallbackQuery)
 		return
 	}
 }
 
-// handleMessage обробляє повідомлення
+// handleMessage обрабатывает сообщения
 func (b *Bot) handleMessage(message *telego.Message) {
-	// Обробка команд
-	if message.Text[0] == '/' {
-		command := message.Text[1:] // Видаляємо символ '/'
+	user := message.From
 
-		// Визначаємо команду
+	// Регистрация пользователя, если он новый
+	_, err := b.service.GetUser(user.ID)
+	if err != nil {
+		_, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+		if err != nil {
+			log.Printf("Error registering user: %v", err)
+		}
+	}
+
+	text := message.Text
+
+	// Обработка команд, начинающихся с /
+	if len(text) > 0 && text[0] == '/' {
+		command := strings.Split(text[1:], " ")[0] // Получаем команду без аргументов
+		command = strings.ToLower(command)
+
 		switch command {
 		case CommandStart:
 			b.handleStartCommand(message)
+		case CommandHelp:
+			b.handleHelpCommand(message)
+		case CommandPlay:
+			b.gameHandler.HandlePlayCommand(message)
+		case CommandProfile:
+			b.handleProfileCommand(message)
+		case CommandStats:
+			b.handleStatsCommand(message)
+		case CommandRating:
+			b.handleRatingCommand(message)
+		case CommandSuperRating:
+			b.handleSuperRatingCommand(message)
+		case CommandBalance:
+			b.handleBalanceCommand(message)
+		case CommandWithdraw:
+			b.handleWithdrawCommand(message)
+		case CommandFAQ:
+			b.handleFAQCommand(message)
 		default:
-			// Невідома команда
+			// Неизвестная команда
+			b.handleUnknownCommand(message)
+		}
+		return
+	}
+
+	// Обработка текстовых сообщений (не команд)
+	language := user.LanguageCode
+	if language == "" {
+		language = "uk"
+	}
+
+	// Получаем локализованные тексты для кнопок
+	btnRedText := b.service.GetText("btn_bet_red", language)
+	btnBlackText := b.service.GetText("btn_bet_black", language)
+	btnZeroText := b.service.GetText("btn_bet_zero", language)
+	btnZeroLockedText := b.service.GetText("btn_bet_zero_locked", language)
+	btnBackText := b.service.GetText("btn_back", language)
+
+	// Обработка ставок по тексту кнопки
+	switch text {
+	case btnRedText:
+		b.gameHandler.MakeBet(user.ID, models.Red)
+	case btnBlackText:
+		b.gameHandler.MakeBet(user.ID, models.Black)
+	case btnZeroText:
+		b.gameHandler.MakeBet(user.ID, models.Zero)
+	case btnZeroLockedText:
+		// Обработка нажатия на заблокированную кнопку Zero
+		canBetZero, remaining, _ := b.service.CanBetZero(user.ID)
+		if !canBetZero {
+			zeroLimitText := b.service.GetText("zero_limit", language)
+			zeroLimitText = fmt.Sprintf(zeroLimitText, remaining)
+
 			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text: "Невідома команда.",
+				Text:          zeroLimitText,
+				ReplyKeyboard: b.gameHandler.createBetKeyboard(language, user.ID),
 			})
 		}
+	case btnBackText:
+		// Возврат в главное меню
+		b.handleHelpCommand(message)
+	default:
+		// Обработка других текстовых сообщений
+		b.handleGenericMessage(message)
 	}
 }
 
-// handleCallbackQuery обробляє callback-запити
+// handleCallbackQuery обрабатывает callback-запиты
 func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
+	// Валидация пользователя
+	user := query.From
+	_, err := b.service.GetUser(user.ID)
+	if err != nil {
+		// Регистрация пользователя, если он не найден
+		_, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+		if err != nil {
+			log.Printf("Error registering user: %v", err)
+			return
+		}
+	}
+
+	// Обработка callback data
 	switch query.Data {
+	case CallbackBetRed:
+		b.gameHandler.MakeBet(user.ID, models.Red)
+	case CallbackBetBlack:
+		b.gameHandler.MakeBet(user.ID, models.Black)
+	case CallbackBetZero:
+		b.gameHandler.MakeBet(user.ID, models.Zero)
 	case CallbackBack:
 		b.handleBackToMainMenu(query)
 	default:
-		// Невідомий callback
+		// Неизвестный callback
 		b.answerCallbackQuery(query.ID, "Невідома дія", true)
 	}
 }
 
-// Обробники команд
+// Обработчики команд
 
 func (b *Bot) handleStartCommand(message *telego.Message) {
 	user := message.From
 
-	u, _ := b.service.GetUser(user.ID)
-	utils.DumpInterface(u)
-
-	// Реєструємо користувача
+	// Регистрируем пользователя или обновляем информацию
 	_, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
 	if err != nil {
 		log.Printf("Error registering user: %v", err)
@@ -176,34 +274,348 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 		return
 	}
 
-	// Відправляємо привітальне повідомлення
-	welcomeText := "Вітаємо в грі Рулетка! Тут ви можете робити ставки на червоне, чорне або зеро."
-	helpText := "Доступні команди:\n/play - Почати гру\n/profile - Ваш профіль\n/stats - Ваша статистика\n/rating - Тижневий рейтинг\n/balance - Ваш баланс"
+	language := user.LanguageCode
+	if language == "" {
+		language = "uk" // Украинский по умолчанию
+	}
 
+	// Получаем локализированные тексты приветствия и помощи
+	welcomeText := b.service.GetText("welcome", language)
+	helpText := b.service.GetText("help", language)
+
+	// Отправляем приветственное сообщение
 	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text: fmt.Sprintf("%s\n\n%s", welcomeText, helpText),
-		// InlineKeyboard: b.createMainKeyboard(),
-		ReplyKeyboard: b.createMainReplyKeyboard(),
+		Text:          fmt.Sprintf("%s\n\n%s", welcomeText, helpText),
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
 	})
-
-	u, _ = b.service.GetUser(user.ID)
-	utils.DumpInterface(u)
 }
 
-// Обробники callback-запитів
+func (b *Bot) handleHelpCommand(message *telego.Message) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "uk"
+	}
+
+	// Получаем локализированный текст помощи
+	helpText := b.service.GetText("help", language)
+
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          helpText,
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
+	})
+}
+
+func (b *Bot) handleProfileCommand(message *telego.Message) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "uk"
+	}
+
+	// Получаем информацию о пользователе и его статистику
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user: %v", err)
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text: "Помилка при отриманні профілю. Спробуйте ще раз.",
+		})
+		return
+	}
+
+	stats, err := b.service.GetUserStats(user.ID)
+	if err != nil {
+		log.Printf("Error getting user stats: %v", err)
+		stats = &models.UserStats{} // Пустая статистика, если не удалось получить
+	}
+
+	// Расчет эффективности
+	efficiency := 0.0
+	if stats.TotalBets > 0 {
+		efficiency = float64(stats.WonBets) / float64(stats.TotalBets) * 100
+	}
+
+	// Получаем шаблон профиля и форматируем его
+	profileTemplate := b.service.GetText("profile_template", language)
+	profileText := fmt.Sprintf(
+		profileTemplate,
+		dbUser.Username,
+		dbUser.Balance,
+		stats.TotalBets,
+		stats.WonBets,
+		efficiency,
+		stats.TotalPoints,
+	)
+
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          profileText,
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
+	})
+}
+
+func (b *Bot) handleStatsCommand(message *telego.Message) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "uk"
+	}
+
+	// Получаем статистику пользователя
+	stats, err := b.service.GetUserStats(user.ID)
+	if err != nil {
+		log.Printf("Error getting user stats: %v", err)
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text: "Помилка при отриманні статистики. Спробуйте ще раз.",
+		})
+		return
+	}
+
+	// Получаем шаблон статистики и форматируем его
+	statsTemplate := b.service.GetText("stats_template", language)
+	statsText := fmt.Sprintf(
+		statsTemplate,
+		stats.DailyBets,
+		stats.DailyPoints,
+		stats.WeeklyBets,
+		stats.WeeklyPoints,
+		stats.MonthlyBets,
+		stats.MonthlyPoints,
+		stats.TotalBets,
+		stats.TotalPoints,
+	)
+
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          statsText,
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
+	})
+}
+
+func (b *Bot) handleRatingCommand(message *telego.Message) {
+	// Обработка команды рейтинга
+	// Добавить позже логику получения и отображения рейтинга
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          "Рейтингова система знаходиться у розробці.",
+		ReplyKeyboard: b.createMainReplyKeyboard(message.From.LanguageCode),
+	})
+}
+
+func (b *Bot) handleSuperRatingCommand(message *telego.Message) {
+	// Обработка команды супер-рейтинга
+	// Добавить позже логику получения и отображения супер-рейтинга
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          "Система супер-рейтингу знаходиться у розробці.",
+		ReplyKeyboard: b.createMainReplyKeyboard(message.From.LanguageCode),
+	})
+}
+
+func (b *Bot) handleBalanceCommand(message *telego.Message) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "uk"
+	}
+
+	// Получаем информацию о пользователе для проверки баланса
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user: %v", err)
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text: "Помилка при отриманні балансу. Спробуйте ще раз.",
+		})
+		return
+	}
+
+	// Получаем шаблон баланса
+	var balanceText string
+	minWithdrawal := 10.0 // Значение по умолчанию
+
+	// Проверяем достаточно ли денег для вывода
+	if dbUser.Balance >= minWithdrawal {
+		balanceTemplate := b.service.GetText("balanceaccok", language)
+		balanceText = fmt.Sprintf(balanceTemplate, dbUser.Balance)
+	} else {
+		balanceTemplate := b.service.GetText("balanceacclow", language)
+		balanceText = fmt.Sprintf(balanceTemplate, dbUser.Balance)
+	}
+
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          balanceText,
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
+	})
+}
+
+func (b *Bot) handleWithdrawCommand(message *telego.Message) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "uk"
+	}
+
+	// Получаем информацию о пользователе для проверки баланса
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user: %v", err)
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text: "Помилка при отриманні даних. Спробуйте ще раз.",
+		})
+		return
+	}
+
+	minWithdrawal := 10.0 // Значение по умолчанию
+
+	// Проверяем достаточно ли денег для вывода
+	var withdrawText string
+	if dbUser.Balance >= minWithdrawal {
+		withdrawTemplate := b.service.GetText("withdrawok", language)
+		withdrawText = fmt.Sprintf(withdrawTemplate, dbUser.Balance)
+	} else {
+		withdrawTemplate := b.service.GetText("withdrawlow", language)
+		withdrawText = fmt.Sprintf(withdrawTemplate, dbUser.Balance)
+	}
+
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          withdrawText,
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
+	})
+}
+
+func (b *Bot) handleFAQCommand(message *telego.Message) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "uk"
+	}
+
+	// Получаем локализированный текст FAQ
+	faqText := b.service.GetText("faq", language)
+
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          faqText,
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
+	})
+}
+
+func (b *Bot) handleUnknownCommand(message *telego.Message) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "uk"
+	}
+
+	// Отправляем сообщение о неизвестной команде и подсказку
+	helpText := b.service.GetText("help", language)
+
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          fmt.Sprintf("Невідома команда. %s", helpText),
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
+	})
+}
+
+func (b *Bot) handleGenericMessage(message *telego.Message) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "uk"
+	}
+
+	// Обработка обычного текстового сообщения
+	// Можно добавить обработку особых слов или фраз здесь
+
+	// По умолчанию отправляем главное меню
+	helpText := b.service.GetText("help", language)
+
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          helpText,
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
+	})
+}
 
 func (b *Bot) handleBackToMainMenu(query *telego.CallbackQuery) {
 	b.answerCallbackQuery(query.ID, "", false)
 
-	helpText := "Доступні команди:\n/play - Почати гру\n/profile - Ваш профіль\n/stats - Ваша статистика\n/rating - Тижневий рейтинг\n/balance - Ваш баланс"
+	user := query.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "uk"
+	}
 
-	b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
-		Text:           helpText,
-		InlineKeyboard: b.createMainKeyboard(),
-	})
+	// Получаем локализированный текст помощи
+	helpText := b.service.GetText("help", language)
+
+	// Обновляем сообщение или отправляем новое
+	if query.Message != nil {
+		b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+			Text:           helpText,
+			InlineKeyboard: b.createMainKeyboard(language),
+		})
+	} else {
+		b.SendMessage(query.From.ID, MessageOptions{
+			Text:          helpText,
+			ReplyKeyboard: b.createMainReplyKeyboard(language),
+		})
+	}
 }
 
 // Допоміжні методи
+
+// createMainKeyboard создает основную inline клавиатуру
+func (b *Bot) createMainKeyboard(language string) *telego.InlineKeyboardMarkup {
+	// Получаем локализированные тексты для кнопок
+	btnPlayText := b.service.GetText("btn_play", language)
+	btnProfileText := b.service.GetText("btn_profile", language)
+	btnStatsText := b.service.GetText("btn_stats", language)
+	btnRatingText := b.service.GetText("btn_rating", language)
+	btnBalanceText := b.service.GetText("btn_balance", language)
+	btnFAQText := b.service.GetText("btn_faq", language)
+
+	return &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				{Text: btnPlayText, CallbackData: CommandPlay},
+				{Text: btnProfileText, CallbackData: CommandProfile},
+			},
+			{
+				{Text: btnStatsText, CallbackData: CommandStats},
+				{Text: btnRatingText, CallbackData: CommandRating},
+			},
+			{
+				{Text: btnBalanceText, CallbackData: CommandBalance},
+				{Text: btnFAQText, CallbackData: CommandFAQ},
+			},
+		},
+	}
+}
+
+// createMainReplyKeyboard создает основную reply клавиатуру
+func (b *Bot) createMainReplyKeyboard(language string) *telego.ReplyKeyboardMarkup {
+	// Получаем локализированные тексты для кнопок
+	btnPlayText := b.service.GetText("btn_play", language)
+	btnProfileText := b.service.GetText("btn_profile", language)
+	btnStatsText := b.service.GetText("btn_stats", language)
+	btnRatingText := b.service.GetText("btn_rating", language)
+	btnBalanceText := b.service.GetText("btn_balance", language)
+	btnFAQText := b.service.GetText("btn_faq", language)
+
+	return &telego.ReplyKeyboardMarkup{
+		Keyboard: [][]telego.KeyboardButton{
+			{
+				{Text: btnPlayText},
+				{Text: btnProfileText},
+			},
+			{
+				{Text: btnStatsText},
+				{Text: btnRatingText},
+			},
+			{
+				{Text: btnBalanceText},
+				{Text: btnFAQText},
+			},
+		},
+		ResizeKeyboard:  true,
+		OneTimeKeyboard: false,
+		Selective:       false,
+	}
+}
 
 // Відповідь на callback-запит
 func (b *Bot) answerCallbackQuery(queryID string, text string, showAlert bool) {
@@ -217,101 +629,58 @@ func (b *Bot) answerCallbackQuery(queryID string, text string, showAlert bool) {
 	}
 }
 
-// Створення основної клавіатури
-func (b *Bot) createMainKeyboard() *telego.InlineKeyboardMarkup {
-	return &telego.InlineKeyboardMarkup{
-		InlineKeyboard: [][]telego.InlineKeyboardButton{
-			{
-				{Text: "🎮 Грати", CallbackData: CommandPlay},
-				{Text: "👤 Профіль", CallbackData: CommandProfile},
-			},
-			{
-				{Text: "📊 Статистика", CallbackData: CommandStats},
-				{Text: "🏆 Рейтинг", CallbackData: CommandRating},
-			},
-			{
-				{Text: "💰 Баланс", CallbackData: CommandBalance},
-				{Text: "❓ FAQ", CallbackData: CommandFAQ},
-			},
-		},
-	}
-}
-
-// // Створення клавіатури відповіді (приклад)
-func (b *Bot) createMainReplyKeyboard() *telego.ReplyKeyboardMarkup {
-	return &telego.ReplyKeyboardMarkup{
-		Keyboard: [][]telego.KeyboardButton{
-			{
-				{Text: "🎮 Грати"},
-				{Text: "👤 Профіль"},
-			},
-			{
-				{Text: "📊 Статистика"},
-				{Text: "🏆 Рейтинг"},
-			},
-			{
-				{Text: "💰 Баланс"},
-				{Text: "❓ FAQ"},
-			},
-		},
-		ResizeKeyboard:  true,
-		OneTimeKeyboard: false,
-		Selective:       false,
-	}
-}
-
-// MessageOptions містить опції для відправки або оновлення повідомлення
+// MessageOptions содержит опции для отправки или обновления сообщения
 type MessageOptions struct {
-	// Text - текст повідомлення
+	// Text - текст сообщения
 	Text string
 
-	// PhotoPath - шлях до фото (якщо встановлено, буде відправлено фото з підписом Text)
+	// PhotoPath - путь к фото (если установлен, будет отправлено фото с подписью Text)
 	PhotoPath string
 
-	// PhotoFileID - FileID фото (якщо встановлено, буде відправлено фото з підписом Text)
+	// PhotoFileID - FileID фото (если установлен, будет отправлено фото с подписью Text)
 	PhotoFileID string
 
-	// InlineKeyboard - інлайн клавіатура (якщо встановлено, буде додана до повідомлення)
+	// InlineKeyboard - инлайн клавиатура (если установлена, будет добавлена к сообщению)
 	InlineKeyboard *telego.InlineKeyboardMarkup
 
-	// ReplyKeyboard - клавіатура відповіді (якщо встановлено, буде додана до повідомлення)
+	// ReplyKeyboard - клавиатура ответа (если установлена, будет добавлена к сообщению)
 	ReplyKeyboard *telego.ReplyKeyboardMarkup
 
-	// RemoveKeyboard - якщо true, клавіатура відповіді буде видалена
+	// RemoveKeyboard - если true, клавиатура ответа будет удалена
 	RemoveKeyboard bool
 
-	// OneTimeKeyboard - якщо true і встановлено ReplyKeyboard, клавіатура буде одноразовою
+	// OneTimeKeyboard - если true и установлено ReplyKeyboard, клавиатура будет одноразовой
 	OneTimeKeyboard bool
 
-	// Selective - якщо true і встановлено ReplyKeyboard, клавіатура буде показана тільки певним користувачам
+	// Selective - если true и установлено ReplyKeyboard, клавиатура будет показана только определенным пользователям
 	Selective bool
 
-	// ParseMode - режим форматування тексту (HTML, Markdown, MarkdownV2)
+	// ParseMode - режим форматирования текста (HTML, Markdown, MarkdownV2)
 	ParseMode string
 
-	// DisableWebPagePreview - якщо true, превью посилань буде вимкнено
+	// DisableWebPagePreview - если true, превью ссылок будет отключено
 	DisableWebPagePreview bool
 
-	// DisableNotification - якщо true, повідомлення буде відправлено беззвучно
+	// DisableNotification - если true, сообщение будет отправлено беззвучно
 	DisableNotification bool
 }
 
-// SendMessage відправляє нове повідомлення з вказаними опціями
+// SendMessage отправляет новое сообщение с указанными опциями
 func (b *Bot) SendMessage(chatID int64, options MessageOptions) (*telego.Message, error) {
-	// Якщо вказано шлях до фото або FileID
+	// Если указан путь к фото или FileID
 	if options.PhotoPath != "" || options.PhotoFileID != "" {
 		return b.sendPhoto(chatID, options)
 	}
 
-	// Інакше відправляємо текстове повідомлення
+	// Иначе отправляем текстовое сообщение
 	return b.sendText(chatID, options)
 }
 
-// UpdateMessage оновлює існуюче повідомлення з вказаними опціями
+// UpdateMessage обновляет существующее сообщение с указанными опциями
 func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions) (*telego.Message, error) {
-	// Якщо вказано шлях до фото
+	// Если указан путь к фото
 	if options.PhotoPath != "" {
-		// Для фото з локального джерела необхідно видалити старе повідомлення і відправити нове
+		// Для фото с локального источника необходимо удалить старое сообщение и отправить новое
 		err := b.bot.DeleteMessage(&telego.DeleteMessageParams{
 			ChatID:    telego.ChatID{ID: chatID},
 			MessageID: messageID,
@@ -322,10 +691,10 @@ func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions)
 
 		return b.SendMessage(chatID, options)
 	} else if options.PhotoFileID != "" {
-		// Оновлення фото по FileID
+		// Обновление фото по FileID
 		return b.updatePhotoByFileID(chatID, messageID, options)
 	} else if options.ReplyKeyboard != nil || options.RemoveKeyboard {
-		// Для ReplyKeyboard необхідно видалити старе повідомлення і відправити нове
+		// Для ReplyKeyboard необходимо удалить старое сообщение и отправить новое
 		err := b.bot.DeleteMessage(&telego.DeleteMessageParams{
 			ChatID:    telego.ChatID{ID: chatID},
 			MessageID: messageID,
@@ -336,12 +705,12 @@ func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions)
 
 		return b.SendMessage(chatID, options)
 	} else {
-		// Оновлюємо текстове повідомлення
+		// Обновляем текстовое сообщение
 		return b.updateText(chatID, messageID, options)
 	}
 }
 
-// sendText відправляє текстове повідомлення
+// sendText отправляет текстовое сообщение
 func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, error) {
 	params := &telego.SendMessageParams{
 		ChatID:                telego.ChatID{ID: chatID},
@@ -351,7 +720,7 @@ func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, e
 		DisableNotification:   options.DisableNotification,
 	}
 
-	// Встановлюємо відповідну клавіатуру
+	// Устанавливаем соответствующую клавиатуру
 	if replyMarkup := b.getReplyMarkup(options); replyMarkup != nil {
 		params.ReplyMarkup = replyMarkup
 	}
@@ -364,7 +733,7 @@ func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, e
 	return msg, nil
 }
 
-// updateText оновлює текстове повідомлення
+// updateText обновляет текстовое сообщение
 func (b *Bot) updateText(chatID int64, messageID int, options MessageOptions) (*telego.Message, error) {
 	params := &telego.EditMessageTextParams{
 		ChatID:                telego.ChatID{ID: chatID},
@@ -374,7 +743,7 @@ func (b *Bot) updateText(chatID int64, messageID int, options MessageOptions) (*
 		DisableWebPagePreview: options.DisableWebPagePreview,
 	}
 
-	// Для оновлення можна використовувати тільки інлайн клавіатуру
+	// Для обновления можно использовать только инлайн клавиатуру
 	if options.InlineKeyboard != nil {
 		params.ReplyMarkup = options.InlineKeyboard
 	}
@@ -387,9 +756,9 @@ func (b *Bot) updateText(chatID int64, messageID int, options MessageOptions) (*
 	return msg, nil
 }
 
-// sendPhoto відправляє фото з підписом
+// sendPhoto отправляет фото с подписью
 func (b *Bot) sendPhoto(chatID int64, options MessageOptions) (*telego.Message, error) {
-	// Параметри для відправки
+	// Параметры для отправки
 	params := &telego.SendPhotoParams{
 		ChatID:              telego.ChatID{ID: chatID},
 		Caption:             options.Text,
@@ -397,38 +766,38 @@ func (b *Bot) sendPhoto(chatID int64, options MessageOptions) (*telego.Message, 
 		DisableNotification: options.DisableNotification,
 	}
 
-	// Встановлюємо відповідну клавіатуру
+	// Устанавливаем соответствующую клавиатуру
 	if replyMarkup := b.getReplyMarkup(options); replyMarkup != nil {
 		params.ReplyMarkup = replyMarkup
 	}
 
-	// Вибираємо джерело фото
+	// Выбираем источник фото
 	if options.PhotoFileID != "" {
-		// Для FileID використовуємо його безпосередньо
+		// Для FileID используем его непосредственно
 		// params.Photo = telego.InputFile{FileID: options.PhotoFileID}
 		params.Photo = tu.FileFromID(options.PhotoFileID)
 		return b.bot.SendPhoto(params)
 	} else if options.PhotoPath != "" {
-		// Для файлу використовуємо метод Upload
+		// Для файла используем метод Upload
 		return b.sendPhotoFile(chatID, options.PhotoPath, params)
 	}
 
 	return nil, fmt.Errorf("no photo source specified")
 }
 
-// sendPhotoFile відправляє фото з локального файлу
+// sendPhotoFile отправляет фото с локального файла
 func (b *Bot) sendPhotoFile(chatID int64, photoPath string, params *telego.SendPhotoParams) (*telego.Message, error) {
-	// Відкриваємо файл
+	// Открываем файл
 	file, err := os.Open(photoPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open photo file: %w", err)
 	}
 	defer file.Close()
 
-	// Встановлюємо завантажений файл
+	// Устанавливаем загруженный файл
 	params.Photo = tu.File(file)
 
-	// Відправляємо фото
+	// Отправляем фото
 	msg, err := b.bot.SendPhoto(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send photo: %w", err)
@@ -437,9 +806,9 @@ func (b *Bot) sendPhotoFile(chatID int64, photoPath string, params *telego.SendP
 	return msg, nil
 }
 
-// updatePhotoByFileID оновлює фото за FileID
+// updatePhotoByFileID обновляет фото по FileID
 func (b *Bot) updatePhotoByFileID(chatID int64, messageID int, options MessageOptions) (*telego.Message, error) {
-	// Створюємо об'єкт InputMediaPhoto з FileID
+	// Создаем объект InputMediaPhoto с FileID
 	mediaPhoto := &telego.InputMediaPhoto{
 		Type:      "photo",
 		Media:     tu.FileFromID(options.PhotoFileID),
@@ -453,7 +822,7 @@ func (b *Bot) updatePhotoByFileID(chatID int64, messageID int, options MessageOp
 		Media:     mediaPhoto,
 	}
 
-	// Для оновлення можна використовувати тільки інлайн клавіатуру
+	// Для обновления можно использовать только инлайн клавиатуру
 	if options.InlineKeyboard != nil {
 		params.ReplyMarkup = options.InlineKeyboard
 	}
@@ -466,7 +835,7 @@ func (b *Bot) updatePhotoByFileID(chatID int64, messageID int, options MessageOp
 	return msg, nil
 }
 
-// getReplyMarkup повертає відповідну клавіатуру на основі опцій
+// getReplyMarkup возвращает соответствующую клавиатуру на основе опций
 func (b *Bot) getReplyMarkup(options MessageOptions) telego.ReplyMarkup {
 	if options.InlineKeyboard != nil {
 		return options.InlineKeyboard
@@ -480,7 +849,7 @@ func (b *Bot) getReplyMarkup(options MessageOptions) telego.ReplyMarkup {
 	}
 
 	if options.ReplyKeyboard != nil {
-		// Клонуємо клавіатуру, щоб не змінювати оригінал
+		// Клонируем клавиатуру, чтобы не изменять оригинал
 		keyboard := *options.ReplyKeyboard
 		keyboard.OneTimeKeyboard = options.OneTimeKeyboard
 		keyboard.Selective = options.Selective

@@ -164,24 +164,105 @@ INSERT INTO settings (key, value, default_value, description) VALUES
     ('weekly_prize_top', '100', '100', 'Кількість призових місць у тижневому рейтингу'),
     ('minimum_withdrawal', '10', '10', 'Мінімальна сума для виведення коштів');
 
--- Базові локалізації українською
+-- Базовые локализации украинской (с литеральными переносами строк)
 INSERT INTO localizations (key, language, value) VALUES
     ('welcome', 'uk', 'Вітаємо у боті рулетки! Тут ви можете робити ставки на червоне, чорне або зеро і змагатися за місце в рейтингу.'),
-    ('help', 'uk', 'Доступні команди:\n/play - Почати гру\n/profile - Ваш профіль\n/stats - Ваша статистика\n/rating - Тижневий рейтинг\n/superrating - Супер рейтинг\n/balance - Ваш баланс\n/withdraw - Вивести кошти\n/faq - Часті питання'),
-    ('game_instructions', 'uk', 'Оберіть ставку: червоне, чорне або зеро. Кожне вгадування дає 1 бал. Зеро дає 10 балів, але ставити на нього можна тільки після 100 ставок за день.'),
-    ('profile_template', 'uk', 'Профіль: %s\nБаланс: %.2f\nЗагальна кількість ставок: %d\nВиграшних ставок: %d\nЕфективність: %.2f%%\nЗагальна кількість балів: %d'),
-    ('stats_template', 'uk', 'Статистика:\n\nЗа день:\nСтавок: %d\nБалів: %d\n\nЗа тиждень:\nСтавок: %d\nБалів: %d\n\nЗа місяць:\nСтавок: %d\nБалів: %d\n\nЗагалом:\nСтавок: %d\nБалів: %d'),
-    ('rating_header', 'uk', 'Тижневий рейтинг (топ-10):\n\n'),
-    ('super_rating_header', 'uk', 'Супер рейтинг (топ-10):\n\n'),
+    
+    ('help', 'uk', 'Доступні команди:
+
+/play - Почати гру
+/profile - Ваш профіль
+/stats - Ваша статистика
+/rating - Тижневий рейтинг
+/superrating - Супер рейтинг
+/balance - Ваш баланс
+/withdraw - Вивести кошти
+/faq - Часті питання'),
+    
+    ('game_instructions', 'uk', 'Оберіть ставку: червоне, чорне або зеро.
+
+Кожне вгадування дає 1 бал в рейтинг. Зеро дає 10 балів, але ставити на нього можна тільки після 100 ставок за день.'),
+    
+    ('profile_template', 'uk', 'Профіль: %s
+Баланс: %.2f
+Загальна кількість ставок: %d
+Виграшних ставок: %d
+Ефективність: %.2f%%
+Загальна кількість балів: %d'),
+    
+    ('stats_template', 'uk', 'Статистика:
+
+За день:
+Ставок: %d
+Балів: %d
+
+За тиждень:
+Ставок: %d
+Балів: %d
+
+За місяць:
+Ставок: %d
+Балів: %d
+
+Загалом:
+Ставок: %d
+Балів: %d'),
+    
+    ('rating_header', 'uk', 'Тижневий рейтинг (топ-10):
+
+'),
+    ('super_rating_header', 'uk', 'Супер рейтинг (топ-10):
+
+'),
+    
     ('balance_template', 'uk', 'Ваш баланс: %.2f'),
+    ('balanceaccok', 'uk', 'На вашому балансі %.2f USDT. Суми достатньо для виведення. Ви можете оформити виведення в пункті меню Виведення.'),
+    ('balanceacclow', 'uk', 'На вашому балансі %.2f USDT. Суми недостатньо для виведення. Грайте більше, щоб увійти до топ гравців тижня та розподілити призовий фонд!'),
+    
     ('withdraw_instructions', 'uk', 'Для виведення коштів вкажіть суму і реквізити. Мінімальна сума для виведення: 10.'),
-    ('faq', 'uk', 'Часті питання:\n\n1. Як нараховуються бали?\nЗа кожне вгадування кольору нараховується 1 бал. За вгадування зеро - 10 балів.\n\n2. Як потрапити в рейтинг?\nПросто грайте і заробляйте бали. У рейтинг потрапляють 100 найкращих гравців тижня.\n\n3. Як розподіляється призовий фонд?\nПризовий фонд розподіляється пропорційно кількості балів серед 100 найкращих гравців тижня.'),
-    ('win', 'uk', 'Ви вгадали! Ставка: %s. Отримано балів: %d\n\nОберіть наступну ставку:'),
-    ('win_zero', 'uk', 'Ви вгадали ЗЕРО! Отримано балів: %d\n\nОберіть наступну ставку:'),
-    ('lose', 'uk', 'Ви не вгадали. Ваша ставка: %s. Випало: %s\n\nОберіть наступну ставку:'),
+    ('withdrawok', 'uk', 'На вашому балансі %.2f USDT. Ви можете оформити виведення, продовживши.'),
+    ('withdrawlow', 'uk', 'На вашому балансі %.2f USDT. Суми недостатньо для виведення. Грайте більше, щоб увійти до топ гравців тижня та розподілити призовий фонд!'),
+    
+    ('faq', 'uk', 'Часті питання:
+
+1. Як нараховуються бали?
+За кожне вгадування кольору нараховується 1 бал. За вгадування зеро - 10 балів.
+
+2. Як потрапити в рейтинг?
+Просто грайте і заробляйте бали. У рейтинг потрапляють 100 найкращих гравців тижня.
+
+3. Як розподіляється призовий фонд?
+Призовий фонд розподіляється пропорційно кількості балів серед 100 найкращих гравців тижня.'),
+    
+    ('win', 'uk', 'Ви вгадали! Ставка: %s. Отримано балів: %d
+
+Оберіть наступну ставку:'),
+    ('win_zero', 'uk', 'Ви вгадали ЗЕРО! Отримано балів: %d
+
+Оберіть наступну ставку:'),
+    ('lose', 'uk', 'Ви не вгадали. Ваша ставка: %s. Випало: %s
+
+Оберіть наступну ставку:'),
+    
     ('zero_limit', 'uk', 'Ви ще не можете поставити на Zerо, яке може принести 10 балів в рейтинг. Залишилось сьогодні зробити ще %d ставок. До цього моменту випадення Zero зараховується для вас програшем'),
+    
+    ('nomorebids', 'uk', 'Ставки прийняті! Ставок більше немає!'),
+    ('nextbid15', 'uk', 'Раунд #%d
+До наступного визначення ставки залишилось 15 секунд.
+
+Зробіть свій вибір'),
+    ('nextbid5', 'uk', 'Раунд #%d
+До наступного визначення ставки залишилось 5 секунд.
+
+Зробіть свій вибір'),
+    
+    ('blackresult', 'uk', 'На рулетці чорне!'),
+    ('redresult', 'uk', 'На рулетці червоне!'),
+    ('zeroresult', 'uk', 'На рулетці Zero!'),
+    
     ('bet_error', 'uk', 'Помилка при ставці. Спробуйте ще раз.'),
     ('error', 'uk', 'Сталася помилка. Спробуйте ще раз пізніше.'),
+    
     ('btn_play', 'uk', '🎮 Грати'),
     ('btn_profile', 'uk', '👤 Профіль'),
     ('btn_stats', 'uk', '📊 Статистика'),
@@ -194,24 +275,105 @@ INSERT INTO localizations (key, language, value) VALUES
     ('btn_bet_zero_locked', 'uk', '🔒 Зеро (заблоковано)'),
     ('btn_back', 'uk', '◀️ Назад');
 
--- Базові локалізації англійською
+-- Базовые локализации английской (с литеральными переносами строк)
 INSERT INTO localizations (key, language, value) VALUES
     ('welcome', 'en', 'Welcome to the Roulette Bot! Here you can bet on red, black or zero and compete for a place in the rating.'),
-    ('help', 'en', 'Available commands:\n/play - Start the game\n/profile - Your profile\n/stats - Your statistics\n/rating - Weekly rating\n/superrating - Super rating\n/balance - Your balance\n/withdraw - Withdraw funds\n/faq - Frequently asked questions'),
-    ('game_instructions', 'en', 'Choose your bet: red, black or zero. Each correct guess gives 1 point. Zero gives 10 points, but you can bet on it only after 100 bets per day.'),
-    ('profile_template', 'en', 'Profile: %s\nBalance: %.2f\nTotal bets: %d\nWon bets: %d\nEfficiency: %.2f%%\nTotal points: %d'),
-    ('stats_template', 'en', 'Statistics:\n\nDaily:\nBets: %d\nPoints: %d\n\nWeekly:\nBets: %d\nPoints: %d\n\nMonthly:\nBets: %d\nPoints: %d\n\nTotal:\nBets: %d\nPoints: %d'),
-    ('rating_header', 'en', 'Weekly rating (top 10):\n\n'),
-    ('super_rating_header', 'en', 'Super rating (top 10):\n\n'),
+    
+    ('help', 'en', 'Available commands:
+
+/play - Start the game
+/profile - Your profile
+/stats - Your statistics
+/rating - Weekly rating
+/superrating - Super rating
+/balance - Your balance
+/withdraw - Withdraw funds
+/faq - Frequently asked questions'),
+    
+    ('game_instructions', 'en', 'Choose your bet: red, black or zero.
+
+Each correct guess gives 1 point. Zero gives 10 points, but you can bet on it only after 100 bets per day.'),
+    
+    ('profile_template', 'en', 'Profile: %s
+Balance: %.2f
+Total bets: %d
+Won bets: %d
+Efficiency: %.2f%%
+Total points: %d'),
+    
+    ('stats_template', 'en', 'Statistics:
+
+Daily:
+Bets: %d
+Points: %d
+
+Weekly:
+Bets: %d
+Points: %d
+
+Monthly:
+Bets: %d
+Points: %d
+
+Total:
+Bets: %d
+Points: %d'),
+    
+    ('rating_header', 'en', 'Weekly rating (top 10):
+
+'),
+    ('super_rating_header', 'en', 'Super rating (top 10):
+
+'),
+    
     ('balance_template', 'en', 'Your balance: %.2f'),
+    ('balanceaccok', 'en', 'Your balance is %.2f USDT. The amount is sufficient for withdrawal. You can make a withdrawal in the Withdraw menu item.'),
+    ('balanceacclow', 'en', 'Your balance is %.2f USDT. The amount is insufficient for withdrawal. Play more to enter the top players of the week and distribute the prize fund!'),
+    
     ('withdraw_instructions', 'en', 'To withdraw funds, specify the amount and details. Minimum amount for withdrawal: 10.'),
-    ('faq', 'en', 'Frequently asked questions:\n\n1. How are points awarded?\nFor each correct color guess, 1 point is awarded. For guessing zero - 10 points.\n\n2. How to get into the rating?\nJust play and earn points. The top 100 players of the week get into the rating.\n\n3. How is the prize fund distributed?\nThe prize fund is distributed in proportion to the number of points among the top 100 players of the week.'),
-    ('win', 'en', 'You guessed it! Bet: %s. Points earned: %d\n\nChoose your next bet:'),
-    ('win_zero', 'en', 'You guessed ZERO! Points earned: %d\n\nChoose your next bet:'),
-    ('lose', 'en', 'You did not guess. Your bet: %s. Result: %s\n\nChoose your next bet:'),
+    ('withdrawok', 'en', 'Your balance is %.2f USDT. You can make a withdrawal by continuing.'),
+    ('withdrawlow', 'en', 'Your balance is %.2f USDT. The amount is insufficient for withdrawal. Play more to enter the top players of the week and distribute the prize fund!'),
+    
+    ('faq', 'en', 'Frequently asked questions:
+
+1. How are points awarded?
+For each correct color guess, 1 point is awarded. For guessing zero - 10 points.
+
+2. How to get into the rating?
+Just play and earn points. The top 100 players of the week get into the rating.
+
+3. How is the prize fund distributed?
+The prize fund is distributed in proportion to the number of points among the top 100 players of the week.'),
+    
+    ('win', 'en', 'You guessed it! Bet: %s. Points earned: %d
+
+Choose your next bet:'),
+    ('win_zero', 'en', 'You guessed ZERO! Points earned: %d
+
+Choose your next bet:'),
+    ('lose', 'en', 'You did not guess. Your bet: %s. Result: %s
+
+Choose your next bet:'),
+    
     ('zero_limit', 'en', 'You cannot bet on Zero yet, which can bring 10 points to the rating. You need to make %d more bets today. Until then, if Zero comes up, it counts as a loss for you'),
+    
+    ('nomorebids', 'en', 'Bets accepted! No more bets!'),
+    ('nextbid15', 'en', 'Round #%d
+There are 15 seconds left until the next bet determination.
+
+Make your choice'),
+    ('nextbid5', 'en', 'Round #%d
+There are 5 seconds left until the next bet determination.
+
+Make your choice'),
+    
+    ('blackresult', 'en', 'Black on the roulette!'),
+    ('redresult', 'en', 'Red on the roulette!'),
+    ('zeroresult', 'en', 'Zero on the roulette!'),
+    
     ('bet_error', 'en', 'Error when betting. Please try again.'),
     ('error', 'en', 'An error occurred. Please try again later.'),
+    
     ('btn_play', 'en', '🎮 Play'),
     ('btn_profile', 'en', '👤 Profile'),
     ('btn_stats', 'en', '📊 Statistics'),
@@ -223,6 +385,117 @@ INSERT INTO localizations (key, language, value) VALUES
     ('btn_bet_zero', 'en', '0️⃣ Zero'),
     ('btn_bet_zero_locked', 'en', '🔒 Zero (locked)'),
     ('btn_back', 'en', '◀️ Back');
+
+-- Локализации на русском языке (с литеральными переносами строк)
+INSERT INTO localizations (key, language, value) VALUES
+    ('welcome', 'ru', 'Добро пожаловать в бот рулетки! Здесь вы можете делать ставки на красное, черное или зеро и соревноваться за место в рейтинге.'),
+    
+    ('help', 'ru', 'Доступные команды:
+
+/play - Начать игру
+/profile - Ваш профиль
+/stats - Ваша статистика
+/rating - Недельный рейтинг
+/superrating - Супер рейтинг
+/balance - Ваш баланс
+/withdraw - Вывод средств
+/faq - Частые вопросы'),
+    
+    ('game_instructions', 'ru', 'Выберите ставку: красное, черное или зеро.
+
+Каждое угадывание дает 1 балл в рейтинг. Зеро дает 10 баллов, но ставить на него можно только после 100 ставок за день.'),
+    
+    ('profile_template', 'ru', 'Профиль: %s
+Баланс: %.2f
+Общее количество ставок: %d
+Выигрышных ставок: %d
+Эффективность: %.2f%%
+Общее количество баллов: %d'),
+    
+    ('stats_template', 'ru', 'Статистика:
+
+За день:
+Ставок: %d
+Баллов: %d
+
+За неделю:
+Ставок: %d
+Баллов: %d
+
+За месяц:
+Ставок: %d
+Баллов: %d
+
+Всего:
+Ставок: %d
+Баллов: %d'),
+    
+    ('rating_header', 'ru', 'Недельный рейтинг (топ-10):
+
+'),
+    ('super_rating_header', 'ru', 'Супер рейтинг (топ-10):
+
+'),
+    
+    ('balance_template', 'ru', 'Ваш баланс: %.2f'),
+    ('balanceaccok', 'ru', 'На вашем балансе %.2f USDT. Суммы достаточно для вывода. Вы можете оформить вывод в пункте меню Вывод средств.'),
+    ('balanceacclow', 'ru', 'На вашем балансе %.2f USDT. Суммы недостаточно для вывода. Играйте больше, чтобы войти в топ игроков недели и распределить призовой фонд!'),
+    
+    ('withdraw_instructions', 'ru', 'Для вывода средств укажите сумму и реквизиты. Минимальная сумма для вывода: 10.'),
+    ('withdrawok', 'ru', 'На вашем балансе %.2f USDT. Вы можете оформить вывод, продолжив.'),
+    ('withdrawlow', 'ru', 'На вашем балансе %.2f USDT. Суммы недостаточно для вывода. Играйте больше, чтобы войти в топ игроков недели и распределить призовой фонд!'),
+    
+    ('faq', 'ru', 'Частые вопросы:
+
+1. Как начисляются баллы?
+За каждое угадывание цвета начисляется 1 балл. За угадывание зеро - 10 баллов.
+
+2. Как попасть в рейтинг?
+Просто играйте и зарабатывайте баллы. В рейтинг попадают 100 лучших игроков недели.
+
+3. Как распределяется призовой фонд?
+Призовой фонд распределяется пропорционально количеству баллов среди 100 лучших игроков недели.'),
+    
+    ('win', 'ru', 'Вы угадали! Ставка: %s. Получено баллов: %d
+
+Выберите следующую ставку:'),
+    ('win_zero', 'ru', 'Вы угадали ЗЕРО! Получено баллов: %d
+
+Выберите следующую ставку:'),
+    ('lose', 'ru', 'Вы не угадали. Ваша ставка: %s. Выпало: %s
+
+Выберите следующую ставку:'),
+    
+    ('zero_limit', 'ru', 'Вы еще не можете поставить на Зеро, которое может принести 10 баллов в рейтинг. Осталось сегодня сделать еще %d ставок. До этого момента выпадение Zero засчитывается для вас проигрышем'),
+    
+    ('nomorebids', 'ru', 'Ставки приняты! Ставок больше нет!'),
+    ('nextbid15', 'ru', 'Раунд #%d
+До следующего определения ставки осталось 15 секунд.
+
+Сделайте свой выбор'),
+    ('nextbid5', 'ru', 'Раунд #%d
+До следующего определения ставки осталось 5 секунд.
+
+Сделайте свой выбор'),
+    
+    ('blackresult', 'ru', 'На рулетке черное!'),
+    ('redresult', 'ru', 'На рулетке красное!'),
+    ('zeroresult', 'ru', 'На рулетке Zero!'),
+    
+    ('bet_error', 'ru', 'Ошибка при ставке. Попробуйте еще раз.'),
+    ('error', 'ru', 'Произошла ошибка. Попробуйте еще раз позже.'),
+    
+    ('btn_play', 'ru', '🎮 Играть'),
+    ('btn_profile', 'ru', '👤 Профиль'),
+    ('btn_stats', 'ru', '📊 Статистика'),
+    ('btn_rating', 'ru', '🏆 Рейтинг'),
+    ('btn_balance', 'ru', '💰 Баланс'),
+    ('btn_faq', 'ru', '❓ FAQ'),
+    ('btn_bet_red', 'ru', '🔴 Красное'),
+    ('btn_bet_black', 'ru', '⚫ Черное'),
+    ('btn_bet_zero', 'ru', '0️⃣ Зеро'),
+    ('btn_bet_zero_locked', 'ru', '🔒 Зеро (заблокировано)'),
+    ('btn_back', 'ru', '◀️ Назад');
 
 -- Таблиця для хешів
 CREATE TABLE IF NOT EXISTS hash_entries (

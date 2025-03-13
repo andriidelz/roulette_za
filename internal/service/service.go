@@ -43,6 +43,9 @@ type Service interface {
 
 	GenerateHashEntry() (*models.HashEntry, error)
 	GetHashEntries(page, limit int) ([]models.HashEntry, int, error)
+
+	SaveGame(game *models.Game) error
+	SaveBet(bet *models.Bet) error
 }
 
 type ServiceImpl struct {
@@ -444,4 +447,14 @@ func (s *ServiceImpl) GetHashEntries(page, limit int) ([]models.HashEntry, int, 
 	totalPages := int((total + int64(limit) - 1) / int64(limit))
 
 	return entries, totalPages, nil
+}
+
+// SaveGame сохраняет информацию об игре в БД
+func (s *ServiceImpl) SaveGame(game *models.Game) error {
+	return s.repo.CreateGame(game)
+}
+
+// SaveBet сохраняет информацию о ставке в БД
+func (s *ServiceImpl) SaveBet(bet *models.Bet) error {
+	return s.repo.CreateBet(bet)
 }
