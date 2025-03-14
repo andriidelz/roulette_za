@@ -70,10 +70,21 @@
                                   <td><span class="hash-label" title="{{ .SaltHEX }}">{{ .SaltHEX }}</span></td>
                                   <td>{{ .CreatedAt }}</td>
                                   <td>
-                                      <button class="btn btn-sm btn-outline-info view-details" data-id="{{ .ID }}" data-bs-toggle="modal" data-bs-target="#hashDetailsModal">
+                                      <button class="btn btn-sm btn-outline-info view-details-btn" 
+                                              data-id="{{ .ID }}" 
+                                              data-base62="{{ .Base62ID }}"
+                                              data-number="{{ .Number }}"
+                                              data-color="{{ .Color }}"
+                                              data-hash="{{ .Hash }}"
+                                              data-salt="{{ .SaltHEX }}"
+                                              data-created="{{ .CreatedAt }}">
                                           <i class="bi bi-eye"></i>
                                       </button>
-                                      <button class="btn btn-sm btn-outline-secondary verify-hash" data-id="{{ .ID }}">
+                                      <button class="btn btn-sm btn-outline-secondary verify-hash-btn" 
+                                              data-id="{{ .ID }}"
+                                              data-number="{{ .Number }}"
+                                              data-hash="{{ .Hash }}"
+                                              data-salt="{{ .SaltHEX }}">
                                           <i class="bi bi-check-circle"></i>
                                       </button>
                                   </td>
@@ -212,354 +223,360 @@
               </div>
           </div>
       </div>
-      {{end}}
-
-      {{define "additionalScripts"}}
-      <script>
-      $(document).ready(function() {
-          const currentPage = {{ .currentPage }};
-          let autoRefreshInterval = null;
-          let refreshSeconds = 0;
-
-          // Function to update hash table
-          function refreshHashes() {
-              $('#refresh-hashes').addClass('spinning');
-              
-              $.ajax({
-                  url: '/admin/api/hashes?page=' + currentPage,
-                  type: 'GET',
-                  dataType: 'json',
-                  success: function(data) {
-                      updateHashesTable(data.entries);
-                      updatePagination(data.currentPage, data.totalPages);
-                      $('#refresh-hashes').removeClass('spinning');
-                  },
-                  error: function() {
-                      $('#refresh-hashes').removeClass('spinning');
-                      alert('Error updating data');
-                  }
-              });
-          }
-
-          // Update hash table
-          function updateHashesTable(entries) {
-              let tableBody = '';
-              
-              if (entries && entries.length > 0) {
-                  entries.forEach(function(entry) {
-                      let colorClass = 'color-black';
-                      let colorText = 'Black';
-                      
-                      if (entry.Color === 'red') {
-                          colorClass = 'color-red';
-                          colorText = 'Red';
-                      } else if (entry.Color === 'zero') {
-                          colorClass = 'color-green';
-                          colorText = 'Zero';
-                      }
-                      
-                      tableBody += `
-                      <tr>
-                          <td>${entry.ID}/${entry.Base62ID}</td>
-                          <td>${entry.Number}</td>
-                          <td>
-                              <span><span class="color-indicator ${colorClass}"></span>${colorText}</span>
-                          </td>
-                          <td><span class="hash-label" title="${entry.Hash}">${entry.Hash}</span></td>
-                          <td><span class="hash-label" title="${entry.SaltHEX}">${entry.SaltHEX}</span></td>
-                          <td>${entry.CreatedAt}</td>
-                          <td>
-                              <button class="btn btn-sm btn-outline-info view-details" data-id="${entry.ID}" data-bs-toggle="modal" data-bs-target="#hashDetailsModal">
-                                  <i class="bi bi-eye"></i>
-                              </button>
-                              <button class="btn btn-sm btn-outline-secondary verify-hash" data-id="${entry.ID}">
-                                  <i class="bi bi-check-circle"></i>
-                              </button>
-                          </td>
-                      </tr>
-                      `;
-                  });
-              } else {
-                  tableBody = `
-                  <tr>
-                      <td colspan="7" class="text-center">
-                          <div class="alert alert-info mb-0">
-                              <i class="bi bi-info-circle me-2"></i>No hashes found
-                          </div>
-                      </td>
-                  </tr>
-                  `;
-              }
-              
-              $('#hashes-table-body').html(tableBody);
-              attachEventListeners();
-          }
-
-          // Update pagination
-          function updatePagination(currentPage, totalPages) {
-              let pagination = '';
-              
-              // Previous page
-              if (currentPage > 1) {
-                  pagination += `
-                  <li class="page-item">
-                      <a class="page-link" href="/admin/hashes?page=${currentPage - 1}" aria-label="Previous">
-                          <span aria-hidden="true">&laquo;</span>
-                      </a>
-                  </li>
-                  `;
-              } else {
-                  pagination += `
-                  <li class="page-item disabled">
-                      <span class="page-link">&laquo;</span>
-                  </li>
-                  `;
-              }
-              
-              // Determine which pages to show
-              let pagesToShow = [];
-              if (totalPages <= 7) {
-                  // If total pages is not more than 7, show all
-                  for (let i = 1; i <= totalPages; i++) {
-                      pagesToShow.push(i);
-                  }
-              } else {
-                  // Otherwise show current page, 2 previous, 2 next, first and last
-                  pagesToShow.push(1);
-                  
-                  let start = currentPage - 2;
-                  if (start < 2) {
-                      start = 2;
-                  }
-                  
-                  let end = currentPage + 2;
-                  if (end >= totalPages) {
-                      end = totalPages - 1;
-                  }
-                  
-                  if (start > 2) {
-                      pagesToShow.push(-1); // Add "..."
-                  }
-                  
-                  for (let i = start; i <= end; i++) {
-                      pagesToShow.push(i);
-                  }
-                  
-                  if (end < totalPages - 1) {
-                      pagesToShow.push(-1); // Add "..."
-                  }
-                  
-                  pagesToShow.push(totalPages);
-              }
-              
-              // Add pages to pagination
-              for (let page of pagesToShow) {
-                  if (page === -1) {
-                      pagination += '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                  } else if (page === currentPage) {
-                      pagination += `<li class="page-item active"><span class="page-link">${page}</span></li>`;
-                  } else {
-                      pagination += `<li class="page-item"><a class="page-link" href="/admin/hashes?page=${page}">${page}</a></li>`;
-                  }
-              }
-              
-              // Next page
-              if (currentPage < totalPages) {
-                  pagination += `
-                  <li class="page-item">
-                      <a class="page-link" href="/admin/hashes?page=${currentPage + 1}" aria-label="Next">
-                          <span aria-hidden="true">&raquo;</span>
-                      </a>
-                  </li>
-                  `;
-              } else {
-                  pagination += `
-                  <li class="page-item disabled">
-                      <span class="page-link">&raquo;</span>
-                  </li>
-                  `;
-              }
-              
-              $('#pagination').html(pagination);
-          }
-
-          // Auto-refresh setup
-          function setupAutoRefresh(seconds) {
-              // Stop previous refresh if it exists
-              if (autoRefreshInterval) {
-                  clearInterval(autoRefreshInterval);
-                  autoRefreshInterval = null;
-              }
-              
-              refreshSeconds = seconds;
-              
-              // Update status
-              if (seconds > 0) {
-                  $('#refresh-interval-text').text(`every ${seconds} ${getSecondsText(seconds)}`);
-                  autoRefreshInterval = setInterval(refreshHashes, seconds * 1000);
-              } else {
-                  $('#refresh-interval-text').text('off');
-              }
-          }
-
-          // Get proper seconds text
-          function getSecondsText(seconds) {
-              if (seconds % 10 === 1 && seconds % 100 !== 11) {
-                  return 'second';
-              } else if ([2, 3, 4].includes(seconds % 10) && ![12, 13, 14].includes(seconds % 100)) {
-                  return 'seconds';
-              } else {
-                  return 'seconds';
-              }
-          }
-
-          // Attach event handlers
-          function attachEventListeners() {
-              // View hash details
-              $('.view-details').click(function() {
-                  const hashId = $(this).data('id');
-                  
-                  $.ajax({
-                      url: '/admin/api/hashes/' + hashId,
-                      type: 'GET',
-                      dataType: 'json',
-                      success: function(data) {
-                          $('#modal-id').text(data.ID + '/' + data.Base62ID);
-                          $('#modal-number').text(data.Number);
-                          
-                          let colorClass = 'color-black';
-                          let colorText = 'Black';
-                          
-                          if (data.Color === 'red') {
-                              colorClass = 'color-red';
-                              colorText = 'Red';
-                          } else if (data.Color === 'zero') {
-                              colorClass = 'color-green';
-                              colorText = 'Zero';
-                          }
-                          
-                          $('#modal-color').html(`<span><span class="color-indicator ${colorClass}"></span>${colorText}</span>`);
-                          $('#modal-hash').text(data.Hash);
-                          $('#modal-salt').text(data.SaltHEX);
-                          $('#modal-created').text(data.CreatedAt);
-                          
-                          // Save ID for verification
-                          $('#verify-modal-hash').data('id', data.ID);
-                      },
-                      error: function() {
-                          alert('Error getting hash details');
-                      }
-                  });
-              });
-              
-              // Verify hash
-              $('.verify-hash').click(function() {
-                  const hashId = $(this).data('id');
-                  
-                  $.ajax({
-                      url: '/admin/api/hashes/' + hashId,
-                      type: 'GET',
-                      dataType: 'json',
-                      success: function(data) {
-                          $('#verify-number').val(data.Number);
-                          $('#verify-salt').val(data.SaltHEX);
-                          $('#verify-hash').val(data.Hash);
-                          $('#verify-computed-hash').val('');
-                          
-                          $('#verify-result').removeClass('alert-success alert-danger').addClass('alert-info');
-                          $('#verify-result').html('<i class="bi bi-info-circle me-2"></i>Click "Verify" to check the hash');
-                          
-                          $('#verifyHashModal').modal('show');
-                      },
-                      error: function() {
-                          alert('Error getting hash details');
-                      }
-                  });
-              });
-          }
-
-          // Attach handlers to static elements
-          attachEventListeners();
-
-          // Verify hash from modal
-          $('#verify-modal-hash').click(function() {
-              const hashId = $(this).data('id');
-              
-              $.ajax({
-                  url: '/admin/api/hashes/' + hashId,
-                  type: 'GET',
-                  dataType: 'json',
-                  success: function(data) {
-                      $('#verify-number').val(data.Number);
-                      $('#verify-salt').val(data.SaltHEX);
-                      $('#verify-hash').val(data.Hash);
-                      $('#verify-computed-hash').val('');
-                      
-                      $('#verify-result').removeClass('alert-success alert-danger').addClass('alert-info');
-                      $('#verify-result').html('<i class="bi bi-info-circle me-2"></i>Click "Verify" to check the hash');
-                      
-                      $('#hashDetailsModal').modal('hide');
-                      $('#verifyHashModal').modal('show');
-                  },
-                  error: function() {
-                      alert('Error getting hash details');
-                  }
-              });
-          });
-          
-          // Direct hash verification
-          $('#do-verify-hash').click(function() {
-              const number = $('#verify-number').val();
-              const salt = $('#verify-salt').val();
-              const originalHash = $('#verify-hash').val();
-              
-              if (!number || !salt || !originalHash) {
-                  alert('Fill in all fields');
-                  return;
-              }
-              
-              $.ajax({
-                  url: '/admin/api/verify-hash',
-                  type: 'POST',
-                  dataType: 'json',
-                  contentType: 'application/json',
-                  data: JSON.stringify({
-                      number: parseInt(number),
-                      salt: salt,
-                      originalHash: originalHash
-                  }),
-                  success: function(data) {
-                      $('#verify-computed-hash').val(data.computedHash);
-                      
-                      if (data.valid) {
-                          $('#verify-result').removeClass('alert-info alert-danger').addClass('alert-success');
-                          $('#verify-result').html('<i class="bi bi-check-circle me-2"></i>Valid hash! Data is authentic.');
-                      } else {
-                          $('#verify-result').removeClass('alert-info alert-success').addClass('alert-danger');
-                          $('#verify-result').html('<i class="bi bi-x-circle me-2"></i>Invalid hash! Data may be tampered with.');
-                      }
-                  },
-                  error: function() {
-                      alert('Error verifying hash');
-                  }
-              });
-          });
-          
-          // Manual hash refresh
-          $('#refresh-hashes').click(function() {
-              refreshHashes();
-          });
-          
-          // Auto-refresh setup
-          $('.auto-refresh').click(function(e) {
-              e.preventDefault();
-              const seconds = parseInt($(this).data('seconds'));
-              setupAutoRefresh(seconds);
-          });
-      });
-      </script>
       </div>
     </main>
   </div>
+
   {{template "footer" .}}
+  
+  <script>
+  $(document).ready(function() {
+      const currentPage = {{ .currentPage }};
+      let autoRefreshInterval = null;
+      let refreshSeconds = 0;
+
+      // Function to update hash table
+      function refreshHashes() {
+          $('#refresh-hashes').addClass('spinning');
+          
+          $.ajax({
+              url: '/admin/api/hashes?page=' + currentPage,
+              type: 'GET',
+              dataType: 'json',
+              success: function(data) {
+                  updateHashesTable(data.entries);
+                  updatePagination(data.currentPage, data.totalPages);
+                  $('#refresh-hashes').removeClass('spinning');
+              },
+              error: function() {
+                  $('#refresh-hashes').removeClass('spinning');
+                  alert('Error updating data');
+              }
+          });
+      }
+
+      // Update hash table
+      function updateHashesTable(entries) {
+          let tableBody = '';
+          
+          if (entries && entries.length > 0) {
+              entries.forEach(function(entry) {
+                  let colorClass = 'color-black';
+                  let colorText = 'Black';
+                  
+                  if (entry.Color === 'red') {
+                      colorClass = 'color-red';
+                      colorText = 'Red';
+                  } else if (entry.Color === 'zero') {
+                      colorClass = 'color-green';
+                      colorText = 'Zero';
+                  }
+                  
+                  tableBody += `
+                  <tr>
+                      <td>${entry.ID}/${entry.Base62ID}</td>
+                      <td>${entry.Number}</td>
+                      <td>
+                          <span><span class="color-indicator ${colorClass}"></span>${colorText}</span>
+                      </td>
+                      <td><span class="hash-label" title="${entry.Hash}">${entry.Hash}</span></td>
+                      <td><span class="hash-label" title="${entry.SaltHEX}">${entry.SaltHEX}</span></td>
+                      <td>${entry.CreatedAt}</td>
+                      <td>
+                          <button class="btn btn-sm btn-outline-info view-details-btn"
+                                  data-id="${entry.ID}"
+                                  data-base62="${entry.Base62ID}"
+                                  data-number="${entry.Number}"
+                                  data-color="${entry.Color}"
+                                  data-hash="${entry.Hash}"
+                                  data-salt="${entry.SaltHEX}"
+                                  data-created="${entry.CreatedAt}">
+                              <i class="bi bi-eye"></i>
+                          </button>
+                          <button class="btn btn-sm btn-outline-secondary verify-hash-btn"
+                                  data-id="${entry.ID}"
+                                  data-number="${entry.Number}"
+                                  data-hash="${entry.Hash}"
+                                  data-salt="${entry.SaltHEX}">
+                              <i class="bi bi-check-circle"></i>
+                          </button>
+                      </td>
+                  </tr>
+                  `;
+              });
+          } else {
+              tableBody = `
+              <tr>
+                  <td colspan="7" class="text-center">
+                      <div class="alert alert-info mb-0">
+                          <i class="bi bi-info-circle me-2"></i>No hashes found
+                      </div>
+                  </td>
+              </tr>
+              `;
+          }
+          
+          $('#hashes-table-body').html(tableBody);
+          attachEventListeners();
+      }
+
+      // Update pagination
+      function updatePagination(currentPage, totalPages) {
+          let pagination = '';
+          
+          // Previous page
+          if (currentPage > 1) {
+              pagination += `
+              <li class="page-item">
+                  <a class="page-link" href="/admin/hashes?page=${currentPage - 1}" aria-label="Previous">
+                      <span aria-hidden="true">&laquo;</span>
+                  </a>
+              </li>
+              `;
+          } else {
+              pagination += `
+              <li class="page-item disabled">
+                  <span class="page-link">&laquo;</span>
+              </li>
+              `;
+          }
+          
+          // Determine which pages to show
+          let pagesToShow = [];
+          if (totalPages <= 7) {
+              // If total pages is not more than 7, show all
+              for (let i = 1; i <= totalPages; i++) {
+                  pagesToShow.push(i);
+              }
+          } else {
+              // Otherwise show current page, 2 previous, 2 next, first and last
+              pagesToShow.push(1);
+              
+              let start = currentPage - 2;
+              if (start < 2) {
+                  start = 2;
+              }
+              
+              let end = currentPage + 2;
+              if (end >= totalPages) {
+                  end = totalPages - 1;
+              }
+              
+              if (start > 2) {
+                  pagesToShow.push(-1); // Add "..."
+              }
+              
+              for (let i = start; i <= end; i++) {
+                  pagesToShow.push(i);
+              }
+              
+              if (end < totalPages - 1) {
+                  pagesToShow.push(-1); // Add "..."
+              }
+              
+              pagesToShow.push(totalPages);
+          }
+          
+          // Add pages to pagination
+          for (let page of pagesToShow) {
+              if (page === -1) {
+                  pagination += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+              } else if (page === currentPage) {
+                  pagination += `<li class="page-item active"><span class="page-link">${page}</span></li>`;
+              } else {
+                  pagination += `<li class="page-item"><a class="page-link" href="/admin/hashes?page=${page}">${page}</a></li>`;
+              }
+          }
+          
+          // Next page
+          if (currentPage < totalPages) {
+              pagination += `
+              <li class="page-item">
+                  <a class="page-link" href="/admin/hashes?page=${currentPage + 1}" aria-label="Next">
+                      <span aria-hidden="true">&raquo;</span>
+                  </a>
+              </li>
+              `;
+          } else {
+              pagination += `
+              <li class="page-item disabled">
+                  <span class="page-link">&raquo;</span>
+              </li>
+              `;
+          }
+          
+          $('#pagination').html(pagination);
+      }
+
+      // Auto-refresh setup
+      function setupAutoRefresh(seconds) {
+          // Stop previous refresh if it exists
+          if (autoRefreshInterval) {
+              clearInterval(autoRefreshInterval);
+              autoRefreshInterval = null;
+          }
+          
+          refreshSeconds = seconds;
+          
+          // Update status
+          if (seconds > 0) {
+              $('#refresh-interval-text').text(`every ${seconds} ${getSecondsText(seconds)}`);
+              autoRefreshInterval = setInterval(refreshHashes, seconds * 1000);
+          } else {
+              $('#refresh-interval-text').text('off');
+          }
+      }
+
+      // Get proper seconds text
+      function getSecondsText(seconds) {
+          if (seconds % 10 === 1 && seconds % 100 !== 11) {
+              return 'second';
+          } else if ([2, 3, 4].includes(seconds % 10) && ![12, 13, 14].includes(seconds % 100)) {
+              return 'seconds';
+          } else {
+              return 'seconds';
+          }
+      }
+
+      // Attach event handlers
+      function attachEventListeners() {
+          // View hash details
+          $('.view-details-btn').click(function() {
+              // Get data from data attributes
+              const hashId = $(this).data('id');
+              const base62Id = $(this).data('base62');
+              const number = $(this).data('number');
+              const color = $(this).data('color');
+              const hash = $(this).data('hash');
+              const salt = $(this).data('salt');
+              const created = $(this).data('created');
+              
+              // Set data directly in the modal
+              $('#modal-id').text(hashId + '/' + base62Id);
+              $('#modal-number').text(number);
+              
+              let colorClass = 'color-black';
+              let colorText = 'Black';
+              
+              if (color === 'red') {
+                  colorClass = 'color-red';
+                  colorText = 'Red';
+              } else if (color === 'zero') {
+                  colorClass = 'color-green';
+                  colorText = 'Zero';
+              }
+              
+              $('#modal-color').html(`<span><span class="color-indicator ${colorClass}"></span>${colorText}</span>`);
+              $('#modal-hash').text(hash);
+              $('#modal-salt').text(salt);
+              $('#modal-created').text(created);
+              
+              // Save data for verification
+              $('#verify-modal-hash').data('id', hashId);
+              $('#verify-modal-hash').data('number', number);
+              $('#verify-modal-hash').data('hash', hash);
+              $('#verify-modal-hash').data('salt', salt);
+              
+              // Show the modal
+              $('#hashDetailsModal').modal('show');
+          });
+          
+          // Verify hash button in the table
+          $('.verify-hash-btn').click(function() {
+              // Get data from data attributes
+              const number = $(this).data('number');
+              const hash = $(this).data('hash');
+              const salt = $(this).data('salt');
+              
+              // Set data directly in the verification modal
+              $('#verify-number').val(number);
+              $('#verify-salt').val(salt);
+              $('#verify-hash').val(hash);
+              $('#verify-computed-hash').val('');
+              
+              // Reset the result message
+              $('#verify-result').removeClass('alert-success alert-danger').addClass('alert-info');
+              $('#verify-result').html('<i class="bi bi-info-circle me-2"></i>Click "Verify" to check the hash');
+              
+              // Show the verification modal
+              $('#verifyHashModal').modal('show');
+          });
+      }
+
+      // Initial event listeners attachment
+      attachEventListeners();
+
+      // Verify hash from details modal
+      $('#verify-modal-hash').click(function() {
+          // Get data directly from data attributes
+          const number = $(this).data('number');
+          const hash = $(this).data('hash');
+          const salt = $(this).data('salt');
+          
+          // Fill verification modal
+          $('#verify-number').val(number);
+          $('#verify-salt').val(salt);
+          $('#verify-hash').val(hash);
+          $('#verify-computed-hash').val('');
+          
+          // Reset the result message
+          $('#verify-result').removeClass('alert-success alert-danger').addClass('alert-info');
+          $('#verify-result').html('<i class="bi bi-info-circle me-2"></i>Click "Verify" to check the hash');
+          
+          // Hide details modal and show verification modal
+          $('#hashDetailsModal').modal('hide');
+          $('#verifyHashModal').modal('show');
+      });
+      
+      // Verify hash action
+      $('#do-verify-hash').click(function() {
+          const number = $('#verify-number').val();
+          const salt = $('#verify-salt').val();
+          const originalHash = $('#verify-hash').val();
+          
+          if (!number || !salt || !originalHash) {
+              alert('Fill in all fields');
+              return;
+          }
+          
+          $.ajax({
+              url: '/admin/api/verify-hash',
+              type: 'POST',
+              dataType: 'json',
+              contentType: 'application/json',
+              data: JSON.stringify({
+                  number: parseInt(number),
+                  salt: salt,
+                  originalHash: originalHash
+              }),
+              success: function(data) {
+                  $('#verify-computed-hash').val(data.computedHash);
+                  
+                  if (data.valid) {
+                      $('#verify-result').removeClass('alert-info alert-danger').addClass('alert-success');
+                      $('#verify-result').html('<i class="bi bi-check-circle me-2"></i>Valid hash! Data is authentic.');
+                  } else {
+                      $('#verify-result').removeClass('alert-info alert-success').addClass('alert-danger');
+                      $('#verify-result').html('<i class="bi bi-x-circle me-2"></i>Invalid hash! Data may be tampered with.');
+                  }
+              },
+              error: function() {
+                  alert('Error verifying hash');
+              }
+          });
+      });
+      
+      // Manual hash refresh
+      $('#refresh-hashes').click(function() {
+          refreshHashes();
+      });
+      
+      // Auto-refresh setup
+      $('.auto-refresh').click(function(e) {
+          e.preventDefault();
+          const seconds = parseInt($(this).data('seconds'));
+          setupAutoRefresh(seconds);
+      });
+  });
+  </script>
 {{end}}

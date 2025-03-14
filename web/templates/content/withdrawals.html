@@ -86,39 +86,43 @@
               </div>
           </div>
       </div>
-      <script>
-      $(document).ready(function() {
-          // Approve withdrawal handler
-          $('.approve-withdrawal').click(function() {
-              var withdrawalId = $(this).data('id');
-              if (confirm('Are you sure you want to approve this withdrawal?')) {
-                  $.post('/admin/withdrawal/' + withdrawalId + '/approve', function(data) {
-                      if (data.success) {
-                          window.location.reload();
-                      } else {
-                          alert('Error: ' + data.error);
-                      }
-                  });
-              }
-          });
-          
-          // Reject withdrawal handler
-          $('.reject-withdrawal').click(function() {
-              var withdrawalId = $(this).data('id');
-              if (confirm('Are you sure you want to reject this withdrawal? The funds will be returned to the user\'s balance.')) {
-                  $.post('/admin/withdrawal/' + withdrawalId + '/reject', function(data) {
-                      if (data.success) {
-                          window.location.reload();
-                      } else {
-                          alert('Error: ' + data.error);
-                      }
-                  });
-              }
-          });
-      });
-      </script>
       </div>
     </main>
   </div>
+  
+  {{block "additionalScripts" .}}
+  <script>
+  $(document).ready(function() {
+      // Approve withdrawal handler
+      $('.approve-withdrawal').click(function() {
+          var withdrawalId = $(this).data('id');
+          if (confirm('Are you sure you want to approve this withdrawal?')) {
+              $.post('/admin/withdrawal/' + withdrawalId + '/approve', function(data) {
+                  if (data.success) {
+                      window.location.reload();
+                  } else {
+                      alert('Error: ' + data.error);
+                  }
+              });
+          }
+      });
+      
+      // Reject withdrawal handler
+      $('.reject-withdrawal').click(function() {
+          var withdrawalId = $(this).data('id');
+          if (confirm('Are you sure you want to reject this withdrawal? The funds will be returned to the user\'s balance.')) {
+              $.post('/admin/withdrawal/' + withdrawalId + '/reject', function(data) {
+                  if (data.success) {
+                      window.location.reload();
+                  } else {
+                      alert('Error: ' + data.error);
+                  }
+              });
+          }
+      });
+  });
+  </script>
+  {{end}}
+  
   {{template "footer" .}}
 {{end}}

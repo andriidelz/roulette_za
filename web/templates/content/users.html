@@ -115,36 +115,40 @@
       </div>
     </main>
   </div>
-<script>
-$(document).ready(function() {
-    // Ban user handler
-    $('.ban-user').click(function() {
-        var userId = $(this).data('id');
-        if (confirm('Are you sure you want to ban this user?')) {
-            $.post('/admin/user/' + userId + '/ban', function(data) {
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            });
-        }
-    });
-    
-    // Unban user handler
-    $('.unban-user').click(function() {
-        var userId = $(this).data('id');
-        if (confirm('Are you sure you want to unban this user?')) {
-            $.post('/admin/user/' + userId + '/unban', function(data) {
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            });
-        }
-    });
-});
-</script>
+
+  {{block "additionalScripts" .}}
+  <script>
+  $(document).ready(function() {
+      // Ban user handler
+      $('.ban-user').click(function() {
+          var userId = $(this).data('id');
+          if (confirm('Are you sure you want to ban this user?')) {
+              $.post('/admin/user/' + userId + '/ban', function(data) {
+                  if (data.success) {
+                      window.location.reload();
+                  } else {
+                      alert('Error: ' + data.error);
+                  }
+              });
+          }
+      });
+      
+      // Unban user handler
+      $('.unban-user').click(function() {
+          var userId = $(this).data('id');
+          if (confirm('Are you sure you want to unban this user?')) {
+              $.post('/admin/user/' + userId + '/unban', function(data) {
+                  if (data.success) {
+                      window.location.reload();
+                  } else {
+                      alert('Error: ' + data.error);
+                  }
+              });
+          }
+      });
+  });
+  </script>
+  {{end}}
+  
   {{template "footer" .}}
 {{end}}

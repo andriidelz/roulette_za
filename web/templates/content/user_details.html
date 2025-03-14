@@ -249,78 +249,81 @@
               </div>
           </div>
       </div>
-
-      <script>
-      $(document).ready(function() {
-          // Ban user handler
-          $('.ban-user').click(function() {
-              var userId = $(this).data('id');
-              if (confirm('Are you sure you want to ban this user?')) {
-                  $.post('/admin/user/' + userId + '/ban', function(data) {
-                      if (data.success) {
-                          window.location.reload();
-                      } else {
-                          alert('Error: ' + data.error);
-                      }
-                  });
-              }
-          });
-          
-          // Unban user handler
-          $('.unban-user').click(function() {
-              var userId = $(this).data('id');
-              if (confirm('Are you sure you want to unban this user?')) {
-                  $.post('/admin/user/' + userId + '/unban', function(data) {
-                      if (data.success) {
-                          window.location.reload();
-                      } else {
-                          alert('Error: ' + data.error);
-                      }
-                  });
-              }
-          });
-          
-          // Add balance handler
-          $('#add-balance').click(function() {
-              var amount = $('#amount').val();
-              if (!amount || amount <= 0) {
-                  alert('Please enter a valid amount');
-                  return;
-              }
-              
-              if (confirm('Are you sure you want to add ' + amount + ' to the balance?')) {
-                  $.post('/admin/user/{{ .user.ID }}/add-balance', { amount: amount }, function(data) {
-                      if (data.success) {
-                          window.location.reload();
-                      } else {
-                          alert('Error: ' + data.error);
-                      }
-                  });
-              }
-          });
-          
-          // Subtract balance handler
-          $('#subtract-balance').click(function() {
-              var amount = $('#amount').val();
-              if (!amount || amount <= 0) {
-                  alert('Please enter a valid amount');
-                  return;
-              }
-              
-              if (confirm('Are you sure you want to subtract ' + amount + ' from the balance?')) {
-                  $.post('/admin/user/{{ .user.ID }}/subtract-balance', { amount: amount }, function(data) {
-                      if (data.success) {
-                          window.location.reload();
-                      } else {
-                          alert('Error: ' + data.error);
-                      }
-                  });
-              }
-          });
-      });
-      </script>
       </div>
     </main>
   </div>
+
+  {{block "additionalScripts" .}}
+  <script>
+  $(document).ready(function() {
+      // Ban user handler
+      $('.ban-user').click(function() {
+          var userId = $(this).data('id');
+          if (confirm('Are you sure you want to ban this user?')) {
+              $.post('/admin/user/' + userId + '/ban', function(data) {
+                  if (data.success) {
+                      window.location.reload();
+                  } else {
+                      alert('Error: ' + data.error);
+                  }
+              });
+          }
+      });
+      
+      // Unban user handler
+      $('.unban-user').click(function() {
+          var userId = $(this).data('id');
+          if (confirm('Are you sure you want to unban this user?')) {
+              $.post('/admin/user/' + userId + '/unban', function(data) {
+                  if (data.success) {
+                      window.location.reload();
+                  } else {
+                      alert('Error: ' + data.error);
+                  }
+              });
+          }
+      });
+      
+      // Add balance handler
+      $('#add-balance').click(function() {
+          var amount = $('#amount').val();
+          if (!amount || amount <= 0) {
+              alert('Please enter a valid amount');
+              return;
+          }
+          
+          if (confirm('Are you sure you want to add ' + amount + ' to the balance?')) {
+              $.post('/admin/user/{{ .user.ID }}/add-balance', { amount: amount }, function(data) {
+                  if (data.success) {
+                      window.location.reload();
+                  } else {
+                      alert('Error: ' + data.error);
+                  }
+              });
+          }
+      });
+      
+      // Subtract balance handler
+      $('#subtract-balance').click(function() {
+          var amount = $('#amount').val();
+          if (!amount || amount <= 0) {
+              alert('Please enter a valid amount');
+              return;
+          }
+          
+          if (confirm('Are you sure you want to subtract ' + amount + ' from the balance?')) {
+              $.post('/admin/user/{{ .user.ID }}/subtract-balance', { amount: amount }, function(data) {
+                  if (data.success) {
+                      window.location.reload();
+                  } else {
+                      alert('Error: ' + data.error);
+                  }
+              });
+          }
+      });
+  });
+  </script>
+  {{end}}
+  
   {{template "footer" .}}
 {{end}}

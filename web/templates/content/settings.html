@@ -117,63 +117,67 @@
               </div>
           </div>
       </div>
-      <script>
-      $(document).ready(function() {
-          // General settings form handler
-          $('#general-settings-form').submit(function(e) {
-              e.preventDefault();
-              
-              // Collect form data
-              var formData = $(this).serialize();
-              
-              // Send data to server
-              $.post('/admin/settings', formData, function(data) {
-                  if (data.success) {
-                      alert('Settings saved!');
-                  } else {
-                      alert('Error: ' + data.error);
-                  }
-              });
-          });
-          
-          // Probability settings form handler
-          $('#probability-settings-form').submit(function(e) {
-              e.preventDefault();
-              
-              // Check that probabilities add up to approximately 100%
-              var zeroProb = parseFloat($('#zero_probability').val());
-              var redProb = parseFloat($('#red_probability').val());
-              var blackProb = parseFloat($('#black_probability').val());
-              var totalProb = zeroProb + redProb + blackProb;
-              
-              if (Math.abs(totalProb - 100) > 0.1) {
-                  alert('Probability sum must equal 100%. Current sum: ' + totalProb.toFixed(2) + '%');
-                  return;
-              }
-              
-              // Collect form data
-              var formData = $(this).serialize();
-              
-              // Send data to server
-              $.post('/admin/settings/probability', formData, function(data) {
-                  if (data.success) {
-                      alert('Probability settings saved!');
-                  } else {
-                      alert('Error: ' + data.error);
-                  }
-              });
-          });
-          
-          // Restore default probabilities
-          $('#restore-default').click(function() {
-              $('#zero_probability').val('2.7');
-              $('#red_probability').val('48.65');
-              $('#black_probability').val('48.65');
-          });
-      });
-      </script>
       </div>
     </main>
   </div>
+
+  {{block "additionalScripts" .}}
+  <script>
+  $(document).ready(function() {
+      // General settings form handler
+      $('#general-settings-form').submit(function(e) {
+          e.preventDefault();
+          
+          // Collect form data
+          var formData = $(this).serialize();
+          
+          // Send data to server
+          $.post('/admin/settings', formData, function(data) {
+              if (data.success) {
+                  alert('Settings saved!');
+              } else {
+                  alert('Error: ' + data.error);
+              }
+          });
+      });
+      
+      // Probability settings form handler
+      $('#probability-settings-form').submit(function(e) {
+          e.preventDefault();
+          
+          // Check that probabilities add up to approximately 100%
+          var zeroProb = parseFloat($('#zero_probability').val());
+          var redProb = parseFloat($('#red_probability').val());
+          var blackProb = parseFloat($('#black_probability').val());
+          var totalProb = zeroProb + redProb + blackProb;
+          
+          if (Math.abs(totalProb - 100) > 0.1) {
+              alert('Probability sum must equal 100%. Current sum: ' + totalProb.toFixed(2) + '%');
+              return;
+          }
+          
+          // Collect form data
+          var formData = $(this).serialize();
+          
+          // Send data to server
+          $.post('/admin/settings/probability', formData, function(data) {
+              if (data.success) {
+                  alert('Probability settings saved!');
+              } else {
+                  alert('Error: ' + data.error);
+              }
+          });
+      });
+      
+      // Restore default probabilities
+      $('#restore-default').click(function() {
+          $('#zero_probability').val('2.7');
+          $('#red_probability').val('48.65');
+          $('#black_probability').val('48.65');
+      });
+  });
+  </script>
+  {{end}}
+  
   {{template "footer" .}}
 {{end}}
