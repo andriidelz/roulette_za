@@ -1,14 +1,11 @@
 package admin
 
 import (
-	"fmt"
 	"html/template"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"time"
 
-	"roulette/internal/models"
 	"roulette/internal/repository"
 	"roulette/internal/service"
 
@@ -17,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Адмін-панель
+// Админ-панель
 type AdminPanel struct {
 	router   *gin.Engine
 	service  service.Service
@@ -25,7 +22,7 @@ type AdminPanel struct {
 	settings *Settings
 }
 
-// Налаштування адмін-панелі
+// Настройки админ-панели
 type Settings struct {
 	Port             string
 	SessionSecret    string
@@ -35,17 +32,17 @@ type Settings struct {
 	DisableIPFilters bool
 }
 
-// Створення нової адмін-панелі
+// Создание новой админ-панели
 func NewAdminPanel(service service.Service, repo repository.Repository, settings *Settings) *AdminPanel {
-	// Створюємо роутер
+
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
-	// Налаштовуємо сесії
+	// Настройка сессий
 	store := cookie.NewStore([]byte(settings.SessionSecret))
 	router.Use(sessions.Sessions("roulette_admin", store))
 
-	// Створюємо адмін-панель
+	// Создаем админ-панель
 	admin := &AdminPanel{
 		router:   router,
 		service:  service,
@@ -53,18 +50,17 @@ func NewAdminPanel(service service.Service, repo repository.Repository, settings
 		settings: settings,
 	}
 
-	// Налаштовуємо роути
 	admin.setupRoutes()
 
 	return admin
 }
 
-// Запуск адмін-панелі
+// Запуск админ-панели
 func (a *AdminPanel) Start() error {
 	return a.router.Run(":" + a.settings.Port)
 }
 
-// Налаштування роутів
+// Настройка роутов
 func (a *AdminPanel) setupRoutes() {
 
 	a.router.SetFuncMap(template.FuncMap{
@@ -93,10 +89,10 @@ func (a *AdminPanel) setupRoutes() {
 	allFiles := append(files1, files2...)
 	a.router.LoadHTMLFiles(allFiles...)
 
-	// Статичні файли
+	// Статические файлы
 	a.router.Static("/static", "./web/static")
 
-	// Авторизація
+	// Авторизация
 	auth := a.router.Group("/")
 	auth.Use(a.ipFilterMiddleware())
 	{
@@ -140,7 +136,7 @@ func (a *AdminPanel) setupRoutes() {
 
 		admin.GET("/hashes", a.hashesPage)
 
-		// API ендпоінти
+		// API ендпоинты
 		api := a.router.Group("/admin/api")
 		api.Use(a.ipFilterMiddleware(), a.authRequired())
 		{
@@ -151,7 +147,7 @@ func (a *AdminPanel) setupRoutes() {
 	}
 }
 
-// Middleware для фільтрації за IP
+// Middleware для фильтрации по IP
 func (a *AdminPanel) ipFilterMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Пропускаємо, якщо фільтри відключені
@@ -160,10 +156,8 @@ func (a *AdminPanel) ipFilterMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Отримуємо IP клієнта
 		clientIP := c.ClientIP()
 
-		// Перевіряємо, чи дозволений IP
 		allowed := false
 		for _, ip := range a.settings.AllowedIPs {
 			if ip == clientIP {
@@ -181,7 +175,7 @@ func (a *AdminPanel) ipFilterMiddleware() gin.HandlerFunc {
 	}
 }
 
-// Middleware для перевірки авторизації
+// Middleware для проверки авторизации
 func (a *AdminPanel) authRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
@@ -197,7 +191,7 @@ func (a *AdminPanel) authRequired() gin.HandlerFunc {
 	}
 }
 
-// Страница атворизации
+// Страница авторизации
 func (a *AdminPanel) loginPage(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get("user")
@@ -217,7 +211,7 @@ func (a *AdminPanel) login(c *gin.Context) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
 
-	// Перевіряємо логін і пароль
+	// Проверяем логин и пароль
 	if username == a.settings.AdminUsername && password == a.settings.AdminPassword {
 		session := sessions.Default(c)
 		session.Set("user", username)
@@ -234,476 +228,11 @@ func (a *AdminPanel) login(c *gin.Context) {
 	})
 }
 
-// Вихід
+// Выход
 func (a *AdminPanel) logout(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Delete("user")
 	session.Save()
 
 	c.Redirect(http.StatusFound, "/login")
-}
-
-func (a *AdminPanel) dashboard(c *gin.Context) {
-	// Отримуємо загальну статистику
-	userCount, err := a.repo.GetUserCount()
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Error",
-			"error": err.Error(),
-		})
-		return
-	}
-
-	// Рік і тиждень для рейтингу
-	year, week := time.Now().ISOWeek()
-
-	// Отримуємо призовий фонд
-	prizeFund, err := a.repo.GetPrizeFund(year, week)
-	if err != nil {
-		// Якщо запис не знайдено, створюємо значення за замовчуванням
-		prizeFund = &models.PrizeFund{
-			Year:     year,
-			Week:     week,
-			Amount:   1000,
-			TopCount: 100,
-		}
-
-		// Можемо спробувати зберегти його в базу даних
-		_ = a.repo.UpdatePrizeFund(prizeFund) // Ігноруємо помилку, якщо вона виникне
-	}
-
-	// Поточна дата
-	currentDateTime := time.Now().Format("2006-01-02")
-
-	c.HTML(http.StatusOK, "dashboard", gin.H{
-		"title":           "Admin-panel - Головна",
-		"userCount":       userCount,
-		"year":            year,
-		"week":            week,
-		"prizeFund":       prizeFund,
-		"activeTab":       "dashboard",
-		"currentDateTime": currentDateTime,
-	})
-}
-
-// Список користувачів
-func (a *AdminPanel) usersList(c *gin.Context) {
-	// Отримуємо параметри пагінації
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	perPage := 20
-
-	// Отримуємо користувачів
-	users, totalUsers, err := a.repo.GetUsers(page, perPage)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Error",
-			"error": err.Error(),
-		})
-		return
-	}
-
-	// Розраховуємо кількість сторінок
-	totalPages := (int(totalUsers) + perPage - 1) / perPage
-
-	// Розраховуємо номери попередньої та наступної сторінок
-	prevPage := page - 1
-	if prevPage < 1 {
-		prevPage = 1
-	}
-
-	nextPage := page + 1
-	if nextPage > totalPages {
-		nextPage = totalPages
-	}
-
-	c.HTML(http.StatusOK, "users", gin.H{
-		"title":      "Admin-panel - Користувачі",
-		"users":      users,
-		"page":       page,
-		"prevPage":   prevPage,
-		"nextPage":   nextPage,
-		"totalPages": totalPages,
-		"activeTab":  "users",
-	})
-}
-
-// Деталі користувача
-func (a *AdminPanel) userDetails(c *gin.Context) {
-	// Отримуємо ID користувача
-	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"title": "Error",
-			"error": "Wrong user ID",
-		})
-		return
-	}
-
-	// Отримуємо інформацію про користувача
-	// Цей метод треба додати в репозиторій
-	user, err := a.repo.GetUserByID(uint(userID))
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Error",
-			"error": err.Error(),
-		})
-		return
-	}
-
-	// Отримуємо статистику користувача
-	stats, err := a.repo.GetUserStats(uint(userID))
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Error",
-			"error": err.Error(),
-		})
-		return
-	}
-
-	// Отримуємо останні ставки користувача
-	bets, err := a.repo.GetUserBets(uint(userID), 20)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Error",
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.HTML(http.StatusOK, "user_details", gin.H{
-		"title":     fmt.Sprintf("Admin-panel - Користувач %s", user.Username),
-		"user":      user,
-		"stats":     stats,
-		"bets":      bets,
-		"activeTab": "users",
-	})
-}
-
-// Блокування користувача
-func (a *AdminPanel) userBan(c *gin.Context) {
-	// Отримуємо ID користувача
-	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірний ID користувача"})
-		return
-	}
-
-	// Отримуємо інформацію про користувача
-	user, err := a.repo.GetUserByID(uint(userID))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Блокуємо користувача
-	user.Banned = true
-	if err := a.repo.UpdateUser(user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true})
-}
-
-// Розблокування користувача
-func (a *AdminPanel) userUnban(c *gin.Context) {
-	// Отримуємо ID користувача
-	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірний ID користувача"})
-		return
-	}
-
-	// Отримуємо інформацію про користувача
-	user, err := a.repo.GetUserByID(uint(userID))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Розблокуємо користувача
-	user.Banned = false
-	if err := a.repo.UpdateUser(user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true})
-}
-
-// Статистика
-func (a *AdminPanel) statistics(c *gin.Context) {
-	// Отримуємо статистику за день, тиждень, місяць
-	// Тут потрібно додати методи для отримання статистики
-
-	c.HTML(http.StatusOK, "statistics", gin.H{
-		"title":     "Admin-panel - Statistics",
-		"activeTab": "stats",
-	})
-}
-
-// Список рейтингів
-func (a *AdminPanel) ratingsList(c *gin.Context) {
-	// Отримуємо список рейтингів за останні тижні
-	// Тут потрібно додати метод для отримання списку рейтингів
-
-	c.HTML(http.StatusOK, "ratings", gin.H{
-		"title":     "Admin-panel - Ratings",
-		"activeTab": "ratings",
-	})
-}
-
-// Деталі рейтингу
-func (a *AdminPanel) ratingDetails(c *gin.Context) {
-	// Отримуємо рік і тиждень
-	year, err := strconv.Atoi(c.Param("year"))
-	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"title": "Error",
-			"error": "Невірний рік",
-		})
-		return
-	}
-
-	week, err := strconv.Atoi(c.Param("week"))
-	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"title": "Error",
-			"error": "Невірний тиждень",
-		})
-		return
-	}
-
-	// Отримуємо рейтинг
-	ratings, err := a.repo.GetWeeklyRating(year, week, 100)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Error",
-			"error": err.Error(),
-		})
-		return
-	}
-
-	// Отримуємо призовий фонд
-	prizeFund, err := a.repo.GetPrizeFund(year, week)
-	if err != nil {
-		prizeFund = &models.PrizeFund{
-			Year:     year,
-			Week:     week,
-			Amount:   1000,
-			TopCount: 100,
-		}
-	}
-
-	c.HTML(http.StatusOK, "rating_details", gin.H{
-		"title":     fmt.Sprintf("Admin-panel - Rating %d/%d", year, week),
-		"ratings":   ratings,
-		"year":      year,
-		"week":      week,
-		"prizeFund": prizeFund,
-		"activeTab": "ratings",
-	})
-}
-
-// Розподіл призів рейтингу
-func (a *AdminPanel) distributeRatingPrizes(c *gin.Context) {
-	// Отримуємо рік і тиждень
-	year, err := strconv.Atoi(c.Param("year"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Wrong year"})
-		return
-	}
-
-	week, err := strconv.Atoi(c.Param("week"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Wrong week"})
-		return
-	}
-
-	// Отримуємо суму призового фонду
-	amount, err := strconv.ParseFloat(c.PostForm("amount"), 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірна сума призового фонду"})
-		return
-	}
-
-	topCount, err := strconv.Atoi(c.PostForm("top_count"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірна кількість призових місць"})
-		return
-	}
-
-	// Оновлюємо або створюємо призовий фонд
-	prizeFund, err := a.repo.GetPrizeFund(year, week)
-	if err != nil {
-		prizeFund = &models.PrizeFund{
-			Year:     year,
-			Week:     week,
-			Amount:   amount,
-			TopCount: topCount,
-		}
-		if err := a.repo.UpdatePrizeFund(prizeFund); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-	} else {
-		prizeFund.Amount = amount
-		prizeFund.TopCount = topCount
-		if err := a.repo.UpdatePrizeFund(prizeFund); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-	}
-
-	// Розподіляємо призи
-	if err := a.service.DistributePrizes(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true})
-}
-
-// Список супер-рейтингів
-func (a *AdminPanel) superRatingsList(c *gin.Context) {
-	// Отримуємо список супер-рейтингів
-	// Тут потрібно додати метод для отримання списку супер-рейтингів
-
-	c.HTML(http.StatusOK, "super_ratings", gin.H{
-		"title":     "Admin-panel - Super-ratings",
-		"activeTab": "super_ratings",
-	})
-}
-
-// Деталі супер-рейтингу
-func (a *AdminPanel) superRatingDetails(c *gin.Context) {
-	// Отримуємо період
-	period := c.Param("period")
-
-	// Отримуємо супер-рейтинг
-	ratings, err := a.repo.GetSuperRating(period, 100)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Error",
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.HTML(http.StatusOK, "super_rating_details", gin.H{
-		"title":     fmt.Sprintf("Admin-panel - Super-rating %s", period),
-		"ratings":   ratings,
-		"period":    period,
-		"activeTab": "super_ratings",
-	})
-}
-
-// Список запитів на виведення коштів
-func (a *AdminPanel) withdrawalsList(c *gin.Context) {
-	// Отримуємо список запитів на виведення коштів
-	withdrawals, err := a.repo.GetPendingWithdrawals()
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Error",
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.HTML(http.StatusOK, "withdrawals", gin.H{
-		"title":       "Admin-panel - Withdrawals",
-		"withdrawals": withdrawals,
-		"activeTab":   "withdrawals",
-	})
-}
-
-// Підтвердження виведення коштів
-func (a *AdminPanel) withdrawalApprove(c *gin.Context) {
-	// Отримуємо ID запиту
-	withdrawalID, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірний ID запиту"})
-		return
-	}
-
-	// Підтверджуємо запит
-	if err := a.repo.UpdateWithdrawalStatus(uint(withdrawalID), "approved"); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true})
-}
-
-// Відхилення виведення коштів
-func (a *AdminPanel) withdrawalReject(c *gin.Context) {
-	// Отримуємо ID запиту
-	withdrawalID, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірний ID запиту"})
-		return
-	}
-
-	// Отримуємо запит
-	withdrawal, err := a.repo.GetWithdrawalByID(uint(withdrawalID))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Повертаємо кошти на баланс користувача
-	user, err := a.repo.GetUserByID(withdrawal.UserID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	user.Balance += withdrawal.Amount
-	if err := a.repo.UpdateUser(user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Відхиляємо запит
-	if err := a.repo.UpdateWithdrawalStatus(uint(withdrawalID), "rejected"); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true})
-}
-
-// Сторінка налаштувань
-func (a *AdminPanel) settingsPage(c *gin.Context) {
-	// Отримуємо налаштування
-	settings, err := a.service.GetSettings()
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Error",
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.HTML(http.StatusOK, "settings", gin.H{
-		"title":     "Admin-panel - Налаштування",
-		"settings":  settings,
-		"activeTab": "settings",
-	})
-}
-
-// Збереження налаштувань
-func (a *AdminPanel) saveSettings(c *gin.Context) {
-	// Отримуємо налаштування з форми
-	// Зберігаємо налаштування
-	for key, values := range c.Request.PostForm {
-		if len(values) > 0 {
-			if err := a.service.UpdateSetting(key, values[0]); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true})
 }

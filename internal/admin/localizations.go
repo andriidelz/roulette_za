@@ -15,15 +15,6 @@ type LocalizationView struct {
 // Обработчик списка локализаций
 func (a *AdminPanel) localizationsList(c *gin.Context) {
 	// Получаем локализации для всех языков
-	ukLocalizations, err := a.getLocalizationsForLanguage("uk")
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Error",
-			"error": err.Error(),
-		})
-		return
-	}
-
 	enLocalizations, err := a.getLocalizationsForLanguage("en")
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -42,13 +33,22 @@ func (a *AdminPanel) localizationsList(c *gin.Context) {
 		return
 	}
 
+	ukLocalizations, err := a.getLocalizationsForLanguage("uk")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title": "Error",
+			"error": err.Error(),
+		})
+		return
+	}
+
 	c.HTML(http.StatusOK, "localizations", gin.H{
 		"title":     "Admin-panel - Localizations",
 		"activeTab": "localizations",
 		"localizations": gin.H{
-			"uk": ukLocalizations,
 			"en": enLocalizations,
 			"ru": ruLocalizations,
+			"uk": ukLocalizations,
 		},
 	})
 }
@@ -59,18 +59,18 @@ func (a *AdminPanel) localizationEdit(c *gin.Context) {
 	key := c.Param("key")
 
 	// Получаем локализации для всех языков
-	ukValue, _ := a.repo.GetLocalization(key, "uk")
 	enValue, _ := a.repo.GetLocalization(key, "en")
 	ruValue, _ := a.repo.GetLocalization(key, "ru")
+	ukValue, _ := a.repo.GetLocalization(key, "uk")
 
 	c.HTML(http.StatusOK, "localization_edit", gin.H{
 		"title":     "Admin-panel - Edit Localization",
 		"activeTab": "localizations",
 		"key":       key,
 		"values": gin.H{
-			"uk": ukValue,
 			"en": enValue,
 			"ru": ruValue,
+			"uk": ukValue,
 		},
 	})
 }
@@ -81,18 +81,11 @@ func (a *AdminPanel) localizationSave(c *gin.Context) {
 	key := c.Param("key")
 
 	// Получаем данные из формы для каждого языка
-	ukValue := c.PostForm("uk")
 	enValue := c.PostForm("en")
 	ruValue := c.PostForm("ru")
+	ukValue := c.PostForm("uk")
 
 	// Сохраняем локализации для каждого языка, если они предоставлены
-	if ukValue != "" {
-		if err := a.repo.SetLocalization(key, "uk", ukValue); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-	}
-
 	if enValue != "" {
 		if err := a.repo.SetLocalization(key, "en", enValue); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -102,6 +95,13 @@ func (a *AdminPanel) localizationSave(c *gin.Context) {
 
 	if ruValue != "" {
 		if err := a.repo.SetLocalization(key, "ru", ruValue); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	if ukValue != "" {
+		if err := a.repo.SetLocalization(key, "uk", ukValue); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -128,9 +128,9 @@ func (a *AdminPanel) localizationDelete(c *gin.Context) {
 func (a *AdminPanel) localizationAdd(c *gin.Context) {
 	// Получаем данные из формы
 	key := c.PostForm("key")
-	ukValue := c.PostForm("uk")
 	enValue := c.PostForm("en")
 	ruValue := c.PostForm("ru")
+	ukValue := c.PostForm("uk")
 
 	// Проверяем, что все необходимые данные предоставлены
 	if key == "" || ukValue == "" || enValue == "" || ruValue == "" {
@@ -145,17 +145,17 @@ func (a *AdminPanel) localizationAdd(c *gin.Context) {
 	}
 
 	// Сохраняем локализации для каждого языка
-	if err := a.repo.SetLocalization(key, "uk", ukValue); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
 	if err := a.repo.SetLocalization(key, "en", enValue); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if err := a.repo.SetLocalization(key, "ru", ruValue); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := a.repo.SetLocalization(key, "uk", ukValue); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
