@@ -135,6 +135,8 @@ func (a *AdminPanel) setupRoutes() {
 		admin.GET("/localizations", a.localizationsList)
 		admin.GET("/localization/:key", a.localizationEdit)
 		admin.POST("/localization/:key", a.localizationSave)
+		admin.POST("/localization/:key/delete", a.localizationDelete)
+		admin.POST("/localization/add", a.localizationAdd)
 
 		admin.GET("/hashes", a.hashesPage)
 
@@ -697,50 +699,6 @@ func (a *AdminPanel) saveSettings(c *gin.Context) {
 	for key, values := range c.Request.PostForm {
 		if len(values) > 0 {
 			if err := a.service.UpdateSetting(key, values[0]); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true})
-}
-
-// Список локалізацій
-func (a *AdminPanel) localizationsList(c *gin.Context) {
-	// Отримуємо список локалізацій
-	// Тут потрібно додати метод для отримання списку локалізацій
-
-	c.HTML(http.StatusOK, "localizations", gin.H{
-		"title":     "Admin-panel - Localizations",
-		"activeTab": "localizations",
-	})
-}
-
-// Редагування локалізації
-func (a *AdminPanel) localizationEdit(c *gin.Context) {
-	// Отримуємо ключ локалізації
-	key := c.Param("key")
-
-	// Отримуємо локалізації для всіх мов
-	// Тут потрібно додати метод для отримання локалізацій для ключа
-
-	c.HTML(http.StatusOK, "localization_edit", gin.H{
-		"title":     fmt.Sprintf("Admin-panel - Localization %s", key),
-		"key":       key,
-		"activeTab": "localizations",
-	})
-}
-
-// Збереження локалізації
-func (a *AdminPanel) localizationSave(c *gin.Context) {
-	// Отримуємо ключ локалізації
-	key := c.Param("key")
-
-	// Зберігаємо локалізації для всіх мов
-	for lang, values := range c.Request.PostForm {
-		if len(values) > 0 {
-			if err := a.repo.SetLocalization(key, lang, values[0]); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}

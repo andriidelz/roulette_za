@@ -41,6 +41,11 @@ type Repository interface {
 	// Локалізації
 	GetLocalization(key string, language string) (string, error)
 	SetLocalization(key string, language string, value string) error
+	GetAllLocalizationsForLanguage(language string) ([]models.Localization, error)
+	DeleteLocalization(key string) error
+	GetLocalizationCount(language string) (int64, error)
+	CheckLocalizationExists(key string) (bool, error)
+	ImportLocalizations(localizations []models.Localization) error
 
 	// Призові фонди
 	GetPrizeFund(year, week int) (*models.PrizeFund, error)

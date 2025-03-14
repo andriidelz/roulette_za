@@ -1,0 +1,523 @@
+{{define "localizations"}}
+  {{template "header" .}}
+  {{template "navbar" .}}
+  <div class="d-flex">
+    {{template "sidebar" .}}
+    <main class="main-content flex-grow-1">
+      <div class="container-fluid">
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+              <h1>Localizations</h1>
+              <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addKeyModal">
+                <i class="bi bi-plus-circle"></i> Add key
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="localization-tabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="en-tab" data-bs-toggle="tab" data-bs-target="#en" type="button" role="tab" aria-controls="en" aria-selected="false">English</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="ru-tab" data-bs-toggle="tab" data-bs-target="#ru" type="button" role="tab" aria-controls="ru" aria-selected="false">Russian</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="uk-tab" data-bs-toggle="tab" data-bs-target="#uk" type="button" role="tab" aria-controls="uk" aria-selected="true">Ukrainian</button>
+              </li>
+            </ul>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="search-localizations" placeholder="Search by key or value...">
+              </div>
+            </div>
+
+            <div class="tab-content" id="localization-content">
+              <!-- Ukrainian localization -->
+              <div class="tab-pane fade show active" id="uk" role="tabpanel" aria-labelledby="uk-tab">
+                <div class="table-responsive">
+                  <table class="table table-hover localization-table" id="uk-table">
+                    <thead>
+                      <tr>
+                        <th width="30%">Key</th>
+                        <th>Values</th>
+                        <th width="120px">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {{range .localizations.uk}}
+                      <tr data-key="{{.Key}}">
+                        <td>{{.Key}}</td>
+                        <td>
+                          <div class="localization-value">{{.Value}}</div>
+                          <div class="localization-editor d-none">
+                            <textarea class="form-control" rows="3">{{.Value}}</textarea>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-primary edit-localization">
+                              <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete-localization">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {{else}}
+                      <tr>
+                        <td colspan="3" class="text-center">
+                          <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle me-2"></i>Нет записей для украинской локализации
+                          </div>
+                        </td>
+                      </tr>
+                      {{end}}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- English localization -->
+              <div class="tab-pane fade" id="en" role="tabpanel" aria-labelledby="en-tab">
+                <div class="table-responsive">
+                  <table class="table table-hover localization-table" id="en-table">
+                    <thead>
+                      <tr>
+                        <th width="30%">Key</th>
+                        <th>Values</th>
+                        <th width="120px">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {{range .localizations.en}}
+                      <tr data-key="{{.Key}}">
+                        <td>{{.Key}}</td>
+                        <td>
+                          <div class="localization-value">{{.Value}}</div>
+                          <div class="localization-editor d-none">
+                            <textarea class="form-control" rows="3">{{.Value}}</textarea>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-primary edit-localization">
+                              <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete-localization">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {{else}}
+                      <tr>
+                        <td colspan="3" class="text-center">
+                          <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle me-2"></i>Нет записей для английской локализации
+                          </div>
+                        </td>
+                      </tr>
+                      {{end}}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Russian localization -->
+              <div class="tab-pane fade" id="ru" role="tabpanel" aria-labelledby="ru-tab">
+                <div class="table-responsive">
+                  <table class="table table-hover localization-table" id="ru-table">
+                    <thead>
+                      <tr>
+                        <th width="30%">Key</th>
+                        <th>Values</th>
+                        <th width="120px">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {{range .localizations.ru}}
+                      <tr data-key="{{.Key}}">
+                        <td>{{.Key}}</td>
+                        <td>
+                          <div class="localization-value">{{.Value}}</div>
+                          <div class="localization-editor d-none">
+                            <textarea class="form-control" rows="3">{{.Value}}</textarea>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-primary edit-localization">
+                              <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete-localization">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {{else}}
+                      <tr>
+                        <td colspan="3" class="text-center">
+                          <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle me-2"></i>Нет записей для русской локализации
+                          </div>
+                        </td>
+                      </tr>
+                      {{end}}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Модальное окно добавления нового ключа локализации -->
+  <div class="modal fade" id="addKeyModal" tabindex="-1" aria-labelledby="addKeyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addKeyModalLabel">Add new localization key</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="add-localization-form">
+            <div class="mb-3">
+              <label for="localization-key" class="form-label">Key</label>
+              <input type="text" class="form-control" id="localization-key" required>
+              <div class="form-text">Используйте только латинские буквы, цифры и нижнее подчеркивание. Например: welcome_message</div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="en-value" class="form-label">English</label>
+              <textarea class="form-control" id="en-value" rows="3" required></textarea>
+            </div>
+            
+            <div class="mb-3">
+              <label for="ru-value" class="form-label">Russian</label>
+              <textarea class="form-control" id="ru-value" rows="3" required></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label for="uk-value" class="form-label">Ukrainian</label>
+              <textarea class="form-control" id="uk-value" rows="3" required></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-new-localization">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно подтверждения удаления -->
+  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="deleteConfirmModalLabel">Подтверждение удаления</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Вы уверены, что хотите удалить локализацию с ключом <strong id="delete-key-name"></strong>?</p>
+          <p class="text-danger">Это действие нельзя отменить. Локализация будет удалена для всех языков.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirm-delete">Remove</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {{template "footer" .}}
+
+  <script>
+    $(document).ready(function() {
+      // Редактирование локализации
+      $('.edit-localization').click(function() {
+        const row = $(this).closest('tr');
+        const valueCell = row.find('td:nth-child(2)');
+        const valueDisplay = valueCell.find('.localization-value');
+        const valueEditor = valueCell.find('.localization-editor');
+        
+        // Если редактор уже открыт, сохраняем изменения
+        if (valueEditor.hasClass('d-none')) {
+          // Открываем редактор
+          valueDisplay.addClass('d-none');
+          valueEditor.removeClass('d-none');
+          $(this).html('<i class="bi bi-check-lg"></i>');
+        } else {
+          // Сохраняем изменения
+          const key = row.data('key');
+          const value = valueEditor.find('textarea').val();
+          const language = $(this).closest('.tab-pane').attr('id');
+          
+          $.ajax({
+            url: '/admin/localization/' + key,
+            type: 'POST',
+            data: {
+              [language]: value
+            },
+            success: function(response) {
+              if (response.success) {
+                valueDisplay.text(value);
+                valueDisplay.removeClass('d-none');
+                valueEditor.addClass('d-none');
+                row.find('.edit-localization').html('<i class="bi bi-pencil"></i>');
+                
+                // Показываем уведомление об успешном сохранении
+                showNotification('Локализация успешно сохранена', 'success');
+              } else {
+                showNotification('Ошибка при сохранении: ' + response.error, 'danger');
+              }
+            },
+            error: function() {
+              showNotification('Ошибка соединения с сервером', 'danger');
+            }
+          });
+        }
+      });
+      
+      // Удаление локализации
+      $('.delete-localization').click(function() {
+        const key = $(this).closest('tr').data('key');
+        $('#delete-key-name').text(key);
+        $('#deleteConfirmModal').modal('show');
+        
+        // Сохраняем ключ для последующего удаления
+        $('#confirm-delete').data('key', key);
+      });
+      
+      // Подтверждение удаления
+      $('#confirm-delete').click(function() {
+        const key = $(this).data('key');
+        
+        $.ajax({
+          url: '/admin/localization/' + key + '/delete',
+          type: 'POST',
+          success: function(response) {
+            if (response.success) {
+              // Удаляем строки с этим ключом из всех таблиц
+              $('tr[data-key="' + key + '"]').remove();
+              
+              // Закрываем модальное окно
+              $('#deleteConfirmModal').modal('hide');
+              
+              // Показываем уведомление об успешном удалении
+              showNotification('Локализация успешно удалена', 'success');
+            } else {
+              showNotification('Ошибка при удалении: ' + response.error, 'danger');
+            }
+          },
+          error: function() {
+            showNotification('Ошибка соединения с сервером', 'danger');
+          }
+        });
+      });
+      
+      // Добавление новой локализации
+      $('#save-new-localization').click(function() {
+        const key = $('#localization-key').val();
+        const ukValue = $('#uk-value').val();
+        const enValue = $('#en-value').val();
+        const ruValue = $('#ru-value').val();
+        
+        // Валидация
+        if (!key || !ukValue || !enValue || !ruValue) {
+          showNotification('Все поля должны быть заполнены', 'warning');
+          return;
+        }
+        
+        // Проверка формата ключа
+        if (!/^[a-zA-Z0-9_]+$/.test(key)) {
+          showNotification('Key может содержать только латинские буквы, цифры и нижнее подчеркивание', 'warning');
+          return;
+        }
+        
+        $.ajax({
+          url: '/admin/localization/add',
+          type: 'POST',
+          data: {
+            key: key,
+            uk: ukValue,
+            en: enValue,
+            ru: ruValue
+          },
+          success: function(response) {
+            if (response.success) {
+              // Добавляем новые строки во все таблицы
+              addLocalizationRow('uk', key, ukValue);
+              addLocalizationRow('en', key, enValue);
+              addLocalizationRow('ru', key, ruValue);
+              
+              // Очищаем форму
+              $('#add-localization-form')[0].reset();
+              
+              // Закрываем модальное окно
+              $('#addKeyModal').modal('hide');
+              
+              // Показываем уведомление об успешном добавлении
+              showNotification('Локализация успешно добавлена', 'success');
+            } else {
+              showNotification('Ошибка при добавлении: ' + response.error, 'danger');
+            }
+          },
+          error: function() {
+            showNotification('Ошибка соединения с сервером', 'danger');
+          }
+        });
+      });
+      
+      // Поиск по локализациям
+      $('#search-localizations').on('keyup', function() {
+        const value = $(this).val().toLowerCase();
+        
+        $('.localization-table tbody tr').filter(function() {
+          const key = $(this).find('td:first').text().toLowerCase();
+          const textValue = $(this).find('.localization-value').text().toLowerCase();
+          
+          $(this).toggle(key.indexOf(value) > -1 || textValue.indexOf(value) > -1);
+        });
+      });
+      
+      // Функция для добавления строки локализации
+      function addLocalizationRow(language, key, value) {
+        // Проверяем, существует ли уже такой ключ
+        if ($('#' + language + '-table').find('tr[data-key="' + key + '"]').length > 0) {
+          // Обновляем существующую строку
+          const row = $('#' + language + '-table').find('tr[data-key="' + key + '"]');
+          row.find('.localization-value').text(value);
+          row.find('textarea').val(value);
+          return;
+        }
+        
+        // Если в таблице только сообщение "нет записей", удаляем его
+        const table = $('#' + language + '-table');
+        if (table.find('tbody tr td[colspan="3"]').length > 0) {
+          table.find('tbody').empty();
+        }
+        
+        // Создаем новую строку
+        const newRow = `
+          <tr data-key="${key}">
+            <td>${key}</td>
+            <td>
+              <div class="localization-value">${value}</div>
+              <div class="localization-editor d-none">
+                <textarea class="form-control" rows="3">${value}</textarea>
+              </div>
+            </td>
+            <td>
+              <div class="btn-group">
+                <button class="btn btn-sm btn-outline-primary edit-localization">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger delete-localization">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+        
+        // Добавляем строку в таблицу
+        table.find('tbody').append(newRow);
+        
+        // Привязываем обработчики событий
+        const addedRow = table.find('tr[data-key="' + key + '"]');
+        
+        addedRow.find('.edit-localization').click(function() {
+          const row = $(this).closest('tr');
+          const valueCell = row.find('td:nth-child(2)');
+          const valueDisplay = valueCell.find('.localization-value');
+          const valueEditor = valueCell.find('.localization-editor');
+          
+          if (valueEditor.hasClass('d-none')) {
+            valueDisplay.addClass('d-none');
+            valueEditor.removeClass('d-none');
+            $(this).html('<i class="bi bi-check-lg"></i>');
+          } else {
+            const key = row.data('key');
+            const value = valueEditor.find('textarea').val();
+            const language = $(this).closest('.tab-pane').attr('id');
+            
+            $.ajax({
+              url: '/admin/localization/' + key,
+              type: 'POST',
+              data: {
+                [language]: value
+              },
+              success: function(response) {
+                if (response.success) {
+                  valueDisplay.text(value);
+                  valueDisplay.removeClass('d-none');
+                  valueEditor.addClass('d-none');
+                  row.find('.edit-localization').html('<i class="bi bi-pencil"></i>');
+                  showNotification('Локализация успешно сохранена', 'success');
+                } else {
+                  showNotification('Ошибка при сохранении: ' + response.error, 'danger');
+                }
+              },
+              error: function() {
+                showNotification('Ошибка соединения с сервером', 'danger');
+              }
+            });
+          }
+        });
+        
+        addedRow.find('.delete-localization').click(function() {
+          const key = $(this).closest('tr').data('key');
+          $('#delete-key-name').text(key);
+          $('#deleteConfirmModal').modal('show');
+          $('#confirm-delete').data('key', key);
+        });
+      }
+      
+      // Функция для отображения уведомлений
+      function showNotification(message, type) {
+        // Создаем элемент уведомления
+        const notification = $(`
+          <div class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+              <div class="toast-body">
+                ${message}
+              </div>
+              <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+          </div>
+        `);
+        
+        // Добавляем контейнер для уведомлений, если его еще нет
+        if ($('#notification-container').length === 0) {
+          $('body').append('<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>');
+        }
+        
+        // Добавляем уведомление в контейнер
+        $('#notification-container').append(notification);
+        
+        // Инициализируем и показываем уведомление
+        const toast = new bootstrap.Toast(notification);
+        toast.show();
+        
+        // Удаляем уведомление после скрытия
+        notification.on('hidden.bs.toast', function() {
+          $(this).remove();
+        });
+      }
+    });
+  </script>
+{{end}}
