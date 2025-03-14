@@ -1,0 +1,150 @@
+{{define "users"}}
+  {{template "header" .}}
+  {{template "navbar" .}}
+  <div class="d-flex">
+    {{template "sidebar" .}}
+    <main class="main-content flex-grow-1">
+      <div class="container-fluid">
+
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4">User Management</h1>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">User List</h5>
+                    <div>
+                        <form class="d-flex" action="/admin/users" method="GET">
+                            <input class="form-control me-2" type="search" placeholder="Search" name="query">
+                            <button class="btn btn-outline-primary" type="submit">Search</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Telegram ID</th>
+                                <th>Username</th>
+                                <th>First Name</th>
+                                <th>Balance</th>
+                                <th>Bets Today</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ if .users }}
+                                {{ range .users }}
+                                <tr>
+                                    <td>{{ .ID }}</td>
+                                    <td>{{ .TelegramID }}</td>
+                                    <td>{{ .Username }}</td>
+                                    <td>{{ .FirstName }}</td>
+                                    <td>{{ .Balance }}</td>
+                                    <td>{{ .TodayBets }}</td>
+                                    <td>
+                                        {{ if .Banned }}
+                                        <span class="badge bg-danger">Banned</span>
+                                        {{ else }}
+                                        <span class="badge bg-success">Active</span>
+                                        {{ end }}
+                                    </td>
+                                    <td>
+                                        <a href="/admin/user/{{ .ID }}" class="btn btn-sm btn-outline-primary">Details</a>
+                                        {{ if .Banned }}
+                                        <button class="btn btn-sm btn-outline-success unban-user" data-id="{{ .ID }}">Unban</button>
+                                        {{ else }}
+                                        <button class="btn btn-sm btn-outline-danger ban-user" data-id="{{ .ID }}">Ban</button>
+                                        {{ end }}
+                                    </td>
+                                </tr>
+                                {{ end }}
+                            {{ else }}
+                                <tr>
+                                    <td colspan="8" class="text-center">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="bi bi-info-circle me-2"></i>No users found
+                                        </div>
+                                    </td>
+                                </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer">
+                <nav>
+                    <ul class="pagination justify-content-center">
+                        <!-- Previous page -->
+                        {{ if gt .page 1 }}
+                        <li class="page-item">
+                            <a class="page-link" href="/admin/users?page={{ .prevPage }}">Previous</a>
+                        </li>
+                        {{ else }}
+                        <li class="page-item disabled">
+                            <span class="page-link">Previous</span>
+                        </li>
+                        {{ end }}
+                        
+                        <!-- Current page -->
+                        <li class="page-item active">
+                            <span class="page-link">{{ .page }} of {{ .totalPages }}</span>
+                        </li>
+                        
+                        <!-- Next page -->
+                        {{ if lt .page .totalPages }}
+                        <li class="page-item">
+                            <a class="page-link" href="/admin/users?page={{ .nextPage }}">Next</a>
+                        </li>
+                        {{ else }}
+                        <li class="page-item disabled">
+                            <span class="page-link">Next</span>
+                        </li>
+                        {{ end }}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+      </div>
+    </main>
+  </div>
+<script>
+$(document).ready(function() {
+    // Ban user handler
+    $('.ban-user').click(function() {
+        var userId = $(this).data('id');
+        if (confirm('Are you sure you want to ban this user?')) {
+            $.post('/admin/user/' + userId + '/ban', function(data) {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            });
+        }
+    });
+    
+    // Unban user handler
+    $('.unban-user').click(function() {
+        var userId = $(this).data('id');
+        if (confirm('Are you sure you want to unban this user?')) {
+            $.post('/admin/user/' + userId + '/unban', function(data) {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            });
+        }
+    });
+});
+</script>
+  {{template "footer" .}}
+{{end}}

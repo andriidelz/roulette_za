@@ -1,0 +1,124 @@
+{{define "withdrawals"}}
+  {{template "header" .}}
+  {{template "navbar" .}}
+  <div class="d-flex">
+    {{template "sidebar" .}}
+    <main class="main-content flex-grow-1">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-12">
+              <h1 class="mb-4">Withdrawals</h1>
+          </div>
+      </div>
+
+      <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">Withdrawal Requests</h5>
+              <div>
+                  <button class="btn btn-sm btn-success">Approve All</button>
+                  <button class="btn btn-sm btn-danger">Reject All</button>
+              </div>
+          </div>
+          <div class="card-body">
+              <div class="table-responsive">
+                  <table class="table table-hover">
+                      <thead>
+                          <tr>
+                              <th>ID</th>
+                              <th>User</th>
+                              <th>Amount</th>
+                              <th>Wallet</th>
+                              <th>Created</th>
+                              <th>Status</th>
+                              <th>Actions</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          {{ if .withdrawals }}
+                              {{ range .withdrawals }}
+                              <tr>
+                                  <td>{{ .ID }}</td>
+                                  <td>{{ .User.Username }} ({{ .User.TelegramID }})</td>
+                                  <td>{{ .Amount }}</td>
+                                  <td>{{ .Wallet }}</td>
+                                  <td>{{ .CreatedAt }}</td>
+                                  <td>
+                                      {{ if eq .Status "pending" }}
+                                      <span class="badge bg-warning">Pending</span>
+                                      {{ else if eq .Status "approved" }}
+                                      <span class="badge bg-success">Approved</span>
+                                      {{ else }}
+                                      <span class="badge bg-danger">Rejected</span>
+                                      {{ end }}
+                                  </td>
+                                  <td>
+                                      {{ if eq .Status "pending" }}
+                                      <button class="btn btn-sm btn-success approve-withdrawal" data-id="{{ .ID }}">Approve</button>
+                                      <button class="btn btn-sm btn-danger reject-withdrawal" data-id="{{ .ID }}">Reject</button>
+                                      {{ else }}
+                                      <button class="btn btn-sm btn-secondary" disabled>Processed</button>
+                                      {{ end }}
+                                  </td>
+                              </tr>
+                              {{ end }}
+                          {{ else }}
+                              <tr>
+                                  <td colspan="7" class="text-center">
+                                      <div class="alert alert-info mb-0">
+                                          <i class="bi bi-info-circle me-2"></i>No withdrawal requests at this time
+                                      </div>
+                                  </td>
+                              </tr>
+                          {{ end }}
+                      </tbody>
+                  </table>
+              </div>
+          </div>
+      </div>
+
+      <div class="card">
+          <div class="card-header">
+              <h5 class="mb-0">Withdrawal History</h5>
+          </div>
+          <div class="card-body">
+              <div class="alert alert-info">
+                  <i class="bi bi-info-circle me-2"></i>The withdrawal history will be displayed here.
+              </div>
+          </div>
+      </div>
+      <script>
+      $(document).ready(function() {
+          // Approve withdrawal handler
+          $('.approve-withdrawal').click(function() {
+              var withdrawalId = $(this).data('id');
+              if (confirm('Are you sure you want to approve this withdrawal?')) {
+                  $.post('/admin/withdrawal/' + withdrawalId + '/approve', function(data) {
+                      if (data.success) {
+                          window.location.reload();
+                      } else {
+                          alert('Error: ' + data.error);
+                      }
+                  });
+              }
+          });
+          
+          // Reject withdrawal handler
+          $('.reject-withdrawal').click(function() {
+              var withdrawalId = $(this).data('id');
+              if (confirm('Are you sure you want to reject this withdrawal? The funds will be returned to the user\'s balance.')) {
+                  $.post('/admin/withdrawal/' + withdrawalId + '/reject', function(data) {
+                      if (data.success) {
+                          window.location.reload();
+                      } else {
+                          alert('Error: ' + data.error);
+                      }
+                  });
+              }
+          });
+      });
+      </script>
+      </div>
+    </main>
+  </div>
+  {{template "footer" .}}
+{{end}}

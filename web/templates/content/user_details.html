@@ -1,0 +1,326 @@
+{{define "user_details"}}
+  {{template "header" .}}
+  {{template "navbar" .}}
+  <div class="d-flex">
+    {{template "sidebar" .}}
+    <main class="main-content flex-grow-1">
+      <div class="container-fluid">
+        <div class="row mb-4">
+          <div class="col-12">
+              <div class="d-flex justify-content-between align-items-center">
+                  <h1>User Profile</h1>
+                  <a href="/admin/users" class="btn btn-outline-secondary">
+                      <i class="bi bi-arrow-left"></i> Back to List
+                  </a>
+              </div>
+          </div>
+      </div>
+
+      <div class="row">
+          <div class="col-md-4 mb-4">
+              <div class="card">
+                  <div class="card-header">
+                      <h5 class="mb-0">Basic Information</h5>
+                  </div>
+                  <div class="card-body">
+                      <div class="mb-3 text-center">
+                          <div style="width: 100px; height: 100px; background-color: #e9ecef; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+                              <i class="bi bi-person-circle" style="font-size: 3rem;"></i>
+                          </div>
+                          <h5>{{ .user.Username }}</h5>
+                      </div>
+                      <table class="table">
+                          <tbody>
+                              <tr>
+                                  <th>ID:</th>
+                                  <td>{{ .user.ID }}</td>
+                              </tr>
+                              <tr>
+                                  <th>Telegram ID:</th>
+                                  <td>{{ .user.TelegramID }}</td>
+                              </tr>
+                              <tr>
+                                  <th>First Name:</th>
+                                  <td>{{ .user.FirstName }}</td>
+                              </tr>
+                              <tr>
+                                  <th>Last Name:</th>
+                                  <td>{{ .user.LastName }}</td>
+                              </tr>
+                              <tr>
+                                  <th>Language:</th>
+                                  <td>{{ .user.LanguageCode }}</td>
+                              </tr>
+                              <tr>
+                                  <th>Registration Date:</th>
+                                  <td>{{ .user.CreatedAt.Format "02.01.2006 15:04" }}</td>
+                              </tr>
+                              <tr>
+                                  <th>Status:</th>
+                                  <td>
+                                      {{ if .user.Banned }}
+                                      <span class="badge bg-danger">Banned</span>
+                                      {{ else }}
+                                      <span class="badge bg-success">Active</span>
+                                      {{ end }}
+                                  </td>
+                              </tr>
+                          </tbody>
+                      </table>
+                      <div class="d-grid gap-2 mt-3">
+                          {{ if .user.Banned }}
+                          <button class="btn btn-success unban-user" data-id="{{ .user.ID }}">
+                              <i class="bi bi-unlock"></i> Unban
+                          </button>
+                          {{ else }}
+                          <button class="btn btn-danger ban-user" data-id="{{ .user.ID }}">
+                              <i class="bi bi-lock"></i> Ban
+                          </button>
+                          {{ end }}
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <div class="col-md-4 mb-4">
+              <div class="card">
+                  <div class="card-header">
+                      <h5 class="mb-0">Financial Information</h5>
+                  </div>
+                  <div class="card-body">
+                      <table class="table">
+                          <tbody>
+                              <tr>
+                                  <th>Current Balance:</th>
+                                  <td>{{ .user.Balance }}</td>
+                              </tr>
+                              <tr>
+                                  <th>Total Points Earned:</th>
+                                  <td>{{ .stats.TotalPoints }}</td>
+                              </tr>
+                              <tr>
+                                  <th>Weekly Balance:</th>
+                                  <td>{{ .stats.WeeklyPoints }}</td>
+                              </tr>
+                          </tbody>
+                      </table>
+                      <div class="mt-3">
+                          <h6>Balance Operations</h6>
+                          <form id="balance-form" class="mt-2">
+                              <div class="mb-3">
+                                  <label for="amount" class="form-label">Amount</label>
+                                  <input type="number" class="form-control" id="amount" name="amount" step="0.01" required>
+                              </div>
+                              <div class="d-grid gap-2">
+                                  <button type="button" class="btn btn-success" id="add-balance">
+                                      <i class="bi bi-plus-circle"></i> Add
+                                  </button>
+                                  <button type="button" class="btn btn-warning" id="subtract-balance">
+                                      <i class="bi bi-dash-circle"></i> Subtract
+                                  </button>
+                              </div>
+                          </form>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <div class="col-md-4 mb-4">
+              <div class="card">
+                  <div class="card-header">
+                      <h5 class="mb-0">Statistics</h5>
+                  </div>
+                  <div class="card-body">
+                      <table class="table">
+                          <tbody>
+                              <tr>
+                                  <th>Total Bets:</th>
+                                  <td>{{ .stats.TotalBets }}</td>
+                              </tr>
+                              <tr>
+                                  <th>Winning Bets:</th>
+                                  <td>{{ .stats.WonBets }}</td>
+                              </tr>
+                              <tr>
+                                  <th>Efficiency:</th>
+                                  <td>
+                                      {{ if gt .stats.TotalBets 0 }}
+                                          {{ printf "%.2f" (multiply (divide .stats.WonBets .stats.TotalBets) 100) }}%
+                                      {{ else }}
+                                          0%
+                                      {{ end }}
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <th>Bets Today:</th>
+                                  <td>{{ .user.TodayBets }}</td>
+                              </tr>
+                              <tr>
+                                  <th>Bets This Week:</th>
+                                  <td>{{ .stats.WeeklyBets }}</td>
+                              </tr>
+                              <tr>
+                                  <th>Bets This Month:</th>
+                                  <td>{{ .stats.MonthlyBets }}</td>
+                              </tr>
+                              <tr>
+                                  <th>Ranking Position:</th>
+                                  <td>
+                                      {{ if .rating }}
+                                          {{ .rating.Position }}
+                                      {{ else }}
+                                          Not ranked
+                                      {{ end }}
+                                  </td>
+                              </tr>
+                          </tbody>
+                      </table>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      <div class="row">
+          <div class="col-12">
+              <div class="card">
+                  <div class="card-header">
+                      <h5 class="mb-0">Recent Bets</h5>
+                  </div>
+                  <div class="card-body">
+                      <div class="table-responsive">
+                          <table class="table table-hover">
+                              <thead>
+                                  <tr>
+                                      <th>ID</th>
+                                      <th>Date</th>
+                                      <th>Bet</th>
+                                      <th>Result</th>
+                                      <th>Win</th>
+                                      <th>Points</th>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  {{ if .bets }}
+                                      {{ range .bets }}
+                                      <tr>
+                                          <td>{{ .ID }}</td>
+                                          <td>{{ .CreatedAt.Format "02.01.2006 15:04" }}</td>
+                                          <td>
+                                              {{ if eq .Option "red" }}
+                                              <span class="badge bg-danger">Red</span>
+                                              {{ else if eq .Option "black" }}
+                                              <span class="badge bg-dark">Black</span>
+                                              {{ else }}
+                                              <span class="badge bg-success">Zero</span>
+                                              {{ end }}
+                                          </td>
+                                          <td>
+                                              {{ if .Game }}
+                                                  {{ if eq .Game.Result "red" }}
+                                                  <span class="badge bg-danger">Red</span>
+                                                  {{ else if eq .Game.Result "black" }}
+                                                  <span class="badge bg-dark">Black</span>
+                                                  {{ else }}
+                                                  <span class="badge bg-success">Zero</span>
+                                                  {{ end }}
+                                              {{ else }}
+                                                  <span class="badge bg-secondary">Unknown</span>
+                                              {{ end }}
+                                          </td>
+                                          <td>
+                                              {{ if .Won }}
+                                              <span class="text-success"><i class="bi bi-check-circle"></i> Win</span>
+                                              {{ else }}
+                                              <span class="text-danger"><i class="bi bi-x-circle"></i> Loss</span>
+                                              {{ end }}
+                                          </td>
+                                          <td>{{ .Points }}</td>
+                                      </tr>
+                                      {{ end }}
+                                  {{ else }}
+                                      <tr>
+                                          <td colspan="6" class="text-center">No bets found</td>
+                                      </tr>
+                                  {{ end }}
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      <script>
+      $(document).ready(function() {
+          // Ban user handler
+          $('.ban-user').click(function() {
+              var userId = $(this).data('id');
+              if (confirm('Are you sure you want to ban this user?')) {
+                  $.post('/admin/user/' + userId + '/ban', function(data) {
+                      if (data.success) {
+                          window.location.reload();
+                      } else {
+                          alert('Error: ' + data.error);
+                      }
+                  });
+              }
+          });
+          
+          // Unban user handler
+          $('.unban-user').click(function() {
+              var userId = $(this).data('id');
+              if (confirm('Are you sure you want to unban this user?')) {
+                  $.post('/admin/user/' + userId + '/unban', function(data) {
+                      if (data.success) {
+                          window.location.reload();
+                      } else {
+                          alert('Error: ' + data.error);
+                      }
+                  });
+              }
+          });
+          
+          // Add balance handler
+          $('#add-balance').click(function() {
+              var amount = $('#amount').val();
+              if (!amount || amount <= 0) {
+                  alert('Please enter a valid amount');
+                  return;
+              }
+              
+              if (confirm('Are you sure you want to add ' + amount + ' to the balance?')) {
+                  $.post('/admin/user/{{ .user.ID }}/add-balance', { amount: amount }, function(data) {
+                      if (data.success) {
+                          window.location.reload();
+                      } else {
+                          alert('Error: ' + data.error);
+                      }
+                  });
+              }
+          });
+          
+          // Subtract balance handler
+          $('#subtract-balance').click(function() {
+              var amount = $('#amount').val();
+              if (!amount || amount <= 0) {
+                  alert('Please enter a valid amount');
+                  return;
+              }
+              
+              if (confirm('Are you sure you want to subtract ' + amount + ' from the balance?')) {
+                  $.post('/admin/user/{{ .user.ID }}/subtract-balance', { amount: amount }, function(data) {
+                      if (data.success) {
+                          window.location.reload();
+                      } else {
+                          alert('Error: ' + data.error);
+                      }
+                  });
+              }
+          });
+      });
+      </script>
+      </div>
+    </main>
+  </div>
+  {{template "footer" .}}
+{{end}}

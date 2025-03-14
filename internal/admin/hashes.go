@@ -102,8 +102,8 @@ func (a *AdminPanel) hashesPage(c *gin.Context) {
 		pagination = append(pagination, totalPages)
 	}
 
-	c.HTML(http.StatusOK, "hashes.html", gin.H{
-		"title":       "Адмін-панель - Хеші рулетки",
+	c.HTML(http.StatusOK, "hashes", gin.H{
+		"title":       "Admin-panel - Hashes",
 		"activeTab":   "hashes",
 		"entries":     hashEntries,
 		"currentPage": page,

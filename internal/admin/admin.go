@@ -3,7 +3,6 @@ package admin
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -68,14 +67,6 @@ func (a *AdminPanel) Start() error {
 // Налаштування роутів
 func (a *AdminPanel) setupRoutes() {
 
-	log.Printf("Шлях до шаблонів: %s", "./web/templates/*")
-	files, err := filepath.Glob("./web/templates/*")
-	if err != nil {
-		log.Printf("Помилка пошуку шаблонів: %v", err)
-	} else {
-		log.Printf("Знайдені шаблони: %v", files)
-	}
-
 	a.router.SetFuncMap(template.FuncMap{
 		"add": func(a, b int) int {
 			return a + b
@@ -96,7 +87,11 @@ func (a *AdminPanel) setupRoutes() {
 			return t.Format("02.01.2006 15:04")
 		},
 	})
-	a.router.LoadHTMLGlob("./web/templates/*")
+
+	files1, _ := filepath.Glob("web/templates/*.html")
+	files2, _ := filepath.Glob("web/templates/**/*.html")
+	allFiles := append(files1, files2...)
+	a.router.LoadHTMLFiles(allFiles...)
 
 	// Статичні файли
 	a.router.Static("/static", "./web/static")
@@ -110,41 +105,33 @@ func (a *AdminPanel) setupRoutes() {
 		auth.GET("/logout", a.logout)
 	}
 
-	// Захищені роути
+	// Защищенные роуты
 	admin := a.router.Group("/admin")
 	admin.Use(a.ipFilterMiddleware(), a.authRequired())
 	{
-		// Головна сторінка
 		admin.GET("/", a.dashboard)
 
-		// Користувачі
 		admin.GET("/users", a.usersList)
 		admin.GET("/user/:id", a.userDetails)
 		admin.POST("/user/:id/ban", a.userBan)
 		admin.POST("/user/:id/unban", a.userUnban)
 
-		// Статистика
 		admin.GET("/stats", a.statistics)
 
-		// Рейтинги
 		admin.GET("/ratings", a.ratingsList)
 		admin.GET("/rating/:year/:week", a.ratingDetails)
 		admin.POST("/rating/:year/:week/distribute", a.distributeRatingPrizes)
 
-		// Супер-рейтинги
 		admin.GET("/super-ratings", a.superRatingsList)
 		admin.GET("/super-rating/:period", a.superRatingDetails)
 
-		// Виведення коштів
 		admin.GET("/withdrawals", a.withdrawalsList)
 		admin.POST("/withdrawal/:id/approve", a.withdrawalApprove)
 		admin.POST("/withdrawal/:id/reject", a.withdrawalReject)
 
-		// Налаштування
 		admin.GET("/settings", a.settingsPage)
 		admin.POST("/settings", a.saveSettings)
 
-		// Локалізації
 		admin.GET("/localizations", a.localizationsList)
 		admin.GET("/localization/:key", a.localizationEdit)
 		admin.POST("/localization/:key", a.localizationSave)
@@ -208,7 +195,7 @@ func (a *AdminPanel) authRequired() gin.HandlerFunc {
 	}
 }
 
-// Сторінка логіну
+// Страница атворизации
 func (a *AdminPanel) loginPage(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get("user")
@@ -219,11 +206,11 @@ func (a *AdminPanel) loginPage(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "login.html", gin.H{
-		"title": "Вхід в адмін-панель",
+		"title": "Login into Admin-panel",
 	})
 }
 
-// Авторизація
+// Авторизация
 func (a *AdminPanel) login(c *gin.Context) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
@@ -239,8 +226,8 @@ func (a *AdminPanel) login(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "login.html", gin.H{
-		"title":    "Вхід в адмін-панель",
-		"error":    "Невірний логін або пароль",
+		"title":    "Login into Admin-panel",
+		"error":    "Wrong login or password",
 		"username": username,
 	})
 }
@@ -254,13 +241,12 @@ func (a *AdminPanel) logout(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/login")
 }
 
-// Головна сторінка
 func (a *AdminPanel) dashboard(c *gin.Context) {
 	// Отримуємо загальну статистику
 	userCount, err := a.repo.GetUserCount()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Помилка",
+			"title": "Error",
 			"error": err.Error(),
 		})
 		return
@@ -287,8 +273,8 @@ func (a *AdminPanel) dashboard(c *gin.Context) {
 	// Поточна дата
 	currentDateTime := time.Now().Format("2006-01-02")
 
-	c.HTML(http.StatusOK, "dashboard.html", gin.H{
-		"title":           "Адмін-панель - Головна",
+	c.HTML(http.StatusOK, "dashboard", gin.H{
+		"title":           "Admin-panel - Головна",
 		"userCount":       userCount,
 		"year":            year,
 		"week":            week,
@@ -308,7 +294,7 @@ func (a *AdminPanel) usersList(c *gin.Context) {
 	users, totalUsers, err := a.repo.GetUsers(page, perPage)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Помилка",
+			"title": "Error",
 			"error": err.Error(),
 		})
 		return
@@ -328,8 +314,8 @@ func (a *AdminPanel) usersList(c *gin.Context) {
 		nextPage = totalPages
 	}
 
-	c.HTML(http.StatusOK, "users.html", gin.H{
-		"title":      "Адмін-панель - Користувачі",
+	c.HTML(http.StatusOK, "users", gin.H{
+		"title":      "Admin-panel - Користувачі",
 		"users":      users,
 		"page":       page,
 		"prevPage":   prevPage,
@@ -345,8 +331,8 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"title": "Помилка",
-			"error": "Невірний ID користувача",
+			"title": "Error",
+			"error": "Wrong user ID",
 		})
 		return
 	}
@@ -356,7 +342,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	user, err := a.repo.GetUserByID(uint(userID))
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Помилка",
+			"title": "Error",
 			"error": err.Error(),
 		})
 		return
@@ -366,7 +352,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	stats, err := a.repo.GetUserStats(uint(userID))
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Помилка",
+			"title": "Error",
 			"error": err.Error(),
 		})
 		return
@@ -376,14 +362,14 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	bets, err := a.repo.GetUserBets(uint(userID), 20)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Помилка",
+			"title": "Error",
 			"error": err.Error(),
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "user_details.html", gin.H{
-		"title":     fmt.Sprintf("Адмін-панель - Користувач %s", user.Username),
+	c.HTML(http.StatusOK, "user_details", gin.H{
+		"title":     fmt.Sprintf("Admin-panel - Користувач %s", user.Username),
 		"user":      user,
 		"stats":     stats,
 		"bets":      bets,
@@ -448,8 +434,8 @@ func (a *AdminPanel) statistics(c *gin.Context) {
 	// Отримуємо статистику за день, тиждень, місяць
 	// Тут потрібно додати методи для отримання статистики
 
-	c.HTML(http.StatusOK, "statistics.html", gin.H{
-		"title":     "Адмін-панель - Статистика",
+	c.HTML(http.StatusOK, "statistics", gin.H{
+		"title":     "Admin-panel - Statistics",
 		"activeTab": "stats",
 	})
 }
@@ -459,8 +445,8 @@ func (a *AdminPanel) ratingsList(c *gin.Context) {
 	// Отримуємо список рейтингів за останні тижні
 	// Тут потрібно додати метод для отримання списку рейтингів
 
-	c.HTML(http.StatusOK, "ratings.html", gin.H{
-		"title":     "Адмін-панель - Рейтинги",
+	c.HTML(http.StatusOK, "ratings", gin.H{
+		"title":     "Admin-panel - Ratings",
 		"activeTab": "ratings",
 	})
 }
@@ -471,7 +457,7 @@ func (a *AdminPanel) ratingDetails(c *gin.Context) {
 	year, err := strconv.Atoi(c.Param("year"))
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"title": "Помилка",
+			"title": "Error",
 			"error": "Невірний рік",
 		})
 		return
@@ -480,7 +466,7 @@ func (a *AdminPanel) ratingDetails(c *gin.Context) {
 	week, err := strconv.Atoi(c.Param("week"))
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"title": "Помилка",
+			"title": "Error",
 			"error": "Невірний тиждень",
 		})
 		return
@@ -490,7 +476,7 @@ func (a *AdminPanel) ratingDetails(c *gin.Context) {
 	ratings, err := a.repo.GetWeeklyRating(year, week, 100)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Помилка",
+			"title": "Error",
 			"error": err.Error(),
 		})
 		return
@@ -507,8 +493,8 @@ func (a *AdminPanel) ratingDetails(c *gin.Context) {
 		}
 	}
 
-	c.HTML(http.StatusOK, "rating_details.html", gin.H{
-		"title":     fmt.Sprintf("Адмін-панель - Рейтинг %d/%d", year, week),
+	c.HTML(http.StatusOK, "rating_details", gin.H{
+		"title":     fmt.Sprintf("Admin-panel - Rating %d/%d", year, week),
 		"ratings":   ratings,
 		"year":      year,
 		"week":      week,
@@ -522,13 +508,13 @@ func (a *AdminPanel) distributeRatingPrizes(c *gin.Context) {
 	// Отримуємо рік і тиждень
 	year, err := strconv.Atoi(c.Param("year"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірний рік"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Wrong year"})
 		return
 	}
 
 	week, err := strconv.Atoi(c.Param("week"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірний тиждень"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Wrong week"})
 		return
 	}
 
@@ -581,8 +567,8 @@ func (a *AdminPanel) superRatingsList(c *gin.Context) {
 	// Отримуємо список супер-рейтингів
 	// Тут потрібно додати метод для отримання списку супер-рейтингів
 
-	c.HTML(http.StatusOK, "super_ratings.html", gin.H{
-		"title":     "Адмін-панель - Супер-рейтинги",
+	c.HTML(http.StatusOK, "super_ratings", gin.H{
+		"title":     "Admin-panel - Super-ratings",
 		"activeTab": "super_ratings",
 	})
 }
@@ -596,14 +582,14 @@ func (a *AdminPanel) superRatingDetails(c *gin.Context) {
 	ratings, err := a.repo.GetSuperRating(period, 100)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Помилка",
+			"title": "Error",
 			"error": err.Error(),
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "super_rating_details.html", gin.H{
-		"title":     fmt.Sprintf("Адмін-панель - Супер-рейтинг %s", period),
+	c.HTML(http.StatusOK, "super_rating_details", gin.H{
+		"title":     fmt.Sprintf("Admin-panel - Super-rating %s", period),
 		"ratings":   ratings,
 		"period":    period,
 		"activeTab": "super_ratings",
@@ -616,14 +602,14 @@ func (a *AdminPanel) withdrawalsList(c *gin.Context) {
 	withdrawals, err := a.repo.GetPendingWithdrawals()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Помилка",
+			"title": "Error",
 			"error": err.Error(),
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "withdrawals.html", gin.H{
-		"title":       "Адмін-панель - Виведення коштів",
+	c.HTML(http.StatusOK, "withdrawals", gin.H{
+		"title":       "Admin-panel - Withdrawals",
 		"withdrawals": withdrawals,
 		"activeTab":   "withdrawals",
 	})
@@ -691,14 +677,14 @@ func (a *AdminPanel) settingsPage(c *gin.Context) {
 	settings, err := a.service.GetSettings()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Помилка",
+			"title": "Error",
 			"error": err.Error(),
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "settings.html", gin.H{
-		"title":     "Адмін-панель - Налаштування",
+	c.HTML(http.StatusOK, "settings", gin.H{
+		"title":     "Admin-panel - Налаштування",
 		"settings":  settings,
 		"activeTab": "settings",
 	})
@@ -725,8 +711,8 @@ func (a *AdminPanel) localizationsList(c *gin.Context) {
 	// Отримуємо список локалізацій
 	// Тут потрібно додати метод для отримання списку локалізацій
 
-	c.HTML(http.StatusOK, "localizations.html", gin.H{
-		"title":     "Адмін-панель - Локалізації",
+	c.HTML(http.StatusOK, "localizations", gin.H{
+		"title":     "Admin-panel - Localizations",
 		"activeTab": "localizations",
 	})
 }
@@ -739,8 +725,8 @@ func (a *AdminPanel) localizationEdit(c *gin.Context) {
 	// Отримуємо локалізації для всіх мов
 	// Тут потрібно додати метод для отримання локалізацій для ключа
 
-	c.HTML(http.StatusOK, "localization_edit.html", gin.H{
-		"title":     fmt.Sprintf("Адмін-панель - Локалізація %s", key),
+	c.HTML(http.StatusOK, "localization_edit", gin.H{
+		"title":     fmt.Sprintf("Admin-panel - Localization %s", key),
 		"key":       key,
 		"activeTab": "localizations",
 	})
