@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"time"
-
 	"roulette/internal/models"
 
 	"gorm.io/gorm"
@@ -79,87 +77,6 @@ type PostgresRepository struct {
 // NewRepository створює новий екземпляр репозиторію
 func NewRepository(db *gorm.DB) Repository {
 	return &PostgresRepository{db: db}
-}
-
-// Реалізація методів для користувачів
-
-func (r *PostgresRepository) CreateUser(user *models.User) error {
-	tx := r.db.Begin()
-
-	if err := tx.Create(user).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	// Створюємо статистику для користувача
-	stats := &models.UserStats{
-		UserID:    user.ID,
-		LastReset: time.Now(),
-	}
-
-	if err := tx.Create(stats).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit().Error
-}
-
-func (r *PostgresRepository) GetUserByTelegramID(telegramID int64) (*models.User, error) {
-	var user models.User
-	err := r.db.Where("telegram_id = ?", telegramID).First(&user).Error
-
-	// Перевіряємо, чи помилка є "record not found"
-	if err == gorm.ErrRecordNotFound {
-		// Повертаємо помилку, але не викликаємо panic
-		return nil, err
-	} else if err != nil {
-		// Інша помилка
-		return nil, err
-	}
-
-	return &user, nil
-}
-
-func (r *PostgresRepository) UpdateUser(user *models.User) error {
-	return r.db.Save(user).Error
-}
-
-func (r *PostgresRepository) GetUserCount() (int64, error) {
-	var count int64
-	if err := r.db.Model(&models.User{}).Count(&count).Error; err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
-func (r *PostgresRepository) GetUserStats(userID uint) (*models.UserStats, error) {
-	var stats models.UserStats
-	err := r.db.Where("user_id = ?", userID).First(&stats).Error
-
-	// Якщо статистики немає, створюємо нову
-	if err == gorm.ErrRecordNotFound {
-		stats = models.UserStats{
-			UserID:    userID,
-			LastReset: time.Now(),
-		}
-		if err := r.db.Create(&stats).Error; err != nil {
-			return nil, err
-		}
-		return &stats, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	return &stats, nil
-}
-
-func (r *PostgresRepository) UpdateUserStats(stats *models.UserStats) error {
-	return r.db.Save(stats).Error
-}
-
-func (r *PostgresRepository) ResetDailyBets() error {
-	return r.db.Model(&models.User{}).Update("today_bets", 0).Error
 }
 
 // Реалізація методів для ігор і ставок
@@ -359,57 +276,6 @@ func (r *PostgresRepository) UpdateSuperRating(rating *models.SuperRating) error
 	return r.db.Save(rating).Error
 }
 
-// Реалізація методів для налаштувань
-
-func (r *PostgresRepository) GetSetting(key string) (*models.Setting, error) {
-	var setting models.Setting
-	if err := r.db.Where("key = ?", key).First(&setting).Error; err != nil {
-		return nil, err
-	}
-	return &setting, nil
-}
-
-func (r *PostgresRepository) UpdateSetting(key string, value string) error {
-	return r.db.Model(&models.Setting{}).Where("key = ?", key).
-		Update("value", value).Error
-}
-
-// Реалізація методів для локалізацій
-
-func (r *PostgresRepository) GetLocalization(key string, language string) (string, error) {
-	var loc models.Localization
-	err := r.db.Where("key = ? AND language = ?", key, language).First(&loc).Error
-	if err != nil {
-		// Якщо локалізація не знайдена для вказаної мови, спробуємо знайти англійську
-		if language != "en" {
-			return r.GetLocalization(key, "en")
-		}
-		return "", err
-	}
-	return loc.Value, nil
-}
-
-func (r *PostgresRepository) SetLocalization(key string, language string, value string) error {
-	var loc models.Localization
-	err := r.db.Where("key = ? AND language = ?", key, language).First(&loc).Error
-
-	if err == gorm.ErrRecordNotFound {
-		// Створюємо нову локалізацію
-		loc = models.Localization{
-			Key:      key,
-			Language: language,
-			Value:    value,
-		}
-		return r.db.Create(&loc).Error
-	} else if err != nil {
-		return err
-	}
-
-	// Оновлюємо існуючу локалізацію
-	loc.Value = value
-	return r.db.Save(&loc).Error
-}
-
 // Реалізація методів для призових фондів
 
 func (r *PostgresRepository) GetPrizeFund(year, week int) (*models.PrizeFund, error) {
@@ -463,83 +329,6 @@ func (r *PostgresRepository) GetUserNotifications(userID uint, limit int) ([]mod
 func (r *PostgresRepository) MarkNotificationAsRead(id uint) error {
 	return r.db.Model(&models.Notification{}).Where("id = ?", id).
 		Update("read", true).Error
-}
-
-// Реалізація методів для виведення коштів
-
-func (r *PostgresRepository) CreateWithdrawal(withdrawal *models.Withdrawal) error {
-	return r.db.Create(withdrawal).Error
-}
-
-func (r *PostgresRepository) GetPendingWithdrawals() ([]models.Withdrawal, error) {
-	var withdrawals []models.Withdrawal
-	if err := r.db.Where("status = ?", "pending").
-		Preload("User").
-		Find(&withdrawals).Error; err != nil {
-		return nil, err
-	}
-	return withdrawals, nil
-}
-
-func (r *PostgresRepository) UpdateWithdrawalStatus(id uint, status string) error {
-	return r.db.Model(&models.Withdrawal{}).Where("id = ?", id).
-		Update("status", status).Error
-}
-
-// GetUsers отримує список користувачів з пагінацією
-func (r *PostgresRepository) GetUsers(page, perPage int) ([]models.User, int64, error) {
-	var users []models.User
-	var totalCount int64
-
-	// Отримуємо загальну кількість користувачів
-	if err := r.db.Model(&models.User{}).Count(&totalCount).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// Отримуємо користувачів з пагінацією
-	offset := (page - 1) * perPage
-	if err := r.db.Offset(offset).Limit(perPage).Order("created_at desc").Find(&users).Error; err != nil {
-		return nil, 0, err
-	}
-
-	return users, totalCount, nil
-}
-
-// GetUserByID отримує користувача за його ID
-func (r *PostgresRepository) GetUserByID(id uint) (*models.User, error) {
-	var user models.User
-	if err := r.db.First(&user, id).Error; err != nil {
-		return nil, err
-	}
-	return &user, nil
-}
-
-// GetWithdrawalByID отримує запит на виведення коштів за його ID
-func (r *PostgresRepository) GetWithdrawalByID(id uint) (*models.Withdrawal, error) {
-	var withdrawal models.Withdrawal
-	if err := r.db.First(&withdrawal, id).Error; err != nil {
-		return nil, err
-	}
-	return &withdrawal, nil
-}
-
-// SaveHashEntry зберігає запис хешу в базу даних
-func (r *PostgresRepository) SaveHashEntry(entry *models.HashEntry) error {
-	return r.db.Create(entry).Error
-}
-
-// GetHashEntries отримує записи хешів з бази даних з пагінацією
-func (r *PostgresRepository) GetHashEntries(offset, limit int) ([]models.HashEntry, error) {
-	var entries []models.HashEntry
-	err := r.db.Order("id desc").Offset(offset).Limit(limit).Find(&entries).Error
-	return entries, err
-}
-
-// CountHashEntries підраховує загальну кількість записів хешів
-func (r *PostgresRepository) CountHashEntries() (int64, error) {
-	var count int64
-	err := r.db.Model(&models.HashEntry{}).Count(&count).Error
-	return count, err
 }
 
 // Close закриває з'єднання з базою даних

@@ -6,6 +6,40 @@ import (
 	"gorm.io/gorm"
 )
 
+func (r *PostgresRepository) GetLocalization(key string, language string) (string, error) {
+	var loc models.Localization
+	err := r.db.Where("key = ? AND language = ?", key, language).First(&loc).Error
+	if err != nil {
+		// Якщо локалізація не знайдена для вказаної мови, спробуємо знайти англійську
+		if language != "en" {
+			return r.GetLocalization(key, "en")
+		}
+		return "", err
+	}
+	return loc.Value, nil
+}
+
+func (r *PostgresRepository) SetLocalization(key string, language string, value string) error {
+	var loc models.Localization
+	err := r.db.Where("key = ? AND language = ?", key, language).First(&loc).Error
+
+	if err == gorm.ErrRecordNotFound {
+		// Створюємо нову локалізацію
+		loc = models.Localization{
+			Key:      key,
+			Language: language,
+			Value:    value,
+		}
+		return r.db.Create(&loc).Error
+	} else if err != nil {
+		return err
+	}
+
+	// Оновлюємо існуючу локалізацію
+	loc.Value = value
+	return r.db.Save(&loc).Error
+}
+
 // GetAllLocalizationsForLanguage получает все локализации для указанного языка
 func (r *PostgresRepository) GetAllLocalizationsForLanguage(language string) ([]models.Localization, error) {
 	var localizations []models.Localization
