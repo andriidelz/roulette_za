@@ -85,8 +85,6 @@ func (h *GameHandler) startRoundCheckLoop() {
 
 				// Если у нас был предыдущий раунд и есть ожидающие игроки
 				if oldRound != nil && len(h.waitingPlayers) > 0 {
-					log.Printf("===== ROUND CHANGE DETECTED: %d -> %d with %d waiting players =====",
-						oldRound.ID, currentRound.ID, len(h.waitingPlayers))
 
 					// Создаем копии данных для обработки результатов
 					waitingPlayersToProcess := make(map[int64]bool, len(h.waitingPlayers))
@@ -103,12 +101,15 @@ func (h *GameHandler) startRoundCheckLoop() {
 						log.Printf("Copying bet %s for player %d", bet, userID)
 					}
 
-					// Запускаем обработку результатов для предыдущего раунда в отдельной горутине
+					// Обрабатываем результаты синхронно перед обновлением текущего раунда
 					roundIDToProcess := oldRound.ID
-					go func(roundID uint, players map[int64]bool, bets map[int64]models.BetOption) {
-						log.Printf("Starting to process results for round #%d", roundID)
-						h.processRoundResults(roundID, players, bets)
-					}(roundIDToProcess, waitingPlayersToProcess, activeBetsToProcess)
+					h.mutex.Unlock() // Разблокируем мьютекс перед обработкой результатов
+
+					// Обрабатываем результаты предыдущего раунда
+					h.processRoundResults(roundIDToProcess, waitingPlayersToProcess, activeBetsToProcess)
+
+					// Снова блокируем мьютекс для обновления состояния
+					h.mutex.Lock()
 				}
 
 				// Обновляем текущий раунд
@@ -120,15 +121,19 @@ func (h *GameHandler) startRoundCheckLoop() {
 				notifiedFive = false
 
 				// Очищаем карты только если раунд изменился
-				log.Printf("Clearing waiting players and active bets maps")
 				h.waitingPlayers = make(map[int64]bool)
 				h.activeBets = make(map[int64]models.BetOption)
 
-				// Уведомляем активных игроков о новом раунде
-				log.Printf("Notifying active players about new round #%d", currentRound.ID)
 				// Создаем копию для передачи в горутину, чтобы избежать race condition
 				roundInfo := currentRound
-				go h.notifyActivePlayers(roundInfo)
+				h.mutex.Unlock() // Разблокируем мьютекс перед уведомлением
+
+				// Уведомляем активных игроков о новом раунде ПОСЛЕ обработки результатов
+				log.Printf("Notifying active players about new round #%d", roundInfo.ID)
+				h.notifyActivePlayers(roundInfo)
+
+				// Снова блокируем мьютекс для оставшейся части цикла
+				h.mutex.Lock()
 			} else if lastRoundID != currentRound.ID {
 				// Иногда раунд может не обновиться в h.currentRound, но изменилось lastRoundID
 				log.Printf("Round changed but not detected in mutex: lastRoundID=%d, currentRound.ID=%d",
@@ -246,7 +251,6 @@ func (h *GameHandler) notifyTimeRemaining(round *models.HashEntry, seconds int) 
 
 // HandleNewRound обрабатывает событие нового раунда (вызывается из ротатора)
 func (h *GameHandler) HandleNewRound(hashEntry *models.HashEntry) {
-	log.Printf("=========== HandleNewRound called for round #%d ===========", hashEntry.ID)
 
 	// Создадим локальные копии данных перед изменением
 	var previousRound *models.HashEntry
@@ -295,9 +299,6 @@ func (h *GameHandler) HandleNewRound(hashEntry *models.HashEntry) {
 			len(h.waitingPlayers), previousRound == nil)
 	}
 
-	// Обновляем текущий раунд
-	h.currentRound = hashEntry
-
 	// Очищаем карты для нового раунда
 	h.waitingPlayers = make(map[int64]bool)
 	h.activeBets = make(map[int64]models.BetOption)
@@ -308,26 +309,34 @@ func (h *GameHandler) HandleNewRound(hashEntry *models.HashEntry) {
 	log.Printf("After unlock: previousRound=%v, waitingPlayersToProcess=%d",
 		previousRound != nil, len(waitingPlayersToProcess))
 
-	// Обрабатываем результаты предыдущего раунда, если он был
+	// Обрабатываем результаты предыдущего раунда ПЕРЕД обновлением текущего раунда
 	if previousRound != nil && waitingPlayersToProcess != nil && len(waitingPlayersToProcess) > 0 {
 		log.Printf("Calling processRoundResults for previous round #%d with %d waiting players",
 			previousRound.ID, len(waitingPlayersToProcess))
 
-		// Запускаем обработку в отдельной горутине
-		go h.processRoundResults(previousRound.ID, waitingPlayersToProcess, activeBetsToProcess)
+		// Обрабатываем результаты синхронно
+		h.processRoundResults(previousRound.ID, waitingPlayersToProcess, activeBetsToProcess)
 	} else {
 		log.Printf("Skipping processing results: previousRound=%v, waitingPlayersToProcess=%v",
 			previousRound != nil, waitingPlayersToProcess != nil && len(waitingPlayersToProcess) > 0)
 	}
 
-	log.Printf("New round #%d started with hash %s", hashEntry.ID, hashEntry.Hash)
-	log.Printf("=========== End of HandleNewRound for round #%d ===========", hashEntry.ID)
+	// Теперь, после обработки результатов, обновляем текущий раунд
+	h.mutex.Lock()
+	h.currentRound = hashEntry
+	h.mutex.Unlock()
+
+	log.Printf("New round #%s started with hash %s", utils.ToBase62(hashEntry.ID), hashEntry.Hash)
+
+	// Задержка перед уведомлением о новом раунде
+	time.Sleep(1 * time.Second)
+
+	// Уведомляем о новом раунде ПОСЛЕ обработки результатов
+	h.notifyActivePlayers(hashEntry)
 }
 
 // processRoundResults обрабатывает результаты раунда
 func (h *GameHandler) processRoundResults(roundID uint, waitingPlayers map[int64]bool, activeBets map[int64]models.BetOption) {
-	log.Printf("=========== processRoundResults called for round #%d with %d waiting players ===========",
-		roundID, len(waitingPlayers))
 
 	// Выводим список всех ожидающих игроков
 	if len(waitingPlayers) > 0 {
@@ -414,8 +423,6 @@ func (h *GameHandler) processRoundResults(roundID uint, waitingPlayers map[int64
 			}
 		}(userID, bet)
 	}
-
-	log.Printf("=========== End of processRoundResults for round #%d ===========", roundID)
 }
 
 // notifyPlayerAboutResult уведомляет игрока о результате раунда
