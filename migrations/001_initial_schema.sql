@@ -15,21 +15,27 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Ігри
-CREATE TABLE IF NOT EXISTS games (
+-- Хеши (раунды игры)
+CREATE TABLE IF NOT EXISTS hash_entries (
     id SERIAL PRIMARY KEY,
-    result VARCHAR(10) NOT NULL,
+    number BIGINT NOT NULL,
+    salt_hex VARCHAR(64) NOT NULL,
     hash VARCHAR(64) NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    is_completed BOOLEAN DEFAULT FALSE,
+    revealed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    deleted_at TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_games_hash ON games (hash);
+CREATE INDEX IF NOT EXISTS idx_hash_entries_hash ON hash_entries (hash);
+CREATE INDEX IF NOT EXISTS idx_hash_entries_is_completed ON hash_entries (is_completed);
 
 -- Ставки
 CREATE TABLE IF NOT EXISTS bets (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(id),
-    game_id INT NOT NULL REFERENCES games(id),
+    hash_entry_id INT NOT NULL REFERENCES hash_entries(id),
     option VARCHAR(10) NOT NULL,
     won BOOLEAN DEFAULT FALSE,
     points INT DEFAULT 0,
@@ -37,7 +43,7 @@ CREATE TABLE IF NOT EXISTS bets (
 );
 
 CREATE INDEX IF NOT EXISTS idx_bets_user_id ON bets (user_id);
-CREATE INDEX IF NOT EXISTS idx_bets_game_id ON bets (game_id);
+CREATE INDEX IF NOT EXISTS idx_bets_hash_entry_id ON bets (hash_entry_id);
 
 -- Статистика користувача
 CREATE TABLE IF NOT EXISTS user_stats (
@@ -497,15 +503,19 @@ INSERT INTO localizations (key, language, value) VALUES
     ('btn_bet_zero_locked', 'ru', '🔒 Зеро (заблокировано)'),
     ('btn_back', 'ru', '◀️ Назад');
 
--- Таблиця для хешів
-CREATE TABLE IF NOT EXISTS hash_entries (
-    id SERIAL PRIMARY KEY,
-    number BIGINT NOT NULL,
-    salt_hex VARCHAR(64) NOT NULL,
-    hash VARCHAR(64) NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    deleted_at TIMESTAMP
-);
+-- Добавление новых локализаций для верификации результатов
+INSERT INTO localizations (key, language, value) VALUES
+    ('round_info', 'uk', 'Раунд #%s\nХеш: %s'),
+    ('verification_info', 'uk', 'Перевірка результату:\nРаунд #%s\nЧисло: %d\nСіль: %s\nХеш: %s'),
+    ('new_round', 'uk', 'Почався новий раунд #%s\nХеш: %s\n\nЗробіть вашу ставку:');
 
-CREATE INDEX IF NOT EXISTS idx_hash_entries_hash ON hash_entries (hash);
+INSERT INTO localizations (key, language, value) VALUES
+    ('round_info', 'en', 'Round #%s\nHash: %s'),
+    ('verification_info', 'en', 'Result verification:\nRound #%s\nNumber: %d\nSalt: %s\nHash: %s'),
+    ('new_round', 'en', 'New round #%s started\nHash: %s\n\nMake your bet:');
+
+INSERT INTO localizations (key, language, value) VALUES
+    ('round_info', 'ru', 'Раунд #%s\nХеш: %s'),
+    ('verification_info', 'ru', 'Проверка результата:\nРаунд #%s\nЧисло: %d\nСоль: %s\nХеш: %s'),
+    ('new_round', 'ru', 'Начался новый раунд #%s\nХеш: %s\n\nСделайте вашу ставку:');
+    

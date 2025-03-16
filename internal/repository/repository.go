@@ -2,6 +2,7 @@ package repository
 
 import (
 	"roulette/internal/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -18,11 +19,10 @@ type Repository interface {
 	ResetDailyBets() error
 
 	// Ігри і ставки
-	CreateGame(game *models.Game) error
-	GetLastGame() (*models.Game, error)
 	CreateBet(bet *models.Bet) error
 	GetUserBets(userID uint, limit int) ([]models.Bet, error)
 	GetUserBetsCount(userID uint) (int, error)
+	UpdateBet(bet *models.Bet) error
 
 	// Рейтинги
 	GetWeeklyRating(year, week int, limit int) ([]models.WeeklyRating, error)
@@ -66,6 +66,13 @@ type Repository interface {
 	SaveHashEntry(entry *models.HashEntry) error
 	GetHashEntries(offset, limit int) ([]models.HashEntry, error)
 	CountHashEntries() (int64, error)
+	GetCurrentHashEntry() (*models.HashEntry, error)
+	CreateHashEntry(entry *models.HashEntry) error
+	CompleteHashEntry(id uint, revealedAt time.Time) error
+	GetHashEntryByID(id uint) (*models.HashEntry, error)
+	GetBetsByHashEntryID(hashEntryID uint) ([]models.Bet, error)
+	GetActiveHashEntry() (*models.HashEntry, error)
+	GetUserBetsForHashEntry(userID, hashEntryID uint) ([]models.Bet, error)
 
 	Close() error
 }
@@ -80,24 +87,6 @@ func NewRepository(db *gorm.DB) Repository {
 }
 
 // Реалізація методів для ігор і ставок
-
-func (r *PostgresRepository) CreateGame(game *models.Game) error {
-	return r.db.Create(game).Error
-}
-
-func (r *PostgresRepository) GetLastGame() (*models.Game, error) {
-	var game models.Game
-	err := r.db.Order("created_at desc").First(&game).Error
-
-	// Якщо ігор ще немає, повертаємо nil без помилки
-	if err == gorm.ErrRecordNotFound {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	return &game, nil
-}
 
 func (r *PostgresRepository) CreateBet(bet *models.Bet) error {
 	tx := r.db.Begin()

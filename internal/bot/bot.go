@@ -9,6 +9,7 @@ import (
 
 	"roulette/internal/models"
 	"roulette/internal/service"
+	"roulette/internal/utils"
 
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
@@ -193,7 +194,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	// Обработка текстовых сообщений (не команд)
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
 
 	// Получаем локализованные тексты для кнопок
@@ -224,7 +225,8 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			})
 		}
 	case btnBackText:
-		// Возврат в главное меню
+		// Возврат в главное меню и удаление из активных игроков
+		b.gameHandler.HandleBackButton(user.ID)
 		b.handleHelpCommand(message)
 	default:
 		// Обработка других текстовых сообщений
@@ -258,7 +260,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.handleBackToMainMenu(query)
 	default:
 		// Неизвестный callback
-		b.answerCallbackQuery(query.ID, "Невідома дія", true)
+		b.answerCallbackQuery(query.ID, "Unknown action", true)
 	}
 }
 
@@ -272,14 +274,14 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 	if err != nil {
 		log.Printf("Error registering user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: "Помилка при реєстрації. Спробуйте ще раз.",
+			Text: "Error while registering. Please try again.",
 		})
 		return
 	}
 
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk" // Украинский по умолчанию
+		language = "en" // Украинский по умолчанию
 	}
 
 	// Получаем локализированные тексты приветствия и помощи
@@ -297,11 +299,21 @@ func (b *Bot) handleHelpCommand(message *telego.Message) {
 	user := message.From
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
 
 	// Получаем локализированный текст помощи
 	helpText := b.service.GetText("help", language)
+
+	// Получаем информацию о текущем раунде, если он есть
+	currentRound, err := b.service.GetCurrentRound()
+	if err == nil {
+		// Добавляем информацию о текущем раунде
+		roundInfoTemplate := b.service.GetText("round_info", language)
+		roundID := utils.ToBase62(uint(currentRound.ID))
+		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
+		helpText += roundInfo
+	}
 
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          helpText,
@@ -313,7 +325,7 @@ func (b *Bot) handleProfileCommand(message *telego.Message) {
 	user := message.From
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
 
 	// Получаем информацию о пользователе и его статистику
@@ -321,7 +333,7 @@ func (b *Bot) handleProfileCommand(message *telego.Message) {
 	if err != nil {
 		log.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: "Помилка при отриманні профілю. Спробуйте ще раз.",
+			Text: "Error retrieving profile. Please try again.",
 		})
 		return
 	}
@@ -350,6 +362,16 @@ func (b *Bot) handleProfileCommand(message *telego.Message) {
 		stats.TotalPoints,
 	)
 
+	// Получаем информацию о текущем раунде, если он есть
+	currentRound, err := b.service.GetCurrentRound()
+	if err == nil {
+		// Добавляем информацию о текущем раунде
+		roundInfoTemplate := b.service.GetText("round_info", language)
+		roundID := utils.ToBase62(uint(currentRound.ID))
+		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
+		profileText += roundInfo
+	}
+
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          profileText,
 		ReplyKeyboard: b.createMainReplyKeyboard(language),
@@ -360,7 +382,7 @@ func (b *Bot) handleStatsCommand(message *telego.Message) {
 	user := message.From
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
 
 	// Получаем статистику пользователя
@@ -368,7 +390,7 @@ func (b *Bot) handleStatsCommand(message *telego.Message) {
 	if err != nil {
 		log.Printf("Error getting user stats: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: "Помилка при отриманні статистики. Спробуйте ще раз.",
+			Text: "Error retrieving statistics. Please try again.",
 		})
 		return
 	}
@@ -387,6 +409,16 @@ func (b *Bot) handleStatsCommand(message *telego.Message) {
 		stats.TotalPoints,
 	)
 
+	// Получаем информацию о текущем раунде, если он есть
+	currentRound, err := b.service.GetCurrentRound()
+	if err == nil {
+		// Добавляем информацию о текущем раунде
+		roundInfoTemplate := b.service.GetText("round_info", language)
+		roundID := utils.ToBase62(uint(currentRound.ID))
+		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
+		statsText += roundInfo
+	}
+
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          statsText,
 		ReplyKeyboard: b.createMainReplyKeyboard(language),
@@ -394,20 +426,56 @@ func (b *Bot) handleStatsCommand(message *telego.Message) {
 }
 
 func (b *Bot) handleRatingCommand(message *telego.Message) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
 	// Обработка команды рейтинга
 	// Добавить позже логику получения и отображения рейтинга
+	ratingText := "The rating system is under development."
+
+	// Получаем информацию о текущем раунде, если он есть
+	currentRound, err := b.service.GetCurrentRound()
+	if err == nil {
+		// Добавляем информацию о текущем раунде
+		roundInfoTemplate := b.service.GetText("round_info", language)
+		roundID := utils.ToBase62(uint(currentRound.ID))
+		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
+		ratingText += roundInfo
+	}
+
 	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          "Рейтингова система знаходиться у розробці.",
-		ReplyKeyboard: b.createMainReplyKeyboard(message.From.LanguageCode),
+		Text:          ratingText,
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
 	})
 }
 
 func (b *Bot) handleSuperRatingCommand(message *telego.Message) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
 	// Обработка команды супер-рейтинга
 	// Добавить позже логику получения и отображения супер-рейтинга
+	superRatingText := "The super-rating system is under development."
+
+	// Получаем информацию о текущем раунде, если он есть
+	currentRound, err := b.service.GetCurrentRound()
+	if err == nil {
+		// Добавляем информацию о текущем раунде
+		roundInfoTemplate := b.service.GetText("round_info", language)
+		roundID := utils.ToBase62(uint(currentRound.ID))
+		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
+		superRatingText += roundInfo
+	}
+
 	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          "Система супер-рейтингу знаходиться у розробці.",
-		ReplyKeyboard: b.createMainReplyKeyboard(message.From.LanguageCode),
+		Text:          superRatingText,
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
 	})
 }
 
@@ -415,7 +483,7 @@ func (b *Bot) handleBalanceCommand(message *telego.Message) {
 	user := message.From
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
 
 	// Получаем информацию о пользователе для проверки баланса
@@ -423,7 +491,7 @@ func (b *Bot) handleBalanceCommand(message *telego.Message) {
 	if err != nil {
 		log.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: "Помилка при отриманні балансу. Спробуйте ще раз.",
+			Text: "Error retrieving balance. Please try again.",
 		})
 		return
 	}
@@ -441,6 +509,16 @@ func (b *Bot) handleBalanceCommand(message *telego.Message) {
 		balanceText = fmt.Sprintf(balanceTemplate, dbUser.Balance)
 	}
 
+	// Получаем информацию о текущем раунде, если он есть
+	currentRound, err := b.service.GetCurrentRound()
+	if err == nil {
+		// Добавляем информацию о текущем раунде
+		roundInfoTemplate := b.service.GetText("round_info", language)
+		roundID := utils.ToBase62(uint(currentRound.ID))
+		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
+		balanceText += roundInfo
+	}
+
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          balanceText,
 		ReplyKeyboard: b.createMainReplyKeyboard(language),
@@ -451,7 +529,7 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 	user := message.From
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
 
 	// Получаем информацию о пользователе для проверки баланса
@@ -459,7 +537,7 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 	if err != nil {
 		log.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: "Помилка при отриманні даних. Спробуйте ще раз.",
+			Text: "Error retrieving data. Please try again.",
 		})
 		return
 	}
@@ -476,6 +554,16 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 		withdrawText = fmt.Sprintf(withdrawTemplate, dbUser.Balance)
 	}
 
+	// Получаем информацию о текущем раунде, если он есть
+	currentRound, err := b.service.GetCurrentRound()
+	if err == nil {
+		// Добавляем информацию о текущем раунде
+		roundInfoTemplate := b.service.GetText("round_info", language)
+		roundID := utils.ToBase62(uint(currentRound.ID))
+		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
+		withdrawText += roundInfo
+	}
+
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          withdrawText,
 		ReplyKeyboard: b.createMainReplyKeyboard(language),
@@ -486,11 +574,21 @@ func (b *Bot) handleFAQCommand(message *telego.Message) {
 	user := message.From
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
 
 	// Получаем локализированный текст FAQ
 	faqText := b.service.GetText("faq", language)
+
+	// Получаем информацию о текущем раунде, если он есть
+	currentRound, err := b.service.GetCurrentRound()
+	if err == nil {
+		// Добавляем информацию о текущем раунде
+		roundInfoTemplate := b.service.GetText("round_info", language)
+		roundID := utils.ToBase62(uint(currentRound.ID))
+		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
+		faqText += roundInfo
+	}
 
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          faqText,
@@ -502,14 +600,26 @@ func (b *Bot) handleUnknownCommand(message *telego.Message) {
 	user := message.From
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
 
 	// Отправляем сообщение о неизвестной команде и подсказку
 	helpText := b.service.GetText("help", language)
 
+	// Получаем информацию о текущем раунде, если он есть
+	currentRound, err := b.service.GetCurrentRound()
+	if err == nil {
+		// Добавляем информацию о текущем раунде
+		roundInfoTemplate := b.service.GetText("round_info", language)
+		roundID := utils.ToBase62(uint(currentRound.ID))
+		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
+		helpText = fmt.Sprintf("Unknown command.\n\n%s%s", helpText, roundInfo)
+	} else {
+		helpText = fmt.Sprintf("Unknown command.\n\n%s", helpText)
+	}
+
 	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          fmt.Sprintf("Невідома команда. %s", helpText),
+		Text:          helpText,
 		ReplyKeyboard: b.createMainReplyKeyboard(language),
 	})
 }
@@ -518,7 +628,7 @@ func (b *Bot) handleGenericMessage(message *telego.Message) {
 	user := message.From
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
 
 	// Обработка обычного текстового сообщения
@@ -526,6 +636,16 @@ func (b *Bot) handleGenericMessage(message *telego.Message) {
 
 	// По умолчанию отправляем главное меню
 	helpText := b.service.GetText("help", language)
+
+	// Получаем информацию о текущем раунде, если он есть
+	currentRound, err := b.service.GetCurrentRound()
+	if err == nil {
+		// Добавляем информацию о текущем раунде
+		roundInfoTemplate := b.service.GetText("round_info", language)
+		roundID := utils.ToBase62(uint(currentRound.ID))
+		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
+		helpText += roundInfo
+	}
 
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          helpText,
@@ -539,11 +659,21 @@ func (b *Bot) handleBackToMainMenu(query *telego.CallbackQuery) {
 	user := query.From
 	language := user.LanguageCode
 	if language == "" {
-		language = "uk"
+		language = "en"
 	}
 
 	// Получаем локализированный текст помощи
 	helpText := b.service.GetText("help", language)
+
+	// Получаем информацию о текущем раунде, если он есть
+	currentRound, err := b.service.GetCurrentRound()
+	if err == nil {
+		// Добавляем информацию о текущем раунде
+		roundInfoTemplate := b.service.GetText("round_info", language)
+		roundID := utils.ToBase62(uint(currentRound.ID))
+		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
+		helpText += roundInfo
+	}
 
 	// Обновляем сообщение или отправляем новое
 	if query.Message != nil {

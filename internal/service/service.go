@@ -1,10 +1,8 @@
 package service
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"roulette/internal/models"
@@ -19,16 +17,24 @@ type Service interface {
 	GetUser(telegramID int64) (*models.User, error)
 	GetUserStats(telegramID int64) (*models.UserStats, error)
 
-	// Гра
-	MakeBet(telegramID int64, option models.BetOption) (*models.Game, *models.Bet, error)
+	// Гра та раунди
+	MakeBet(telegramID int64, option models.BetOption) error
 	GetUserBets(telegramID int64, limit int) ([]models.Bet, error)
 	CanBetZero(telegramID int64) (bool, int, error)
+	GetCurrentRound() (*models.HashEntry, error)
+	StartNewRound() (*models.HashEntry, error)
+	StartNewRoundFromRotator() (*models.HashEntry, error)
+	CompleteRound(hashEntryID uint) error
+	GetRoundResult(hashEntryID uint) (models.BetOption, error)
+	ProcessBets(hashEntryID uint) error
+	GetUserBetsForRound(telegramID int64, hashEntryID uint) ([]models.Bet, error)
+	GetHashEntryByID(id uint) (*models.HashEntry, error)
 
 	// Рейтинги
-	// GetWeeklyRating(limit int) ([]models.WeeklyRating, error)
-	// GetUserPosition(telegramID int64) (int, error)
-	// GetSuperRating(limit int) ([]models.SuperRating, error)
-	// UpdateWeeklyRatings() error
+	GetWeeklyRating(limit int) ([]models.WeeklyRating, error)
+	GetUserPosition(telegramID int64) (int, error)
+	GetSuperRating(limit int) ([]models.SuperRating, error)
+	UpdateWeeklyRatings() error
 	DistributePrizes() error
 
 	// Налаштування та локалізація
@@ -36,17 +42,9 @@ type Service interface {
 	GetSettings() (map[string]string, error)
 	UpdateSetting(key, value string) error
 
-	// Сповіщення та робота з рахунком
-	// AddNotification(telegramID int64, notificationType string, message string) error
-	// GetNotifications(telegramID int64, limit int) ([]models.Notification, error)
-	// RequestWithdrawal(telegramID int64, amount float64, wallet string) error
-
-	GenerateHashEntry() (*models.HashEntry, error)
+	// Хеші та історія раундів
 	GetHashEntries(page, limit int) ([]models.HashEntry, int, error)
 	GetLatestHashEntry() (*models.HashEntry, error)
-
-	SaveGame(game *models.Game) error
-	SaveBet(bet *models.Bet) error
 }
 
 type ServiceImpl struct {
@@ -108,73 +106,224 @@ func (s *ServiceImpl) GetUserStats(telegramID int64) (*models.UserStats, error) 
 	return s.repo.GetUserStats(user.ID)
 }
 
-// Реалізація методів для гри
+// Реалізація методів для гри та раундів
 
-func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) (*models.Game, *models.Bet, error) {
-	user, err := s.repo.GetUserByTelegramID(telegramID)
+// GetCurrentRound получает текущий активный раунд
+func (s *ServiceImpl) GetCurrentRound() (*models.HashEntry, error) {
+	return s.repo.GetActiveHashEntry()
+}
+
+// StartNewRound создает новый раунд и завершает предыдущий
+func (s *ServiceImpl) StartNewRound() (*models.HashEntry, error) {
+	return s.repo.GetActiveHashEntry()
+}
+
+// StartNewRoundFromRotator создает новый раунд (только для ротатора)
+func (s *ServiceImpl) StartNewRoundFromRotator() (*models.HashEntry, error) {
+	// Проверяем, есть ли активный раунд
+	currentRound, err := s.repo.GetActiveHashEntry()
 	if err != nil {
-		return nil, nil, err
+		// Если ошибка - "запись не найдена", это нормально для первого запуска
+		if err.Error() == "record not found" {
+			// Продолжаем выполнение для создания первого раунда
+		} else {
+			// Если другая ошибка - возвращаем её
+			return nil, err
+		}
+	} else {
+		// Если активный раунд найден, завершаем его
+		err = s.CompleteRound(currentRound.ID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// Перевіряємо, чи може користувач зробити ставку на Zero
+	// Генерируем новый хеш для нового раунда
+	randomNumber := utils.GenerateRandomNumber(37)
+	salt := utils.GenerateSalt()
+	saltHEX := hex.EncodeToString(salt)
+	hash := utils.CreateHash(randomNumber, salt)
+
+	// Создаем новый запись
+	entry := &models.HashEntry{
+		Number:      randomNumber,
+		SaltHEX:     saltHEX,
+		Hash:        hash,
+		IsCompleted: false,
+	}
+
+	// Сохраняем в базу данных
+	err = s.repo.CreateHashEntry(entry)
+	if err != nil {
+		return nil, err
+	}
+
+	return entry, nil
+}
+
+// CompleteRound завершает текущий раунд и обрабатывает ставки
+func (s *ServiceImpl) CompleteRound(hashEntryID uint) error {
+	// Получаем данные о раунде
+	round, err := s.repo.GetHashEntryByID(hashEntryID)
+	if err != nil {
+		return err
+	}
+
+	// Если раунд уже завершен, возвращаем ошибку
+	if round.IsCompleted {
+		return fmt.Errorf("round %d is already completed", hashEntryID)
+	}
+
+	// Обрабатываем ставки
+	err = s.ProcessBets(hashEntryID)
+	if err != nil {
+		return err
+	}
+
+	// Помечаем раунд как завершенный
+	return s.repo.CompleteHashEntry(hashEntryID, time.Now())
+}
+
+// GetRoundResult получает результат раунда (цвет)
+func (s *ServiceImpl) GetRoundResult(hashEntryID uint) (models.BetOption, error) {
+	round, err := s.repo.GetHashEntryByID(hashEntryID)
+	if err != nil {
+		return "", err
+	}
+
+	// Определяем результат по числу
+	if round.Number == 0 {
+		return models.Zero, nil
+	}
+
+	// Определяем красное или черное
+	redNumbers := []int64{1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
+	for _, n := range redNumbers {
+		if round.Number == n {
+			return models.Red, nil
+		}
+	}
+	return models.Black, nil
+}
+
+// ProcessBets обрабатывает все ставки для завершенного раунда
+func (s *ServiceImpl) ProcessBets(hashEntryID uint) error {
+	// Получаем все ставки для этого раунда
+	bets, err := s.repo.GetBetsByHashEntryID(hashEntryID)
+	if err != nil {
+		return err
+	}
+
+	// Получаем результат раунда
+	result, err := s.GetRoundResult(hashEntryID)
+	if err != nil {
+		return err
+	}
+
+	// Обрабатываем каждую ставку
+	for _, bet := range bets {
+		// Определяем, выиграла ли ставка
+		won := bet.Option == result
+
+		// Рассчитываем количество полученных баллов
+		points := 0
+		if won {
+			if result == models.Zero {
+				points = 10
+			} else {
+				points = 1
+			}
+		}
+
+		// Обновляем ставку
+		bet.Won = won
+		bet.Points = points
+		if err := s.repo.UpdateBet(&bet); err != nil {
+			return err
+		}
+
+		// Обновляем статистику пользователя
+		stats, err := s.repo.GetUserStats(bet.UserID)
+		if err != nil {
+			return err
+		}
+
+		stats.TotalBets++
+		stats.DailyBets++
+		stats.WeeklyBets++
+		stats.MonthlyBets++
+
+		if won {
+			stats.WonBets++
+			stats.TotalPoints += points
+			stats.DailyPoints += points
+			stats.WeeklyPoints += points
+			stats.MonthlyPoints += points
+		}
+
+		if err := s.repo.UpdateUserStats(stats); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// MakeBet делает ставку в текущем раунде
+func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
+	// Получаем пользователя
+	user, err := s.repo.GetUserByTelegramID(telegramID)
+	if err != nil {
+		return err
+	}
+
+	// Получаем текущий раунд
+	currentRound, err := s.repo.GetActiveHashEntry()
+	if err != nil {
+		return err
+	}
+
+	// Проверяем, может ли пользователь делать ставку на Zero
 	if option == models.Zero {
 		canBetZero, _, err := s.CanBetZero(telegramID)
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 
 		if !canBetZero {
-			return nil, nil, fmt.Errorf("cannot bet on zero yet")
+			return fmt.Errorf("cannot bet on zero yet")
 		}
 	}
 
-	// Генеруємо результат гри
-	result := s.generateGameResult()
-
-	// Створюємо хеш для верифікації результату
-	hash := s.generateHash(result)
-
-	// Створюємо нову гру
-	game := &models.Game{
-		Result:    result,
-		Hash:      hash,
-		CreatedAt: time.Now(),
+	// Проверяем, не делал ли пользователь уже ставку в этом раунде
+	existingBets, err := s.repo.GetUserBetsForHashEntry(user.ID, currentRound.ID)
+	if err != nil {
+		return err
 	}
 
-	if err := s.repo.CreateGame(game); err != nil {
-		return nil, nil, err
+	if len(existingBets) > 0 {
+		return fmt.Errorf("user has already made a bet in this round")
 	}
 
-	// Визначаємо, чи виграв користувач
-	won := option == result
-
-	// Розраховуємо кількість балів
-	points := 0
-	if won {
-		if result == models.Zero {
-			points = 10
-		} else {
-			points = 1
-		}
-	}
-
-	// Створюємо ставку
+	// Создаем новую ставку
 	bet := &models.Bet{
-		UserID:    user.ID,
-		GameID:    game.ID,
-		Option:    option,
-		Won:       won,
-		Points:    points,
-		CreatedAt: time.Now(),
+		UserID:      user.ID,
+		HashEntryID: currentRound.ID,
+		Option:      option,
+		CreatedAt:   time.Now(),
 	}
 
-	if err := s.repo.CreateBet(bet); err != nil {
-		return nil, nil, err
+	// Увеличиваем счетчик ставок за день
+	user.TodayBets++
+	if err := s.repo.UpdateUser(user); err != nil {
+		return err
 	}
 
-	return game, bet, nil
+	// Сохраняем ставку
+	return s.repo.CreateBet(bet)
 }
 
+// GetUserBets получает историю ставок пользователя
 func (s *ServiceImpl) GetUserBets(telegramID int64, limit int) ([]models.Bet, error) {
 	user, err := s.repo.GetUserByTelegramID(telegramID)
 	if err != nil {
@@ -184,6 +333,7 @@ func (s *ServiceImpl) GetUserBets(telegramID int64, limit int) ([]models.Bet, er
 	return s.repo.GetUserBets(user.ID, limit)
 }
 
+// CanBetZero проверяет, может ли пользователь делать ставку на Zero
 func (s *ServiceImpl) CanBetZero(telegramID int64) (bool, int, error) {
 	user, err := s.repo.GetUserByTelegramID(telegramID)
 	if err != nil {
@@ -200,25 +350,19 @@ func (s *ServiceImpl) CanBetZero(telegramID int64) (bool, int, error) {
 	return false, dailyBetsLimit - user.TodayBets, nil
 }
 
-// Генерація результату гри
-func (s *ServiceImpl) generateGameResult() models.BetOption {
-	rand.Seed(time.Now().UnixNano())
-	roll := rand.Intn(37) + 1 // 1-37
-
-	if roll == 37 {
-		return models.Zero
-	} else if roll%2 == 0 {
-		return models.Red
-	} else {
-		return models.Black
+// GetUserBetsForRound получает ставки пользователя для конкретного раунда
+func (s *ServiceImpl) GetUserBetsForRound(telegramID int64, hashEntryID uint) ([]models.Bet, error) {
+	user, err := s.repo.GetUserByTelegramID(telegramID)
+	if err != nil {
+		return nil, err
 	}
+
+	return s.repo.GetUserBetsForHashEntry(user.ID, hashEntryID)
 }
 
-// Генерація хешу для верифікації
-func (s *ServiceImpl) generateHash(result models.BetOption) string {
-	data := fmt.Sprintf("%s_%d", result, time.Now().UnixNano())
-	hash := sha256.Sum256([]byte(data))
-	return fmt.Sprintf("%x", hash)
+// GetHashEntryByID получает запись хеша (раунд) по ID
+func (s *ServiceImpl) GetHashEntryByID(id uint) (*models.HashEntry, error) {
+	return s.repo.GetHashEntryByID(id)
 }
 
 // Реалізація методів для рейтингів
@@ -297,7 +441,7 @@ func (s *ServiceImpl) DistributePrizes() error {
 		}
 
 		// Зараховуємо приз на баланс користувача
-		user, err := s.repo.GetUserByTelegramID(rating.User.TelegramID)
+		user, err := s.repo.GetUserByID(rating.UserID)
 		if err != nil {
 			return err
 		}
@@ -345,93 +489,9 @@ func (s *ServiceImpl) UpdateSetting(key, value string) error {
 	return s.repo.UpdateSetting(key, value)
 }
 
-// Реалізація методів для сповіщень та роботи з рахунком
+// Реалізація методів для хешів та історії раундів
 
-func (s *ServiceImpl) AddNotification(telegramID int64, notificationType string, message string) error {
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return err
-	}
-
-	notification := &models.Notification{
-		UserID:    user.ID,
-		Type:      notificationType,
-		Message:   message,
-		CreatedAt: time.Now(),
-	}
-
-	return s.repo.CreateNotification(notification)
-}
-
-func (s *ServiceImpl) GetNotifications(telegramID int64, limit int) ([]models.Notification, error) {
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.repo.GetUserNotifications(user.ID, limit)
-}
-
-func (s *ServiceImpl) RequestWithdrawal(telegramID int64, amount float64, wallet string) error {
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return err
-	}
-
-	if user.Balance < amount {
-		return fmt.Errorf("insufficient balance")
-	}
-
-	// Створюємо запит на виведення коштів
-	withdrawal := &models.Withdrawal{
-		UserID:    user.ID,
-		Amount:    amount,
-		Status:    "pending",
-		Wallet:    wallet,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	// Знімаємо кошти з балансу
-	user.Balance -= amount
-	if err := s.repo.UpdateUser(user); err != nil {
-		return err
-	}
-
-	return s.repo.CreateWithdrawal(withdrawal)
-}
-
-// GenerateHashEntry генерує новий запис хешу та зберігає його в базу даних
-func (s *ServiceImpl) GenerateHashEntry() (*models.HashEntry, error) {
-	// Генеруємо випадкове число від 0 до 36
-	randomNumber := utils.GenerateRandomNumber(37)
-
-	// Генеруємо сіль
-	salt := utils.GenerateSalt()
-	saltHEX := hex.EncodeToString(salt)
-
-	// Створюємо хеш
-	hash := utils.CreateHash(randomNumber, salt)
-
-	// Створюємо новий запис
-	entry := &models.HashEntry{
-		Number:  randomNumber,
-		SaltHEX: saltHEX,
-		Hash:    hash,
-	}
-
-	// Зберігаємо в базу даних
-	err := s.repo.SaveHashEntry(entry)
-	if err != nil {
-		return nil, err
-	}
-
-	// log.Printf("Generated hash: %s, number: %d, color: %s", hash, randomNumber, utils.GetColorForNumber(randomNumber))
-
-	return entry, nil
-}
-
-// GetHashEntries отримує записи хешів з пагінацією
+// GetHashEntries возвращает хеши с пагинацией
 func (s *ServiceImpl) GetHashEntries(page, limit int) ([]models.HashEntry, int, error) {
 	offset := (page - 1) * limit
 
@@ -462,14 +522,4 @@ func (s *ServiceImpl) GetLatestHashEntry() (*models.HashEntry, error) {
 	}
 
 	return &entries[0], nil
-}
-
-// SaveGame сохраняет информацию об игре в БД
-func (s *ServiceImpl) SaveGame(game *models.Game) error {
-	return s.repo.CreateGame(game)
-}
-
-// SaveBet сохраняет информацию о ставке в БД
-func (s *ServiceImpl) SaveBet(bet *models.Bet) error {
-	return s.repo.CreateBet(bet)
 }

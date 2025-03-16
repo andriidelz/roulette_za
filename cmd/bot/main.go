@@ -43,8 +43,6 @@ func main() {
 		log.Fatalf("Failed to create bot: %v", err)
 	}
 
-	// Удалены строки создания и запуска ротатора
-
 	// Запускаем бота
 	if err := telegramBot.Start(); err != nil {
 		log.Fatalf("Failed to start bot: %v", err)

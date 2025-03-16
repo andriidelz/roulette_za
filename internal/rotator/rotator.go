@@ -2,17 +2,15 @@ package rotator
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"roulette/internal/models"
 	"roulette/internal/service"
-	"roulette/internal/utils"
 	"time"
 )
 
 // Интерфейс для уведомления о новом хеше
 type HashChangeNotifier interface {
-	HandleNewHash(hashEntry *models.HashEntry)
+	HandleNewRound(hashEntry *models.HashEntry)
 }
 
 // Settings содержит настройки ротатора
@@ -20,7 +18,7 @@ type Settings struct {
 	Interval time.Duration
 }
 
-// Rotator отвечает за периодическую генерацию хешей
+// Rotator отвечает за периодическую генерацию хешей и смену раундов
 type Rotator struct {
 	service    service.Service
 	interval   time.Duration
@@ -46,7 +44,7 @@ func (r *Rotator) RegisterNotifier(notifier HashChangeNotifier) {
 	r.notifiers = append(r.notifiers, notifier)
 }
 
-// Start запускает процесс периодической генерации хешей
+// Start запускает процесс периодической смены раундов
 func (r *Rotator) Start() {
 	log.Printf("Starting hash rotator with interval: %s", r.interval)
 
@@ -54,9 +52,12 @@ func (r *Rotator) Start() {
 	defer ticker.Stop()
 
 	// Генерируем первый хеш сразу
-	entry := r.generateAndLogHash()
-	if entry != nil {
-		r.notifyAll(entry)
+	newRound, err := r.service.StartNewRoundFromRotator()
+	if err != nil {
+		log.Printf("Error starting initial round: %v", err)
+	} else {
+		log.Printf("Created initial round #%d", newRound.ID)
+		r.notifyAll(newRound)
 	}
 
 	for {
@@ -65,10 +66,16 @@ func (r *Rotator) Start() {
 			log.Println("Hash rotator stopped")
 			return
 		case <-ticker.C:
-			entry := r.generateAndLogHash()
-			if entry != nil {
-				r.notifyAll(entry)
+			// Генерируем новый хеш и завершаем текущий раунд
+			newRound, err := r.service.StartNewRoundFromRotator()
+			if err != nil {
+				log.Printf("Error starting new round: %v", err)
+				continue
 			}
+
+			log.Printf("Created new round #%d", newRound.ID)
+			// Уведомляем всех обработчиков о новом раунде
+			r.notifyAll(newRound)
 		}
 	}
 }
@@ -79,32 +86,9 @@ func (r *Rotator) Stop() {
 	r.cancelFunc()
 }
 
-// generateAndLogHash генерирует новый хеш и выводит информацию в лог
-func (r *Rotator) generateAndLogHash() *models.HashEntry {
-	entry, err := r.service.GenerateHashEntry()
-	if err != nil {
-		log.Printf("Error generating hash: %v", err)
-		return nil
-	}
-
-	// Подготовка данных для рамки
-	orderedData := []utils.KeyValue{
-		{Key: "ID/Base62", Value: fmt.Sprintf("%d/%s", entry.ID, utils.ToBase62(entry.ID))},
-		{Key: "Hash", Value: entry.Hash},
-		{Key: "Color", Value: utils.GetColorForNumber(entry.Number)},
-		{Key: "Number", Value: fmt.Sprintf("%d", entry.Number)},
-		{Key: "Salt (HEX)", Value: entry.SaltHEX},
-	}
-
-	// Выведение рамки с данными в заданном порядке
-	utils.PrintOrderedTextInFrame(orderedData, utils.DoubleBorderFrameStyle())
-
-	return entry
-}
-
-// notifyAll уведомляет всех зарегистрированных обработчиков о новом хеше
+// notifyAll уведомляет всех зарегистрированных обработчиков о новом раунде
 func (r *Rotator) notifyAll(entry *models.HashEntry) {
 	for _, notifier := range r.notifiers {
-		go notifier.HandleNewHash(entry)
+		go notifier.HandleNewRound(entry)
 	}
 }

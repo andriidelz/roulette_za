@@ -1,4 +1,4 @@
-.PHONY: build run run-bot run-admin migrate clean docker docker-up docker-down
+.PHONY: build run run-bot run-admin run-rotator migrate migrate-update clean docker docker-up docker-down test init
 
 # Збірка
 build:
@@ -7,7 +7,7 @@ build:
 	go build -o bin/roulette-rotator ./cmd/rotator/main.go
 
 # Запуск
-run: run-bot run-admin
+run: run-bot run-admin run-rotator
 
 run-bot:
 	go run ./cmd/bot/main.go
@@ -21,6 +21,10 @@ run-rotator:
 # Міграції
 migrate:
 	PGPASSWORD=postgres psql -h localhost -U postgres -d roulette -f migrations/001_initial_schema.sql
+
+# Застосування міграції оновлення схеми
+migrate-update:
+	PGPASSWORD=postgres psql -h localhost -U postgres -d roulette -f migrations/002_update_schema.sql
 
 # Очистка
 clean:
@@ -47,4 +51,3 @@ init:
 	mkdir -p bin
 	mkdir -p web/static
 	@echo "Ініціалізація завершена. Відредагуйте файл .env і запустіть 'make migrate'"
-

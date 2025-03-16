@@ -30,25 +30,28 @@ type User struct {
 	UpdatedAt    time.Time
 }
 
-// Гра (рунд)
-type Game struct {
-	ID        uint      `gorm:"primaryKey"`
-	Result    BetOption `gorm:"size:10"`
-	Hash      string    `gorm:"size:64;index"` // Хеш для верифікації
-	CreatedAt time.Time
+// HashEntry представляє запис хешу (раунд) в базі даних
+type HashEntry struct {
+	gorm.Model
+	Number      int64      // Випадкове число (0-36)
+	SaltHEX     string     // Сіль у шістнадцятковому форматі
+	Hash        string     // Хеш, обчислений на основі числа та солі
+	IsCompleted bool       `gorm:"default:false"` // Завершен ли раунд
+	RevealedAt  *time.Time // Время раскрытия результата
+	Bets        []Bet      `gorm:"foreignKey:HashEntryID"` // Ставки в этом раунде
 }
 
 // Ставка користувача
 type Bet struct {
-	ID        uint      `gorm:"primaryKey"`
-	UserID    uint      `gorm:"index"`
-	User      User      `gorm:"foreignKey:UserID"`
-	GameID    uint      `gorm:"index"`
-	Game      Game      `gorm:"foreignKey:GameID"`
-	Option    BetOption `gorm:"size:10"`
-	Won       bool      `gorm:"default:false"`
-	Points    int       `gorm:"default:0"` // Отримані бали
-	CreatedAt time.Time
+	ID          uint      `gorm:"primaryKey"`
+	UserID      uint      `gorm:"index"`
+	User        User      `gorm:"foreignKey:UserID"`
+	HashEntryID uint      `gorm:"index"` // ID раунда (hash_entry)
+	HashEntry   HashEntry `gorm:"foreignKey:HashEntryID"`
+	Option      BetOption `gorm:"size:10"`
+	Won         bool      `gorm:"default:false"`
+	Points      int       `gorm:"default:0"` // Отримані бали
+	CreatedAt   time.Time
 }
 
 // Статистика користувача
@@ -149,12 +152,4 @@ type Withdrawal struct {
 	Wallet    string `gorm:"size:255"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
-}
-
-// HashEntry представляє запис хешу в базі даних
-type HashEntry struct {
-	gorm.Model
-	Number  int64  // Випадкове число (0-36)
-	SaltHEX string // Сіль у шістнадцятковому форматі
-	Hash    string // Хеш, обчислений на основі числа та солі
 }
