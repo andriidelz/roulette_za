@@ -406,16 +406,6 @@ func (b *Bot) handleProfileCommand(message *telego.Message) {
 		stats.TotalPoints,
 	)
 
-	// Получаем информацию о текущем раунде, если он есть
-	currentRound, err := b.service.GetCurrentRound()
-	if err == nil {
-		// Добавляем информацию о текущем раунде
-		roundInfoTemplate := b.service.GetText("round_info", language)
-		roundID := utils.ToBase62(uint(currentRound.ID))
-		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
-		profileText += roundInfo
-	}
-
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          profileText,
 		ReplyKeyboard: b.createMainReplyKeyboard(language),
@@ -453,16 +443,6 @@ func (b *Bot) handleStatsCommand(message *telego.Message) {
 		stats.TotalPoints,
 	)
 
-	// Получаем информацию о текущем раунде, если он есть
-	currentRound, err := b.service.GetCurrentRound()
-	if err == nil {
-		// Добавляем информацию о текущем раунде
-		roundInfoTemplate := b.service.GetText("round_info", language)
-		roundID := utils.ToBase62(uint(currentRound.ID))
-		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
-		statsText += roundInfo
-	}
-
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          statsText,
 		ReplyKeyboard: b.createMainReplyKeyboard(language),
@@ -480,16 +460,6 @@ func (b *Bot) handleRatingCommand(message *telego.Message) {
 	// Добавить позже логику получения и отображения рейтинга
 	ratingText := "The rating system is under development."
 
-	// Получаем информацию о текущем раунде, если он есть
-	currentRound, err := b.service.GetCurrentRound()
-	if err == nil {
-		// Добавляем информацию о текущем раунде
-		roundInfoTemplate := b.service.GetText("round_info", language)
-		roundID := utils.ToBase62(uint(currentRound.ID))
-		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
-		ratingText += roundInfo
-	}
-
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          ratingText,
 		ReplyKeyboard: b.createMainReplyKeyboard(language),
@@ -506,16 +476,6 @@ func (b *Bot) handleSuperRatingCommand(message *telego.Message) {
 	// Обработка команды супер-рейтинга
 	// Добавить позже логику получения и отображения супер-рейтинга
 	superRatingText := "The super-rating system is under development."
-
-	// Получаем информацию о текущем раунде, если он есть
-	currentRound, err := b.service.GetCurrentRound()
-	if err == nil {
-		// Добавляем информацию о текущем раунде
-		roundInfoTemplate := b.service.GetText("round_info", language)
-		roundID := utils.ToBase62(uint(currentRound.ID))
-		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
-		superRatingText += roundInfo
-	}
 
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          superRatingText,
@@ -553,16 +513,6 @@ func (b *Bot) handleBalanceCommand(message *telego.Message) {
 		balanceText = fmt.Sprintf(balanceTemplate, dbUser.Balance)
 	}
 
-	// Получаем информацию о текущем раунде, если он есть
-	currentRound, err := b.service.GetCurrentRound()
-	if err == nil {
-		// Добавляем информацию о текущем раунде
-		roundInfoTemplate := b.service.GetText("round_info", language)
-		roundID := utils.ToBase62(uint(currentRound.ID))
-		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
-		balanceText += roundInfo
-	}
-
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          balanceText,
 		ReplyKeyboard: b.createMainReplyKeyboard(language),
@@ -596,16 +546,6 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 	} else {
 		withdrawTemplate := b.service.GetText("withdrawlow", language)
 		withdrawText = fmt.Sprintf(withdrawTemplate, dbUser.Balance)
-	}
-
-	// Получаем информацию о текущем раунде, если он есть
-	currentRound, err := b.service.GetCurrentRound()
-	if err == nil {
-		// Добавляем информацию о текущем раунде
-		roundInfoTemplate := b.service.GetText("round_info", language)
-		roundID := utils.ToBase62(uint(currentRound.ID))
-		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
-		withdrawText += roundInfo
 	}
 
 	b.SendMessage(message.Chat.ID, MessageOptions{

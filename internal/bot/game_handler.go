@@ -129,7 +129,6 @@ func (h *GameHandler) startRoundCheckLoop() {
 				h.mutex.Unlock() // Разблокируем мьютекс перед уведомлением
 
 				// Уведомляем активных игроков о новом раунде ПОСЛЕ обработки результатов
-				log.Printf("Notifying active players about new round #%d", roundInfo.ID)
 				h.notifyActivePlayers(roundInfo)
 
 				// Снова блокируем мьютекс для оставшейся части цикла
