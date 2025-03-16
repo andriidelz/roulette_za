@@ -1,6 +1,6 @@
 -- migrations/001_initial_schema.sql
 
--- Користувачі
+-- Пользователи
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     telegram_id BIGINT UNIQUE NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS bets (
 CREATE INDEX IF NOT EXISTS idx_bets_user_id ON bets (user_id);
 CREATE INDEX IF NOT EXISTS idx_bets_hash_entry_id ON bets (hash_entry_id);
 
--- Статистика користувача
+-- Статистика пользователя
 CREATE TABLE IF NOT EXISTS user_stats (
     id SERIAL PRIMARY KEY,
     user_id INT UNIQUE NOT NULL REFERENCES users(id),
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS user_stats (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Тижневий рейтинг
+-- Недельный рейтинг
 CREATE TABLE IF NOT EXISTS weekly_ratings (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(id),
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS super_ratings (
 CREATE INDEX IF NOT EXISTS idx_super_ratings_user_id ON super_ratings (user_id);
 CREATE INDEX IF NOT EXISTS idx_super_ratings_period ON super_ratings (period);
 
--- Налаштування
+-- Настройки
 CREATE TABLE IF NOT EXISTS settings (
     id SERIAL PRIMARY KEY,
     key VARCHAR(255) UNIQUE NOT NULL,
@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS settings (
     description TEXT
 );
 
--- Локалізації
+-- Локализации
 CREATE TABLE IF NOT EXISTS localizations (
     id SERIAL PRIMARY KEY,
     key VARCHAR(255) NOT NULL,
@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS localizations (
 CREATE INDEX IF NOT EXISTS idx_localizations_key ON localizations (key);
 CREATE INDEX IF NOT EXISTS idx_localizations_language ON localizations (language);
 
--- Призові фонди
+-- Призовые фонды
 CREATE TABLE IF NOT EXISTS prize_funds (
     id SERIAL PRIMARY KEY,
     week INT NOT NULL,
@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS prize_funds (
 CREATE INDEX IF NOT EXISTS idx_prize_funds_week ON prize_funds (week);
 CREATE INDEX IF NOT EXISTS idx_prize_funds_year ON prize_funds (year);
 
--- Сповіщення
+-- Уведомления
 CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(id),
@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications (user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications (type);
 
--- Виведення коштів
+-- Вывод средств
 CREATE TABLE IF NOT EXISTS withdrawals (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(id),
@@ -163,14 +163,14 @@ CREATE TABLE IF NOT EXISTS withdrawals (
 CREATE INDEX IF NOT EXISTS idx_withdrawals_user_id ON withdrawals (user_id);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals (status);
 
--- Базові налаштування
+-- Базовые настройки
 INSERT INTO settings (key, value, default_value, description) VALUES
-    ('daily_bets_limit', '100', '100', 'Ліміт ставок за день для можливості ставити на zero'),
-    ('weekly_prize_amount', '1000', '1000', 'Сума тижневого призового фонду'),
-    ('weekly_prize_top', '100', '100', 'Кількість призових місць у тижневому рейтингу'),
-    ('minimum_withdrawal', '10', '10', 'Мінімальна сума для виведення коштів');
+    ('daily_bets_limit', '100', '100', 'Лимит ставок за день для возможности ставить на zero'),
+    ('weekly_prize_amount', '1000', '1000', 'Сумма недельного призового фонда'),
+    ('weekly_prize_top', '100', '100', 'Количество призовых мест в недельном рейтинге'),
+    ('minimum_withdrawal', '10', '10', 'Минимальная сумма для вывода средств');
 
--- Базовые локализации украинской (с литеральными переносами строк)
+-- Локализации на украинском языке
 INSERT INTO localizations (key, language, value) VALUES
     ('welcome', 'uk', 'Вітаємо у боті рулетки! Тут ви можете робити ставки на червоне, чорне або зеро і змагатися за місце в рейтингу.'),
     
@@ -253,11 +253,11 @@ INSERT INTO localizations (key, language, value) VALUES
     ('zero_limit', 'uk', 'Ви ще не можете поставити на Zerо, яке може принести 10 балів в рейтинг. Залишилось сьогодні зробити ще %d ставок. До цього моменту випадення Zero зараховується для вас програшем'),
     
     ('nomorebids', 'uk', 'Ставки прийняті! Ставок більше немає!'),
-    ('nextbid15', 'uk', 'Раунд #%d
+    ('nextbid15', 'uk', 'Раунд #%s
 До наступного визначення ставки залишилось 15 секунд.
 
 Зробіть свій вибір'),
-    ('nextbid5', 'uk', 'Раунд #%d
+    ('nextbid5', 'uk', 'Раунд #%s
 До наступного визначення ставки залишилось 5 секунд.
 
 Зробіть свій вибір'),
@@ -268,6 +268,7 @@ INSERT INTO localizations (key, language, value) VALUES
     
     ('bet_error', 'uk', 'Помилка при ставці. Спробуйте ще раз.'),
     ('error', 'uk', 'Сталася помилка. Спробуйте ще раз пізніше.'),
+    ('bet_already_made', 'uk', 'Ви вже зробили ставку в цьому раунді. Дочекайтеся результату.'),
     
     ('btn_play', 'uk', '🎮 Грати'),
     ('btn_profile', 'uk', '👤 Профіль'),
@@ -279,9 +280,13 @@ INSERT INTO localizations (key, language, value) VALUES
     ('btn_bet_black', 'uk', '⚫ Чорне'),
     ('btn_bet_zero', 'uk', '0️⃣ Зеро'),
     ('btn_bet_zero_locked', 'uk', '🔒 Зеро (заблоковано)'),
-    ('btn_back', 'uk', '◀️ Назад');
+    ('btn_back', 'uk', '◀️ Назад'),
+    
+    ('round_info', 'uk', 'Раунд #%s\nХеш: %s'),
+    ('verification_info', 'uk', 'Перевірка результату:\nРаунд #%s\nЧисло: %d\nСіль: %s\nХеш: %s'),
+    ('new_round', 'uk', 'Почався новий раунд #%s\nХеш: %s\n\nЗробіть вашу ставку:');
 
--- Базовые локализации английской (с литеральными переносами строк)
+-- Локализации на английском языке
 INSERT INTO localizations (key, language, value) VALUES
     ('welcome', 'en', 'Welcome to the Roulette Bot! Here you can bet on red, black or zero and compete for a place in the rating.'),
     
@@ -364,11 +369,11 @@ Choose your next bet:'),
     ('zero_limit', 'en', 'You cannot bet on Zero yet, which can bring 10 points to the rating. You need to make %d more bets today. Until then, if Zero comes up, it counts as a loss for you'),
     
     ('nomorebids', 'en', 'Bets accepted! No more bets!'),
-    ('nextbid15', 'en', 'Round #%d
+    ('nextbid15', 'en', 'Round #%s
 There are 15 seconds left until the next bet determination.
 
 Make your choice'),
-    ('nextbid5', 'en', 'Round #%d
+    ('nextbid5', 'en', 'Round #%s
 There are 5 seconds left until the next bet determination.
 
 Make your choice'),
@@ -379,6 +384,7 @@ Make your choice'),
     
     ('bet_error', 'en', 'Error when betting. Please try again.'),
     ('error', 'en', 'An error occurred. Please try again later.'),
+    ('bet_already_made', 'en', 'You have already made a bet in this round. Please wait for the result.'),
     
     ('btn_play', 'en', '🎮 Play'),
     ('btn_profile', 'en', '👤 Profile'),
@@ -390,9 +396,13 @@ Make your choice'),
     ('btn_bet_black', 'en', '⚫ Black'),
     ('btn_bet_zero', 'en', '0️⃣ Zero'),
     ('btn_bet_zero_locked', 'en', '🔒 Zero (locked)'),
-    ('btn_back', 'en', '◀️ Back');
+    ('btn_back', 'en', '◀️ Back'),
+    
+    ('round_info', 'en', 'Round #%s\nHash: %s'),
+    ('verification_info', 'en', 'Result verification:\nRound #%s\nNumber: %d\nSalt: %s\nHash: %s'),
+    ('new_round', 'en', 'New round #%s started\nHash: %s\n\nMake your bet:');
 
--- Локализации на русском языке (с литеральными переносами строк)
+-- Локализации на русском языке
 INSERT INTO localizations (key, language, value) VALUES
     ('welcome', 'ru', 'Добро пожаловать в бот рулетки! Здесь вы можете делать ставки на красное, черное или зеро и соревноваться за место в рейтинге.'),
     
@@ -475,11 +485,11 @@ INSERT INTO localizations (key, language, value) VALUES
     ('zero_limit', 'ru', 'Вы еще не можете поставить на Зеро, которое может принести 10 баллов в рейтинг. Осталось сегодня сделать еще %d ставок. До этого момента выпадение Zero засчитывается для вас проигрышем'),
     
     ('nomorebids', 'ru', 'Ставки приняты! Ставок больше нет!'),
-    ('nextbid15', 'ru', 'Раунд #%d
+    ('nextbid15', 'ru', 'Раунд #%s
 До следующего определения ставки осталось 15 секунд.
 
 Сделайте свой выбор'),
-    ('nextbid5', 'ru', 'Раунд #%d
+    ('nextbid5', 'ru', 'Раунд #%s
 До следующего определения ставки осталось 5 секунд.
 
 Сделайте свой выбор'),
@@ -490,6 +500,7 @@ INSERT INTO localizations (key, language, value) VALUES
     
     ('bet_error', 'ru', 'Ошибка при ставке. Попробуйте еще раз.'),
     ('error', 'ru', 'Произошла ошибка. Попробуйте еще раз позже.'),
+    ('bet_already_made', 'ru', 'Вы уже сделали ставку в этом раунде. Дождитесь результата.'),
     
     ('btn_play', 'ru', '🎮 Играть'),
     ('btn_profile', 'ru', '👤 Профиль'),
@@ -501,21 +512,8 @@ INSERT INTO localizations (key, language, value) VALUES
     ('btn_bet_black', 'ru', '⚫ Черное'),
     ('btn_bet_zero', 'ru', '0️⃣ Зеро'),
     ('btn_bet_zero_locked', 'ru', '🔒 Зеро (заблокировано)'),
-    ('btn_back', 'ru', '◀️ Назад');
-
--- Добавление новых локализаций для верификации результатов
-INSERT INTO localizations (key, language, value) VALUES
-    ('round_info', 'uk', 'Раунд #%s\nХеш: %s'),
-    ('verification_info', 'uk', 'Перевірка результату:\nРаунд #%s\nЧисло: %d\nСіль: %s\nХеш: %s'),
-    ('new_round', 'uk', 'Почався новий раунд #%s\nХеш: %s\n\nЗробіть вашу ставку:');
-
-INSERT INTO localizations (key, language, value) VALUES
-    ('round_info', 'en', 'Round #%s\nHash: %s'),
-    ('verification_info', 'en', 'Result verification:\nRound #%s\nNumber: %d\nSalt: %s\nHash: %s'),
-    ('new_round', 'en', 'New round #%s started\nHash: %s\n\nMake your bet:');
-
-INSERT INTO localizations (key, language, value) VALUES
+    ('btn_back', 'ru', '◀️ Назад'),
+    
     ('round_info', 'ru', 'Раунд #%s\nХеш: %s'),
     ('verification_info', 'ru', 'Проверка результата:\nРаунд #%s\nЧисло: %d\nСоль: %s\nХеш: %s'),
     ('new_round', 'ru', 'Начался новый раунд #%s\nХеш: %s\n\nСделайте вашу ставку:');
-    

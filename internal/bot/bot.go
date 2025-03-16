@@ -143,6 +143,57 @@ func (b *Bot) handleUpdate(update telego.Update) {
 	}
 }
 
+// MakeBet делает ставку в текущем раунде
+func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
+	// Получаем пользователя для определения языка
+	user, userErr := b.service.GetUser(userID)
+	if userErr != nil {
+		log.Printf("Error getting user %d: %v", userID, userErr)
+		return
+	}
+
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Вызываем MakeBet и обрабатываем возможные ошибки
+	err := b.gameHandler.MakeBet(userID, option)
+	if err != nil {
+		// Определяем тип ошибки и отправляем соответствующее сообщение
+		var errorText string
+		if strings.Contains(err.Error(), "already made a bet") {
+			// Пользователь уже сделал ставку в этом раунде
+			errorText = b.service.GetText("bet_already_made", language)
+		} else if strings.Contains(err.Error(), "cannot bet on zero") {
+			// Пользователь не может ставить на Zero
+			canBetZero, remaining, _ := b.service.CanBetZero(userID)
+			if !canBetZero {
+				zeroLimitText := b.service.GetText("zero_limit", language)
+				errorText = fmt.Sprintf(zeroLimitText, remaining)
+			} else {
+				errorText = b.service.GetText("bet_error", language)
+			}
+		} else {
+			// Общая ошибка ставки
+			errorText = b.service.GetText("bet_error", language)
+		}
+
+		b.SendMessage(userID, MessageOptions{
+			Text:          errorText,
+			ReplyKeyboard: b.gameHandler.createBetKeyboard(language, userID),
+		})
+		return
+	}
+
+	// Если ставка успешно сделана, отправляем сообщение о принятии ставки
+	nomorebidsText := b.service.GetText("nomorebids", language)
+	b.SendMessage(userID, MessageOptions{
+		Text:          nomorebidsText,
+		ReplyKeyboard: b.gameHandler.createBetKeyboard(language, userID),
+	})
+}
+
 // handleMessage обрабатывает сообщения
 func (b *Bot) handleMessage(message *telego.Message) {
 	user := message.From
@@ -207,11 +258,11 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	// Обработка ставок по тексту кнопки
 	switch text {
 	case btnRedText:
-		b.gameHandler.MakeBet(user.ID, models.Red)
+		b.handleMakeBet(user.ID, models.Red)
 	case btnBlackText:
-		b.gameHandler.MakeBet(user.ID, models.Black)
+		b.handleMakeBet(user.ID, models.Black)
 	case btnZeroText:
-		b.gameHandler.MakeBet(user.ID, models.Zero)
+		b.handleMakeBet(user.ID, models.Zero)
 	case btnZeroLockedText:
 		// Обработка нажатия на заблокированную кнопку Zero
 		canBetZero, remaining, _ := b.service.CanBetZero(user.ID)
@@ -251,11 +302,14 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	// Обработка callback data
 	switch query.Data {
 	case CallbackBetRed:
-		b.gameHandler.MakeBet(user.ID, models.Red)
+		b.handleMakeBet(user.ID, models.Red)
+		b.answerCallbackQuery(query.ID, "", false)
 	case CallbackBetBlack:
-		b.gameHandler.MakeBet(user.ID, models.Black)
+		b.handleMakeBet(user.ID, models.Black)
+		b.answerCallbackQuery(query.ID, "", false)
 	case CallbackBetZero:
-		b.gameHandler.MakeBet(user.ID, models.Zero)
+		b.handleMakeBet(user.ID, models.Zero)
+		b.answerCallbackQuery(query.ID, "", false)
 	case CallbackBack:
 		b.handleBackToMainMenu(query)
 	default:
@@ -281,7 +335,7 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 
 	language := user.LanguageCode
 	if language == "" {
-		language = "en" // Украинский по умолчанию
+		language = "en"
 	}
 
 	// Получаем локализированные тексты приветствия и помощи
@@ -304,16 +358,6 @@ func (b *Bot) handleHelpCommand(message *telego.Message) {
 
 	// Получаем локализированный текст помощи
 	helpText := b.service.GetText("help", language)
-
-	// Получаем информацию о текущем раунде, если он есть
-	currentRound, err := b.service.GetCurrentRound()
-	if err == nil {
-		// Добавляем информацию о текущем раунде
-		roundInfoTemplate := b.service.GetText("round_info", language)
-		roundID := utils.ToBase62(uint(currentRound.ID))
-		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
-		helpText += roundInfo
-	}
 
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          helpText,
@@ -580,16 +624,6 @@ func (b *Bot) handleFAQCommand(message *telego.Message) {
 	// Получаем локализированный текст FAQ
 	faqText := b.service.GetText("faq", language)
 
-	// Получаем информацию о текущем раунде, если он есть
-	currentRound, err := b.service.GetCurrentRound()
-	if err == nil {
-		// Добавляем информацию о текущем раунде
-		roundInfoTemplate := b.service.GetText("round_info", language)
-		roundID := utils.ToBase62(uint(currentRound.ID))
-		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
-		faqText += roundInfo
-	}
-
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          faqText,
 		ReplyKeyboard: b.createMainReplyKeyboard(language),
@@ -632,20 +666,8 @@ func (b *Bot) handleGenericMessage(message *telego.Message) {
 	}
 
 	// Обработка обычного текстового сообщения
-	// Можно добавить обработку особых слов или фраз здесь
-
 	// По умолчанию отправляем главное меню
 	helpText := b.service.GetText("help", language)
-
-	// Получаем информацию о текущем раунде, если он есть
-	currentRound, err := b.service.GetCurrentRound()
-	if err == nil {
-		// Добавляем информацию о текущем раунде
-		roundInfoTemplate := b.service.GetText("round_info", language)
-		roundID := utils.ToBase62(uint(currentRound.ID))
-		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
-		helpText += roundInfo
-	}
 
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          helpText,
