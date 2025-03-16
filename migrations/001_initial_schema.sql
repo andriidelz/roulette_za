@@ -254,10 +254,12 @@ INSERT INTO localizations (key, language, value) VALUES
     
     ('nomorebids', 'uk', 'Ставки прийняті! Ставок більше немає!'),
     ('nextbid15', 'uk', 'Раунд #%s
+
 До наступного визначення ставки залишилось 15 секунд.
 
 Зробіть свій вибір'),
     ('nextbid5', 'uk', 'Раунд #%s
+
 До наступного визначення ставки залишилось 5 секунд.
 
 Зробіть свій вибір'),
@@ -282,9 +284,20 @@ INSERT INTO localizations (key, language, value) VALUES
     ('btn_bet_zero_locked', 'uk', '🔒 Зеро (заблоковано)'),
     ('btn_back', 'uk', '◀️ Назад'),
     
-    ('round_info', 'uk', 'Раунд #%s\nХеш: %s'),
-    ('verification_info', 'uk', 'Перевірка результату:\nРаунд #%s\nЧисло: %d\nСіль: %s\nХеш: %s'),
-    ('new_round', 'uk', 'Почався новий раунд #%s\nХеш: %s\n\nЗробіть вашу ставку:');
+    ('round_info', 'uk', 'Раунд #%s
+
+Хеш: %s'),
+    ('verification_info', 'uk', 'Перевірка результату:
+
+Раунд #%s
+Число: %d
+Сіль: %s
+Хеш: %s'),
+    ('new_round', 'uk', 'Почався новий раунд #%s
+
+Хеш: %s
+
+Зробіть вашу ставку:');
 
 -- Локализации на английском языке
 INSERT INTO localizations (key, language, value) VALUES
@@ -370,10 +383,12 @@ Choose your next bet:'),
     
     ('nomorebids', 'en', 'Bets accepted! No more bets!'),
     ('nextbid15', 'en', 'Round #%s
+
 There are 15 seconds left until the next bet determination.
 
 Make your choice'),
     ('nextbid5', 'en', 'Round #%s
+
 There are 5 seconds left until the next bet determination.
 
 Make your choice'),
@@ -398,9 +413,20 @@ Make your choice'),
     ('btn_bet_zero_locked', 'en', '🔒 Zero (locked)'),
     ('btn_back', 'en', '◀️ Back'),
     
-    ('round_info', 'en', 'Round #%s\nHash: %s'),
-    ('verification_info', 'en', 'Result verification:\nRound #%s\nNumber: %d\nSalt: %s\nHash: %s'),
-    ('new_round', 'en', 'New round #%s started\nHash: %s\n\nMake your bet:');
+    ('round_info', 'en', 'Round #%s
+
+Hash: %s'),
+    ('verification_info', 'en', 'Result verification:
+
+Round #%s
+Number: %d
+Salt: %s
+Hash: %s'),
+    ('new_round', 'en', 'New round #%s started
+
+Hash: %s
+
+Make your bet:');
 
 -- Локализации на русском языке
 INSERT INTO localizations (key, language, value) VALUES
@@ -486,10 +512,12 @@ INSERT INTO localizations (key, language, value) VALUES
     
     ('nomorebids', 'ru', 'Ставки приняты! Ставок больше нет!'),
     ('nextbid15', 'ru', 'Раунд #%s
+
 До следующего определения ставки осталось 15 секунд.
 
 Сделайте свой выбор'),
     ('nextbid5', 'ru', 'Раунд #%s
+
 До следующего определения ставки осталось 5 секунд.
 
 Сделайте свой выбор'),
@@ -514,6 +542,17 @@ INSERT INTO localizations (key, language, value) VALUES
     ('btn_bet_zero_locked', 'ru', '🔒 Зеро (заблокировано)'),
     ('btn_back', 'ru', '◀️ Назад'),
     
-    ('round_info', 'ru', 'Раунд #%s\nХеш: %s'),
-    ('verification_info', 'ru', 'Проверка результата:\nРаунд #%s\nЧисло: %d\nСоль: %s\nХеш: %s'),
-    ('new_round', 'ru', 'Начался новый раунд #%s\nХеш: %s\n\nСделайте вашу ставку:');
+    ('round_info', 'ru', 'Раунд #%s
+
+Хеш: %s'),
+    ('verification_info', 'ru', 'Проверка результата:
+
+Раунд #%s
+Число: %d
+Соль: %s
+Хеш: %s'),
+    ('new_round', 'ru', 'Начался новый раунд #%s
+
+Хеш: %s
+
+Сделайте вашу ставку:');

@@ -420,14 +420,13 @@ func (h *GameHandler) processRoundResults(roundID uint, waitingPlayers map[int64
 
 // notifyPlayerAboutResult уведомляет игрока о результате раунда
 func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round *models.HashEntry, result models.BetOption, userBet models.BetOption) error {
-	log.Printf("=========== notifyPlayerAboutResult started for user %d, round #%d ===========", userID, roundID)
+	log.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, roundID)
 
 	user, err := h.service.GetUser(userID)
 	if err != nil {
 		log.Printf("Error getting user %d: %v", userID, err)
 		return fmt.Errorf("error getting user: %w", err)
 	}
-	log.Printf("Got user data for %d: username=%s, language=%s", userID, user.Username, user.LanguageCode)
 
 	language := user.LanguageCode
 	if language == "" {
@@ -445,10 +444,9 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		resultLangKey = "zeroresult"
 	}
 	resultText := h.service.GetText(resultLangKey, language)
-	log.Printf("Result text for %s: %s", result, resultText)
 
 	// Формируем более подробное сообщение о результате
-	resultDetailsTemplate := "%s\nВыпавшее число: %d (%s)"
+	resultDetailsTemplate := "%s\nResult: %d (%s)"
 	resultColorText := ""
 	switch result {
 	case models.Red:
@@ -460,31 +458,25 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	}
 
 	resultDetails := fmt.Sprintf(resultDetailsTemplate, resultText, round.Number, resultColorText)
-	log.Printf("Formatted result details: %s", resultDetails)
 
 	// Добавляем информацию для проверки результата
 	verificationTemplate := h.service.GetText("verification_info", language)
 	roundIDBase62 := utils.ToBase62(uint(roundID))
 	verificationText := fmt.Sprintf(verificationTemplate, roundIDBase62, round.Number, round.SaltHEX, round.Hash)
-	log.Printf("Verification text: %s", verificationText)
 
 	// Готовим информацию о выигрыше/проигрыше
-	log.Printf("Getting bets for user %d in round %d", userID, roundID)
 	userBets, err := h.service.GetUserBetsForRound(userID, roundID)
 	if err != nil {
-		log.Printf("Error getting bets: %v", err)
 		return fmt.Errorf("error getting bets: %w", err)
 	}
 
 	if len(userBets) == 0 {
-		log.Printf("No bets found for user %d in round %d", userID, roundID)
 		return fmt.Errorf("no bets found for user %d in round %d", userID, roundID)
 	}
 
 	bet := userBets[0]
 	won := bet.Won
 	points := bet.Points
-	log.Printf("Bet data: won=%v, points=%d", won, points)
 
 	var betResultText string
 	if won {
@@ -499,26 +491,17 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		loseTemplate := h.service.GetText("lose", language)
 		betResultText = fmt.Sprintf(loseTemplate, getOptionText(userBet, language), getOptionText(result, language))
 	}
-	log.Printf("Bet result text: %s", betResultText)
 
 	// Отправляем результат игры с полной информацией
+	// Используем обычные \n между блоками - обработка будет в SendMessage
 	fullResultText := resultDetails + "\n\n" + verificationText + "\n\n" + betResultText
-	log.Printf("Full result message to send:\n%s", fullResultText)
 
-	msgSent, err := h.bot.SendMessage(userID, MessageOptions{
+	_, err = h.bot.SendMessage(userID, MessageOptions{
 		Text:          fullResultText,
 		ReplyKeyboard: h.createBetKeyboard(language, userID),
 	})
 
-	if err != nil {
-		log.Printf("Error sending result message: %v", err)
-		return fmt.Errorf("error sending message: %w", err)
-	}
-
-	log.Printf("Result message sent successfully: message_id=%d", msgSent.MessageID)
-	log.Printf("=========== notifyPlayerAboutResult completed for user %d, round #%d ===========", userID, roundID)
-
-	return nil
+	return err
 }
 
 // MakeBet делает ставку в текущем раунде

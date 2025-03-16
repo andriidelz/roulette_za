@@ -822,6 +822,12 @@ type MessageOptions struct {
 
 // SendMessage отправляет новое сообщение с указанными опциями
 func (b *Bot) SendMessage(chatID int64, options MessageOptions) (*telego.Message, error) {
+	// Обрабатываем текст, заменяя литеральные \r\n на реальные переносы строк
+	// Используем двойной проход для избежания проблем с экранированием
+	processedText := strings.ReplaceAll(options.Text, "\\r\\n", "\n")
+	processedText = strings.ReplaceAll(processedText, "\r\n", "\n")
+	options.Text = processedText
+
 	// Если указан путь к фото или FileID
 	if options.PhotoPath != "" || options.PhotoFileID != "" {
 		return b.sendPhoto(chatID, options)
