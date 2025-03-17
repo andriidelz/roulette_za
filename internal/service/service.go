@@ -66,23 +66,47 @@ func NewService(repo repository.Repository) Service {
 // Реалізація методів для користувачів
 
 func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastName, languageCode string) (*models.User, error) {
-	// Перевіряємо, чи існує користувач
+	// Проверяем, существует ли пользователь
 	existingUser, err := s.repo.GetUserByTelegramID(telegramID)
 	if err == nil {
-		// Користувач вже існує, оновлюємо його дані
-		existingUser.Username = username
-		existingUser.FirstName = firstName
-		existingUser.LastName = lastName
-		existingUser.LanguageCode = languageCode
+		// Пользователь уже существует, обновляем только пустые поля
+		updateNeeded := false
 
-		if err := s.repo.UpdateUser(existingUser); err != nil {
-			return nil, err
+		// Обновляем имя пользователя только если оно пустое
+		if existingUser.Username == "" && username != "" {
+			existingUser.Username = username
+			updateNeeded = true
+		}
+
+		// Не перезаписываем имя, если оно уже установлено
+		if existingUser.FirstName == "" && firstName != "" {
+			existingUser.FirstName = firstName
+			updateNeeded = true
+		}
+
+		// Не перезаписываем фамилию, если она уже установлена
+		if existingUser.LastName == "" && lastName != "" {
+			existingUser.LastName = lastName
+			updateNeeded = true
+		}
+
+		// Не перезаписываем язык, если он уже установлен
+		if existingUser.LanguageCode == "" && languageCode != "" {
+			existingUser.LanguageCode = languageCode
+			updateNeeded = true
+		}
+
+		// Обновляем пользователя только если были изменения
+		if updateNeeded {
+			if err := s.repo.UpdateUser(existingUser); err != nil {
+				return nil, err
+			}
 		}
 
 		return existingUser, nil
 	}
 
-	// Створюємо нового користувача
+	// Создаем нового пользователя
 	user := &models.User{
 		TelegramID:   telegramID,
 		Username:     username,

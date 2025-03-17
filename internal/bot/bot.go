@@ -765,8 +765,12 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 func (b *Bot) handleStartCommand(message *telego.Message) {
 	user := message.From
 
+	// Проверяем, существует ли пользователь
+	dbUser, err := b.service.GetUser(user.ID)
+	isNewUser := err != nil // Флаг нового пользователя
+
 	// Регистрируем пользователя или обновляем информацию
-	_, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+	dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
 	if err != nil {
 		log.Printf("Error registering user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
@@ -775,7 +779,8 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 		return
 	}
 
-	language := user.LanguageCode
+	// Определяем язык пользователя из базы данных
+	language := dbUser.LanguageCode
 	if language == "" {
 		language = "en"
 	}
@@ -803,10 +808,10 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 		InlineKeyboard: inlineKeyboard,
 	})
 
-	// Проверяем, известна ли нам страна пользователя
-	country, err := b.service.GetUserCountry(user.ID)
-	if err != nil || country == "" {
-		// Если страна неизвестна, отправляем запрос на выбор страны
+	// Для нового пользователя всегда показываем выбор страны
+	// Для существующего - только если страна не установлена
+	if isNewUser || dbUser.Country == "" {
+		// Отправляем запрос на выбор страны
 		countryText := b.service.GetText("countrymes", language)
 
 		// Создаем клавиатуру со странами - начинаем с первой страницы (1)
@@ -817,7 +822,7 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 			InlineKeyboard: countriesKeyboard,
 		})
 	} else {
-		// Если страна уже известна, отправляем главное меню
+		// Если у пользователя уже выбрана страна, отправляем главное меню
 		b.sendMainMenu(message.Chat.ID, language)
 	}
 }
