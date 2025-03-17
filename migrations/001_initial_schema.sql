@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     first_name VARCHAR(255),
     last_name VARCHAR(255),
     language_code VARCHAR(10),
+    country VARCHAR(2),  -- ISO 3166-1 alpha-2 код страны
     balance FLOAT DEFAULT 0,
     today_bets INT DEFAULT 0,
     banned BOOLEAN DEFAULT FALSE,
@@ -297,7 +298,48 @@ INSERT INTO localizations (key, language, value) VALUES
 
 Хеш: %s
 
-Зробіть вашу ставку:');
+Зробіть вашу ставку:'),
+    
+    ('startmessage1', 'uk', 'Вітаємо вас у Sprut Red&Black bot
+
+Це єдиний бот, де ви можете щотижня вигравати реальні гроші за віртуальні вгадування.'),
+    ('countrymes', 'uk', 'Для продовження виберіть, будь ласка, країну свого проживання. Це необхідно нам для майбутньої локалізації рейтингів гравців і збільшення ваших шансів на виграш'),
+    ('btn_rules', 'uk', 'Правила'),
+    ('btn_awards', 'uk', 'Нагороди'),
+    ('btn_payments', 'uk', 'Платежі'),
+    ('btn_fairplay', 'uk', 'Чесна гра'),
+    ('btn_statistics', 'uk', 'Статистика'),
+    ('btn_account', 'uk', 'Акаунт'),
+    ('rules', 'uk', 'Правила гри:
+
+1. Ви робите ставку на червоне, чорне або зеро.
+2. Кожні 30 секунд визначається випадкове число від 0 до 36.
+3. Числа від 1 до 36 відповідають червоному або чорному.
+4. 0 відповідає зеро.
+5. За кожне вірне передбачення ви отримуєте бали.
+6. Ваші бали враховуються в щотижневому рейтингу.'),
+    ('awards', 'uk', 'Нагороди:
+
+1. Щотижня формується рейтинг гравців.
+2. Топ-100 гравців розділяють призовий фонд.
+3. Призовий фонд розподіляється пропорційно набраним балам.
+4. Виплати відбуваються автоматично щопонеділка.
+5. Мінімальна сума для виведення коштів: 10 USDT.'),
+    ('payments', 'uk', 'Платежі:
+
+1. Всі призові виплачуються в USDT (TRC-20).
+2. Для отримання виплати необхідно вказати адресу гаманця.
+3. Мінімальна сума для виведення: 10 USDT.
+4. Обробка запитів на виведення займає до 24 годин.'),
+    ('fairplay', 'uk', 'Чесна гра:
+
+Результати рулетки гарантовано чесні та перевірені. Перед кожним раундом публікується хеш результату. Після раунду ви можете перевірити, що результат не був змінений.
+
+Для перевірки:
+1. Візьміть число і сіль, надані ботом.
+2. Сформуйте рядок у форматі: [число]:[сіль]
+3. Обчисліть SHA-256 хеш від цього рядка.
+4. Порівняйте з хешем з початку раунду.');
 
 -- Локализации на английском языке
 INSERT INTO localizations (key, language, value) VALUES
@@ -426,7 +468,48 @@ Hash: %s'),
 
 Hash: %s
 
-Make your bet:');
+Make your bet:'),
+    
+    ('startmessage1', 'en', 'Welcome to Sprut Red&Black bot
+
+This is the only bot where you can win real money every week for virtual guesses.'),
+    ('countrymes', 'en', 'To continue, please select your country of residence. This is necessary for the future localization of player ratings and increasing your chances of winning'),
+    ('btn_rules', 'en', 'Rules'),
+    ('btn_awards', 'en', 'Rewards'),
+    ('btn_payments', 'en', 'Payments'),
+    ('btn_fairplay', 'en', 'Fair Play'),
+    ('btn_statistics', 'en', 'Statistics'),
+    ('btn_account', 'en', 'Account'),
+    ('rules', 'en', 'Game Rules:
+
+1. You place a bet on red, black, or zero.
+2. Every 30 seconds, a random number from 0 to 36 is determined.
+3. Numbers from 1 to 36 correspond to red or black.
+4. 0 corresponds to zero.
+5. For each correct prediction, you earn points.
+6. Your points are counted in the weekly ranking.'),
+    ('awards', 'en', 'Rewards:
+
+1. A player ranking is formed every week.
+2. The top 100 players share the prize pool.
+3. The prize pool is distributed in proportion to the points earned.
+4. Payments are processed automatically every Monday.
+5. Minimum withdrawal amount: 10 USDT.'),
+    ('payments', 'en', 'Payments:
+
+1. All prizes are paid in USDT (TRC-20).
+2. To receive payment, you need to specify your wallet address.
+3. Minimum withdrawal amount: 10 USDT.
+4. Withdrawal requests are processed within 24 hours.'),
+    ('fairplay', 'en', 'Fair Play:
+
+Roulette results are guaranteed to be fair and verifiable. Before each round, a hash of the result is published. After the round, you can verify that the result was not changed.
+
+To verify:
+1. Take the number and salt provided by the bot.
+2. Form a string in the format: [number]:[salt]
+3. Calculate the SHA-256 hash of this string.
+4. Compare with the hash from the beginning of the round.');
 
 -- Локализации на русском языке
 INSERT INTO localizations (key, language, value) VALUES
@@ -555,4 +638,45 @@ INSERT INTO localizations (key, language, value) VALUES
 
 Хеш: %s
 
-Сделайте вашу ставку:');
+Сделайте вашу ставку:'),
+    
+    ('startmessage1', 'ru', 'Приветствуем вас в  Sprut Red&Black bot
+
+Это единственный бот где вы можете еженедельно выиграть реальные деньги за виртуальные угадывания.'),
+    ('countrymes', 'ru', 'Для продолжения выбери пожалуйста страну своего проживания. Это необходимо нам для будущей локализации рейтингов игроков и увеличения твоих шансов на выигрыш'),
+    ('btn_rules', 'ru', 'Правила'),
+    ('btn_awards', 'ru', 'Награды'),
+    ('btn_payments', 'ru', 'Платежи'),
+    ('btn_fairplay', 'ru', 'Честная игра'),
+    ('btn_statistics', 'ru', 'Статистика'),
+    ('btn_account', 'ru', 'Аккаунт'),
+    ('rules', 'ru', 'Правила игры:
+
+1. Вы делаете ставку на красное, черное или зеро.
+2. Каждые 30 секунд определяется случайное число от 0 до 36.
+3. Числа от 1 до 36 соответствуют красному или черному.
+4. 0 соответствует зеро.
+5. За каждое верное предсказание вы получаете баллы.
+6. Ваши баллы учитываются в еженедельном рейтинге.'),
+    ('awards', 'ru', 'Награды:
+
+1. Каждую неделю формируется рейтинг игроков.
+2. Топ-100 игроков разделяют призовой фонд.
+3. Призовой фонд распределяется пропорционально набранным баллам.
+4. Выплаты происходят автоматически каждый понедельник.
+5. Минимальная сумма для вывода средств: 10 USDT.'),
+    ('payments', 'ru', 'Платежи:
+
+1. Все призовые выплачиваются в USDT (TRC-20).
+2. Для получения выплаты необходимо указать адрес кошелька.
+3. Минимальная сумма для вывода: 10 USDT.
+4. Обработка запросов на вывод занимает до 24 часов.'),
+    ('fairplay', 'ru', 'Честная игра:
+
+Результаты рулетки гарантированно честные и проверяемые. Перед каждым раундом публикуется хеш результата. После раунда вы можете проверить, что результат не был изменен.
+
+Для проверки:
+1. Возьмите число и соль, предоставленные ботом.
+2. Сформируйте строку в формате: [число]:[соль]
+3. Вычислите SHA-256 хеш от этой строки.
+4. Сравните с хешем из начала раунда.');

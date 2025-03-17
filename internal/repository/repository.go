@@ -74,6 +74,10 @@ type Repository interface {
 	GetActiveHashEntry() (*models.HashEntry, error)
 	GetUserBetsForHashEntry(userID, hashEntryID uint) ([]models.Bet, error)
 
+	// Работа со страной пользователя
+	SetUserCountry(userID uint, country string) error
+	GetUserCountry(userID uint) (string, error)
+
 	Close() error
 }
 
@@ -318,6 +322,21 @@ func (r *PostgresRepository) GetUserNotifications(userID uint, limit int) ([]mod
 func (r *PostgresRepository) MarkNotificationAsRead(id uint) error {
 	return r.db.Model(&models.Notification{}).Where("id = ?", id).
 		Update("read", true).Error
+}
+
+// Реализация методов для работы со страной пользователя
+func (r *PostgresRepository) SetUserCountry(userID uint, country string) error {
+	return r.db.Model(&models.User{}).Where("id = ?", userID).
+		Update("country", country).Error
+}
+
+func (r *PostgresRepository) GetUserCountry(userID uint) (string, error) {
+	var user models.User
+	err := r.db.Where("id = ?", userID).First(&user).Error
+	if err != nil {
+		return "", err
+	}
+	return user.Country, nil
 }
 
 // Close закриває з'єднання з базою даних

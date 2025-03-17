@@ -248,15 +248,32 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		language = "en"
 	}
 
-	// Получаем локализованные тексты для кнопок
+	// Получаем локализированные тексты для кнопок
+	btnPlayText := b.service.GetText("btn_play", language)
+	btnStatisticsText := b.service.GetText("btn_statistics", language)
+	btnRatingText := b.service.GetText("btn_rating", language)
+	btnAccountText := b.service.GetText("btn_account", language)
+	btnFAQText := b.service.GetText("btn_faq", language)
+
 	btnRedText := b.service.GetText("btn_bet_red", language)
 	btnBlackText := b.service.GetText("btn_bet_black", language)
 	btnZeroText := b.service.GetText("btn_bet_zero", language)
 	btnZeroLockedText := b.service.GetText("btn_bet_zero_locked", language)
 	btnBackText := b.service.GetText("btn_back", language)
 
-	// Обработка ставок по тексту кнопки
+	// Обработка клавиатуры главного меню
 	switch text {
+	case btnPlayText:
+		b.gameHandler.HandlePlayCommand(message)
+	case btnStatisticsText:
+		b.handleStatsCommand(message)
+	case btnRatingText:
+		b.handleRatingCommand(message)
+	case btnAccountText:
+		b.handleBalanceCommand(message)
+	case btnFAQText:
+		b.handleFAQCommand(message)
+	// Обработка ставок по тексту кнопки
 	case btnRedText:
 		b.handleMakeBet(user.ID, models.Red)
 	case btnBlackText:
@@ -299,8 +316,53 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		}
 	}
 
-	// Обработка callback data
-	switch query.Data {
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	callbackData := query.Data
+
+	// Проверяем, это выбор страны или другой callback
+	if strings.HasPrefix(callbackData, "country:") {
+		// Извлекаем код страны
+		countryCode := strings.TrimPrefix(callbackData, "country:")
+
+		// Сохраняем выбранную страну
+		if err := b.service.SetUserCountry(user.ID, countryCode); err != nil {
+			log.Printf("Error saving user country: %v", err)
+			b.answerCallbackQuery(query.ID, "Error saving country", true)
+			return
+		}
+
+		// Отвечаем на callback
+		b.answerCallbackQuery(query.ID, "", false)
+
+		// Отправляем главное меню
+		if query.Message != nil {
+			b.sendMainMenu(query.Message.Chat.ID, language)
+		} else {
+			b.sendMainMenu(user.ID, language)
+		}
+		return
+	}
+
+	// Обработка других callback data
+	switch callbackData {
+	case "rules":
+		text := b.service.GetText("rules", language)
+		b.updateOrSendMessage(query, text)
+	case "awards":
+		text := b.service.GetText("awards", language)
+		b.updateOrSendMessage(query, text)
+	case "payments":
+		text := b.service.GetText("payments", language)
+		b.updateOrSendMessage(query, text)
+	case "fairplay":
+		text := b.service.GetText("fairplay", language)
+		b.updateOrSendMessage(query, text)
+	case "back_to_start":
+		b.handleBackToStartMenu(query)
 	case CallbackBetRed:
 		b.handleMakeBet(user.ID, models.Red)
 		b.answerCallbackQuery(query.ID, "", false)
@@ -320,6 +382,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 // Обработчики команд
 
+// handleStartCommand обрабатывает команду /start
 func (b *Bot) handleStartCommand(message *telego.Message) {
 	user := message.From
 
@@ -338,15 +401,202 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 		language = "en"
 	}
 
-	// Получаем локализированные тексты приветствия и помощи
-	welcomeText := b.service.GetText("welcome", language)
-	helpText := b.service.GetText("help", language)
+	// Получаем локализированный текст приветствия
+	welcomeText := b.service.GetText("startmessage1", language)
 
-	// Отправляем приветственное сообщение
+	// Создаем inline клавиатуру для первого сообщения
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				{Text: b.service.GetText("btn_rules", language), CallbackData: "rules"},
+				{Text: b.service.GetText("btn_awards", language), CallbackData: "awards"},
+			},
+			{
+				{Text: b.service.GetText("btn_payments", language), CallbackData: "payments"},
+				{Text: b.service.GetText("btn_fairplay", language), CallbackData: "fairplay"},
+			},
+		},
+	}
+
+	// Отправляем первое приветственное сообщение с inline клавиатурой
 	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          fmt.Sprintf("%s\n\n%s", welcomeText, helpText),
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
+		Text:           welcomeText,
+		InlineKeyboard: inlineKeyboard,
 	})
+
+	// Проверяем, известна ли нам страна пользователя
+	country, err := b.service.GetUserCountry(user.ID)
+	if err != nil || country == "" {
+		// Если страна неизвестна, отправляем запрос на выбор страны
+		countryText := b.service.GetText("countrymes", language)
+
+		// Создаем клавиатуру со странами
+		countriesKeyboard := b.createCountriesKeyboard()
+
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text:           countryText,
+			InlineKeyboard: countriesKeyboard,
+		})
+	} else {
+		// Если страна уже известна, отправляем главное меню
+		b.sendMainMenu(message.Chat.ID, language)
+	}
+}
+
+// Вспомогательный метод для отправки главного меню
+func (b *Bot) sendMainMenu(chatID int64, language string) {
+	// Создаем reply клавиатуру для главного меню
+	replyKeyboard := &telego.ReplyKeyboardMarkup{
+		Keyboard: [][]telego.KeyboardButton{
+			{
+				{Text: b.service.GetText("btn_play", language)},
+				{Text: b.service.GetText("btn_statistics", language)},
+			},
+			{
+				{Text: b.service.GetText("btn_rating", language)},
+				{Text: b.service.GetText("btn_account", language)},
+			},
+			{
+				{Text: b.service.GetText("btn_faq", language)},
+			},
+		},
+		ResizeKeyboard:  true,
+		OneTimeKeyboard: false,
+	}
+
+	// Отправляем сообщение с главным меню
+	helpText := b.service.GetText("help", language)
+	b.SendMessage(chatID, MessageOptions{
+		Text:          helpText,
+		ReplyKeyboard: replyKeyboard,
+	})
+}
+
+// createCountriesKeyboard создает клавиатуру с флагами стран
+func (b *Bot) createCountriesKeyboard() *telego.InlineKeyboardMarkup {
+	// Массив стран с кодами ISO 3166-1 alpha-2 и эмодзи флагов
+	countries := []struct {
+		Code  string
+		Emoji string
+		Name  string
+	}{
+		{"RU", "🇷🇺", "Russia"},
+		{"UA", "🇺🇦", "Ukraine"},
+		{"BY", "🇧🇾", "Belarus"},
+		{"KZ", "🇰🇿", "Kazakhstan"},
+		{"US", "🇺🇸", "USA"},
+		{"GB", "🇬🇧", "United Kingdom"},
+		{"DE", "🇩🇪", "Germany"},
+		{"FR", "🇫🇷", "France"},
+		{"IT", "🇮🇹", "Italy"},
+		{"ES", "🇪🇸", "Spain"},
+		{"CN", "🇨🇳", "China"},
+		{"JP", "🇯🇵", "Japan"},
+		{"KR", "🇰🇷", "South Korea"},
+		{"IN", "🇮🇳", "India"},
+		{"TR", "🇹🇷", "Turkey"},
+		{"AE", "🇦🇪", "UAE"},
+		{"IL", "🇮🇱", "Israel"},
+		{"BR", "🇧🇷", "Brazil"},
+	}
+
+	// Формируем 6 строк по 3 страны в каждой
+	var keyboard [][]telego.InlineKeyboardButton
+	row := make([]telego.InlineKeyboardButton, 0, 3)
+
+	for i, country := range countries {
+		buttonText := country.Emoji + " " + country.Code
+		buttonData := "country:" + country.Code
+
+		row = append(row, telego.InlineKeyboardButton{
+			Text:         buttonText,
+			CallbackData: buttonData,
+		})
+
+		// Добавляем строку после каждых 3 стран
+		if (i+1)%3 == 0 || i == len(countries)-1 {
+			keyboard = append(keyboard, row)
+			row = make([]telego.InlineKeyboardButton, 0, 3)
+		}
+	}
+
+	return &telego.InlineKeyboardMarkup{
+		InlineKeyboard: keyboard,
+	}
+}
+
+// handleBackToStartMenu обработка callback для возврата к стартовому меню
+func (b *Bot) handleBackToStartMenu(query *telego.CallbackQuery) {
+	user := query.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Отвечаем на callback
+	b.answerCallbackQuery(query.ID, "", false)
+
+	// Получаем локализированный текст приветствия
+	welcomeText := b.service.GetText("startmessage1", language)
+
+	// Создаем inline клавиатуру для стартового сообщения
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				{Text: b.service.GetText("btn_rules", language), CallbackData: "rules"},
+				{Text: b.service.GetText("btn_awards", language), CallbackData: "awards"},
+			},
+			{
+				{Text: b.service.GetText("btn_payments", language), CallbackData: "payments"},
+				{Text: b.service.GetText("btn_fairplay", language), CallbackData: "fairplay"},
+			},
+		},
+	}
+
+	// Обновляем сообщение
+	if query.Message != nil {
+		b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+			Text:           welcomeText,
+			InlineKeyboard: inlineKeyboard,
+		})
+	} else {
+		// Если сообщение недоступно, отправляем новое
+		b.SendMessage(query.From.ID, MessageOptions{
+			Text:           welcomeText,
+			InlineKeyboard: inlineKeyboard,
+		})
+	}
+}
+
+// updateOrSendMessage обновляет существующее сообщение или отправляет новое
+func (b *Bot) updateOrSendMessage(query *telego.CallbackQuery, text string) {
+	// Создаем кнопку "Назад"
+	backButton := telego.InlineKeyboardButton{
+		Text:         "◀️ Назад",
+		CallbackData: "back_to_start",
+	}
+	keyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{backButton},
+		},
+	}
+
+	if query.Message != nil {
+		// Обновляем существующее сообщение
+		b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+			Text:           text,
+			InlineKeyboard: keyboard,
+		})
+	} else {
+		// Отправляем новое сообщение
+		b.SendMessage(query.From.ID, MessageOptions{
+			Text:           text,
+			InlineKeyboard: keyboard,
+		})
+	}
+
+	// Отвечаем на callback
+	b.answerCallbackQuery(query.ID, "", false)
 }
 
 func (b *Bot) handleHelpCommand(message *telego.Message) {
@@ -685,24 +935,22 @@ func (b *Bot) createMainKeyboard(language string) *telego.InlineKeyboardMarkup {
 func (b *Bot) createMainReplyKeyboard(language string) *telego.ReplyKeyboardMarkup {
 	// Получаем локализированные тексты для кнопок
 	btnPlayText := b.service.GetText("btn_play", language)
-	btnProfileText := b.service.GetText("btn_profile", language)
-	btnStatsText := b.service.GetText("btn_stats", language)
+	btnStatisticsText := b.service.GetText("btn_statistics", language)
 	btnRatingText := b.service.GetText("btn_rating", language)
-	btnBalanceText := b.service.GetText("btn_balance", language)
+	btnAccountText := b.service.GetText("btn_account", language)
 	btnFAQText := b.service.GetText("btn_faq", language)
 
 	return &telego.ReplyKeyboardMarkup{
 		Keyboard: [][]telego.KeyboardButton{
 			{
 				{Text: btnPlayText},
-				{Text: btnProfileText},
+				{Text: btnStatisticsText},
 			},
 			{
-				{Text: btnStatsText},
 				{Text: btnRatingText},
+				{Text: btnAccountText},
 			},
 			{
-				{Text: btnBalanceText},
 				{Text: btnFAQText},
 			},
 		},

@@ -45,6 +45,10 @@ type Service interface {
 	// Хеші та історія раундів
 	GetHashEntries(page, limit int) ([]models.HashEntry, int, error)
 	GetLatestHashEntry() (*models.HashEntry, error)
+
+	// Методы для работы со страной пользователя
+	SetUserCountry(telegramID int64, country string) error
+	GetUserCountry(telegramID int64) (string, error)
 }
 
 type ServiceImpl struct {
@@ -522,4 +526,23 @@ func (s *ServiceImpl) GetLatestHashEntry() (*models.HashEntry, error) {
 	}
 
 	return &entries[0], nil
+}
+
+// Реализация методов для работы со страной пользователя
+func (s *ServiceImpl) SetUserCountry(telegramID int64, country string) error {
+	user, err := s.repo.GetUserByTelegramID(telegramID)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.SetUserCountry(user.ID, country)
+}
+
+func (s *ServiceImpl) GetUserCountry(telegramID int64) (string, error) {
+	user, err := s.repo.GetUserByTelegramID(telegramID)
+	if err != nil {
+		return "", err
+	}
+
+	return s.repo.GetUserCountry(user.ID)
 }
