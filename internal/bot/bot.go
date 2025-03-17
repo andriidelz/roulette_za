@@ -334,8 +334,18 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			return
 		}
 
+		// Отправляем успешный статус пользователю
+		successText := b.service.GetText("country_saved", language)
+
 		// Отвечаем на callback
 		b.answerCallbackQuery(query.ID, "", false)
+
+		// Обновляем сообщение, убирая кнопки выбора страны и добавляя подтверждение
+		if query.Message != nil {
+			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				Text: successText,
+			})
+		}
 
 		// Отправляем главное меню
 		if query.Message != nil {

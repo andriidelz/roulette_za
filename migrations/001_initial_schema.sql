@@ -689,3 +689,15 @@ INSERT INTO localizations (key, language, value) VALUES
 
 INSERT INTO localizations (key, language, value) VALUES 
     ('main_menu', 'uk', 'Натисніть кнопку для продовження');
+
+-- Добавить в локализации на английском
+INSERT INTO localizations (key, language, value) VALUES 
+    ('country_saved', 'en', 'Your country has been successfully saved! ✅');
+
+-- Добавить в локализации на русском
+INSERT INTO localizations (key, language, value) VALUES 
+    ('country_saved', 'ru', 'Ваша страна успешно сохранена! ✅');
+
+-- Добавить в локализации на украинском
+INSERT INTO localizations (key, language, value) VALUES 
+    ('country_saved', 'uk', 'Ваша країна успішно збережена! ✅');
