@@ -282,12 +282,23 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	}
 
 	// Регистрация пользователя, если он новый
-	_, err := b.service.GetUser(user.ID)
+	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		_, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
 		if err != nil {
 			log.Printf("Error registering user: %v", err)
 		}
+	}
+
+	// Всегда используем язык из базы данных
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Обновляем язык пользователя из API, если он отличается от базы данных
+	if user.LanguageCode != "" && user.LanguageCode != dbUser.LanguageCode {
+		user.LanguageCode = dbUser.LanguageCode
 	}
 
 	text := message.Text
@@ -325,12 +336,6 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			b.handleUnknownCommand(message)
 		}
 		return
-	}
-
-	// Обработка текстовых сообщений (не команд)
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
 	}
 
 	// Получаем локализированные тексты для кнопок
@@ -391,19 +396,26 @@ func (b *Bot) handleMessage(message *telego.Message) {
 func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	// Валидация пользователя
 	user := query.From
-	_, err := b.service.GetUser(user.ID)
+	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
 		// Регистрация пользователя, если он не найден
-		_, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
 		if err != nil {
 			log.Printf("Error registering user: %v", err)
 			return
 		}
 	}
 
-	language := user.LanguageCode
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	language := dbUser.LanguageCode
 	if language == "" {
 		language = "en"
+	}
+
+	// Обновим язык пользователя из API, если он отличается от базы данных
+	// Это обеспечит синхронизацию между API Telegram и нашей БД
+	if user.LanguageCode != "" && user.LanguageCode != dbUser.LanguageCode {
+		user.LanguageCode = dbUser.LanguageCode
 	}
 
 	callbackData := query.Data
@@ -587,7 +599,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			return
 		}
 
-		// Обновляем язык пользователя
+		// Обновляем язык пользователя в базе данных
 		user.LanguageCode = langCode
 		dbUser.LanguageCode = langCode
 		if err := b.service.UpdateUserLanguage(dbUser.TelegramID, langCode); err != nil {
@@ -595,7 +607,11 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			return
 		}
 
+		// Обновляем язык пользователя для текущей сессии
+		language = langCode // Обновляем локальную переменную language
+
 		// Получаем локализованный текст для успешного сохранения языка
+		// используя новый язык
 		successText := b.service.GetText("language_saved", langCode)
 
 		// Отвечаем на callback

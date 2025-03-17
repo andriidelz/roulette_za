@@ -556,7 +556,10 @@ func (s *ServiceImpl) UpdateUserLanguage(telegramID int64, languageCode string) 
 		return err
 	}
 
+	// Обновляем язык пользователя
 	user.LanguageCode = languageCode
+
+	// Обновляем пользователя в базе данных
 	return s.repo.UpdateUser(user)
 }
 
