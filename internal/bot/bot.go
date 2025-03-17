@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"roulette/internal/models"
 	"roulette/internal/service"
+	"roulette/internal/utils"
 
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
@@ -322,6 +324,31 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 	callbackData := query.Data
 
+	// Обработка нажатия на кнопку пагинации стран
+	if strings.HasPrefix(callbackData, "country_page:") {
+		// Извлекаем номер страницы
+		pageStr := strings.TrimPrefix(callbackData, "country_page:")
+		page, err := strconv.Atoi(pageStr)
+		if err != nil {
+			log.Printf("Error parsing page number: %v", err)
+			b.answerCallbackQuery(query.ID, "Error", true)
+			return
+		}
+
+		// Отвечаем на callback
+		b.answerCallbackQuery(query.ID, "", false)
+
+		// Обновляем сообщение с новой страницей стран
+		if query.Message != nil {
+			countryText := b.service.GetText("countrymes", language)
+			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				Text:           countryText,
+				InlineKeyboard: b.createCountriesKeyboard(page),
+			})
+		}
+		return
+	}
+
 	// Проверяем, это выбор страны или другой callback
 	if strings.HasPrefix(callbackData, "country:") {
 		// Извлекаем код страны
@@ -353,6 +380,12 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		} else {
 			b.sendMainMenu(user.ID, language)
 		}
+		return
+	}
+
+	// Игнорируем пустой callback (обычно это кнопка индикатора текущей страницы)
+	if callbackData == "noop" {
+		b.answerCallbackQuery(query.ID, "", false)
 		return
 	}
 
@@ -439,8 +472,8 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 		// Если страна неизвестна, отправляем запрос на выбор страны
 		countryText := b.service.GetText("countrymes", language)
 
-		// Создаем клавиатуру со странами
-		countriesKeyboard := b.createCountriesKeyboard()
+		// Создаем клавиатуру со странами - начинаем с первой страницы (1)
+		countriesKeyboard := b.createCountriesKeyboard(1)
 
 		b.SendMessage(message.Chat.ID, MessageOptions{
 			Text:           countryText,
@@ -481,57 +514,27 @@ func (b *Bot) sendMainMenu(chatID int64, language string) {
 	})
 }
 
-// createCountriesKeyboard создает клавиатуру с флагами стран
-func (b *Bot) createCountriesKeyboard() *telego.InlineKeyboardMarkup {
-	// Массив стран с кодами ISO 3166-1 alpha-2 и эмодзи флагов
-	countries := []struct {
-		Code  string
-		Emoji string
-		Name  string
-	}{
-		{"RU", "🇷🇺", "Russia"},
-		{"UA", "🇺🇦", "Ukraine"},
-		{"BY", "🇧🇾", "Belarus"},
-		{"KZ", "🇰🇿", "Kazakhstan"},
-		{"US", "🇺🇸", "USA"},
-		{"GB", "🇬🇧", "United Kingdom"},
-		{"DE", "🇩🇪", "Germany"},
-		{"FR", "🇫🇷", "France"},
-		{"IT", "🇮🇹", "Italy"},
-		{"ES", "🇪🇸", "Spain"},
-		{"CN", "🇨🇳", "China"},
-		{"JP", "🇯🇵", "Japan"},
-		{"KR", "🇰🇷", "South Korea"},
-		{"IN", "🇮🇳", "India"},
-		{"TR", "🇹🇷", "Turkey"},
-		{"AE", "🇦🇪", "UAE"},
-		{"IL", "🇮🇱", "Israel"},
-		{"BR", "🇧🇷", "Brazil"},
-	}
+// createCountriesKeyboard создает клавиатуру с флагами стран и постраничной навигацией
+// page - номер страницы (начиная с 1)
+func (b *Bot) createCountriesKeyboard(page int) *telego.InlineKeyboardMarkup {
+	// Создаем массив кнопок для постраничной навигации
+	var buttons []utils.PaginatedKeyboardButton
+	for _, country := range countries {
+		buttonText := fmt.Sprintf("%s %s", country.Emoji, country.Code)
+		buttonData := fmt.Sprintf("country:%s", country.Code)
 
-	// Формируем 6 строк по 3 страны в каждой
-	var keyboard [][]telego.InlineKeyboardButton
-	row := make([]telego.InlineKeyboardButton, 0, 3)
-
-	for i, country := range countries {
-		buttonText := country.Emoji + " " + country.Code
-		buttonData := "country:" + country.Code
-
-		row = append(row, telego.InlineKeyboardButton{
+		buttons = append(buttons, utils.PaginatedKeyboardButton{
 			Text:         buttonText,
 			CallbackData: buttonData,
 		})
-
-		// Добавляем строку после каждых 3 стран
-		if (i+1)%3 == 0 || i == len(countries)-1 {
-			keyboard = append(keyboard, row)
-			row = make([]telego.InlineKeyboardButton, 0, 3)
-		}
 	}
 
-	return &telego.InlineKeyboardMarkup{
-		InlineKeyboard: keyboard,
-	}
+	// Параметры пагинации
+	const rowSize = 8   // Кнопок в строке
+	const pageSize = 80 // Кнопок на странице
+
+	// Создаем пагинированную клавиатуру с префиксом "country" для навигации
+	return utils.CreatePaginatedKeyboard(buttons, page, rowSize, pageSize, "country")
 }
 
 // handleBackToStartMenu обработка callback для возврата к стартовому меню
