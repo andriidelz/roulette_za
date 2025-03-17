@@ -680,3 +680,12 @@ INSERT INTO localizations (key, language, value) VALUES
 2. Сформируйте строку в формате: [число]:[соль]
 3. Вычислите SHA-256 хеш от этой строки.
 4. Сравните с хешем из начала раунда.');
+
+INSERT INTO localizations (key, language, value) VALUES 
+    ('main_menu', 'en', 'Tap a button to continue');
+
+INSERT INTO localizations (key, language, value) VALUES 
+    ('main_menu', 'ru', 'Нажмите кнопку для продолжения');
+
+INSERT INTO localizations (key, language, value) VALUES 
+    ('main_menu', 'uk', 'Натисніть кнопку для продовження');

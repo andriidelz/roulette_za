@@ -9,7 +9,6 @@ import (
 
 	"roulette/internal/models"
 	"roulette/internal/service"
-	"roulette/internal/utils"
 
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
@@ -464,10 +463,10 @@ func (b *Bot) sendMainMenu(chatID int64, language string) {
 		OneTimeKeyboard: false,
 	}
 
-	// Отправляем сообщение с главным меню
-	helpText := b.service.GetText("help", language)
+	// Отправляем сообщение с главным меню и минимальным текстом
+	menuText := b.service.GetText("main_menu", language)
 	b.SendMessage(chatID, MessageOptions{
-		Text:          helpText,
+		Text:          menuText,
 		ReplyKeyboard: replyKeyboard,
 	})
 }
@@ -606,13 +605,8 @@ func (b *Bot) handleHelpCommand(message *telego.Message) {
 		language = "en"
 	}
 
-	// Получаем локализированный текст помощи
-	helpText := b.service.GetText("help", language)
-
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          helpText,
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
-	})
+	// Отправляем главное меню
+	b.sendMainMenu(message.Chat.ID, language)
 }
 
 func (b *Bot) handleProfileCommand(message *telego.Message) {
@@ -820,6 +814,7 @@ func (b *Bot) handleFAQCommand(message *telego.Message) {
 	})
 }
 
+// handleUnknownCommand обрабатывает неизвестные команды
 func (b *Bot) handleUnknownCommand(message *telego.Message) {
 	user := message.From
 	language := user.LanguageCode
@@ -827,27 +822,18 @@ func (b *Bot) handleUnknownCommand(message *telego.Message) {
 		language = "en"
 	}
 
-	// Отправляем сообщение о неизвестной команде и подсказку
-	helpText := b.service.GetText("help", language)
-
-	// Получаем информацию о текущем раунде, если он есть
-	currentRound, err := b.service.GetCurrentRound()
-	if err == nil {
-		// Добавляем информацию о текущем раунде
-		roundInfoTemplate := b.service.GetText("round_info", language)
-		roundID := utils.ToBase62(uint(currentRound.ID))
-		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
-		helpText = fmt.Sprintf("Unknown command.\n\n%s%s", helpText, roundInfo)
-	} else {
-		helpText = fmt.Sprintf("Unknown command.\n\n%s", helpText)
-	}
+	// Отправляем сообщение о неизвестной команде
+	unknownCommandText := b.service.GetText("unknown_command", language)
 
 	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          helpText,
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
+		Text: unknownCommandText,
 	})
+
+	// Отправляем главное меню
+	b.sendMainMenu(message.Chat.ID, language)
 }
 
+// handleGenericMessage обрабатывает обычные текстовые сообщения
 func (b *Bot) handleGenericMessage(message *telego.Message) {
 	user := message.From
 	language := user.LanguageCode
@@ -855,16 +841,11 @@ func (b *Bot) handleGenericMessage(message *telego.Message) {
 		language = "en"
 	}
 
-	// Обработка обычного текстового сообщения
-	// По умолчанию отправляем главное меню
-	helpText := b.service.GetText("help", language)
-
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          helpText,
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
-	})
+	// Отправляем главное меню
+	b.sendMainMenu(message.Chat.ID, language)
 }
 
+// handleBackToMainMenu обрабатывает возврат к главному меню
 func (b *Bot) handleBackToMainMenu(query *telego.CallbackQuery) {
 	b.answerCallbackQuery(query.ID, "", false)
 
@@ -874,30 +855,12 @@ func (b *Bot) handleBackToMainMenu(query *telego.CallbackQuery) {
 		language = "en"
 	}
 
-	// Получаем локализированный текст помощи
-	helpText := b.service.GetText("help", language)
-
-	// Получаем информацию о текущем раунде, если он есть
-	currentRound, err := b.service.GetCurrentRound()
-	if err == nil {
-		// Добавляем информацию о текущем раунде
-		roundInfoTemplate := b.service.GetText("round_info", language)
-		roundID := utils.ToBase62(uint(currentRound.ID))
-		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundID, currentRound.Hash))
-		helpText += roundInfo
-	}
-
-	// Обновляем сообщение или отправляем новое
+	// Если у сообщения есть чат, отправляем в него главное меню
 	if query.Message != nil {
-		b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
-			Text:           helpText,
-			InlineKeyboard: b.createMainKeyboard(language),
-		})
+		b.sendMainMenu(query.Message.Chat.ID, language)
 	} else {
-		b.SendMessage(query.From.ID, MessageOptions{
-			Text:          helpText,
-			ReplyKeyboard: b.createMainReplyKeyboard(language),
-		})
+		// Иначе отправляем в личку пользователю
+		b.sendMainMenu(user.ID, language)
 	}
 }
 
