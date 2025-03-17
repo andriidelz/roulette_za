@@ -690,14 +690,53 @@ INSERT INTO localizations (key, language, value) VALUES
 INSERT INTO localizations (key, language, value) VALUES 
     ('main_menu', 'uk', 'Натисніть кнопку для продовження');
 
--- Добавить в локализации на английском
 INSERT INTO localizations (key, language, value) VALUES 
     ('country_saved', 'en', 'Your country has been successfully saved! ✅');
 
--- Добавить в локализации на русском
 INSERT INTO localizations (key, language, value) VALUES 
     ('country_saved', 'ru', 'Ваша страна успешно сохранена! ✅');
 
--- Добавить в локализации на украинском
 INSERT INTO localizations (key, language, value) VALUES 
     ('country_saved', 'uk', 'Ваша країна успішно збережена! ✅');
+
+INSERT INTO localizations (key, language, value) VALUES
+    ('settings_message', 'en', 'Settings Menu\n\nHere you can change your profile settings:'),
+    ('btn_settings_language', 'en', '🌐 Language'),
+    ('btn_settings_country', 'en', '🌍 Country'),
+    ('btn_settings_name', 'en', '👤 First Name'),
+    ('btn_settings_lastname', 'en', '👥 Last Name'),
+    ('btn_back_to_main', 'en', '◀️ Back to Main Menu'),
+    ('settings_language', 'en', 'Select your language:'),
+    ('settings_name', 'en', 'Enter your first name:'),
+    ('settings_lastname', 'en', 'Enter your last name:'),
+    ('language_saved', 'en', 'Language successfully updated! ✅'),
+    ('name_saved', 'en', 'First name successfully updated! ✅'),
+    ('lastname_saved', 'en', 'Last name successfully updated! ✅');
+
+INSERT INTO localizations (key, language, value) VALUES
+    ('settings_message', 'ru', 'Меню настроек\n\nЗдесь вы можете изменить настройки профиля:'),
+    ('btn_settings_language', 'ru', '🌐 Язык'),
+    ('btn_settings_country', 'ru', '🌍 Страна'),
+    ('btn_settings_name', 'ru', '👤 Имя'),
+    ('btn_settings_lastname', 'ru', '👥 Фамилия'),
+    ('btn_back_to_main', 'ru', '◀️ Вернуться в главное меню'),
+    ('settings_language', 'ru', 'Выберите ваш язык:'),
+    ('settings_name', 'ru', 'Введите ваше имя:'),
+    ('settings_lastname', 'ru', 'Введите вашу фамилию:'),
+    ('language_saved', 'ru', 'Язык успешно обновлен! ✅'),
+    ('name_saved', 'ru', 'Имя успешно обновлено! ✅'),
+    ('lastname_saved', 'ru', 'Фамилия успешно обновлена! ✅');
+
+INSERT INTO localizations (key, language, value) VALUES
+    ('settings_message', 'uk', 'Меню налаштувань\n\nТут ви можете змінити налаштування профілю:'),
+    ('btn_settings_language', 'uk', '🌐 Мова'),
+    ('btn_settings_country', 'uk', '🌍 Країна'),
+    ('btn_settings_name', 'uk', '👤 Ім''я'),
+    ('btn_settings_lastname', 'uk', '👥 Прізвище'),
+    ('btn_back_to_main', 'uk', '◀️ Повернутися до головного меню'),
+    ('settings_language', 'uk', 'Виберіть вашу мову:'),
+    ('settings_name', 'uk', 'Введіть ваше ім''я'),
+    ('settings_lastname', 'uk', 'Введіть ваше прізвище:'),
+    ('language_saved', 'uk', 'Мову успішно оновлено! ✅'),
+    ('name_saved', 'uk', 'Ім''я успішно оновлено! ✅'),
+    ('lastname_saved', 'uk', 'Прізвище успішно оновлено! ✅');

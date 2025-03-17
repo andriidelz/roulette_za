@@ -49,6 +49,9 @@ type Service interface {
 	// Методы для работы со страной пользователя
 	SetUserCountry(telegramID int64, country string) error
 	GetUserCountry(telegramID int64) (string, error)
+
+	UpdateUserLanguage(telegramID int64, languageCode string) error
+	UpdateUser(user *models.User) error
 }
 
 type ServiceImpl struct {
@@ -545,4 +548,19 @@ func (s *ServiceImpl) GetUserCountry(telegramID int64) (string, error) {
 	}
 
 	return s.repo.GetUserCountry(user.ID)
+}
+
+func (s *ServiceImpl) UpdateUserLanguage(telegramID int64, languageCode string) error {
+	user, err := s.repo.GetUserByTelegramID(telegramID)
+	if err != nil {
+		return err
+	}
+
+	user.LanguageCode = languageCode
+	return s.repo.UpdateUser(user)
+}
+
+// UpdateUser обновляет информацию о пользователе
+func (s *ServiceImpl) UpdateUser(user *models.User) error {
+	return s.repo.UpdateUser(user)
 }

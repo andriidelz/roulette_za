@@ -19,13 +19,14 @@ import (
 
 // Структура бота
 type Bot struct {
-	bot         *telego.Bot
-	updates     <-chan telego.Update
-	service     service.Service
-	initialized bool
-	ctx         context.Context
-	cancel      context.CancelFunc
-	gameHandler *GameHandler // Обработчик игры
+	bot          *telego.Bot
+	updates      <-chan telego.Update
+	service      service.Service
+	initialized  bool
+	ctx          context.Context
+	cancel       context.CancelFunc
+	gameHandler  *GameHandler  // Обработчик игры
+	stateManager *StateManager // Менеджер состояний
 }
 
 // Константы для команд и callback-запитов
@@ -40,6 +41,7 @@ const (
 	CommandBalance     = "balance"
 	CommandWithdraw    = "withdraw"
 	CommandFAQ         = "faq"
+	CommandSettings    = "settings"
 
 	CallbackBetRed   = "bet_red"
 	CallbackBetBlack = "bet_black"
@@ -57,10 +59,11 @@ func NewBot(token string, service service.Service) (*Bot, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	b := &Bot{
-		bot:     bot,
-		service: service,
-		ctx:     ctx,
-		cancel:  cancel,
+		bot:          bot,
+		service:      service,
+		ctx:          ctx,
+		cancel:       cancel,
+		stateManager: NewStateManager(),
 	}
 
 	// Инициализируем обработчик игры после создания бота
@@ -200,6 +203,84 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 func (b *Bot) handleMessage(message *telego.Message) {
 	user := message.From
 
+	// Проверяем состояние пользователя
+	state, messageID, exists := b.stateManager.GetState(user.ID)
+	if exists && state != StateNone {
+		switch state {
+		case StateInputName:
+			// Обработка ввода имени
+			if len(message.Text) > 0 {
+				// Обновляем имя пользователя
+				dbUser, err := b.service.GetUser(user.ID)
+				if err != nil {
+					log.Printf("Error getting user: %v", err)
+					b.stateManager.ClearState(user.ID)
+					return
+				}
+
+				dbUser.FirstName = message.Text
+				if err := b.service.UpdateUser(dbUser); err != nil {
+					log.Printf("Error updating user name: %v", err)
+				}
+
+				// Отправляем сообщение об успешном обновлении
+				successText := b.service.GetText("name_saved", user.LanguageCode)
+				backBtn := &telego.InlineKeyboardMarkup{
+					InlineKeyboard: [][]telego.InlineKeyboardButton{
+						{
+							{Text: b.service.GetText("btn_back", user.LanguageCode), CallbackData: CallbackSettingsBack},
+						},
+					},
+				}
+
+				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
+					Text:           successText,
+					InlineKeyboard: backBtn,
+				})
+
+				// Очищаем состояние
+				b.stateManager.ClearState(user.ID)
+				return
+			}
+
+		case StateInputLName:
+			// Обработка ввода фамилии
+			if len(message.Text) > 0 {
+				// Обновляем фамилию пользователя
+				dbUser, err := b.service.GetUser(user.ID)
+				if err != nil {
+					log.Printf("Error getting user: %v", err)
+					b.stateManager.ClearState(user.ID)
+					return
+				}
+
+				dbUser.LastName = message.Text
+				if err := b.service.UpdateUser(dbUser); err != nil {
+					log.Printf("Error updating user lastname: %v", err)
+				}
+
+				// Отправляем сообщение об успешном обновлении
+				successText := b.service.GetText("lastname_saved", user.LanguageCode)
+				backBtn := &telego.InlineKeyboardMarkup{
+					InlineKeyboard: [][]telego.InlineKeyboardButton{
+						{
+							{Text: b.service.GetText("btn_back", user.LanguageCode), CallbackData: CallbackSettingsBack},
+						},
+					},
+				}
+
+				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
+					Text:           successText,
+					InlineKeyboard: backBtn,
+				})
+
+				// Очищаем состояние
+				b.stateManager.ClearState(user.ID)
+				return
+			}
+		}
+	}
+
 	// Регистрация пользователя, если он новый
 	_, err := b.service.GetUser(user.ID)
 	if err != nil {
@@ -237,6 +318,8 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			b.handleWithdrawCommand(message)
 		case CommandFAQ:
 			b.handleFAQCommand(message)
+		case CommandSettings: // Добавляем обработку команды настроек
+			b.handleSettingsCommand(message)
 		default:
 			// Неизвестная команда
 			b.handleUnknownCommand(message)
@@ -380,6 +463,155 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			b.sendMainMenu(query.Message.Chat.ID, language)
 		} else {
 			b.sendMainMenu(user.ID, language)
+		}
+		return
+	}
+
+	// Обработка настроек
+	if strings.HasPrefix(callbackData, "settings_") {
+		// Отвечаем на callback
+		b.answerCallbackQuery(query.ID, "", false)
+
+		switch callbackData {
+		case CallbackSettingsLanguage:
+			languageText := b.service.GetText("settings_language", language)
+
+			// Обновляем сообщение с выбором языка
+			if query.Message != nil {
+				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+					Text:           languageText,
+					InlineKeyboard: b.createLanguageKeyboard(),
+				})
+			}
+			return
+
+		case CallbackSettingsCountry:
+			countryText := b.service.GetText("countrymes", language)
+
+			// Создаем клавиатуру со странами - начинаем с первой страницы
+			countriesKeyboard := b.createCountriesKeyboard(1)
+
+			// Обновляем сообщение с выбором страны
+			if query.Message != nil {
+				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+					Text:           countryText,
+					InlineKeyboard: countriesKeyboard,
+				})
+			}
+			return
+
+		case CallbackSettingsName:
+			nameText := b.service.GetText("settings_name", language)
+
+			// Обновляем сообщение и запрашиваем имя
+			if query.Message != nil {
+				// Устанавливаем состояние ожидания имени
+				b.stateManager.SetState(user.ID, StateInputName, query.Message.MessageID)
+
+				backBtn := &telego.InlineKeyboardMarkup{
+					InlineKeyboard: [][]telego.InlineKeyboardButton{
+						{
+							{Text: "◀️ Back", CallbackData: CallbackSettingsBack},
+						},
+					},
+				}
+
+				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+					Text:           nameText,
+					InlineKeyboard: backBtn,
+				})
+			}
+			return
+
+		case CallbackSettingsLastName:
+			lastNameText := b.service.GetText("settings_lastname", language)
+
+			// Обновляем сообщение и запрашиваем фамилию
+			if query.Message != nil {
+				// Устанавливаем состояние ожидания фамилии
+				b.stateManager.SetState(user.ID, StateInputLName, query.Message.MessageID)
+
+				backBtn := &telego.InlineKeyboardMarkup{
+					InlineKeyboard: [][]telego.InlineKeyboardButton{
+						{
+							{Text: "◀️ Back", CallbackData: CallbackSettingsBack},
+						},
+					},
+				}
+
+				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+					Text:           lastNameText,
+					InlineKeyboard: backBtn,
+				})
+			}
+			return
+
+		case CallbackSettingsBack:
+			// Возвращаемся к меню настроек
+			settingsText := b.service.GetText("settings_message", language)
+
+			// Очищаем состояние пользователя
+			b.stateManager.ClearState(user.ID)
+
+			if query.Message != nil {
+				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+					Text:           settingsText,
+					InlineKeyboard: b.createSettingsKeyboard(language),
+				})
+			}
+			return
+
+		case CallbackSettingsMainMenu:
+			// Очищаем состояние пользователя
+			b.stateManager.ClearState(user.ID)
+
+			// Возвращаемся в главное меню
+			b.sendMainMenu(query.Message.Chat.ID, language)
+			return
+		}
+	}
+
+	// Обработка выбора языка
+	if strings.HasPrefix(callbackData, "language_") {
+		// Извлекаем код языка
+		langCode := strings.TrimPrefix(callbackData, "language_")
+
+		// Обновляем язык пользователя
+		dbUser, err := b.service.GetUser(user.ID)
+		if err != nil {
+			b.answerCallbackQuery(query.ID, "Error updating language", true)
+			return
+		}
+
+		// Обновляем язык пользователя
+		user.LanguageCode = langCode
+		dbUser.LanguageCode = langCode
+		if err := b.service.UpdateUserLanguage(dbUser.TelegramID, langCode); err != nil {
+			b.answerCallbackQuery(query.ID, "Error saving language", true)
+			return
+		}
+
+		// Получаем локализованный текст для успешного сохранения языка
+		successText := b.service.GetText("language_saved", langCode)
+
+		// Отвечаем на callback
+		b.answerCallbackQuery(query.ID, "", false)
+
+		// Обновляем сообщение подтверждением изменения языка
+		if query.Message != nil {
+			// Создаем кнопку назад с новым языком
+			backBtn := &telego.InlineKeyboardMarkup{
+				InlineKeyboard: [][]telego.InlineKeyboardButton{
+					{
+						{Text: b.service.GetText("btn_back", langCode), CallbackData: CallbackSettingsBack},
+					},
+				},
+			}
+
+			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				Text:           successText,
+				InlineKeyboard: backBtn,
+			})
 		}
 		return
 	}
@@ -543,8 +775,8 @@ func (b *Bot) createCountriesKeyboard(page int) *telego.InlineKeyboardMarkup {
 	}
 
 	// Параметры пагинации
-	const rowSize = 8   // Кнопок в строке
-	const pageSize = 80 // Кнопок на странице
+	const rowSize = 5   // Кнопок в строке
+	const pageSize = 50 // Кнопок на странице
 
 	// Создаем пагинированную клавиатуру с префиксом "country" для навигации
 	return utils.CreatePaginatedKeyboard(buttons, page, rowSize, pageSize, "country")
