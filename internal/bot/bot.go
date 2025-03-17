@@ -451,19 +451,23 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Отвечаем на callback
 		b.answerCallbackQuery(query.ID, "", false)
 
-		// Обновляем сообщение, убирая кнопки выбора страны и добавляя подтверждение
+		// Обновляем сообщение с подтверждением и кнопкой назад
 		if query.Message != nil {
+			// Создаем кнопку назад
+			backBtn := &telego.InlineKeyboardMarkup{
+				InlineKeyboard: [][]telego.InlineKeyboardButton{
+					{
+						{Text: b.service.GetText("btn_back", language), CallbackData: CallbackSettingsBack},
+					},
+				},
+			}
+
 			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
-				Text: successText,
+				Text:           successText,
+				InlineKeyboard: backBtn,
 			})
 		}
 
-		// Отправляем главное меню
-		if query.Message != nil {
-			b.sendMainMenu(query.Message.Chat.ID, language)
-		} else {
-			b.sendMainMenu(user.ID, language)
-		}
 		return
 	}
 
@@ -556,7 +560,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			if query.Message != nil {
 				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
 					Text:           settingsText,
-					InlineKeyboard: b.createSettingsKeyboard(language),
+					InlineKeyboard: b.createSettingsKeyboard(language, user.ID), // передаем userID
 				})
 			}
 			return
