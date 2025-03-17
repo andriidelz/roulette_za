@@ -278,7 +278,68 @@ func (b *Bot) handleMessage(message *telego.Message) {
 				b.stateManager.ClearState(user.ID)
 				return
 			}
+		case StateInputWallet:
+			// Обработка ввода адреса кошелька
+			if len(message.Text) > 0 {
+				// Проверка валидности адреса кошелька (базовая проверка)
+				walletAddress := strings.TrimSpace(message.Text)
+
+				// Базовая валидация адреса TRC20
+				if !strings.HasPrefix(walletAddress, "T") || len(walletAddress) < 30 {
+					// Неверный формат кошелька
+					invalidWalletText := b.service.GetText("invalid_wallet_format", user.LanguageCode)
+
+					// Создаем клавиатуру с кнопкой назад
+					backBtn := &telego.InlineKeyboardMarkup{
+						InlineKeyboard: [][]telego.InlineKeyboardButton{
+							{
+								{Text: b.service.GetText("btn_back", user.LanguageCode), CallbackData: CallbackSettingsBack},
+							},
+						},
+					}
+
+					// Отправляем сообщение об ошибке
+					b.SendMessage(message.Chat.ID, MessageOptions{
+						Text:           invalidWalletText,
+						InlineKeyboard: backBtn,
+					})
+					return
+				}
+
+				// Обновляем адрес кошелька пользователя
+				dbUser, err := b.service.GetUser(user.ID)
+				if err != nil {
+					log.Printf("Error getting user: %v", err)
+					b.stateManager.ClearState(user.ID)
+					return
+				}
+
+				dbUser.WalletAddress = walletAddress
+				if err := b.service.UpdateUser(dbUser); err != nil {
+					log.Printf("Error updating user wallet address: %v", err)
+				}
+
+				// Отправляем сообщение об успешном обновлении
+				successText := b.service.GetText("wallet_saved", user.LanguageCode)
+				backBtn := &telego.InlineKeyboardMarkup{
+					InlineKeyboard: [][]telego.InlineKeyboardButton{
+						{
+							{Text: b.service.GetText("btn_back", user.LanguageCode), CallbackData: CallbackSettingsBack},
+						},
+					},
+				}
+
+				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
+					Text:           successText,
+					InlineKeyboard: backBtn,
+				})
+
+				// Очищаем состояние
+				b.stateManager.ClearState(user.ID)
+				return
+			}
 		}
+
 	}
 
 	// Регистрация пользователя, если он новый
@@ -557,6 +618,29 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
 					Text:           lastNameText,
+					InlineKeyboard: backBtn,
+				})
+			}
+			return
+
+		case CallbackSettingsWallet:
+			walletText := b.service.GetText("settings_wallet", language)
+
+			// Обновляем сообщение и запрашиваем адрес кошелька
+			if query.Message != nil {
+				// Устанавливаем состояние ожидания адреса кошелька
+				b.stateManager.SetState(user.ID, StateInputWallet, query.Message.MessageID)
+
+				backBtn := &telego.InlineKeyboardMarkup{
+					InlineKeyboard: [][]telego.InlineKeyboardButton{
+						{
+							{Text: b.service.GetText("btn_back", language), CallbackData: CallbackSettingsBack},
+						},
+					},
+				}
+
+				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+					Text:           walletText,
 					InlineKeyboard: backBtn,
 				})
 			}

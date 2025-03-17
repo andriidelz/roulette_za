@@ -17,18 +17,19 @@ const (
 
 // Пользователь
 type User struct {
-	ID           uint    `gorm:"primaryKey"`
-	TelegramID   int64   `gorm:"uniqueIndex"`
-	Username     string  `gorm:"size:255"`
-	FirstName    string  `gorm:"size:255"`
-	LastName     string  `gorm:"size:255"`
-	LanguageCode string  `gorm:"size:10"`
-	Country      string  `gorm:"size:2"` // ISO 3166-1 alpha-2 код страны
-	Balance      float64 `gorm:"default:0"`
-	TodayBets    int     `gorm:"default:0"` // Лічильник ставок за день для перевірки ліміту Zero
-	Banned       bool    `gorm:"default:false"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID            uint    `gorm:"primaryKey"`
+	TelegramID    int64   `gorm:"uniqueIndex"`
+	Username      string  `gorm:"size:255"`
+	FirstName     string  `gorm:"size:255"`
+	LastName      string  `gorm:"size:255"`
+	LanguageCode  string  `gorm:"size:10"`
+	Country       string  `gorm:"size:2"` // ISO 3166-1 alpha-2 код страны
+	WalletAddress string  `gorm:"size:255"`
+	Balance       float64 `gorm:"default:0"`
+	TodayBets     int     `gorm:"default:0"` // Лічильник ставок за день для перевірки ліміту Zero
+	Banned        bool    `gorm:"default:false"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // HashEntry представляє запис хешу (раунд) в базі даних

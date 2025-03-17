@@ -14,6 +14,7 @@ const (
 	CallbackSettingsCountry  = "settings_country"
 	CallbackSettingsName     = "settings_name"
 	CallbackSettingsLastName = "settings_lastname"
+	CallbackSettingsWallet   = "settings_wallet"
 
 	// Выбор языка
 	CallbackLanguageEN = "language_en"
@@ -60,6 +61,7 @@ func (b *Bot) createSettingsKeyboard(language string, userID int64) *telego.Inli
 	btnCountryText := b.service.GetText("btn_settings_country", language)
 	btnNameText := b.service.GetText("btn_settings_name", language)
 	btnLastNameText := b.service.GetText("btn_settings_lastname", language)
+	btnWalletText := b.service.GetText("btn_settings_wallet", language) // Новая локализация
 	btnBackText := b.service.GetText("btn_back_to_main", language)
 
 	// Добавляем текущие значения в кнопки
@@ -102,6 +104,15 @@ func (b *Bot) createSettingsKeyboard(language string, userID int64) *telego.Inli
 		lastName = "-"
 	}
 
+	// Для адреса кошелька отображаем текущее значение или маскированное
+	walletAddress := user.WalletAddress
+	if walletAddress == "" {
+		walletAddress = "-"
+	} else if len(walletAddress) > 10 {
+		// Маскируем адрес для безопасности: показываем только первые 6 и последние 4 символа
+		walletAddress = walletAddress[:6] + "..." + walletAddress[len(walletAddress)-4:]
+	}
+
 	return &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
@@ -117,6 +128,9 @@ func (b *Bot) createSettingsKeyboard(language string, userID int64) *telego.Inli
 				{Text: fmt.Sprintf("%s: %s", btnLastNameText, lastName), CallbackData: CallbackSettingsLastName},
 			},
 			{
+				{Text: fmt.Sprintf("%s: %s", btnWalletText, walletAddress), CallbackData: CallbackSettingsWallet},
+			},
+			{
 				{Text: btnBackText, CallbackData: CallbackSettingsMainMenu},
 			},
 		},
@@ -130,6 +144,7 @@ func (b *Bot) createBasicSettingsKeyboard(language string) *telego.InlineKeyboar
 	btnCountryText := b.service.GetText("btn_settings_country", language)
 	btnNameText := b.service.GetText("btn_settings_name", language)
 	btnLastNameText := b.service.GetText("btn_settings_lastname", language)
+	btnWalletText := b.service.GetText("btn_settings_wallet", language) // Новая локализация
 	btnBackText := b.service.GetText("btn_back_to_main", language)
 
 	return &telego.InlineKeyboardMarkup{
@@ -145,6 +160,9 @@ func (b *Bot) createBasicSettingsKeyboard(language string) *telego.InlineKeyboar
 			},
 			{
 				{Text: btnLastNameText, CallbackData: CallbackSettingsLastName},
+			},
+			{
+				{Text: btnWalletText, CallbackData: CallbackSettingsWallet},
 			},
 			{
 				{Text: btnBackText, CallbackData: CallbackSettingsMainMenu},

@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     last_name VARCHAR(255),
     language_code VARCHAR(10),
     country VARCHAR(2),  -- ISO 3166-1 alpha-2 код страны
+    wallet_address VARCHAR(255), -- Адрес кошелька USDT
     balance FLOAT DEFAULT 0,
     today_bets INT DEFAULT 0,
     banned BOOLEAN DEFAULT FALSE,
@@ -740,3 +741,21 @@ INSERT INTO localizations (key, language, value) VALUES
     ('language_saved', 'uk', 'Мову успішно оновлено! ✅'),
     ('name_saved', 'uk', 'Ім''я успішно оновлено! ✅'),
     ('lastname_saved', 'uk', 'Прізвище успішно оновлено! ✅');
+
+INSERT INTO localizations (key, language, value) VALUES
+    ('btn_settings_wallet', 'en', '💰 USDT Wallet Address'),
+    ('settings_wallet', 'en', 'Enter your USDT wallet address (TRC20):'),
+    ('wallet_saved', 'en', 'Wallet address successfully updated! ✅'),
+    ('invalid_wallet_format', 'en', 'Invalid wallet address format. Please enter a valid TRC20 wallet address starting with T.');
+
+INSERT INTO localizations (key, language, value) VALUES
+    ('btn_settings_wallet', 'ru', '💰 Адрес кошелька USDT'),
+    ('settings_wallet', 'ru', 'Введите адрес вашего кошелька USDT (TRC20):'),
+    ('wallet_saved', 'ru', 'Адрес кошелька успешно обновлен! ✅'),
+    ('invalid_wallet_format', 'ru', 'Неверный формат адреса кошелька. Пожалуйста, введите действительный адрес кошелька TRC20, начинающийся с T.');
+
+INSERT INTO localizations (key, language, value) VALUES
+    ('btn_settings_wallet', 'uk', '💰 Адреса гаманця USDT'),
+    ('settings_wallet', 'uk', 'Введіть адресу вашого гаманця USDT (TRC20):'),
+    ('wallet_saved', 'uk', 'Адреса гаманця успішно оновлена! ✅'),
+    ('invalid_wallet_format', 'uk', 'Невірний формат адреси гаманця. Будь ласка, введіть дійсну адресу гаманця TRC20, що починається з T.');
