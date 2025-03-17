@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -517,6 +518,18 @@ func (b *Bot) sendMainMenu(chatID int64, language string) {
 // createCountriesKeyboard создает клавиатуру с флагами стран и постраничной навигацией
 // page - номер страницы (начиная с 1)
 func (b *Bot) createCountriesKeyboard(page int) *telego.InlineKeyboardMarkup {
+	// Создаем массив кнопок для постраничной навигации
+	// Сортировка - сначала избранные страны, затем остальные по коду
+	sort.Slice(countries, func(i, j int) bool {
+		if countries[i].Favorite && !countries[j].Favorite {
+			return true
+		}
+		if !countries[i].Favorite && countries[j].Favorite {
+			return false
+		}
+		return countries[i].Code < countries[j].Code
+	})
+
 	// Создаем массив кнопок для постраничной навигации
 	var buttons []utils.PaginatedKeyboardButton
 	for _, country := range countries {
