@@ -569,9 +569,6 @@ func (h *GameHandler) MakeBet(userID int64, betOption models.BetOption) error {
 
 	log.Printf("Bet created successfully for user %d in round %d (waitingPlayers count: %d)", userID, currentRound.ID, len(h.waitingPlayers))
 
-	// ВАЖНО: Эта функция НЕ отправляет сообщение о принятии ставки,
-	// сообщение отправляется в методе handleMakeBet класса Bot
-
 	return nil
 }
 

@@ -28,9 +28,10 @@ services:
       PGADMIN_DEFAULT_EMAIL: postgres@domain.com
       PGADMIN_DEFAULT_PASSWORD: postgres
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
-      # PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     volumes:
+      - ./shared-data/pgadmin:/var/lib/pgadmin
       - "./pgadmin4.config.json:/pgadmin4/servers.json"
     ports:
       - "8181:80"

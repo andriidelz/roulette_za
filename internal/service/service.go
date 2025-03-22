@@ -15,7 +15,7 @@ type Service interface {
 	// Користувачі
 	RegisterUser(telegramID int64, username, firstName, lastName, languageCode string) (*models.User, error)
 	GetUser(telegramID int64) (*models.User, error)
-	GetUserStats(telegramID int64) (*models.UserStats, error)
+	GetUserStats(telegramID int64) (map[string]int, error) // Изменена сигнатура
 
 	// Гра та раунди
 	MakeBet(telegramID int64, option models.BetOption) error
@@ -128,13 +128,62 @@ func (s *ServiceImpl) GetUser(telegramID int64) (*models.User, error) {
 	return s.repo.GetUserByTelegramID(telegramID)
 }
 
-func (s *ServiceImpl) GetUserStats(telegramID int64) (*models.UserStats, error) {
+func (s *ServiceImpl) GetUserStats(telegramID int64) (map[string]int, error) {
 	user, err := s.repo.GetUserByTelegramID(telegramID)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.repo.GetUserStats(user.ID)
+	// Получаем общее количество ставок
+	totalBets, err := s.repo.GetUserTotalBets(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Получаем количество выигрышных ставок
+	wonBets, err := s.repo.GetUserWonBets(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Получаем количество баллов
+	totalPoints, err := s.repo.GetUserTotalPoints(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Получаем статистику за день
+	dailyBets, dailyPoints, err := s.repo.GetUserDailyStats(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Получаем статистику за неделю
+	weeklyBets, weeklyPoints, err := s.repo.GetUserWeeklyStats(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Получаем статистику за месяц
+	monthlyBets, monthlyPoints, err := s.repo.GetUserMonthlyStats(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Формируем карту со статистикой
+	stats := map[string]int{
+		"totalBets":     totalBets,
+		"wonBets":       wonBets,
+		"totalPoints":   totalPoints,
+		"dailyBets":     dailyBets,
+		"dailyPoints":   dailyPoints,
+		"weeklyBets":    weeklyBets,
+		"weeklyPoints":  weeklyPoints,
+		"monthlyBets":   monthlyBets,
+		"monthlyPoints": monthlyPoints,
+	}
+
+	return stats, nil
 }
 
 // Реалізація методів для гри та раундів
@@ -272,29 +321,6 @@ func (s *ServiceImpl) ProcessBets(hashEntryID uint) error {
 		if err := s.repo.UpdateBet(&bet); err != nil {
 			return err
 		}
-
-		// Обновляем статистику пользователя
-		stats, err := s.repo.GetUserStats(bet.UserID)
-		if err != nil {
-			return err
-		}
-
-		stats.TotalBets++
-		stats.DailyBets++
-		stats.WeeklyBets++
-		stats.MonthlyBets++
-
-		if won {
-			stats.WonBets++
-			stats.TotalPoints += points
-			stats.DailyPoints += points
-			stats.WeeklyPoints += points
-			stats.MonthlyPoints += points
-		}
-
-		if err := s.repo.UpdateUserStats(stats); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -344,12 +370,6 @@ func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
 		CreatedAt:   time.Now(),
 	}
 
-	// Увеличиваем счетчик ставок за день
-	user.TodayBets++
-	if err := s.repo.UpdateUser(user); err != nil {
-		return err
-	}
-
 	// Сохраняем ставку
 	return s.repo.CreateBet(bet)
 }
@@ -371,14 +391,20 @@ func (s *ServiceImpl) CanBetZero(telegramID int64) (bool, int, error) {
 		return false, 0, err
 	}
 
-	// Перевіряємо кількість ставок за день
-	dailyBetsLimit := 100 // можна винести в налаштування
+	// Получаем количество ставок за сегодня
+	dailyBets, err := s.repo.GetUserDailyBets(user.ID)
+	if err != nil {
+		return false, 0, err
+	}
 
-	if user.TodayBets >= dailyBetsLimit {
+	// Проверяем лимит ставок на Zero
+	dailyBetsLimit := 100 // можно вынести в настройки
+
+	if dailyBets >= dailyBetsLimit {
 		return true, 0, nil
 	}
 
-	return false, dailyBetsLimit - user.TodayBets, nil
+	return false, dailyBetsLimit - dailyBets, nil
 }
 
 // GetUserBetsForRound получает ставки пользователя для конкретного раунда

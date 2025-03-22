@@ -62,7 +62,6 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	}
 
 	// Отримуємо інформацію про користувача
-	// Цей метод треба додати в репозиторій
 	user, err := a.repo.GetUserByID(uint(userID))
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -72,8 +71,8 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 		return
 	}
 
-	// Отримуємо статистику користувача
-	stats, err := a.repo.GetUserStats(uint(userID))
+	// Получаем статистику пользователя напрямую из таблицы bets
+	totalBets, err := a.repo.GetUserTotalBets(user.ID)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
@@ -82,8 +81,40 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 		return
 	}
 
+	wonBets, err := a.repo.GetUserWonBets(user.ID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title": "Error",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	totalPoints, err := a.repo.GetUserTotalPoints(user.ID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title": "Error",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// Вычисляем эффективность
+	var efficiency float64
+	if totalBets > 0 {
+		efficiency = float64(wonBets) / float64(totalBets) * 100
+	}
+
+	// Создаем статистику для отображения в шаблоне
+	stats := gin.H{
+		"totalBets":   totalBets,
+		"wonBets":     wonBets,
+		"totalPoints": totalPoints,
+		"efficiency":  efficiency,
+	}
+
 	// Отримуємо останні ставки користувача
-	bets, err := a.repo.GetUserBets(uint(userID), 20)
+	bets, err := a.repo.GetUserBets(user.ID, 20)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",

@@ -14,9 +14,15 @@ type Repository interface {
 	GetUserByTelegramID(telegramID int64) (*models.User, error)
 	UpdateUser(user *models.User) error
 	GetUserCount() (int64, error)
-	GetUserStats(userID uint) (*models.UserStats, error)
-	UpdateUserStats(stats *models.UserStats) error
-	ResetDailyBets() error
+
+	// Статистика (нові методи замість UserStats)
+	GetUserTotalBets(userID uint) (int, error)
+	GetUserWonBets(userID uint) (int, error)
+	GetUserTotalPoints(userID uint) (int, error)
+	GetUserDailyBets(userID uint) (int, error)
+	GetUserDailyStats(userID uint) (int, int, error)
+	GetUserWeeklyStats(userID uint) (int, int, error)
+	GetUserMonthlyStats(userID uint) (int, int, error)
 
 	// Ігри і ставки
 	CreateBet(bet *models.Bet) error
@@ -59,10 +65,12 @@ type Repository interface {
 	GetPendingWithdrawals() ([]models.Withdrawal, error)
 	UpdateWithdrawalStatus(id uint, status string) error
 
+	// Адмін функції
 	GetUsers(page, perPage int) ([]models.User, int64, error)
 	GetUserByID(id uint) (*models.User, error)
 	GetWithdrawalByID(id uint) (*models.Withdrawal, error)
 
+	// Хеші та раунди
 	SaveHashEntry(entry *models.HashEntry) error
 	GetHashEntries(offset, limit int) ([]models.HashEntry, error)
 	CountHashEntries() (int64, error)
@@ -78,6 +86,7 @@ type Repository interface {
 	SetUserCountry(userID uint, country string) error
 	GetUserCountry(userID uint) (string, error)
 
+	// Закрытие соединения
 	Close() error
 }
 
@@ -93,47 +102,7 @@ func NewRepository(db *gorm.DB) Repository {
 // Реалізація методів для ігор і ставок
 
 func (r *PostgresRepository) CreateBet(bet *models.Bet) error {
-	tx := r.db.Begin()
-
-	// Створюємо ставку
-	if err := tx.Create(bet).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	// Оновлюємо статистику користувача
-	var stats models.UserStats
-	if err := tx.Where("user_id = ?", bet.UserID).First(&stats).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	stats.TotalBets++
-	stats.DailyBets++
-	stats.WeeklyBets++
-	stats.MonthlyBets++
-
-	if bet.Won {
-		stats.WonBets++
-		stats.TotalPoints += bet.Points
-		stats.DailyPoints += bet.Points
-		stats.WeeklyPoints += bet.Points
-		stats.MonthlyPoints += bet.Points
-	}
-
-	if err := tx.Save(&stats).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	// Збільшуємо лічильник ставок за день у користувача
-	if err := tx.Model(&models.User{}).Where("id = ?", bet.UserID).
-		Update("today_bets", gorm.Expr("today_bets + ?", 1)).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit().Error
+	return r.db.Create(bet).Error
 }
 
 func (r *PostgresRepository) GetUserBets(userID uint, limit int) ([]models.Bet, error) {
@@ -205,21 +174,22 @@ func (r *PostgresRepository) UpdateWeeklyRating(rating *models.WeeklyRating) err
 }
 
 func (r *PostgresRepository) CalculateWeeklyRatings(year, week int) error {
-	// Виконуємо складний запит для розрахунку рейтингу за вказаний тиждень
+	// Выполняем прямой SQL запрос для расчета рейтингов на основе ставок
 	query := `
 		INSERT INTO weekly_ratings (user_id, week, year, points, bets, efficiency, position, created_at, updated_at)
 		SELECT 
-			us.user_id,
+			b.user_id,
 			?,                         -- week
 			?,                         -- year
-			us.weekly_points,          -- points
-			us.weekly_bets,            -- bets
-			CASE WHEN us.weekly_bets > 0 THEN us.weekly_points::float / us.weekly_bets ELSE 0 END, -- efficiency
-			0,                         -- position (буде оновлено пізніше)
+			COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0) as points,
+			COUNT(*) as bets,
+			CASE WHEN COUNT(*) > 0 THEN COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0)::float / COUNT(*) ELSE 0 END, -- efficiency
+			0,                         -- position (будет обновлено позже)
 			NOW(),                     -- created_at
 			NOW()                      -- updated_at
-		FROM user_stats us
-		WHERE us.weekly_points > 0
+		FROM bets b
+		WHERE DATE_PART('week', b.created_at) = ? AND DATE_PART('year', b.created_at) = ?
+		GROUP BY b.user_id
 		ON CONFLICT (user_id, week, year) 
 		DO UPDATE SET
 			points = EXCLUDED.points,
@@ -228,11 +198,11 @@ func (r *PostgresRepository) CalculateWeeklyRatings(year, week int) error {
 			updated_at = NOW()
 	`
 
-	if err := r.db.Exec(query, week, year).Error; err != nil {
+	if err := r.db.Exec(query, week, year, week, year).Error; err != nil {
 		return err
 	}
 
-	// Оновлюємо позиції в рейтингу
+	// Обновляем позиции в рейтинге
 	positionQuery := `
 		WITH ranked AS (
 			SELECT id, ROW_NUMBER() OVER (ORDER BY points DESC, efficiency DESC) AS new_position
@@ -324,19 +294,105 @@ func (r *PostgresRepository) MarkNotificationAsRead(id uint) error {
 		Update("read", true).Error
 }
 
-// Реализация методов для работы со страной пользователя
-func (r *PostgresRepository) SetUserCountry(userID uint, country string) error {
-	return r.db.Model(&models.User{}).Where("id = ?", userID).
-		Update("country", country).Error
+// Методы для настроек (перенесенные из settings.go)
+func (r *PostgresRepository) GetSetting(key string) (*models.Setting, error) {
+	var setting models.Setting
+	if err := r.db.Where("key = ?", key).First(&setting).Error; err != nil {
+		return nil, err
+	}
+	return &setting, nil
 }
 
-func (r *PostgresRepository) GetUserCountry(userID uint) (string, error) {
-	var user models.User
-	err := r.db.Where("id = ?", userID).First(&user).Error
+func (r *PostgresRepository) UpdateSetting(key string, value string) error {
+	return r.db.Model(&models.Setting{}).Where("key = ?", key).
+		Update("value", value).Error
+}
+
+// Методы статистики (новые)
+func (r *PostgresRepository) GetUserTotalBets(userID uint) (int, error) {
+	var count int64
+	err := r.db.Model(&models.Bet{}).Where("user_id = ?", userID).Count(&count).Error
+	return int(count), err
+}
+
+func (r *PostgresRepository) GetUserWonBets(userID uint) (int, error) {
+	var count int64
+	err := r.db.Model(&models.Bet{}).Where("user_id = ? AND won = ?", userID, true).Count(&count).Error
+	return int(count), err
+}
+
+func (r *PostgresRepository) GetUserTotalPoints(userID uint) (int, error) {
+	var total int
+	err := r.db.Model(&models.Bet{}).Where("user_id = ? AND won = ?", userID, true).Select("COALESCE(SUM(points), 0)").Scan(&total).Error
+	return total, err
+}
+
+func (r *PostgresRepository) GetUserDailyBets(userID uint) (int, error) {
+	var count int64
+	today := time.Now().Format("2006-01-02")
+	err := r.db.Model(&models.Bet{}).Where("user_id = ? AND DATE(created_at) = ?", userID, today).Count(&count).Error
+	return int(count), err
+}
+
+func (r *PostgresRepository) GetUserDailyStats(userID uint) (int, int, error) {
+	var count int64
+	var points int
+
+	today := time.Now().Format("2006-01-02")
+
+	// Количество ставок за день
+	err := r.db.Model(&models.Bet{}).Where("user_id = ? AND DATE(created_at) = ?", userID, today).Count(&count).Error
 	if err != nil {
-		return "", err
+		return 0, 0, err
 	}
-	return user.Country, nil
+
+	// Количество баллов за день
+	err = r.db.Model(&models.Bet{}).Where("user_id = ? AND won = ? AND DATE(created_at) = ?", userID, true, today).Select("COALESCE(SUM(points), 0)").Scan(&points).Error
+
+	return int(count), points, err
+}
+
+func (r *PostgresRepository) GetUserWeeklyStats(userID uint) (int, int, error) {
+	var count int64
+	var points int
+
+	// Начало недели (понедельник)
+	now := time.Now()
+	weekday := int(now.Weekday())
+	if weekday == 0 { // Воскресенье в Go имеет номер 0
+		weekday = 7
+	}
+	startOfWeek := now.AddDate(0, 0, -weekday+1).Format("2006-01-02")
+
+	// Количество ставок за неделю
+	err := r.db.Model(&models.Bet{}).Where("user_id = ? AND DATE(created_at) >= ?", userID, startOfWeek).Count(&count).Error
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Количество баллов за неделю
+	err = r.db.Model(&models.Bet{}).Where("user_id = ? AND won = ? AND DATE(created_at) >= ?", userID, true, startOfWeek).Select("COALESCE(SUM(points), 0)").Scan(&points).Error
+
+	return int(count), points, err
+}
+
+func (r *PostgresRepository) GetUserMonthlyStats(userID uint) (int, int, error) {
+	var count int64
+	var points int
+
+	// Начало месяца
+	startOfMonth := time.Now().Format("2006-01") + "-01"
+
+	// Количество ставок за месяц
+	err := r.db.Model(&models.Bet{}).Where("user_id = ? AND DATE(created_at) >= ?", userID, startOfMonth).Count(&count).Error
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Количество баллов за месяц
+	err = r.db.Model(&models.Bet{}).Where("user_id = ? AND won = ? AND DATE(created_at) >= ?", userID, true, startOfMonth).Select("COALESCE(SUM(points), 0)").Scan(&points).Error
+
+	return int(count), points, err
 }
 
 // Close закриває з'єднання з базою даних

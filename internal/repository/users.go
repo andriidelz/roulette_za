@@ -2,7 +2,6 @@ package repository
 
 import (
 	"roulette/internal/models"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -10,25 +9,7 @@ import (
 // Реалізація методів для користувачів
 
 func (r *PostgresRepository) CreateUser(user *models.User) error {
-	tx := r.db.Begin()
-
-	if err := tx.Create(user).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	// Створюємо статистику для користувача
-	stats := &models.UserStats{
-		UserID:    user.ID,
-		LastReset: time.Now(),
-	}
-
-	if err := tx.Create(stats).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit().Error
+	return r.db.Create(user).Error
 }
 
 func (r *PostgresRepository) GetUserByTelegramID(telegramID int64) (*models.User, error) {
@@ -59,31 +40,45 @@ func (r *PostgresRepository) GetUserCount() (int64, error) {
 	return count, nil
 }
 
-func (r *PostgresRepository) GetUserStats(userID uint) (*models.UserStats, error) {
-	var stats models.UserStats
-	err := r.db.Where("user_id = ?", userID).First(&stats).Error
+// GetUsers отримує список користувачів з пагінацією
+func (r *PostgresRepository) GetUsers(page, perPage int) ([]models.User, int64, error) {
+	var users []models.User
+	var totalCount int64
 
-	// Якщо статистики немає, створюємо нову
-	if err == gorm.ErrRecordNotFound {
-		stats = models.UserStats{
-			UserID:    userID,
-			LastReset: time.Now(),
-		}
-		if err := r.db.Create(&stats).Error; err != nil {
-			return nil, err
-		}
-		return &stats, nil
-	} else if err != nil {
-		return nil, err
+	// Отримуємо загальну кількість користувачів
+	if err := r.db.Model(&models.User{}).Count(&totalCount).Error; err != nil {
+		return nil, 0, err
 	}
 
-	return &stats, nil
+	// Отримуємо користувачів з пагінацією
+	offset := (page - 1) * perPage
+	if err := r.db.Offset(offset).Limit(perPage).Order("created_at desc").Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return users, totalCount, nil
 }
 
-func (r *PostgresRepository) UpdateUserStats(stats *models.UserStats) error {
-	return r.db.Save(stats).Error
+// GetUserByID отримує користувача за його ID
+func (r *PostgresRepository) GetUserByID(id uint) (*models.User, error) {
+	var user models.User
+	if err := r.db.First(&user, id).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
-func (r *PostgresRepository) ResetDailyBets() error {
-	return r.db.Model(&models.User{}).Update("today_bets", 0).Error
+// Реализация методов для работы со страной пользователя
+func (r *PostgresRepository) SetUserCountry(userID uint, country string) error {
+	return r.db.Model(&models.User{}).Where("id = ?", userID).
+		Update("country", country).Error
+}
+
+func (r *PostgresRepository) GetUserCountry(userID uint) (string, error) {
+	var user models.User
+	err := r.db.Where("id = ?", userID).First(&user).Error
+	if err != nil {
+		return "", err
+	}
+	return user.Country, nil
 }

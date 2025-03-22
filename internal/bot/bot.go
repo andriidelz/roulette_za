@@ -993,16 +993,17 @@ func (b *Bot) handleProfileCommand(message *telego.Message) {
 		return
 	}
 
+	// Получаем статистику пользователя - теперь stats это map[string]int
 	stats, err := b.service.GetUserStats(user.ID)
 	if err != nil {
 		log.Printf("Error getting user stats: %v", err)
-		stats = &models.UserStats{} // Пустая статистика, если не удалось получить
+		stats = make(map[string]int) // Пустая статистика, если не удалось получить
 	}
 
 	// Расчет эффективности
 	efficiency := 0.0
-	if stats.TotalBets > 0 {
-		efficiency = float64(stats.WonBets) / float64(stats.TotalBets) * 100
+	if stats["totalBets"] > 0 {
+		efficiency = float64(stats["wonBets"]) / float64(stats["totalBets"]) * 100
 	}
 
 	// Получаем шаблон профиля и форматируем его
@@ -1011,10 +1012,10 @@ func (b *Bot) handleProfileCommand(message *telego.Message) {
 		profileTemplate,
 		dbUser.Username,
 		dbUser.Balance,
-		stats.TotalBets,
-		stats.WonBets,
+		stats["totalBets"],
+		stats["wonBets"],
 		efficiency,
-		stats.TotalPoints,
+		stats["totalPoints"],
 	)
 
 	b.SendMessage(message.Chat.ID, MessageOptions{
@@ -1030,7 +1031,7 @@ func (b *Bot) handleStatsCommand(message *telego.Message) {
 		language = "en"
 	}
 
-	// Получаем статистику пользователя
+	// Получаем статистику пользователя - теперь stats это map[string]int
 	stats, err := b.service.GetUserStats(user.ID)
 	if err != nil {
 		log.Printf("Error getting user stats: %v", err)
@@ -1044,14 +1045,14 @@ func (b *Bot) handleStatsCommand(message *telego.Message) {
 	statsTemplate := b.service.GetText("stats_template", language)
 	statsText := fmt.Sprintf(
 		statsTemplate,
-		stats.DailyBets,
-		stats.DailyPoints,
-		stats.WeeklyBets,
-		stats.WeeklyPoints,
-		stats.MonthlyBets,
-		stats.MonthlyPoints,
-		stats.TotalBets,
-		stats.TotalPoints,
+		stats["dailyBets"],
+		stats["dailyPoints"],
+		stats["weeklyBets"],
+		stats["weeklyPoints"],
+		stats["monthlyBets"],
+		stats["monthlyPoints"],
+		stats["totalBets"],
+		stats["totalPoints"],
 	)
 
 	b.SendMessage(message.Chat.ID, MessageOptions{
