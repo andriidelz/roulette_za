@@ -23,6 +23,7 @@ type Repository interface {
 	GetUserDailyStats(userID uint) (int, int, error)
 	GetUserWeeklyStats(userID uint) (int, int, error)
 	GetUserMonthlyStats(userID uint) (int, int, error)
+	GetDetailedStatsByDate(userID uint, startDate string, endDate string) (map[string]int, error)
 
 	// Ігри і ставки
 	CreateBet(bet *models.Bet) error

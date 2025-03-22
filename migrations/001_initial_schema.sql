@@ -751,3 +751,126 @@ INSERT INTO localizations (key, language, value) VALUES
     ('unknown_command', 'en', 'Unknown command. Please use the menu to navigate.'),
     ('unknown_command', 'ru', 'Неизвестная команда. Пожалуйста, используйте меню для навигации.'),
     ('unknown_command', 'uk', 'Невідома команда. Будь ласка, використовуйте меню для навігації.');
+
+-- Добавление локализаций для статистики (русский язык)
+INSERT INTO localizations (key, language, value) 
+VALUES 
+('statisticsstart', 'ru', 'В данном разделе доступна ваша персональная статистика игры. Выберите период, за который вы хотите просмотреть статистику'),
+('daystat', 'ru', 'Статистика за сегодня'),
+('weekstat', 'ru', 'Статистика за неделю'),
+('monthstat', 'ru', 'Статистика за месяц'),
+('allstat', 'ru', 'Статистика за все время'),
+('exitstat', 'ru', 'Вернуться в меню'),
+('daystatm', 'ru', 'Ваша статистика за сутки
+Сделано %d ставок (%d черное, %d красное, %d ZERO)
+из них
+Выиграно %d ставки (%d черное, %d красное, %d ZERO)
+Проиграно %d ставки (%d черное, %d красное, %d ZERO)
+
+Вы заработали %d рейтинговых балла'),
+('weekstatm', 'ru', 'Ваша статистика за текущую неделю
+Сделано %d ставок (%d черное, %d красное, %d ZERO)
+из них
+Выиграно %d ставки (%d черное, %d красное, %d ZERO)
+Проиграно %d ставки (%d черное, %d красное, %d ZERO)
+
+Вы заработали %d рейтинговых балла'),
+('monthstatm', 'ru', 'Ваша статистика за текущий месяц
+Сделано %d ставок (%d черное, %d красное, %d ZERO)
+из них
+Выиграно %d ставки (%d черное, %d красное, %d ZERO)
+Проиграно %d ставки (%d черное, %d красное, %d ZERO)
+
+Вы заработали %d рейтинговых балла'),
+('allstatm', 'ru', 'Ваша статистика за все время
+Сделано %d ставок (%d черное, %d красное, %d ZERO)
+из них
+Выиграно %d ставки (%d черное, %d красное, %d ZERO)
+Проиграно %d ставки (%d черное, %d красное, %d ZERO)
+
+Вы заработали %d рейтинговых балла'),
+('statistics next', 'ru', 'Выберите другой временной период для получения статистики или вернитесь в главное меню')
+ON CONFLICT (key, language) DO UPDATE 
+SET value = EXCLUDED.value;
+
+-- Добавление локализаций для статистики (английский язык)
+INSERT INTO localizations (key, language, value) 
+VALUES 
+('statisticsstart', 'en', 'Your personal game statistics are available in this section. Select the period for which you want to view statistics'),
+('daystat', 'en', 'Today''s statistics'),
+('weekstat', 'en', 'Weekly statistics'),
+('monthstat', 'en', 'Monthly statistics'),
+('allstat', 'en', 'All-time statistics'),
+('exitstat', 'en', 'Return to menu'),
+('daystatm', 'en', 'Your statistics for today
+Made %d bets (%d black, %d red, %d ZERO)
+of which
+Won %d bets (%d black, %d red, %d ZERO)
+Lost %d bets (%d black, %d red, %d ZERO)
+
+You earned %d rating points'),
+('weekstatm', 'en', 'Your statistics for the current week
+Made %d bets (%d black, %d red, %d ZERO)
+of which
+Won %d bets (%d black, %d red, %d ZERO)
+Lost %d bets (%d black, %d red, %d ZERO)
+
+You earned %d rating points'),
+('monthstatm', 'en', 'Your statistics for the current month
+Made %d bets (%d black, %d red, %d ZERO)
+of which
+Won %d bets (%d black, %d red, %d ZERO)
+Lost %d bets (%d black, %d red, %d ZERO)
+
+You earned %d rating points'),
+('allstatm', 'en', 'Your statistics for all time
+Made %d bets (%d black, %d red, %d ZERO)
+of which
+Won %d bets (%d black, %d red, %d ZERO)
+Lost %d bets (%d black, %d red, %d ZERO)
+
+You earned %d rating points'),
+('statistics next', 'en', 'Select another time period to get statistics or return to the main menu')
+ON CONFLICT (key, language) DO UPDATE 
+SET value = EXCLUDED.value;
+
+-- Добавление локализаций для статистики (украинский язык)
+INSERT INTO localizations (key, language, value) 
+VALUES 
+('statisticsstart', 'uk', 'У цьому розділі доступна ваша персональна статистика гри. Виберіть період, за який ви хочете переглянути статистику'),
+('daystat', 'uk', 'Статистика за сьогодні'),
+('weekstat', 'uk', 'Статистика за тиждень'),
+('monthstat', 'uk', 'Статистика за місяць'),
+('allstat', 'uk', 'Статистика за весь час'),
+('exitstat', 'uk', 'Повернутися в меню'),
+('daystatm', 'uk', 'Ваша статистика за добу
+Зроблено %d ставок (%d чорне, %d червоне, %d ZERO)
+з них
+Виграно %d ставки (%d чорне, %d червоне, %d ZERO)
+Програно %d ставки (%d чорне, %d червоне, %d ZERO)
+
+Ви заробили %d рейтингових балів'),
+('weekstatm', 'uk', 'Ваша статистика за поточний тиждень
+Зроблено %d ставок (%d чорне, %d червоне, %d ZERO)
+з них
+Виграно %d ставки (%d чорне, %d червоне, %d ZERO)
+Програно %d ставки (%d чорне, %d червоне, %d ZERO)
+
+Ви заробили %d рейтингових балів'),
+('monthstatm', 'uk', 'Ваша статистика за поточний місяць
+Зроблено %d ставок (%d чорне, %d червоне, %d ZERO)
+з них
+Виграно %d ставки (%d чорне, %d червоне, %d ZERO)
+Програно %d ставки (%d чорне, %d червоне, %d ZERO)
+
+Ви заробили %d рейтингових балів'),
+('allstatm', 'uk', 'Ваша статистика за весь час
+Зроблено %d ставок (%d чорне, %d червоне, %d ZERO)
+з них
+Виграно %d ставки (%d чорне, %d червоне, %d ZERO)
+Програно %d ставки (%d чорне, %d червоне, %d ZERO)
+
+Ви заробили %d рейтингових балів'),
+('statistics next', 'uk', 'Виберіть інший часовий період для отримання статистики або поверніться в головне меню')
+ON CONFLICT (key, language) DO UPDATE 
+SET value = EXCLUDED.value;

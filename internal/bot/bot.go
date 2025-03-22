@@ -447,6 +447,17 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		// Возврат в главное меню и удаление из активных игроков
 		b.gameHandler.HandleBackButton(user.ID)
 		b.handleHelpCommand(message)
+	// Обработка кнопок статистики
+	case b.service.GetText("daystat", language):
+		b.handleDayStatistics(message)
+	case b.service.GetText("weekstat", language):
+		b.handleWeekStatistics(message)
+	case b.service.GetText("monthstat", language):
+		b.handleMonthStatistics(message)
+	case b.service.GetText("allstat", language):
+		b.handleAllStatistics(message)
+	case b.service.GetText("exitstat", language):
+		b.handleHelpCommand(message) // Возврат в главное меню
 	default:
 		// Обработка других текстовых сообщений
 		b.handleGenericMessage(message)
@@ -1031,33 +1042,16 @@ func (b *Bot) handleStatsCommand(message *telego.Message) {
 		language = "en"
 	}
 
-	// Получаем статистику пользователя - теперь stats это map[string]int
-	stats, err := b.service.GetUserStats(user.ID)
-	if err != nil {
-		log.Printf("Error getting user stats: %v", err)
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: "Error retrieving statistics. Please try again.",
-		})
-		return
-	}
+	// Получаем локализированный текст для стартового сообщения статистики
+	statisticsStartText := b.service.GetText("statisticsstart", language)
 
-	// Получаем шаблон статистики и форматируем его
-	statsTemplate := b.service.GetText("stats_template", language)
-	statsText := fmt.Sprintf(
-		statsTemplate,
-		stats["dailyBets"],
-		stats["dailyPoints"],
-		stats["weeklyBets"],
-		stats["weeklyPoints"],
-		stats["monthlyBets"],
-		stats["monthlyPoints"],
-		stats["totalBets"],
-		stats["totalPoints"],
-	)
+	// Создаем клавиатуру выбора периода статистики
+	statsKeyboard := b.createStatsKeyboard(language)
 
+	// Отправляем сообщение с клавиатурой для выбора периода
 	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          statsText,
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
+		Text:          statisticsStartText,
+		ReplyKeyboard: statsKeyboard,
 	})
 }
 
@@ -1232,6 +1226,91 @@ func (b *Bot) handleBackToMainMenu(query *telego.CallbackQuery) {
 	}
 }
 
+// handleDayStatistics обрабатывает показ статистики за день
+func (b *Bot) handleDayStatistics(message *telego.Message) {
+	b.showStatisticsForPeriod(message, "day")
+}
+
+// handleWeekStatistics обрабатывает показ статистики за неделю
+func (b *Bot) handleWeekStatistics(message *telego.Message) {
+	b.showStatisticsForPeriod(message, "week")
+}
+
+// handleMonthStatistics обрабатывает показ статистики за месяц
+func (b *Bot) handleMonthStatistics(message *telego.Message) {
+	b.showStatisticsForPeriod(message, "month")
+}
+
+// handleAllStatistics обрабатывает показ статистики за все время
+func (b *Bot) handleAllStatistics(message *telego.Message) {
+	b.showStatisticsForPeriod(message, "all")
+}
+
+// showStatisticsForPeriod показывает статистику для выбранного периода
+func (b *Bot) showStatisticsForPeriod(message *telego.Message, period string) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Получаем подробную статистику пользователя
+	detailedStats, err := b.service.GetDetailedUserStats(user.ID, period)
+	if err != nil {
+		log.Printf("Error getting detailed stats: %v", err)
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text: "Error retrieving statistics. Please try again.",
+		})
+		return
+	}
+
+	// Формируем ключ для текста статистики в зависимости от периода
+	statsMsgKey := period + "statm"
+
+	// Получаем шаблон для соответствующего периода
+	statsTemplate := b.service.GetText(statsMsgKey, language)
+
+	// Сформируем текст для вставки в шаблон
+	totalBets := detailedStats["totalBets"]
+	blackBets := detailedStats["blackBets"]
+	redBets := detailedStats["redBets"]
+	zeroBets := detailedStats["zeroBets"]
+
+	wonBets := detailedStats["wonBets"]
+	wonBlackBets := detailedStats["wonBlackBets"]
+	wonRedBets := detailedStats["wonRedBets"]
+	wonZeroBets := detailedStats["wonZeroBets"]
+
+	lostBets := detailedStats["lostBets"]
+	lostBlackBets := detailedStats["lostBlackBets"]
+	lostRedBets := detailedStats["lostRedBets"]
+	lostZeroBets := detailedStats["lostZeroBets"]
+
+	totalPoints := detailedStats["totalPoints"]
+
+	// Заполняем шаблон данными
+	statsText := fmt.Sprintf(
+		statsTemplate,
+		totalBets, blackBets, redBets, zeroBets,
+		wonBets, wonBlackBets, wonRedBets, wonZeroBets,
+		lostBets, lostBlackBets, lostRedBets, lostZeroBets,
+		totalPoints,
+	)
+
+	// Отправляем статистику пользователю
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          statsText,
+		ReplyKeyboard: b.createStatsKeyboard(language),
+	})
+
+	// Отправляем сообщение с предложением выбрать другой период
+	statisticsNextText := b.service.GetText("statistics next", language)
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          statisticsNextText,
+		ReplyKeyboard: b.createStatsKeyboard(language),
+	})
+}
+
 // Допоміжні методи
 
 // createMainKeyboard создает основную inline клавиатуру
@@ -1288,6 +1367,34 @@ func (b *Bot) createMainReplyKeyboard(language string) *telego.ReplyKeyboardMark
 		ResizeKeyboard:  true,
 		OneTimeKeyboard: false,
 		Selective:       false,
+	}
+}
+
+// createStatsKeyboard создает клавиатуру для выбора периода статистики
+func (b *Bot) createStatsKeyboard(language string) *telego.ReplyKeyboardMarkup {
+	// Получаем локализованные тексты для кнопок
+	btnDayStatText := b.service.GetText("daystat", language)
+	btnWeekStatText := b.service.GetText("weekstat", language)
+	btnMonthStatText := b.service.GetText("monthstat", language)
+	btnAllStatText := b.service.GetText("allstat", language)
+	btnExitStatText := b.service.GetText("exitstat", language)
+
+	return &telego.ReplyKeyboardMarkup{
+		Keyboard: [][]telego.KeyboardButton{
+			{
+				{Text: btnDayStatText},
+				{Text: btnWeekStatText},
+			},
+			{
+				{Text: btnMonthStatText},
+				{Text: btnAllStatText},
+			},
+			{
+				{Text: btnExitStatText},
+			},
+		},
+		ResizeKeyboard:  true,
+		OneTimeKeyboard: false,
 	}
 }
 

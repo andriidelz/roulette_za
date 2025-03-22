@@ -12,12 +12,13 @@ import (
 
 // Service інтерфейс для бізнес-логіки
 type Service interface {
-	// Користувачі
+	// Пользователи
 	RegisterUser(telegramID int64, username, firstName, lastName, languageCode string) (*models.User, error)
 	GetUser(telegramID int64) (*models.User, error)
-	GetUserStats(telegramID int64) (map[string]int, error) // Изменена сигнатура
+	GetUserStats(telegramID int64) (map[string]int, error)
+	GetDetailedUserStats(telegramID int64, period string) (map[string]int, error)
 
-	// Гра та раунди
+	// Игра и раунды
 	MakeBet(telegramID int64, option models.BetOption) error
 	GetUserBets(telegramID int64, limit int) ([]models.Bet, error)
 	CanBetZero(telegramID int64) (bool, int, error)
@@ -37,12 +38,12 @@ type Service interface {
 	UpdateWeeklyRatings() error
 	DistributePrizes() error
 
-	// Налаштування та локалізація
+	// Настройки и локализация
 	GetText(key string, languageCode string) string
 	GetSettings() (map[string]string, error)
 	UpdateSetting(key, value string) error
 
-	// Хеші та історія раундів
+	// Хеши и история раундов
 	GetHashEntries(page, limit int) ([]models.HashEntry, int, error)
 	GetLatestHashEntry() (*models.HashEntry, error)
 
