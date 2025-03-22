@@ -23,6 +23,7 @@ services:
     image: dpage/pgadmin4
     container_name: roulette-pgadmin
     environment:
+      SCRIPT_NAME: /pgadmin
       PGADMIN_DEFAULT_EMAIL: postgres@domain.com
       PGADMIN_DEFAULT_PASSWORD: postgres
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
