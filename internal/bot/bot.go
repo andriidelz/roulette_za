@@ -806,6 +806,15 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.answerCallbackQuery(query.ID, "", false)
 	case CallbackBack:
 		b.handleBackToMainMenu(query)
+	case "view_rating":
+		// Обработка показа рейтинга
+		b.handleRatingCommand(query.Message)
+		b.answerCallbackQuery(query.ID, "", false)
+	case "stop_game":
+		// Обработка остановки игры
+		b.gameHandler.HandleStopGameButton(user.ID)
+		b.answerCallbackQuery(query.ID, "", false)
+		b.handleHelpCommand(query.Message)
 	default:
 		// Неизвестный callback
 		b.answerCallbackQuery(query.ID, "Unknown action", true)

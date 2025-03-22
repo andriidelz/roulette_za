@@ -39,6 +39,7 @@ type Service interface {
 	GetSuperRating(limit int) ([]models.SuperRating, error)
 	UpdateWeeklyRatings() error
 	DistributePrizes() error
+	GetPrizeFund(year, week int) (*models.PrizeFund, error)
 
 	// Настройки и локализация
 	GetText(key string, languageCode string) string
@@ -568,6 +569,11 @@ func (s *ServiceImpl) DistributePrizes() error {
 	// Позначаємо призовий фонд як оброблений
 	prizeFund.Processed = true
 	return s.repo.UpdatePrizeFund(prizeFund)
+}
+
+// GetPrizeFund получает информацию о призовом фонде
+func (s *ServiceImpl) GetPrizeFund(year, week int) (*models.PrizeFund, error) {
+	return s.repo.GetPrizeFund(year, week)
 }
 
 // Реалізація методів для налаштувань та локалізації

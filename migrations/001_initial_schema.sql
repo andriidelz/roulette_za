@@ -830,3 +830,36 @@ INSERT INTO localizations (key, language, value) VALUES
     ('waiting_for_round', 'ru', 'Ожидаем начала нового раунда. Пожалуйста, подождите...'),
     ('waiting_for_round', 'en', 'Waiting for a new round to start. Please wait...'),
     ('waiting_for_round', 'uk', 'Очікуємо початку нового раунду. Будь ласка, зачекайте...');
+
+-- Добавление новых локализаций для игрового процесса
+INSERT INTO localizations (key, language, value) VALUES
+('systemcheck', 'ru', E'Проверить раунд #%s в системе'),
+('viewrating', 'ru', E'Просмотреть рейтинг'),
+('topupbalance', 'ru', E'Пополнить баланс попыток'),
+('stopgame', 'ru', E'Стоп игра'),
+('nextbidlow', 'ru', E'До следующего определения ставки осталось 5 секунд.\n\nВы больше не можете играть. У вас больше нет ставок'),
+('winmessage', 'ru', E'Вы выиграли!\nВам зачислено %d рейтинговых балов'),
+('losemessage', 'ru', E'Вы проиграли!'),
+('bidrating', 'ru', E'Сейчас у вас %d рейтинговых балов\nВы занимаете %d позицию в общем недельном рейтинге и претендуете на %.2f $ из призового фонда в %.2f $');
+
+-- Добавление новых локализаций для игрового процесса
+INSERT INTO localizations (key, language, value) VALUES
+('systemcheck', 'en', E'Check round #%s in the system'),
+('viewrating', 'en', E'View rating'),
+('topupbalance', 'en', E'Refill attempts balance'),
+('stopgame', 'en', E'Stop game'),
+('nextbidlow', 'en', E'There are 5 seconds left until the next bet determination.\n\nYou can no longer play. You have no more bets'),
+('winmessage', 'en', E'You won!\nYou have been credited with %d rating points'),
+('losemessage', 'en', E'You lost!'),
+('bidrating', 'en', E'You currently have %d rating points\nYou are in position %d in the weekly ranking and are eligible for %.2f $ from the prize fund of %.2f $');
+
+-- Добавление новых локализаций для игрового процесса
+INSERT INTO localizations (key, language, value) VALUES
+('systemcheck', 'uk', E'Перевірити раунд #%s в системі'),
+('viewrating', 'uk', E'Переглянути рейтинг'),
+('topupbalance', 'uk', E'Поповнити баланс спроб'),
+('stopgame', 'uk', E'Стоп гра'),
+('nextbidlow', 'uk', E'До наступного визначення ставки залишилось 5 секунд.\n\nВи більше не можете грати. У вас більше немає ставок'),
+('winmessage', 'uk', E'Ви виграли!\nВам зараховано %d рейтингових балів'),
+('losemessage', 'uk', E'Ви програли!'),
+('bidrating', 'uk', E'Зараз у вас %d рейтингових балів\nВи займаєте %d позицію в загальному тижневому рейтингу і претендуєте на %.2f $ з призового фонду в %.2f $');
