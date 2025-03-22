@@ -264,9 +264,9 @@ INSERT INTO localizations (key, language, value) VALUES
     ('btn_balance', 'uk', '💰 Баланс'),
     ('btn_faq', 'uk', '❓ FAQ'),
     ('btn_bet_red', 'uk', '🔴 Червоне'),
-    ('btn_bet_black', 'uk', '⚫ Чорне'),
-    ('btn_bet_zero', 'uk', '0️⃣ Зеро'),
-    ('btn_bet_zero_locked', 'uk', '🔒 Зеро (заблоковано)'),
+    ('btn_bet_black', 'uk', '⚫️ Чорне'),
+    ('btn_bet_zero', 'uk', '🟢 Zero'),
+    ('btn_bet_zero_locked', 'uk', '🔒 Zero (заблоковано)'),
     ('btn_back', 'uk', '◀️ Назад'),
     
     ('round_info', 'uk', 'Раунд #%s
@@ -434,8 +434,8 @@ Make your choice'),
     ('btn_balance', 'en', '💰 Balance'),
     ('btn_faq', 'en', '❓ FAQ'),
     ('btn_bet_red', 'en', '🔴 Red'),
-    ('btn_bet_black', 'en', '⚫ Black'),
-    ('btn_bet_zero', 'en', '0️⃣ Zero'),
+    ('btn_bet_black', 'en', '⚫️ Black'),
+    ('btn_bet_zero', 'en', '🟢 Zero'),
     ('btn_bet_zero_locked', 'en', '🔒 Zero (locked)'),
     ('btn_back', 'en', '◀️ Back'),
     
@@ -604,9 +604,9 @@ INSERT INTO localizations (key, language, value) VALUES
     ('btn_balance', 'ru', '💰 Баланс'),
     ('btn_faq', 'ru', '❓ FAQ'),
     ('btn_bet_red', 'ru', '🔴 Красное'),
-    ('btn_bet_black', 'ru', '⚫ Черное'),
-    ('btn_bet_zero', 'ru', '0️⃣ Зеро'),
-    ('btn_bet_zero_locked', 'ru', '🔒 Зеро (заблокировано)'),
+    ('btn_bet_black', 'ru', '⚫️ Черное'),
+    ('btn_bet_zero', 'ru', '🟢 Zero'),
+    ('btn_bet_zero_locked', 'ru', '🔒 Zero (заблокировано)'),
     ('btn_back', 'ru', '◀️ Назад'),
     
     ('round_info', 'ru', 'Раунд #%s
@@ -761,37 +761,11 @@ VALUES
 ('monthstat', 'ru', 'Статистика за месяц'),
 ('allstat', 'ru', 'Статистика за все время'),
 ('exitstat', 'ru', 'Вернуться в меню'),
-('daystatm', 'ru', 'Ваша статистика за сутки
-Сделано %d ставок (%d черное, %d красное, %d ZERO)
-из них
-Выиграно %d ставки (%d черное, %d красное, %d ZERO)
-Проиграно %d ставки (%d черное, %d красное, %d ZERO)
-
-Вы заработали %d рейтинговых балла'),
-('weekstatm', 'ru', 'Ваша статистика за текущую неделю
-Сделано %d ставок (%d черное, %d красное, %d ZERO)
-из них
-Выиграно %d ставки (%d черное, %d красное, %d ZERO)
-Проиграно %d ставки (%d черное, %d красное, %d ZERO)
-
-Вы заработали %d рейтинговых балла'),
-('monthstatm', 'ru', 'Ваша статистика за текущий месяц
-Сделано %d ставок (%d черное, %d красное, %d ZERO)
-из них
-Выиграно %d ставки (%d черное, %d красное, %d ZERO)
-Проиграно %d ставки (%d черное, %d красное, %d ZERO)
-
-Вы заработали %d рейтинговых балла'),
-('allstatm', 'ru', 'Ваша статистика за все время
-Сделано %d ставок (%d черное, %d красное, %d ZERO)
-из них
-Выиграно %d ставки (%d черное, %d красное, %d ZERO)
-Проиграно %d ставки (%d черное, %d красное, %d ZERO)
-
-Вы заработали %d рейтинговых балла'),
-('statistics next', 'ru', 'Выберите другой временной период для получения статистики или вернитесь в главное меню')
-ON CONFLICT (key, language) DO UPDATE 
-SET value = EXCLUDED.value;
+('daystatm', 'ru', E'Ваша статистика за сутки\nСделано %d ставок (%d черное, %d красное, %d ZERO)\nиз них\nВыиграно %d ставки (%d черное, %d красное, %d ZERO)\nПроиграно %d ставки (%d черное, %d красное, %d ZERO)\n\nВы заработали %d рейтинговых балла'),
+('weekstatm', 'ru', E'Ваша статистика за текущую неделю\nСделано %d ставок (%d черное, %d красное, %d ZERO)\nиз них\nВыиграно %d ставки (%d черное, %d красное, %d ZERO)\nПроиграно %d ставки (%d черное, %d красное, %d ZERO)\n\nВы заработали %d рейтинговых балла'),
+('monthstatm', 'ru', E'Ваша статистика за текущий месяц\nСделано %d ставок (%d черное, %d красное, %d ZERO)\nиз них\nВыиграно %d ставки (%d черное, %d красное, %d ZERO)\nПроиграно %d ставки (%d черное, %d красное, %d ZERO)\n\nВы заработали %d рейтинговых балла'),
+('allstatm', 'ru', E'Ваша статистика за все время\nСделано %d ставок (%d черное, %d красное, %d ZERO)\nиз них\nВыиграно %d ставки (%d черное, %d красное, %d ZERO)\nПроиграно %d ставки (%d черное, %d красное, %d ZERO)\n\nВы заработали %d рейтинговых балла'),
+('statistics next', 'ru', 'Выберите другой временной период для получения статистики или вернитесь в главное меню');
 
 -- Добавление локализаций для статистики (английский язык)
 INSERT INTO localizations (key, language, value) 
@@ -802,37 +776,11 @@ VALUES
 ('monthstat', 'en', 'Monthly statistics'),
 ('allstat', 'en', 'All-time statistics'),
 ('exitstat', 'en', 'Return to menu'),
-('daystatm', 'en', 'Your statistics for today
-Made %d bets (%d black, %d red, %d ZERO)
-of which
-Won %d bets (%d black, %d red, %d ZERO)
-Lost %d bets (%d black, %d red, %d ZERO)
-
-You earned %d rating points'),
-('weekstatm', 'en', 'Your statistics for the current week
-Made %d bets (%d black, %d red, %d ZERO)
-of which
-Won %d bets (%d black, %d red, %d ZERO)
-Lost %d bets (%d black, %d red, %d ZERO)
-
-You earned %d rating points'),
-('monthstatm', 'en', 'Your statistics for the current month
-Made %d bets (%d black, %d red, %d ZERO)
-of which
-Won %d bets (%d black, %d red, %d ZERO)
-Lost %d bets (%d black, %d red, %d ZERO)
-
-You earned %d rating points'),
-('allstatm', 'en', 'Your statistics for all time
-Made %d bets (%d black, %d red, %d ZERO)
-of which
-Won %d bets (%d black, %d red, %d ZERO)
-Lost %d bets (%d black, %d red, %d ZERO)
-
-You earned %d rating points'),
-('statistics next', 'en', 'Select another time period to get statistics or return to the main menu')
-ON CONFLICT (key, language) DO UPDATE 
-SET value = EXCLUDED.value;
+('daystatm', 'en', E'Your statistics for today\nMade %d bets (%d black, %d red, %d ZERO)\nof which\nWon %d bets (%d black, %d red, %d ZERO)\nLost %d bets (%d black, %d red, %d ZERO)\n\nYou earned %d rating points'),
+('weekstatm', 'en', E'Your statistics for the current week\nMade %d bets (%d black, %d red, %d ZERO)\nof which\nWon %d bets (%d black, %d red, %d ZERO)\nLost %d bets (%d black, %d red, %d ZERO)\n\nYou earned %d rating points'),
+('monthstatm', 'en', E'Your statistics for the current month\nMade %d bets (%d black, %d red, %d ZERO)\nof which\nWon %d bets (%d black, %d red, %d ZERO)\nLost %d bets (%d black, %d red, %d ZERO)\n\nYou earned %d rating points'),
+('allstatm', 'en', E'Your statistics for all time\nMade %d bets (%d black, %d red, %d ZERO)\nof which\nWon %d bets (%d black, %d red, %d ZERO)\nLost %d bets (%d black, %d red, %d ZERO)\n\nYou earned %d rating points'),
+('statistics next', 'en', 'Select another time period to get statistics or return to the main menu');
 
 -- Добавление локализаций для статистики (украинский язык)
 INSERT INTO localizations (key, language, value) 
@@ -843,34 +791,42 @@ VALUES
 ('monthstat', 'uk', 'Статистика за місяць'),
 ('allstat', 'uk', 'Статистика за весь час'),
 ('exitstat', 'uk', 'Повернутися в меню'),
-('daystatm', 'uk', 'Ваша статистика за добу
-Зроблено %d ставок (%d чорне, %d червоне, %d ZERO)
-з них
-Виграно %d ставки (%d чорне, %d червоне, %d ZERO)
-Програно %d ставки (%d чорне, %d червоне, %d ZERO)
+('daystatm', 'uk', E'Ваша статистика за добу\nЗроблено %d ставок (%d чорне, %d червоне, %d ZERO)\nз них\nВиграно %d ставки (%d чорне, %d червоне, %d ZERO)\nПрограно %d ставки (%d чорне, %d червоне, %d ZERO)\n\nВи заробили %d рейтингових балів'),
+('weekstatm', 'uk', E'Ваша статистика за поточний тиждень\nЗроблено %d ставок (%d чорне, %d червоне, %d ZERO)\nз них\nВиграно %d ставки (%d чорне, %d червоне, %d ZERO)\nПрограно %d ставки (%d чорне, %d червоне, %d ZERO)\n\nВи заробили %d рейтингових балів'),
+('monthstatm', 'uk', E'Ваша статистика за поточний місяць\nЗроблено %d ставок (%d чорне, %d червоне, %d ZERO)\nз них\nВиграно %d ставки (%d чорне, %d червоне, %d ZERO)\nПрограно %d ставки (%d чорне, %d червоне, %d ZERO)\n\nВи заробили %d рейтингових балів'),
+('allstatm', 'uk', E'Ваша статистика за весь час\nЗроблено %d ставок (%d чорне, %d червоне, %d ZERO)\nз них\nВиграно %d ставки (%d чорне, %d червоне, %d ZERO)\nПрограно %d ставки (%d чорне, %d червоне, %d ZERO)\n\nВи заробили %d рейтингових балів'),
+('statistics next', 'uk', 'Виберіть інший часовий період для отримання статистики або поверніться в головне меню');
 
-Ви заробили %d рейтингових балів'),
-('weekstatm', 'uk', 'Ваша статистика за поточний тиждень
-Зроблено %d ставок (%d чорне, %d червоне, %d ZERO)
-з них
-Виграно %d ставки (%d чорне, %d червоне, %d ZERO)
-Програно %d ставки (%d чорне, %d червоне, %d ZERO)
-
-Ви заробили %d рейтингових балів'),
-('monthstatm', 'uk', 'Ваша статистика за поточний місяць
-Зроблено %d ставок (%d чорне, %d червоне, %d ZERO)
-з них
-Виграно %d ставки (%d чорне, %d червоне, %d ZERO)
-Програно %d ставки (%d чорне, %d червоне, %d ZERO)
-
-Ви заробили %d рейтингових балів'),
-('allstatm', 'uk', 'Ваша статистика за весь час
-Зроблено %d ставок (%d чорне, %d червоне, %d ZERO)
-з них
-Виграно %d ставки (%d чорне, %d червоне, %d ZERO)
-Програно %d ставки (%d чорне, %d червоне, %d ZERO)
-
-Ви заробили %d рейтингових балів'),
-('statistics next', 'uk', 'Виберіть інший часовий період для отримання статистики або поверніться в головне меню')
-ON CONFLICT (key, language) DO UPDATE 
-SET value = EXCLUDED.value;
+-- Добавление новых локализаций для игры
+INSERT INTO localizations (key, language, value) VALUES
+    ('playstart1', 'ru', E'Суть игры\nВаша задача угадать цвет поля, которое выпадет на виртуальной рулетке.\n\nЗа каждое правильное угадывание вы получаете 1 зачетный бал...'),
+    ('playstart1', 'en', E'Game essence\nYour task is to guess the color of the field that will appear on the virtual roulette.\n\nFor each correct guess you get 1 credit point...'),
+    ('playstart1', 'uk', E'Суть гри\nВаше завдання вгадати колір поля, яке випаде на віртуальній рулетці.\n\nЗа кожне правильне вгадування ви отримуєте 1 заліковий бал...'),
+    
+    ('rulesstart', 'ru', 'Детальные правила'),
+    ('rulesstart', 'en', 'Detailed Rules'),
+    ('rulesstart', 'uk', 'Детальні правила'),
+    
+    ('availablebets', 'ru', 'Доступно ставок'),
+    ('availablebets', 'en', 'Available bets'),
+    ('availablebets', 'uk', 'Доступно ставок'),
+    
+    ('stop', 'ru', '🛑 Стоп игра'),
+    ('stop', 'en', '🛑 Stop game'),
+    ('stop', 'uk', '🛑 Стоп гра'),
+    
+    ('betsbalancelow', 'ru', 'У вас закончились ставки на сегодня. Приходите завтра!'),
+    ('betsbalancelow', 'en', 'You have run out of bets for today. Come back tomorrow!'),
+    ('betsbalancelow', 'uk', 'У вас закінчилися ставки на сьогодні. Приходьте завтра!'),
+    
+    ('betsbalanceok', 'ru', 'У вас есть еще %d ставок на сегодня.'),
+    ('betsbalanceok', 'en', 'You have %d more bets available today.'),
+    ('betsbalanceok', 'uk', 'У вас є ще %d ставок на сьогодні.'),
+    
+    ('round_info_countdown', 'ru', E'Раунд #%s (Хеш: %s)\nДо следующего определения ставки осталось %d секунд.\nСделайте свой выбор'),
+    ('round_info_countdown', 'en', E'Round #%s (Hash: %s)\n%d seconds left until the next bet determination.\nMake your choice'),
+    ('round_info_countdown', 'uk', E'Раунд #%s (Хеш: %s)\nДо наступного визначення ставки залишилось %d секунд.\nЗробіть свій вибір'),
+    
+    ('waiting_for_round', 'ru', 'Ожидаем начала нового раунда. Пожалуйста, подождите...'),
+    ('waiting_for_round', 'en', 'Waiting for a new round to start. Please wait...'),
+    ('waiting_for_round', 'uk', 'Очікуємо початку нового раунду. Будь ласка, зачекайте...');

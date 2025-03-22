@@ -38,7 +38,7 @@ func NewGameHandler(bot *Bot, service service.Service) *GameHandler {
 		checkRoundTicker: time.NewTicker(1 * time.Second), // Проверка каждую секунду
 	}
 
-	// Запустите горутину для периодической проверки раундов
+	// Запускаем горутину для периодической проверки раундов
 	go handler.startRoundCheckLoop()
 
 	return handler
@@ -85,7 +85,6 @@ func (h *GameHandler) startRoundCheckLoop() {
 
 				// Если у нас был предыдущий раунд и есть ожидающие игроки
 				if oldRound != nil && len(h.waitingPlayers) > 0 {
-
 					// Создаем копии данных для обработки результатов
 					waitingPlayersToProcess := make(map[int64]bool, len(h.waitingPlayers))
 					activeBetsToProcess := make(map[int64]models.BetOption, len(h.activeBets))
@@ -230,7 +229,7 @@ func (h *GameHandler) notifyTimeRemaining(round *models.HashEntry, seconds int) 
 			language = "en"
 		}
 
-		// Получаем локализированное сообщение для времени
+		// Получаем локализированный шаблон для времени
 		var timeTemplate string
 		if seconds == 15 {
 			timeTemplate = h.service.GetText("nextbid15", language)
@@ -238,19 +237,25 @@ func (h *GameHandler) notifyTimeRemaining(round *models.HashEntry, seconds int) 
 			timeTemplate = h.service.GetText("nextbid5", language)
 		}
 
-		// Заменяем %s на идентификатор раунда в base62
+		// Формируем текст в новом формате
 		timeText := fmt.Sprintf(timeTemplate, roundIDBase62)
+
+		// Узнаем доступное количество ставок
+		betsBalance, err := h.service.GetUserRemainingBets(userID)
+		if err != nil {
+			log.Printf("Error getting user remaining bets: %v", err)
+			betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
+		}
 
 		h.bot.SendMessage(userID, MessageOptions{
 			Text:          timeText,
-			ReplyKeyboard: h.createBetKeyboard(language, userID),
+			ReplyKeyboard: h.createDetailedBetKeyboard(language, userID, betsBalance),
 		})
 	}
 }
 
 // HandleNewRound обрабатывает событие нового раунда (вызывается из ротатора)
 func (h *GameHandler) HandleNewRound(hashEntry *models.HashEntry) {
-
 	// Создадим локальные копии данных перед изменением
 	var previousRound *models.HashEntry
 	var waitingPlayersToProcess map[int64]bool
@@ -336,7 +341,6 @@ func (h *GameHandler) HandleNewRound(hashEntry *models.HashEntry) {
 
 // processRoundResults обрабатывает результаты раунда
 func (h *GameHandler) processRoundResults(roundID uint, waitingPlayers map[int64]bool, activeBets map[int64]models.BetOption) {
-
 	// Выводим список всех ожидающих игроков
 	if len(waitingPlayers) > 0 {
 		log.Printf("Waiting players in processRoundResults:")
@@ -428,13 +432,14 @@ func (h *GameHandler) processRoundResults(roundID uint, waitingPlayers map[int64
 func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round *models.HashEntry, result models.BetOption, userBet models.BetOption) error {
 	log.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, roundID)
 
-	user, err := h.service.GetUser(userID)
+	// Получаем пользователя
+	userInfo, err := h.service.GetUser(userID)
 	if err != nil {
 		log.Printf("Error getting user %d: %v", userID, err)
 		return fmt.Errorf("error getting user: %w", err)
 	}
 
-	language := user.LanguageCode
+	language := userInfo.LanguageCode
 	if language == "" {
 		language = "en"
 	}
@@ -491,11 +496,23 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 			betResultText = fmt.Sprintf(winZeroTemplate, points)
 		} else {
 			winTemplate := h.service.GetText("win", language)
-			betResultText = fmt.Sprintf(winTemplate, getOptionText(userBet, language), points)
+			// Используем getOptionTextSimple вместо h.getOptionText
+			optionText := getOptionTextSimple(userBet, language)
+			betResultText = fmt.Sprintf(winTemplate, optionText, points)
 		}
 	} else {
 		loseTemplate := h.service.GetText("lose", language)
-		betResultText = fmt.Sprintf(loseTemplate, getOptionText(userBet, language), getOptionText(result, language))
+		// Используем getOptionTextSimple вместо h.getOptionText
+		userBetText := getOptionTextSimple(userBet, language)
+		resultText := getOptionTextSimple(result, language)
+		betResultText = fmt.Sprintf(loseTemplate, userBetText, resultText)
+	}
+
+	// Получаем оставшееся количество ставок
+	betsBalance, err := h.service.GetUserRemainingBets(userID)
+	if err != nil {
+		log.Printf("Error getting user remaining bets: %v", err)
+		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 	}
 
 	// Отправляем результат игры с полной информацией
@@ -504,20 +521,38 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 
 	_, err = h.bot.SendMessage(userID, MessageOptions{
 		Text:          fullResultText,
-		ReplyKeyboard: h.createBetKeyboard(language, userID),
+		ReplyKeyboard: h.createDetailedBetKeyboard(language, userID, betsBalance),
 	})
 
 	return err
 }
 
+func getOptionTextSimple(option models.BetOption, language string) string {
+	switch option {
+	case models.Red:
+		return "🔴 " + (map[string]string{"uk": "Червоне", "en": "Red", "ru": "Красное"})[language]
+	case models.Black:
+		return "⚫ " + (map[string]string{"uk": "Чорне", "en": "Black", "ru": "Черное"})[language]
+	case models.Zero:
+		return "0️⃣ " + (map[string]string{"uk": "Зеро", "en": "Zero", "ru": "Зеро"})[language]
+	default:
+		return string(option)
+	}
+}
+
 // MakeBet делает ставку в текущем раунде
-func (h *GameHandler) MakeBet(userID int64, betOption models.BetOption) error {
-	log.Printf("MakeBet called for user %d with option %s", userID, betOption)
+func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
+	log.Printf("MakeBet called for user %d with option %s", userID, option)
+
+	// Получаем пользователя
+	_, err := h.service.GetUser(userID)
+	if err != nil {
+		return fmt.Errorf("error getting user: %w", err)
+	}
 
 	// Получаем текущий раунд
 	currentRound, err := h.service.GetCurrentRound()
 	if err != nil {
-		log.Printf("Error getting current round: %v", err)
 		return fmt.Errorf("error getting current round: %w", err)
 	}
 
@@ -543,7 +578,7 @@ func (h *GameHandler) MakeBet(userID int64, betOption models.BetOption) error {
 	}
 
 	// Проверяем, может ли пользователь делать ставку на Zero
-	if betOption == models.Zero {
+	if option == models.Zero {
 		canBetZero, _, err := h.service.CanBetZero(userID)
 		if err != nil {
 			log.Printf("Error checking zero bet: %v", err)
@@ -555,8 +590,17 @@ func (h *GameHandler) MakeBet(userID int64, betOption models.BetOption) error {
 		}
 	}
 
+	// Проверяем доступное количество ставок
+	betsRemaining, err := h.service.GetUserRemainingBets(userID)
+	if err != nil {
+		log.Printf("Error checking remaining bets: %v", err)
+		// Не возвращаем ошибку, так как это не критично
+	} else if betsRemaining == 0 {
+		return fmt.Errorf("no bets left for today")
+	}
+
 	// Делаем ставку через сервис
-	if err := h.service.MakeBet(userID, betOption); err != nil {
+	if err := h.service.MakeBet(userID, option); err != nil {
 		log.Printf("Error making bet: %v", err)
 		return fmt.Errorf("error making bet: %w", err)
 	}
@@ -564,7 +608,7 @@ func (h *GameHandler) MakeBet(userID int64, betOption models.BetOption) error {
 	// Регистрируем пользователя как ожидающего результата и сохраняем его ставку
 	h.mutex.Lock()
 	h.waitingPlayers[userID] = true
-	h.activeBets[userID] = betOption
+	h.activeBets[userID] = option
 	h.mutex.Unlock()
 
 	log.Printf("Bet created successfully for user %d in round %d (waitingPlayers count: %d)", userID, currentRound.ID, len(h.waitingPlayers))
@@ -580,6 +624,25 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 		language = "en"
 	}
 
+	// Сначала отправляем сообщение с описанием игры
+	playStartText := h.service.GetText("playstart1", language)
+
+	// Создаем inline клавиатуру с кнопкой "Детальные правила"
+	rulesButtonText := h.service.GetText("rulesstart", language)
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				{Text: rulesButtonText, URL: "https://rules.sprut.games/roulette-bot/"},
+			},
+		},
+	}
+
+	// Отправляем первое сообщение с описанием игры и кнопкой на правила
+	h.bot.SendMessage(message.Chat.ID, MessageOptions{
+		Text:           playStartText,
+		InlineKeyboard: inlineKeyboard,
+	})
+
 	// Добавляем пользователя в список активных игроков
 	h.mutex.Lock()
 	h.activePlayers[user.ID] = true
@@ -587,37 +650,61 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 
 	log.Printf("Added user %d to active players", user.ID)
 
-	// Пытаемся получить текущий раунд, если он еще не установлен
-	if h.currentRound == nil {
-		currentRound, err := h.service.GetCurrentRound()
-		if err == nil {
-			h.mutex.Lock()
-			h.currentRound = currentRound
-			h.mutex.Unlock()
-		}
+	// Пытаемся получить текущий раунд
+	currentRound, err := h.service.GetCurrentRound()
+	if err != nil {
+		log.Printf("Error getting current round: %v", err)
+		return
 	}
 
-	h.mutex.RLock()
-	currentRound := h.currentRound
-	h.mutex.RUnlock()
-
-	// Получаем локализированный текст инструкций
-	instructionsText := h.service.GetText("game_instructions", language)
-
-	// Добавляем информацию о текущем раунде, если он есть
-	if currentRound != nil {
-		roundInfoTemplate := h.service.GetText("round_info", language)
-		roundIDBase62 := utils.ToBase62(uint(currentRound.ID))
-		roundInfo := fmt.Sprintf("\n\n%s", fmt.Sprintf(roundInfoTemplate, roundIDBase62, currentRound.Hash))
-		instructionsText += roundInfo
-	} else {
-		instructionsText += "\n\nОжидаем начала игры. Пожалуйста, подождите немного."
+	// Проверяем, что раунд существует
+	if currentRound == nil {
+		log.Printf("Current round is nil, waiting for a new round")
+		waitingText := h.service.GetText("waiting_for_round", language)
+		h.bot.SendMessage(message.Chat.ID, MessageOptions{
+			Text: waitingText,
+		})
+		return
 	}
 
-	// Отправляем сообщение с инструкциями и клавиатурой для ставок
+	// Обновляем текущий раунд в хендлере
+	h.mutex.Lock()
+	h.currentRound = currentRound
+	h.mutex.Unlock()
+
+	// Получаем ID раунда в Base62 формате
+	roundIDBase62 := utils.ToBase62(uint(currentRound.ID))
+
+	// Вычисляем оставшееся время до конца раунда
+	elapsedTime := time.Since(currentRound.CreatedAt)
+	roundDuration := 30 * time.Second // Продолжительность раунда
+	remainingTime := roundDuration - elapsedTime
+
+	// Если осталось меньше 0 секунд, ждем следующий раунд
+	if remainingTime < 0 {
+		waitingText := h.service.GetText("waiting_for_round", language)
+		h.bot.SendMessage(message.Chat.ID, MessageOptions{
+			Text: waitingText,
+		})
+		return
+	}
+
+	// Формируем текст в новом формате
+	remainingSeconds := int(remainingTime.Seconds())
+	roundInfoTemplate := h.service.GetText("round_info_countdown", language)
+	roundInfoText := fmt.Sprintf(roundInfoTemplate, roundIDBase62, currentRound.Hash, remainingSeconds)
+
+	// Получаем доступное количество ставок
+	betsBalance, err := h.service.GetUserRemainingBets(user.ID)
+	if err != nil {
+		log.Printf("Error getting user remaining bets: %v", err)
+		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
+	}
+
+	// Отправляем сообщение с информацией о раунде и клавиатурой для ставок
 	h.bot.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          instructionsText,
-		ReplyKeyboard: h.createBetKeyboard(language, user.ID),
+		Text:          roundInfoText,
+		ReplyKeyboard: h.createDetailedBetKeyboard(language, user.ID, betsBalance),
 	})
 }
 
@@ -631,6 +718,16 @@ func (h *GameHandler) HandleBackButton(userID int64) {
 	log.Printf("Removed user %d from active players", userID)
 }
 
+// HandleStopGameButton обрабатывает нажатие кнопки "Стоп игра"
+func (h *GameHandler) HandleStopGameButton(userID int64) {
+	// Удаляем пользователя из списка активных игроков
+	h.mutex.Lock()
+	delete(h.activePlayers, userID)
+	h.mutex.Unlock()
+
+	log.Printf("User %d stopped the game", userID)
+}
+
 // Stop останавливает обработчик игры
 func (h *GameHandler) Stop() {
 	if h.checkRoundTicker != nil {
@@ -641,7 +738,7 @@ func (h *GameHandler) Stop() {
 	log.Println("Game handler stopped")
 }
 
-// createBetKeyboard создает клавиатуру для ставок
+// createBetKeyboard создает базовую клавиатуру для ставок
 func (h *GameHandler) createBetKeyboard(language string, userID int64) *telego.ReplyKeyboardMarkup {
 	// Получаем локализованные тексты для кнопок
 	btnRedText := h.service.GetText("btn_bet_red", language)
@@ -684,8 +781,61 @@ func (h *GameHandler) createBetKeyboard(language string, userID int64) *telego.R
 	}
 }
 
-// Вспомогательная функция для получения текстового представления опции ставки
-func getOptionText(option models.BetOption, language string) string {
+// createDetailedBetKeyboard создает расширенную клавиатуру для ставок с дополнительной информацией
+func (h *GameHandler) createDetailedBetKeyboard(language string, userID int64, betsBalance int) *telego.ReplyKeyboardMarkup {
+	// Получаем локализованные тексты для кнопок
+	btnRedText := h.service.GetText("btn_bet_red", language)
+	btnBlackText := h.service.GetText("btn_bet_black", language)
+	btnZeroText := h.service.GetText("btn_bet_zero", language)
+	btnZeroLockedText := h.service.GetText("btn_bet_zero_locked", language)
+	btnStopText := h.service.GetText("stop", language)
+	betsBalanceText := h.service.GetText("availablebets", language)
+
+	// Если betsBalance < 0, то это значит безлимит или неопределенное значение
+	betsBalanceDisplay := ""
+	if betsBalance >= 0 {
+		betsBalanceDisplay = fmt.Sprintf("%s: %d", betsBalanceText, betsBalance)
+	} else {
+		betsBalanceDisplay = betsBalanceText
+	}
+
+	// Проверяем, может ли пользователь ставить на Zero
+	canBetZero, _, err := h.service.CanBetZero(userID)
+	if err != nil {
+		log.Printf("Error checking zero bet: %v", err)
+		canBetZero = false
+	}
+
+	// Создаем клавиатуру с соответствующими кнопками
+	var zeroButton telego.KeyboardButton
+	if canBetZero {
+		zeroButton = telego.KeyboardButton{Text: btnZeroText}
+	} else {
+		zeroButton = telego.KeyboardButton{Text: btnZeroLockedText}
+	}
+
+	return &telego.ReplyKeyboardMarkup{
+		Keyboard: [][]telego.KeyboardButton{
+			{
+				{Text: btnRedText},
+				{Text: btnBlackText},
+			},
+			{
+				zeroButton,
+				{Text: betsBalanceDisplay},
+			},
+			{
+				{Text: btnStopText},
+			},
+		},
+		ResizeKeyboard:  true,
+		OneTimeKeyboard: false,
+		Selective:       true,
+	}
+}
+
+// getOptionText получает текстовое представление опции ставки
+func (h *GameHandler) getOptionText(option models.BetOption, language string) string {
 	switch option {
 	case models.Red:
 		return "🔴 " + (map[string]string{"uk": "Червоне", "en": "Red", "ru": "Красное"})[language]

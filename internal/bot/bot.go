@@ -162,8 +162,15 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 		language = "en"
 	}
 
+	// Получаем доступное количество ставок
+	betsBalance, err := b.service.GetUserRemainingBets(userID)
+	if err != nil {
+		log.Printf("Error getting user remaining bets: %v", err)
+		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
+	}
+
 	// Вызываем MakeBet и обрабатываем возможные ошибки
-	err := b.gameHandler.MakeBet(userID, option)
+	err = b.gameHandler.MakeBet(userID, option)
 	if err != nil {
 		// Определяем тип ошибки и отправляем соответствующее сообщение
 		var errorText string
@@ -179,6 +186,9 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 			} else {
 				errorText = b.service.GetText("bet_error", language)
 			}
+		} else if strings.Contains(err.Error(), "no bets left") {
+			// У пользователя закончились ставки на сегодня
+			errorText = b.service.GetText("betsbalancelow", language)
 		} else {
 			// Общая ошибка ставки
 			errorText = b.service.GetText("bet_error", language)
@@ -186,7 +196,7 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 
 		b.SendMessage(userID, MessageOptions{
 			Text:          errorText,
-			ReplyKeyboard: b.gameHandler.createBetKeyboard(language, userID),
+			ReplyKeyboard: b.gameHandler.createDetailedBetKeyboard(language, userID, betsBalance),
 		})
 		return
 	}
@@ -195,7 +205,7 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 	nomorebidsText := b.service.GetText("nomorebids", language)
 	b.SendMessage(userID, MessageOptions{
 		Text:          nomorebidsText,
-		ReplyKeyboard: b.gameHandler.createBetKeyboard(language, userID),
+		ReplyKeyboard: b.gameHandler.createDetailedBetKeyboard(language, userID, betsBalance),
 	})
 }
 
@@ -411,6 +421,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	btnZeroText := b.service.GetText("btn_bet_zero", language)
 	btnZeroLockedText := b.service.GetText("btn_bet_zero_locked", language)
 	btnBackText := b.service.GetText("btn_back", language)
+	btnStopText := b.service.GetText("stop", language)
 
 	// Обработка клавиатуры главного меню
 	switch text {
@@ -438,14 +449,25 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			zeroLimitText := b.service.GetText("zero_limit", language)
 			zeroLimitText = fmt.Sprintf(zeroLimitText, remaining)
 
+			// Получаем доступное количество ставок
+			betsBalance, err := b.service.GetUserRemainingBets(user.ID)
+			if err != nil {
+				log.Printf("Error getting user remaining bets: %v", err)
+				betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
+			}
+
 			b.SendMessage(message.Chat.ID, MessageOptions{
 				Text:          zeroLimitText,
-				ReplyKeyboard: b.gameHandler.createBetKeyboard(language, user.ID),
+				ReplyKeyboard: b.gameHandler.createDetailedBetKeyboard(language, user.ID, betsBalance),
 			})
 		}
 	case btnBackText:
 		// Возврат в главное меню и удаление из активных игроков
 		b.gameHandler.HandleBackButton(user.ID)
+		b.handleHelpCommand(message)
+	case btnStopText:
+		// Остановка игры и возврат в главное меню
+		b.gameHandler.HandleStopGameButton(user.ID)
 		b.handleHelpCommand(message)
 	// Обработка кнопок статистики
 	case b.service.GetText("daystat", language):

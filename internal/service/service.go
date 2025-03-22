@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"time"
 
 	"roulette/internal/models"
@@ -22,6 +23,7 @@ type Service interface {
 	MakeBet(telegramID int64, option models.BetOption) error
 	GetUserBets(telegramID int64, limit int) ([]models.Bet, error)
 	CanBetZero(telegramID int64) (bool, int, error)
+	GetUserRemainingBets(telegramID int64) (int, error) // Добавленный метод для проверки доступных ставок
 	GetCurrentRound() (*models.HashEntry, error)
 	StartNewRound() (*models.HashEntry, error)
 	StartNewRoundFromRotator() (*models.HashEntry, error)
@@ -406,6 +408,36 @@ func (s *ServiceImpl) CanBetZero(telegramID int64) (bool, int, error) {
 	}
 
 	return false, dailyBetsLimit - dailyBets, nil
+}
+
+// GetUserRemainingBets получает количество доступных ставок для пользователя на сегодня
+func (s *ServiceImpl) GetUserRemainingBets(telegramID int64) (int, error) {
+	user, err := s.repo.GetUserByTelegramID(telegramID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Получаем настройку дневного лимита ставок
+	setting, err := s.repo.GetSetting("daily_bets_limit")
+	if err != nil {
+		// Если настройки нет, используем значение по умолчанию
+		return 100, nil
+	}
+
+	dailyLimit, err := strconv.Atoi(setting.Value)
+	if err != nil {
+		// Если значение не числовое, используем значение по умолчанию
+		return 100, nil
+	}
+
+	// Получаем количество ставок за сегодня
+	dailyBets, err := s.repo.GetUserDailyBets(user.ID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Вычисляем оставшееся количество ставок
+	return dailyLimit - dailyBets, nil
 }
 
 // GetUserBetsForRound получает ставки пользователя для конкретного раунда
