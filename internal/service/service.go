@@ -400,14 +400,25 @@ func (s *ServiceImpl) CanBetZero(telegramID int64) (bool, int, error) {
 		return false, 0, err
 	}
 
-	// Проверяем лимит ставок на Zero
-	dailyBetsLimit := 100 // можно вынести в настройки
+	// Получаем настройку лимита ставок на Zero
+	setting, err := s.repo.GetSetting("daily_bets_zero_limit")
+	if err != nil {
+		// Если настройки нет, используем значение по умолчанию
+		return dailyBets >= 100, 100 - dailyBets, nil
+	}
 
-	if dailyBets >= dailyBetsLimit {
+	dailyBetsZeroLimit, err := strconv.Atoi(setting.Value)
+	if err != nil {
+		// Если значение не числовое, используем значение по умолчанию
+		return dailyBets >= 100, 100 - dailyBets, nil
+	}
+
+	// Проверяем лимит ставок на Zero
+	if dailyBets >= dailyBetsZeroLimit {
 		return true, 0, nil
 	}
 
-	return false, dailyBetsLimit - dailyBets, nil
+	return false, dailyBetsZeroLimit - dailyBets, nil
 }
 
 // GetUserRemainingBets получает количество доступных ставок для пользователя на сегодня
@@ -421,13 +432,13 @@ func (s *ServiceImpl) GetUserRemainingBets(telegramID int64) (int, error) {
 	setting, err := s.repo.GetSetting("daily_bets_limit")
 	if err != nil {
 		// Если настройки нет, используем значение по умолчанию
-		return 100, nil
+		return 2880, nil
 	}
 
 	dailyLimit, err := strconv.Atoi(setting.Value)
 	if err != nil {
 		// Если значение не числовое, используем значение по умолчанию
-		return 100, nil
+		return 2880, nil
 	}
 
 	// Получаем количество ставок за сегодня

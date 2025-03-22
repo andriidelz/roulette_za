@@ -150,7 +150,8 @@ CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals (status);
 
 -- Базовые настройки
 INSERT INTO settings (key, value, default_value, description) VALUES
-    ('daily_bets_limit', '100', '100', 'Лимит ставок за день для возможности ставить на zero'),
+    ('daily_bets_limit', '2880', '2880', 'Лимит ставок за день'),
+    ('daily_bets_zero_limit', '100', '100', 'Лимит ставок за день для возможности ставить на zero'),
     ('weekly_prize_amount', '1000', '1000', 'Сумма недельного призового фонда'),
     ('weekly_prize_top', '100', '100', 'Количество призовых мест в недельном рейтинге'),
     ('minimum_withdrawal', '10', '10', 'Минимальная сумма для вывода средств');

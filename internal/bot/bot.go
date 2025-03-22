@@ -461,6 +461,26 @@ func (b *Bot) handleMessage(message *telego.Message) {
 				ReplyKeyboard: b.gameHandler.createDetailedBetKeyboard(language, user.ID, betsBalance),
 			})
 		}
+	case b.service.GetText("availablebets", language):
+		// Получаем доступное количество ставок
+		betsBalance, err := b.service.GetUserRemainingBets(user.ID)
+		if err != nil {
+			log.Printf("Error getting user remaining bets: %v", err)
+			betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
+		}
+
+		var messageText string
+		if betsBalance <= 0 {
+			messageText = b.service.GetText("betsbalancelow", language)
+		} else {
+			messageTemplate := b.service.GetText("betsbalanceok", language)
+			messageText = fmt.Sprintf(messageTemplate, betsBalance)
+		}
+
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text:          messageText,
+			ReplyKeyboard: b.gameHandler.createDetailedBetKeyboard(language, user.ID, betsBalance),
+		})
 	case btnBackText:
 		// Возврат в главное меню и удаление из активных игроков
 		b.gameHandler.HandleBackButton(user.ID)
