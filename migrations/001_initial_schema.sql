@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS users (
     country VARCHAR(2),  -- ISO 3166-1 alpha-2 код страны
     wallet_address VARCHAR(255), -- Адрес кошелька USDT
     balance FLOAT DEFAULT 0,
-    today_bets INT DEFAULT 0,
     banned BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -46,23 +45,7 @@ CREATE TABLE IF NOT EXISTS bets (
 
 CREATE INDEX IF NOT EXISTS idx_bets_user_id ON bets (user_id);
 CREATE INDEX IF NOT EXISTS idx_bets_hash_entry_id ON bets (hash_entry_id);
-
--- Статистика пользователя
-CREATE TABLE IF NOT EXISTS user_stats (
-    id SERIAL PRIMARY KEY,
-    user_id INT UNIQUE NOT NULL REFERENCES users(id),
-    total_bets INT DEFAULT 0,
-    won_bets INT DEFAULT 0,
-    total_points INT DEFAULT 0,
-    daily_bets INT DEFAULT 0,
-    weekly_bets INT DEFAULT 0,
-    monthly_bets INT DEFAULT 0,
-    daily_points INT DEFAULT 0,
-    weekly_points INT DEFAULT 0,
-    monthly_points INT DEFAULT 0,
-    last_reset TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
+CREATE INDEX IF NOT EXISTS idx_bets_created_at ON bets (created_at);
 
 -- Недельный рейтинг
 CREATE TABLE IF NOT EXISTS weekly_ratings (
@@ -682,6 +665,7 @@ INSERT INTO localizations (key, language, value) VALUES
 3. Вычислите SHA-256 хеш от этой строки.
 4. Сравните с хешем из начала раунда.');
 
+-- Дополнительные локализации для всех языков
 INSERT INTO localizations (key, language, value) VALUES 
     ('main_menu', 'en', 'Tap a button to continue');
 
@@ -700,6 +684,7 @@ INSERT INTO localizations (key, language, value) VALUES
 INSERT INTO localizations (key, language, value) VALUES 
     ('country_saved', 'uk', 'Ваша країна успішно збережена! ✅');
 
+-- Настройки профиля
 INSERT INTO localizations (key, language, value) VALUES
     ('settings_message', 'en', 'Settings Menu\n\nHere you can change your profile settings:'),
     ('btn_settings_language', 'en', '🌐 Language'),
@@ -742,6 +727,7 @@ INSERT INTO localizations (key, language, value) VALUES
     ('name_saved', 'uk', 'Ім''я успішно оновлено! ✅'),
     ('lastname_saved', 'uk', 'Прізвище успішно оновлено! ✅');
 
+-- Настройки кошелька
 INSERT INTO localizations (key, language, value) VALUES
     ('btn_settings_wallet', 'en', '💰 USDT Wallet Address'),
     ('settings_wallet', 'en', 'Enter your USDT wallet address (TRC20):'),
@@ -759,3 +745,9 @@ INSERT INTO localizations (key, language, value) VALUES
     ('settings_wallet', 'uk', 'Введіть адресу вашого гаманця USDT (TRC20):'),
     ('wallet_saved', 'uk', 'Адреса гаманця успішно оновлена! ✅'),
     ('invalid_wallet_format', 'uk', 'Невірний формат адреси гаманця. Будь ласка, введіть дійсну адресу гаманця TRC20, що починається з T.');
+
+-- Статус и сообщения об ошибках
+INSERT INTO localizations (key, language, value) VALUES
+    ('unknown_command', 'en', 'Unknown command. Please use the menu to navigate.'),
+    ('unknown_command', 'ru', 'Неизвестная команда. Пожалуйста, используйте меню для навигации.'),
+    ('unknown_command', 'uk', 'Невідома команда. Будь ласка, використовуйте меню для навігації.');
