@@ -182,9 +182,18 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 			language = "en"
 		}
 
-		// Получаем локализированное сообщение для нового раунда
-		newRoundTemplate := h.service.GetText("new_round", language)
-		newRoundText := fmt.Sprintf(newRoundTemplate, roundIDBase62, round.Hash)
+		// Вычисляем оставшееся время до конца раунда
+		elapsedTime := time.Since(round.CreatedAt)
+		roundDuration := 30 * time.Second // Продолжительность раунда
+		remainingSeconds := int((roundDuration - elapsedTime).Seconds())
+
+		if remainingSeconds < 0 {
+			remainingSeconds = 0
+		}
+
+		// Получаем локализированный шаблон для нового раунда с обратным отсчетом
+		roundInfoTemplate := h.service.GetText("round_info_countdown", language)
+		roundInfoText := fmt.Sprintf(roundInfoTemplate, roundIDBase62, round.Hash, remainingSeconds)
 
 		// Получаем доступное количество ставок
 		betsBalance, err := h.service.GetUserRemainingBets(userID)
@@ -194,7 +203,7 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 		}
 
 		h.bot.SendMessage(userID, MessageOptions{
-			Text:          newRoundText,
+			Text:          roundInfoText,
 			ReplyKeyboard: h.createDetailedBetKeyboard(language, userID, betsBalance),
 		})
 	}

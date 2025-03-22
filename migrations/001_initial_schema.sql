@@ -267,7 +267,7 @@ INSERT INTO localizations (key, language, value) VALUES
     ('btn_bet_red', 'uk', '🔴 Червоне'),
     ('btn_bet_black', 'uk', '⚫️ Чорне'),
     ('btn_bet_zero', 'uk', '🟢 Zero'),
-    ('btn_bet_zero_locked', 'uk', '🔒 Zero (заблоковано)'),
+    ('btn_bet_zero_locked', 'uk', '🔒 Zero'),
     ('btn_back', 'uk', '◀️ Назад'),
     
     ('round_info', 'uk', 'Раунд #%s
@@ -437,7 +437,7 @@ Make your choice'),
     ('btn_bet_red', 'en', '🔴 Red'),
     ('btn_bet_black', 'en', '⚫️ Black'),
     ('btn_bet_zero', 'en', '🟢 Zero'),
-    ('btn_bet_zero_locked', 'en', '🔒 Zero (locked)'),
+    ('btn_bet_zero_locked', 'en', '🔒 Zero'),
     ('btn_back', 'en', '◀️ Back'),
     
     ('round_info', 'en', 'Round #%s
@@ -607,7 +607,7 @@ INSERT INTO localizations (key, language, value) VALUES
     ('btn_bet_red', 'ru', '🔴 Красное'),
     ('btn_bet_black', 'ru', '⚫️ Черное'),
     ('btn_bet_zero', 'ru', '🟢 Zero'),
-    ('btn_bet_zero_locked', 'ru', '🔒 Zero (заблокировано)'),
+    ('btn_bet_zero_locked', 'ru', '🔒 Zero'),
     ('btn_back', 'ru', '◀️ Назад'),
     
     ('round_info', 'ru', 'Раунд #%s
@@ -812,9 +812,9 @@ INSERT INTO localizations (key, language, value) VALUES
     ('availablebets', 'en', 'Available bets'),
     ('availablebets', 'uk', 'Доступно ставок'),
     
-    ('stop', 'ru', '🛑 Стоп игра'),
-    ('stop', 'en', '🛑 Stop game'),
-    ('stop', 'uk', '🛑 Стоп гра'),
+    ('stop', 'ru', 'Стоп игра'),
+    ('stop', 'en', 'Stop game'),
+    ('stop', 'uk', 'Стоп гра'),
     
     ('betsbalancelow', 'ru', 'У вас закончились ставки на сегодня. Приходите завтра!'),
     ('betsbalancelow', 'en', 'You have run out of bets for today. Come back tomorrow!'),
@@ -824,10 +824,9 @@ INSERT INTO localizations (key, language, value) VALUES
     ('betsbalanceok', 'en', 'You have %d more bets available today.'),
     ('betsbalanceok', 'uk', 'У вас є ще %d ставок на сьогодні.'),
     
-    ('round_info_countdown', 'ru', E'Раунд #%s (Хеш: %s)\nДо следующего определения ставки осталось %d секунд.\nСделайте свой выбор'),
-    ('round_info_countdown', 'en', E'Round #%s (Hash: %s)\n%d seconds left until the next bet determination.\nMake your choice'),
-    ('round_info_countdown', 'uk', E'Раунд #%s (Хеш: %s)\nДо наступного визначення ставки залишилось %d секунд.\nЗробіть свій вибір'),
-    
+    ('round_info_countdown', 'ru', E'Раунд #%s\nХеш: %s\n\nДо следующего определения ставки осталось %d секунд.\n\nСделайте свой выбор'),
+    ('round_info_countdown', 'en', E'Round #%s\nHash: %s\n\n%d seconds left until the next bet determination.\n\nMake your choice'),
+    ('round_info_countdown', 'uk', E'Раунд #%s\nХеш: %s\n\nДо наступного визначення ставки залишилось %d секунд.\n\nЗробіть свій вибір'),
     ('waiting_for_round', 'ru', 'Ожидаем начала нового раунда. Пожалуйста, подождите...'),
     ('waiting_for_round', 'en', 'Waiting for a new round to start. Please wait...'),
     ('waiting_for_round', 'uk', 'Очікуємо початку нового раунду. Будь ласка, зачекайте...');
