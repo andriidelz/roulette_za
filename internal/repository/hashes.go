@@ -74,15 +74,13 @@ func (r *PostgresRepository) GetActiveHashEntry() (*models.HashEntry, error) {
 	var entry models.HashEntry
 	err := r.db.Where("is_completed = ?", false).Order("created_at desc").First(&entry).Error
 
-	// При первом запуске с пустой базой это нормальная ситуация
+	// При отсутствии активного раунда просто возвращаем nil без ошибки
 	if err == gorm.ErrRecordNotFound {
-		// Можно добавить специальное логирование для отладки, но не как ошибку
-		// log.Println("No active round found - this is normal for first start")
-		return nil, err
+		return nil, nil // Возвращаем nil, nil вместо ошибки
 	}
 
 	if err != nil {
-		// Логируем только настоящие ошибки
+		// Логируем только реальные ошибки БД
 		log.Printf("Error getting active hash entry: %v", err)
 		return nil, err
 	}

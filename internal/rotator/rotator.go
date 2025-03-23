@@ -4,15 +4,9 @@ import (
 	"context"
 	"log"
 	"roulette/internal/messaging"
-	"roulette/internal/models"
 	"roulette/internal/service"
 	"time"
 )
-
-// HashChangeNotifier интерфейс для уведомления компонентов о новом раунде
-type HashChangeNotifier interface {
-	HandleNewRound(hashEntry *models.HashEntry)
-}
 
 // Rotator отвечает за периодическую генерацию хешей и смену раундов
 type Rotator struct {
@@ -20,7 +14,6 @@ type Rotator struct {
 	interval   time.Duration
 	ctx        context.Context
 	cancelFunc context.CancelFunc
-	notifiers  []HashChangeNotifier
 	rabbitmq   *messaging.RabbitMQ // Добавлен клиент RabbitMQ
 }
 
@@ -39,14 +32,8 @@ func NewRotator(service service.Service, interval time.Duration, rabbitmqURL str
 		interval:   interval,
 		ctx:        ctx,
 		cancelFunc: cancel,
-		notifiers:  make([]HashChangeNotifier, 0),
 		rabbitmq:   rmq,
 	}, nil
-}
-
-// RegisterNotifier регистрирует обработчик для уведомлений о новом хеше
-func (r *Rotator) RegisterNotifier(notifier HashChangeNotifier) {
-	r.notifiers = append(r.notifiers, notifier)
 }
 
 // Start запускает процесс периодической смены раундов
@@ -60,19 +47,16 @@ func (r *Rotator) Start() {
 	newRound, err := r.service.StartNewRoundFromRotator()
 	if err != nil {
 		log.Printf("Error starting initial round: %v", err)
-	} else {
+	} else if newRound != nil {
 		log.Printf("Created initial round #%d", newRound.ID)
 
-		// Отправляем сообщение о новом раунде через RabbitMQ
+		// Отправляем сообщение о новом раунде через RabbitMQ с высоким приоритетом
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		if err := r.rabbitmq.PublishRoundStarted(ctx, newRound.ID, newRound); err != nil {
 			log.Printf("Error publishing round started message: %v", err)
 		}
-
-		// Также продолжаем использовать существующий механизм уведомлений для совместимости
-		r.notifyAll(newRound)
 	}
 
 	for {
@@ -89,7 +73,21 @@ func (r *Rotator) Start() {
 			}
 
 			if currentRound == nil {
-				log.Printf("No active round found to complete")
+				// Если активного раунда нет, создаем новый
+				newRound, err := r.service.StartNewRoundFromRotator()
+				if err != nil {
+					log.Printf("Error starting new round: %v", err)
+					continue
+				}
+
+				log.Printf("Created new round #%d (no active round found)", newRound.ID)
+
+				// Отправляем сообщение о новом раунде через RabbitMQ
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				if err := r.rabbitmq.PublishRoundStarted(ctx, newRound.ID, newRound); err != nil {
+					log.Printf("Error publishing round started message: %v", err)
+				}
+				cancel()
 				continue
 			}
 
@@ -109,9 +107,6 @@ func (r *Rotator) Start() {
 				continue
 			}
 
-			// Отправляем сообщение о завершении раунда через RabbitMQ
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-
 			// Создаем структуру с результатами раунда для отправки
 			roundResult, err := r.service.GetRoundResult(currentRoundID)
 			if err != nil {
@@ -128,14 +123,15 @@ func (r *Rotator) Start() {
 				"completed_at": time.Now(),
 			}
 
+			// Отправляем сообщение о завершении раунда через RabbitMQ с САМЫМ высоким приоритетом
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			if err := r.rabbitmq.PublishRoundCompleted(ctx, currentRoundID, roundData); err != nil {
 				log.Printf("Error publishing round completed message: %v", err)
 			}
 			cancel()
 
-			// ВАЖНО: Добавляем задержку после публикации сообщения о завершении раунда
-			// чтобы гарантировать, что оно будет обработано до сообщения о новом раунде
-			time.Sleep(2 * time.Second)
+			// Даем небольшую задержку для обработки сообщения о завершении раунда
+			time.Sleep(500 * time.Millisecond)
 
 			// Генерируем новый хеш и начинаем новый раунд
 			newRound, err := r.service.StartNewRoundFromRotator()
@@ -152,9 +148,6 @@ func (r *Rotator) Start() {
 				log.Printf("Error publishing round started message: %v", err)
 			}
 			cancel()
-
-			// Также продолжаем использовать существующий механизм уведомлений для совместимости
-			r.notifyAll(newRound)
 		}
 	}
 }
@@ -169,14 +162,5 @@ func (r *Rotator) Stop() {
 		if err := r.rabbitmq.Close(); err != nil {
 			log.Printf("Error closing RabbitMQ connection: %v", err)
 		}
-	}
-}
-
-// notifyAll уведомляет всех зарегистрированных обработчиков о новом раунде
-func (r *Rotator) notifyAll(entry *models.HashEntry) {
-	for _, notifier := range r.notifiers {
-		// Запускаем обработчики асинхронно, т.к. теперь у нас есть надежная система очередей
-		// для обеспечения правильного порядка сообщений
-		go notifier.HandleNewRound(entry)
 	}
 }

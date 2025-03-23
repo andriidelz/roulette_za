@@ -23,6 +23,12 @@ const (
 	RoutingRoundStarted   = "round.started"
 	RoutingBetPlaced      = "bet.placed"
 	RoutingUserNotified   = "user.notified"
+
+	// Приоритеты сообщений
+	PriorityLow    = 1
+	PriorityNormal = 5
+	PriorityHigh   = 7
+	PriorityMax    = 9
 )
 
 // RouletteMessage определяет структуру сообщений обмена
@@ -188,29 +194,29 @@ func (r *RabbitMQ) Publish(ctx context.Context, routingKey string, msgType strin
 		return fmt.Errorf("error publishing message: %w", err)
 	}
 
-	log.Printf("[%s] Published message: type=%s, round_id=%d, routing_key=%s, seq=%d",
-		r.componentName, msgType, roundID, routingKey, seq)
+	log.Printf("[%s] Published message: type=%s, round_id=%d, routing_key=%s, seq=%d, priority=%d",
+		r.componentName, msgType, roundID, routingKey, seq, priority)
 	return nil
 }
 
 // PublishRoundCompleted публикует сообщение о завершении раунда
 func (r *RabbitMQ) PublishRoundCompleted(ctx context.Context, roundID uint, data interface{}) error {
-	return r.Publish(ctx, RoutingRoundCompleted, EventRoundCompleted, roundID, data, 9) // Высший приоритет
+	return r.Publish(ctx, RoutingRoundCompleted, EventRoundCompleted, roundID, data, PriorityMax) // Максимальный приоритет
 }
 
 // PublishRoundStarted публикует сообщение о начале нового раунда
 func (r *RabbitMQ) PublishRoundStarted(ctx context.Context, roundID uint, data interface{}) error {
-	return r.Publish(ctx, RoutingRoundStarted, EventRoundStarted, roundID, data, 5) // Средний приоритет
+	return r.Publish(ctx, RoutingRoundStarted, EventRoundStarted, roundID, data, PriorityHigh) // Высокий приоритет
 }
 
 // PublishBetPlaced публикует сообщение о размещении ставки
 func (r *RabbitMQ) PublishBetPlaced(ctx context.Context, roundID uint, data interface{}) error {
-	return r.Publish(ctx, RoutingBetPlaced, EventBetPlaced, roundID, data, 7) // Высокий приоритет
+	return r.Publish(ctx, RoutingBetPlaced, EventBetPlaced, roundID, data, PriorityNormal) // Средний приоритет
 }
 
 // PublishUserNotified публикует сообщение об уведомлении пользователя
 func (r *RabbitMQ) PublishUserNotified(ctx context.Context, roundID uint, data interface{}) error {
-	return r.Publish(ctx, RoutingUserNotified, EventUserNotified, roundID, data, 3) // Низкий приоритет
+	return r.Publish(ctx, RoutingUserNotified, EventUserNotified, roundID, data, PriorityLow) // Низкий приоритет
 }
 
 // SubscribeToQueue подписывается на сообщения из указанной очереди
@@ -222,6 +228,11 @@ func (r *RabbitMQ) SubscribeToQueue(queueName string, routingKeys []string, hand
 		}
 	}
 
+	// Создаем очередь с настройкой приоритетов
+	args := amqp.Table{
+		"x-max-priority": 10, // Максимальный приоритет 10
+	}
+
 	// Создаем очередь, если она не существует
 	queue, err := r.ch.QueueDeclare(
 		queueName, // имя очереди
@@ -229,7 +240,7 @@ func (r *RabbitMQ) SubscribeToQueue(queueName string, routingKeys []string, hand
 		false,     // не удалять, когда нет подписчиков
 		false,     // не эксклюзивная (может использоваться разными соединениями)
 		false,     // не ждать подтверждения от сервера
-		nil,       // дополнительные аргументы
+		args,      // аргументы с настройкой приоритетов
 	)
 	if err != nil {
 		return fmt.Errorf("failed to declare queue: %w", err)
@@ -286,8 +297,8 @@ func (r *RabbitMQ) SubscribeToQueue(queueName string, routingKeys []string, hand
 				continue
 			}
 
-			log.Printf("[%s] Received message: type=%s, round_id=%d, routing_key=%s, seq=%d from %s",
-				r.componentName, message.Type, message.RoundID, msg.RoutingKey, message.Sequence, message.SourceComponent)
+			log.Printf("[%s] Received message: type=%s, round_id=%d, routing_key=%s, seq=%d, priority=%d from %s",
+				r.componentName, message.Type, message.RoundID, msg.RoutingKey, message.Sequence, msg.Priority, message.SourceComponent)
 
 			// Обрабатываем сообщение через предоставленный обработчик
 			if err := handler(message); err != nil {

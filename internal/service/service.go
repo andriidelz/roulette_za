@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -30,6 +31,7 @@ type Service interface {
 	CompleteRound(hashEntryID uint) error
 	GetRoundResult(hashEntryID uint) (models.BetOption, error)
 	ProcessBets(hashEntryID uint) error
+	ProcessAndGetBets(hashEntryID uint) ([]models.Bet, error)
 	GetUserBetsForRound(telegramID int64, hashEntryID uint) ([]models.Bet, error)
 	GetHashEntryByID(id uint) (*models.HashEntry, error)
 
@@ -207,17 +209,13 @@ func (s *ServiceImpl) StartNewRoundFromRotator() (*models.HashEntry, error) {
 	// Проверяем, есть ли активный раунд
 	currentRound, err := s.repo.GetActiveHashEntry()
 	if err != nil {
-		// Если ошибка - "запись не найдена", это нормально для первого запуска
-		if err.Error() == "record not found" {
-			// Продолжаем выполнение для создания первого раунда
-		} else {
-			// Если другая ошибка - возвращаем её
-			return nil, err
-		}
-	} else {
-		// Если активный раунд найден, завершаем его
-		err = s.CompleteRound(currentRound.ID)
-		if err != nil {
+		// Если ошибка - это не "запись не найдена", возвращаем её
+		return nil, err
+	}
+
+	// Если активный раунд найден, завершаем его
+	if currentRound != nil {
+		if err = s.CompleteRound(currentRound.ID); err != nil {
 			return nil, err
 		}
 	}
@@ -290,24 +288,34 @@ func (s *ServiceImpl) GetRoundResult(hashEntryID uint) (models.BetOption, error)
 	return models.Black, nil
 }
 
-// ProcessBets обрабатывает все ставки для завершенного раунда
+// ProcessBets обрабатывает все ставки для завершенного раунда (для обратной совместимости)
 func (s *ServiceImpl) ProcessBets(hashEntryID uint) error {
-	// Получаем все ставки для этого раунда
-	bets, err := s.repo.GetBetsByHashEntryID(hashEntryID)
+	_, err := s.ProcessAndGetBets(hashEntryID)
+	return err
+}
+
+// ProcessAndGetBets обрабатывает все ставки и возвращает список обработанных ставок
+func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint) ([]models.Bet, error) {
+	// Получаем все ставки для этого раунда с preload пользователей
+	bets, err := s.repo.GetBetsByHashEntryIDWithUsers(hashEntryID)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	if len(bets) == 0 {
+		return bets, nil
 	}
 
 	// Получаем результат раунда
 	result, err := s.GetRoundResult(hashEntryID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Обрабатываем каждую ставку
-	for _, bet := range bets {
+	for i := range bets {
 		// Определяем, выиграла ли ставка
-		won := bet.Option == result
+		won := bets[i].Option == result
 
 		// Рассчитываем количество полученных баллов
 		points := 0
@@ -319,15 +327,19 @@ func (s *ServiceImpl) ProcessBets(hashEntryID uint) error {
 			}
 		}
 
-		// Обновляем ставку
-		bet.Won = won
-		bet.Points = points
-		if err := s.repo.UpdateBet(&bet); err != nil {
-			return err
+		// Обновляем ставку прямо в срезе
+		bets[i].Won = won
+		bets[i].Points = points
+
+		// Сохраняем обновленную ставку в БД
+		if err := s.repo.UpdateBet(&bets[i]); err != nil {
+			log.Printf("Error updating bet for user %d in round %d: %v",
+				bets[i].UserID, hashEntryID, err)
+			// Продолжаем обработку других ставок
 		}
 	}
 
-	return nil
+	return bets, nil
 }
 
 // MakeBet делает ставку в текущем раунде

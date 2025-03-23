@@ -87,6 +87,8 @@ type Repository interface {
 	SetUserCountry(userID uint, country string) error
 	GetUserCountry(userID uint) (string, error)
 
+	GetBetsByHashEntryIDWithUsers(hashEntryID uint) ([]models.Bet, error)
+
 	// Закрытие соединения
 	Close() error
 }
@@ -394,6 +396,15 @@ func (r *PostgresRepository) GetUserMonthlyStats(userID uint) (int, int, error) 
 	err = r.db.Model(&models.Bet{}).Where("user_id = ? AND won = ? AND DATE(created_at) >= ?", userID, true, startOfMonth).Select("COALESCE(SUM(points), 0)").Scan(&points).Error
 
 	return int(count), points, err
+}
+
+// GetBetsByHashEntryIDWithUsers получает все ставки для указанного хеша (раунда) вместе с данными пользователей
+func (r *PostgresRepository) GetBetsByHashEntryIDWithUsers(hashEntryID uint) ([]models.Bet, error) {
+	var bets []models.Bet
+	if err := r.db.Where("hash_entry_id = ?", hashEntryID).Preload("User").Find(&bets).Error; err != nil {
+		return nil, err
+	}
+	return bets, nil
 }
 
 // Close закриває з'єднання з базою даних
