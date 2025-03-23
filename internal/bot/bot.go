@@ -50,7 +50,7 @@ const (
 )
 
 // NewBot создает новый экземпляр бота
-func NewBot(token string, service service.Service) (*Bot, error) {
+func NewBot(token string, service service.Service, rabbitmqURL string) (*Bot, error) {
 	bot, err := telego.NewBot(token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %w", err)
@@ -66,8 +66,14 @@ func NewBot(token string, service service.Service) (*Bot, error) {
 		stateManager: NewStateManager(),
 	}
 
-	// Инициализируем обработчик игры после создания бота
-	b.gameHandler = NewGameHandler(b, service)
+	// Инициализируем обработчик игры после создания бота с поддержкой RabbitMQ
+	gameHandler, err := NewGameHandler(b, service, rabbitmqURL)
+	if err != nil {
+		cancel() // Освобождаем ресурсы в случае ошибки
+		return nil, fmt.Errorf("failed to create game handler: %w", err)
+	}
+
+	b.gameHandler = gameHandler
 
 	return b, nil
 }

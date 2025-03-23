@@ -39,6 +39,24 @@ services:
       postgres:
         condition: service_healthy
 
+  rabbitmq:
+      image: rabbitmq:3-management
+      container_name: roulette-rabbitmq
+      ports:
+        - "5672:5672"
+        - "15672:15672"
+      volumes:
+        - ./shared-data/rabbitmq:/var/lib/rabbitmq
+      environment:
+        - RABBITMQ_DEFAULT_USER=guest
+        - RABBITMQ_DEFAULT_PASS=guest
+      healthcheck:
+        test: ["CMD", "rabbitmqctl", "status"]
+        interval: 5s
+        timeout: 5s
+        retries: 10
+        start_period: 10s
+
   bot:
     build:
       context: .
@@ -48,8 +66,11 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/roulette?sslmode=disable
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 
@@ -61,8 +82,11 @@ services:
     command: ./roulette-rotator
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/roulette?sslmode=disable
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 

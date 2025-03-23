@@ -25,6 +25,8 @@ func main() {
 	// Инициализируем конфигурацию
 	cfg := config.NewConfig()
 
+	log.Printf("Starting bot with Telegram token: %s...", cfg.TelegramToken[:5])
+
 	// Подключаемся к базе данных
 	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{})
 	if err != nil {
@@ -37,8 +39,8 @@ func main() {
 	// Создаем сервис
 	svc := service.NewService(repo)
 
-	// Создаем бота
-	telegramBot, err := bot.NewBot(cfg.TelegramToken, svc)
+	// Создаем бота с URL для RabbitMQ
+	telegramBot, err := bot.NewBot(cfg.TelegramToken, svc, cfg.RabbitMQURL)
 	if err != nil {
 		log.Fatalf("Failed to create bot: %v", err)
 	}
@@ -47,6 +49,8 @@ func main() {
 	if err := telegramBot.Start(); err != nil {
 		log.Fatalf("Failed to start bot: %v", err)
 	}
+
+	log.Printf("Bot started successfully and listening for updates")
 
 	// Ожидаем сигнал для завершения
 	quit := make(chan os.Signal, 1)

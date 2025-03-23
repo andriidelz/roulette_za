@@ -37,14 +37,18 @@ func main() {
 	// Створюємо сервіс
 	svc := service.NewService(repo)
 
-	// Створюємо ротатор з налаштуваннями інтервалу
-	hashRotator := rotator.NewRotator(svc, cfg.RotationInterval)
+	// Створюємо ротатор з налаштуваннями інтервалу та RabbitMQ
+	hashRotator, err := rotator.NewRotator(svc, cfg.RotationInterval, cfg.RabbitMQURL)
+	if err != nil {
+		log.Fatalf("Failed to create rotator: %v", err)
+	}
 
 	// Запускаємо ротатор у фоновому режимі
 	go hashRotator.Start()
 
 	// Виводимо повідомлення про запуск
-	log.Printf("Rotator started with interval: %s", cfg.RotationInterval)
+	log.Printf("Rotator started with interval: %s, connected to RabbitMQ: %s",
+		cfg.RotationInterval, cfg.RabbitMQURL)
 
 	// Очікуємо сигнал для завершення
 	quit := make(chan os.Signal, 1)

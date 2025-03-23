@@ -1,11 +1,13 @@
 package bot
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
 	"time"
 
+	"roulette/internal/messaging"
 	"roulette/internal/models"
 	"roulette/internal/service"
 	"roulette/internal/utils"
@@ -14,6 +16,11 @@ import (
 )
 
 const webPage = "https://roulette.myapps.vip"
+
+// Интерфейс для уведомления о новом хеше (для обратной совместимости)
+type HashChangeNotifier interface {
+	HandleNewRound(hashEntry *models.HashEntry)
+}
 
 // GameHandler управляет игровым процессом рулетки
 type GameHandler struct {
@@ -26,10 +33,19 @@ type GameHandler struct {
 	activePlayers    map[int64]bool             // Карта активных игроков в режиме /play
 	stopChan         chan struct{}              // Канал для остановки игры
 	checkRoundTicker *time.Ticker               // Тикер для периодической проверки раундов
+	rabbitmq         *messaging.RabbitMQ        // Клиент RabbitMQ
+	processedRounds  map[uint]bool              // Хранит ID обработанных раундов для избежания дублирования
+	processMutex     sync.Mutex                 // Мьютекс для доступа к processedRounds
 }
 
 // NewGameHandler создает новый обработчик игры
-func NewGameHandler(bot *Bot, service service.Service) *GameHandler {
+func NewGameHandler(bot *Bot, service service.Service, rabbitmqURL string) (*GameHandler, error) {
+	// Создаем клиент RabbitMQ
+	rmq, err := messaging.NewRabbitMQ(rabbitmqURL, "roulette_events", "bot")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create RabbitMQ client: %w", err)
+	}
+
 	handler := &GameHandler{
 		bot:              bot,
 		service:          service,
@@ -38,12 +54,19 @@ func NewGameHandler(bot *Bot, service service.Service) *GameHandler {
 		activePlayers:    make(map[int64]bool),
 		stopChan:         make(chan struct{}),
 		checkRoundTicker: time.NewTicker(1 * time.Second), // Проверка каждую секунду
+		rabbitmq:         rmq,
+		processedRounds:  make(map[uint]bool),
 	}
 
-	// Запускаем горутину для периодической проверки раундов
+	// Запускаем горутину для периодической проверки раундов (для обратной совместимости)
 	go handler.startRoundCheckLoop()
 
-	return handler
+	// Подписываемся на события от RabbitMQ
+	if err := handler.subscribeToRoundEvents(); err != nil {
+		return nil, fmt.Errorf("failed to subscribe to round events: %w", err)
+	}
+
+	return handler, nil
 }
 
 // startRoundCheckLoop запускает цикл проверки раундов
@@ -272,87 +295,192 @@ func (h *GameHandler) notifyTimeRemaining(round *models.HashEntry, seconds int) 
 	}
 }
 
-// HandleNewRound обрабатывает событие нового раунда (вызывается из ротатора)
-func (h *GameHandler) HandleNewRound(hashEntry *models.HashEntry) {
-	// Создадим локальные копии данных перед изменением
-	var previousRound *models.HashEntry
-	var waitingPlayersToProcess map[int64]bool
-	var activeBetsToProcess map[int64]models.BetOption
+// subscribeToRoundEvents подписывается на события завершения и начала раундов
+func (h *GameHandler) subscribeToRoundEvents() error {
+	// Создаем уникальное имя очереди для бота
+	queueName := fmt.Sprintf("roulette_bot_queue_%d", time.Now().UnixNano())
 
-	// Выводим информацию о внутреннем состоянии до блокировки
-	h.mutex.RLock()
-	log.Printf("Current state before locking: currentRound=%v, waitingPlayers=%d, activeBets=%d",
-		h.currentRound, len(h.waitingPlayers), len(h.activeBets))
+	// Подписываемся на события завершения и начала раундов
+	return h.rabbitmq.SubscribeToQueue(queueName,
+		[]string{messaging.RoutingRoundCompleted, messaging.RoutingRoundStarted},
+		h.handleRabbitMQMessage)
+}
 
-	// Выводим список всех ожидающих игроков
-	if len(h.waitingPlayers) > 0 {
-		log.Printf("Waiting players before locking:")
-		for playerID := range h.waitingPlayers {
-			log.Printf("  - Player %d is waiting for results", playerID)
-		}
+// handleRabbitMQMessage обрабатывает сообщения от RabbitMQ
+func (h *GameHandler) handleRabbitMQMessage(message messaging.RouletteMessage) error {
+	roundID := message.RoundID
+
+	// Проверяем, не обрабатывали ли мы уже этот раунд (для избежания дублирования)
+	h.processMutex.Lock()
+	if processed, exists := h.processedRounds[roundID]; exists && processed {
+		h.processMutex.Unlock()
+		log.Printf("Round #%d already processed, skipping duplicate message", roundID)
+		return nil
 	}
-	h.mutex.RUnlock()
+	h.processMutex.Unlock()
 
-	// Блокируем доступ к shared state, чтобы безопасно скопировать и изменить данные
+	switch message.Type {
+	case messaging.EventRoundCompleted:
+		// Обрабатываем сообщение о завершении раунда
+		log.Printf("Processing RabbitMQ message: round #%d completed", roundID)
+
+		// Получаем данные о раунде
+		round, err := h.service.GetHashEntryByID(roundID)
+		if err != nil {
+			return fmt.Errorf("failed to get round #%d: %w", roundID, err)
+		}
+
+		// Обрабатываем результаты раунда
+		h.handleRoundCompletion(round)
+
+		// Помечаем раунд как обработанный
+		h.processMutex.Lock()
+		h.processedRounds[roundID] = true
+		h.processMutex.Unlock()
+
+	case messaging.EventRoundStarted:
+		// Обрабатываем сообщение о начале нового раунда
+		log.Printf("Processing RabbitMQ message: round #%d started", roundID)
+
+		// Получаем данные о новом раунде
+		newRound, err := h.service.GetHashEntryByID(roundID)
+		if err != nil {
+			return fmt.Errorf("failed to get new round #%d: %w", roundID, err)
+		}
+
+		// Уведомляем активных игроков о новом раунде
+		h.handleNewRound(newRound)
+
+		// Помечаем раунд как обработанный
+		h.processMutex.Lock()
+		h.processedRounds[roundID] = true
+		h.processMutex.Unlock()
+	}
+
+	return nil
+}
+
+// handleRoundCompletion обрабатывает завершение раунда
+func (h *GameHandler) handleRoundCompletion(round *models.HashEntry) {
+	log.Printf("Handling round #%d completion", round.ID)
+
+	// Получаем игроков, ожидающих результатов
 	h.mutex.Lock()
+	waitingPlayersToProcess := make(map[int64]bool)
+	activeBetsToProcess := make(map[int64]models.BetOption)
 
-	// Сохраняем старый раунд
-	previousRound = h.currentRound
-
-	// Копируем данные о ставках для последующей обработки, но только если есть ожидающие игроки
-	// и предыдущий раунд существует
-	if len(h.waitingPlayers) > 0 && previousRound != nil {
-		waitingPlayersToProcess = make(map[int64]bool, len(h.waitingPlayers))
-		activeBetsToProcess = make(map[int64]models.BetOption, len(h.activeBets))
-
-		log.Printf("Copying %d waiting players for processing", len(h.waitingPlayers))
-
-		for userID, waiting := range h.waitingPlayers {
-			waitingPlayersToProcess[userID] = waiting
-			log.Printf("  - Copying player %d to waiting list for results", userID)
-		}
-
-		for userID, bet := range h.activeBets {
-			activeBetsToProcess[userID] = bet
-			log.Printf("  - Copying bet %s for player %d", bet, userID)
-		}
-	} else {
-		log.Printf("No waiting players (%d) or previous round is nil (isNil=%v)",
-			len(h.waitingPlayers), previousRound == nil)
+	// Копируем данные о ставках и ожидающих игроках
+	for userID, waiting := range h.waitingPlayers {
+		waitingPlayersToProcess[userID] = waiting
+		log.Printf("Player %d is waiting for round #%d results", userID, round.ID)
 	}
 
-	// Очищаем карты для нового раунда
+	for userID, bet := range h.activeBets {
+		activeBetsToProcess[userID] = bet
+		log.Printf("Player %d has bet %s in round #%d", userID, bet, round.ID)
+	}
+
+	// Очищаем карты ожидающих и ставок для нового раунда
 	h.waitingPlayers = make(map[int64]bool)
 	h.activeBets = make(map[int64]models.BetOption)
-
-	// Обновляем текущий раунд
-	h.currentRound = hashEntry
 	h.mutex.Unlock()
 
-	// Логируем что получилось после блокировки
-	log.Printf("After unlock: previousRound=%v, waitingPlayersToProcess=%d",
-		previousRound != nil, len(waitingPlayersToProcess))
-
-	// Обрабатываем результаты предыдущего раунда ПЕРЕД уведомлением о новом раунде
-	if previousRound != nil && waitingPlayersToProcess != nil && len(waitingPlayersToProcess) > 0 {
-		log.Printf("Calling processRoundResults for previous round #%d with %d waiting players",
-			previousRound.ID, len(waitingPlayersToProcess))
-
-		// Обрабатываем результаты синхронно
-		h.processRoundResults(previousRound.ID, waitingPlayersToProcess, activeBetsToProcess)
-
-		// Важное изменение: Добавляем задержку после обработки результатов
-		// чтобы сообщения об итогах предыдущего раунда точно пришли раньше, чем уведомление о новом раунде
-		time.Sleep(5 * time.Second)
-	} else {
-		log.Printf("Skipping processing results: previousRound=%v, waitingPlayersToProcess=%v",
-			previousRound != nil, waitingPlayersToProcess != nil && len(waitingPlayersToProcess) > 0)
+	// Определяем, есть ли игроки, ожидающие результатов
+	if len(waitingPlayersToProcess) == 0 {
+		log.Printf("No players waiting for round #%d results", round.ID)
+		return
 	}
 
-	log.Printf("New round #%s started with hash %s", utils.ToBase62(hashEntry.ID), hashEntry.Hash)
+	// Получаем результат раунда
+	result, err := h.service.GetRoundResult(round.ID)
+	if err != nil {
+		log.Printf("Error getting result for round #%d: %v", round.ID, err)
+		return
+	}
 
-	// ВАЖНО: Уведомляем о новом раунде ПОСЛЕ обработки результатов и задержки
-	h.notifyActivePlayers(hashEntry)
+	log.Printf("Round #%d result: %s (number: %d)", round.ID, result, round.Number)
+
+	// Уведомляем игроков о результатах
+	for userID := range waitingPlayersToProcess {
+		bet, found := activeBetsToProcess[userID]
+		if !found {
+			log.Printf("Warning: No bet found for user %d in the local cache", userID)
+
+			// Пробуем получить ставку из базы данных
+			userBets, err := h.service.GetUserBetsForRound(userID, round.ID)
+			if err != nil {
+				log.Printf("Error getting bets for user %d in round %d: %v", userID, round.ID, err)
+				continue
+			}
+
+			if len(userBets) == 0 {
+				log.Printf("No bets found in database for user %d in round %d", userID, round.ID)
+				continue
+			}
+
+			// Используем первую найденную ставку
+			log.Printf("Found bet in database for user %d: option=%s", userID, userBets[0].Option)
+			bet = userBets[0].Option
+		}
+
+		// Отправляем уведомление через отдельную горутину
+		go func(uid int64, betOption models.BetOption) {
+			err := h.notifyPlayerAboutResult(uid, round.ID, round, result, betOption)
+			if err != nil {
+				log.Printf("Error notifying player %d: %v", uid, err)
+			} else {
+				log.Printf("Successfully notified player %d about round #%d results", uid, round.ID)
+
+				// Публикуем событие об уведомлении пользователя
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
+				notification := map[string]interface{}{
+					"user_id":  uid,
+					"round_id": round.ID,
+					"bet":      string(betOption),
+					"result":   string(result),
+					"won":      betOption == result,
+				}
+
+				if err := h.rabbitmq.PublishUserNotified(ctx, round.ID, notification); err != nil {
+					log.Printf("Error publishing user notification: %v", err)
+				}
+			}
+		}(userID, bet)
+	}
+}
+
+// handleNewRound обрабатывает событие нового раунда
+func (h *GameHandler) handleNewRound(newRound *models.HashEntry) {
+	log.Printf("Handling new round #%d", newRound.ID)
+
+	// Обновляем текущий раунд
+	h.mutex.Lock()
+	h.currentRound = newRound
+	h.mutex.Unlock()
+
+	// Отправляем уведомления всем активным игрокам
+	h.notifyActivePlayers(newRound)
+}
+
+// HandleNewRound обрабатывает событие нового раунда (вызывается из ротатора)
+func (h *GameHandler) HandleNewRound(hashEntry *models.HashEntry) {
+	// Теперь обработка происходит через RabbitMQ, но оставляем этот метод для совместимости
+	log.Printf("HandleNewRound called via legacy notifier interface for round #%d", hashEntry.ID)
+
+	// Проверяем, не обрабатывали ли мы уже этот раунд
+	h.processMutex.Lock()
+	if processed, exists := h.processedRounds[hashEntry.ID]; exists && processed {
+		h.processMutex.Unlock()
+		log.Printf("Round #%d already processed, skipping duplicate notification", hashEntry.ID)
+		return
+	}
+	h.processedRounds[hashEntry.ID] = true
+	h.processMutex.Unlock()
+
+	// Обрабатываем новый раунд
+	h.handleNewRound(hashEntry)
 }
 
 // processRoundResults обрабатывает результаты раунда

@@ -23,13 +23,16 @@ type Config struct {
 	AllowedIPs       []string
 	DisableIPFilters bool
 
+	// Rotator
 	RotationInterval time.Duration
+
+	// RabbitMQ
+	RabbitMQURL string
 }
 
 // NewConfig створює новий екземпляр конфігурації
 func NewConfig() *Config {
-
-	// Інтервал ротації за замовчуванням - 10 секунд
+	// Інтервал ротації за замовчуванням - 30 секунд
 	rotationInterval := 30 * time.Second
 
 	return &Config{
@@ -47,7 +50,11 @@ func NewConfig() *Config {
 		AllowedIPs:       getEnvStringSlice("ALLOWED_IPS", []string{"127.0.0.1"}),
 		DisableIPFilters: getEnvBool("DISABLE_IP_FILTERS", false),
 
+		// Rotator
 		RotationInterval: rotationInterval,
+
+		// RabbitMQ
+		RabbitMQURL: getEnv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/"),
 	}
 }
 
