@@ -41,6 +41,13 @@ type RouletteMessage struct {
 	SourceComponent string      `json:"source_component"` // Компонент-источник (rotator, bot, admin)
 }
 
+// MessageConfig содержит конфигурацию для публикации сообщения
+type MessageConfig struct {
+	RoutingKey string
+	EventType  string
+	Priority   uint8
+}
+
 // RabbitMQ - клиент для работы с RabbitMQ
 type RabbitMQ struct {
 	conn          *amqp.Connection
@@ -199,24 +206,49 @@ func (r *RabbitMQ) Publish(ctx context.Context, routingKey string, msgType strin
 	return nil
 }
 
+// PublishWithConfig публикует сообщение с использованием конфигурации
+func (r *RabbitMQ) PublishWithConfig(ctx context.Context, config MessageConfig, roundID uint, data interface{}) error {
+	return r.Publish(ctx, config.RoutingKey, config.EventType, roundID, data, config.Priority)
+}
+
 // PublishRoundCompleted публикует сообщение о завершении раунда
 func (r *RabbitMQ) PublishRoundCompleted(ctx context.Context, roundID uint, data interface{}) error {
-	return r.Publish(ctx, RoutingRoundCompleted, EventRoundCompleted, roundID, data, PriorityMax) // Максимальный приоритет
+	config := MessageConfig{
+		RoutingKey: RoutingRoundCompleted,
+		EventType:  EventRoundCompleted,
+		Priority:   PriorityMax,
+	}
+	return r.PublishWithConfig(ctx, config, roundID, data)
 }
 
 // PublishRoundStarted публикует сообщение о начале нового раунда
 func (r *RabbitMQ) PublishRoundStarted(ctx context.Context, roundID uint, data interface{}) error {
-	return r.Publish(ctx, RoutingRoundStarted, EventRoundStarted, roundID, data, PriorityHigh) // Высокий приоритет
+	config := MessageConfig{
+		RoutingKey: RoutingRoundStarted,
+		EventType:  EventRoundStarted,
+		Priority:   PriorityHigh,
+	}
+	return r.PublishWithConfig(ctx, config, roundID, data)
 }
 
 // PublishBetPlaced публикует сообщение о размещении ставки
 func (r *RabbitMQ) PublishBetPlaced(ctx context.Context, roundID uint, data interface{}) error {
-	return r.Publish(ctx, RoutingBetPlaced, EventBetPlaced, roundID, data, PriorityNormal) // Средний приоритет
+	config := MessageConfig{
+		RoutingKey: RoutingBetPlaced,
+		EventType:  EventBetPlaced,
+		Priority:   PriorityNormal,
+	}
+	return r.PublishWithConfig(ctx, config, roundID, data)
 }
 
 // PublishUserNotified публикует сообщение об уведомлении пользователя
 func (r *RabbitMQ) PublishUserNotified(ctx context.Context, roundID uint, data interface{}) error {
-	return r.Publish(ctx, RoutingUserNotified, EventUserNotified, roundID, data, PriorityLow) // Низкий приоритет
+	config := MessageConfig{
+		RoutingKey: RoutingUserNotified,
+		EventType:  EventUserNotified,
+		Priority:   PriorityLow,
+	}
+	return r.PublishWithConfig(ctx, config, roundID, data)
 }
 
 // SubscribeToQueue подписывается на сообщения из указанной очереди
@@ -287,36 +319,39 @@ func (r *RabbitMQ) SubscribeToQueue(queueName string, routingKeys []string, hand
 	}
 
 	// Запускаем обработчик сообщений в отдельной горутине
-	go func() {
-		for msg := range msgs {
-			// Декодируем сообщение
-			var message RouletteMessage
-			if err := json.Unmarshal(msg.Body, &message); err != nil {
-				log.Printf("[%s] Error decoding message: %v", r.componentName, err)
-				msg.Nack(false, true) // отказ от сообщения с повторной доставкой
-				continue
-			}
-
-			log.Printf("[%s] Received message: type=%s, round_id=%d, routing_key=%s, seq=%d, priority=%d from %s",
-				r.componentName, message.Type, message.RoundID, msg.RoutingKey, message.Sequence, msg.Priority, message.SourceComponent)
-
-			// Обрабатываем сообщение через предоставленный обработчик
-			if err := handler(message); err != nil {
-				log.Printf("[%s] Error handling message: %v", r.componentName, err)
-				// При ошибке обработки не подтверждаем получение, чтобы сообщение было повторно доставлено
-				msg.Nack(false, true)
-				continue
-			}
-
-			// Подтверждаем успешную обработку сообщения
-			msg.Ack(false)
-		}
-
-		log.Printf("[%s] Subscription to queue '%s' was closed", r.componentName, queueName)
-	}()
+	go r.messageConsumer(msgs, handler, queue.Name)
 
 	log.Printf("[%s] Subscribed to queue '%s' with %d routing keys", r.componentName, queueName, len(routingKeys))
 	return nil
+}
+
+// messageConsumer обрабатывает сообщения из канала
+func (r *RabbitMQ) messageConsumer(msgs <-chan amqp.Delivery, handler func(message RouletteMessage) error, queueName string) {
+	for msg := range msgs {
+		// Декодируем сообщение
+		var message RouletteMessage
+		if err := json.Unmarshal(msg.Body, &message); err != nil {
+			log.Printf("[%s] Error decoding message: %v", r.componentName, err)
+			msg.Nack(false, true) // отказ от сообщения с повторной доставкой
+			continue
+		}
+
+		log.Printf("[%s] Received message: type=%s, round_id=%d, routing_key=%s, seq=%d, priority=%d from %s",
+			r.componentName, message.Type, message.RoundID, msg.RoutingKey, message.Sequence, msg.Priority, message.SourceComponent)
+
+		// Обрабатываем сообщение через предоставленный обработчик
+		if err := handler(message); err != nil {
+			log.Printf("[%s] Error handling message: %v", r.componentName, err)
+			// При ошибке обработки не подтверждаем получение, чтобы сообщение было повторно доставлено
+			msg.Nack(false, true)
+			continue
+		}
+
+		// Подтверждаем успешную обработку сообщения
+		msg.Ack(false)
+	}
+
+	log.Printf("[%s] Subscription to queue '%s' was closed", r.componentName, queueName)
 }
 
 // reconnectLoop проверяет состояние соединения и пытается переподключиться при разрыве
