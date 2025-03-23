@@ -570,6 +570,17 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Извлекаем код страны
 		countryCode := strings.TrimPrefix(callbackData, "country:")
 
+		// Получаем пользователя для проверки существующей страны
+		dbUser, err := b.service.GetUser(user.ID)
+		if err != nil {
+			log.Printf("Error getting user: %v", err)
+			b.answerCallbackQuery(query.ID, "Error getting user info", true)
+			return
+		}
+
+		// Проверяем, была ли у пользователя установлена страна ранее
+		hadCountryBefore := dbUser.Country != ""
+
 		// Сохраняем выбранную страну
 		if err := b.service.SetUserCountry(user.ID, countryCode); err != nil {
 			log.Printf("Error saving user country: %v", err)
@@ -577,27 +588,43 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			return
 		}
 
-		// Отправляем успешный статус пользователю
-		successText := b.service.GetText("country_saved", language)
-
 		// Отвечаем на callback
 		b.answerCallbackQuery(query.ID, "", false)
 
-		// Обновляем сообщение с подтверждением и кнопкой назад
+		// Проверяем, было ли сообщение
 		if query.Message != nil {
-			// Создаем кнопку назад
-			backBtn := &telego.InlineKeyboardMarkup{
-				InlineKeyboard: [][]telego.InlineKeyboardButton{
-					{
-						{Text: b.service.GetText("btn_back", language), CallbackData: CallbackSettingsBack},
-					},
-				},
-			}
+			if !hadCountryBefore {
+				// Если страны не было установлено ранее:
+				// 1. Удаляем сообщение с выбором страны
+				err = b.bot.DeleteMessage(&telego.DeleteMessageParams{
+					ChatID:    telego.ChatID{ID: query.Message.Chat.ID},
+					MessageID: query.Message.MessageID,
+				})
 
-			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
-				Text:           successText,
-				InlineKeyboard: backBtn,
-			})
+				if err != nil {
+					log.Printf("Error deleting country selection message: %v", err)
+				}
+
+				// 2. Показываем главное меню
+				b.sendMainMenu(query.Message.Chat.ID, language)
+			} else {
+				// Если страна была установлена ранее:
+				// Показываем подтверждение сохранения и кнопку назад
+				successText := b.service.GetText("country_saved", language)
+
+				backBtn := &telego.InlineKeyboardMarkup{
+					InlineKeyboard: [][]telego.InlineKeyboardButton{
+						{
+							{Text: b.service.GetText("btn_back", language), CallbackData: CallbackSettingsBack},
+						},
+					},
+				}
+
+				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+					Text:           successText,
+					InlineKeyboard: backBtn,
+				})
+			}
 		}
 
 		return
