@@ -30,7 +30,6 @@ type Service interface {
 	StartNewRoundFromRotator() (*models.HashEntry, error)
 	CompleteRound(hashEntryID uint) error
 	GetRoundResult(hashEntryID uint) (models.BetOption, error)
-	ProcessBets(hashEntryID uint) error
 	ProcessAndGetBets(hashEntryID uint) ([]models.Bet, error)
 	GetUserBetsForRound(telegramID int64, hashEntryID uint) ([]models.Bet, error)
 	GetHashEntryByID(id uint) (*models.HashEntry, error)
@@ -257,7 +256,7 @@ func (s *ServiceImpl) CompleteRound(hashEntryID uint) error {
 	}
 
 	// Обрабатываем ставки
-	err = s.ProcessBets(hashEntryID)
+	_, err = s.ProcessAndGetBets(hashEntryID)
 	if err != nil {
 		return err
 	}
@@ -286,12 +285,6 @@ func (s *ServiceImpl) GetRoundResult(hashEntryID uint) (models.BetOption, error)
 		}
 	}
 	return models.Black, nil
-}
-
-// ProcessBets обрабатывает все ставки для завершенного раунда (для обратной совместимости)
-func (s *ServiceImpl) ProcessBets(hashEntryID uint) error {
-	_, err := s.ProcessAndGetBets(hashEntryID)
-	return err
 }
 
 // ProcessAndGetBets обрабатывает все ставки и возвращает список обработанных ставок

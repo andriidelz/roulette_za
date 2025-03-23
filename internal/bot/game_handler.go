@@ -15,20 +15,32 @@ import (
 )
 
 const webPage = "https://roulette.myapps.vip"
-const (
-	RoundCompletedMessage MessageType = iota
-	RoundStartedMessage
-)
 
 // Типы сообщений для внутренней обработки
 type MessageType int
 
+const (
+	RoundCompletedMessage MessageType = iota // Сообщение о завершении раунда
+	RoundStartedMessage                      // Сообщение о начале нового раунда
+)
+
+// RoundData представляет структурированные данные о раунде
+type RoundData struct {
+	Number       int64                  `json:"number,omitempty"`        // Номер, выпавший на рулетке
+	SaltHex      string                 `json:"salt_hex,omitempty"`      // Соль в HEX формате
+	Hash         string                 `json:"hash,omitempty"`          // Хеш для проверки
+	Result       string                 `json:"result,omitempty"`        // Результат (red, black, zero)
+	CreatedAt    time.Time              `json:"created_at,omitempty"`    // Время создания раунда
+	CompletedAt  time.Time              `json:"completed_at,omitempty"`  // Время завершения раунда
+	CustomFields map[string]interface{} `json:"custom_fields,omitempty"` // Дополнительные поля (если нужны)
+}
+
 // RoundMessage представляет сообщение о раунде для синхронной обработки
 type RoundMessage struct {
-	Type    MessageType
-	RoundID uint
-	Round   *models.HashEntry
-	Data    interface{}
+	Type    MessageType       // Тип сообщения (завершение/начало раунда)
+	RoundID uint              // ID раунда
+	Round   *models.HashEntry // Данные о раунде из БД
+	Data    *RoundData        // Структурированные данные о раунде
 }
 
 // GameHandler управляет игровым процессом рулетки
@@ -81,7 +93,6 @@ func NewGameHandler(bot *Bot, service service.Service, rabbitmqURL string) (*Gam
 	return handler, nil
 }
 
-// Полная реализация функции processMessagesWorker
 func (h *GameHandler) processMessagesWorker() {
 	log.Println("Starting message processing worker")
 
@@ -102,6 +113,14 @@ func (h *GameHandler) processMessagesWorker() {
 					// Вызываем обработчик завершения раунда
 					h.handleRoundCompletion(msg.Round)
 
+					// Если доступны дополнительные данные, логируем их
+					if msg.Data != nil {
+						log.Printf("Round #%d completed with result: %s", msg.RoundID, msg.Data.Result)
+
+						// Здесь можно использовать данные для дополнительной обработки,
+						// например, для верификации результата или отображения доп. информации
+					}
+
 					// Помечаем раунд как обработанный
 					h.processMutex.Lock()
 					h.processedRounds[msg.RoundID] = true
@@ -118,6 +137,11 @@ func (h *GameHandler) processMessagesWorker() {
 
 					// Уведомляем активных игроков
 					h.notifyActivePlayers(msg.Round)
+
+					// Если есть дополнительные данные о раунде, можно использовать их
+					if msg.Data != nil && msg.Data.Hash != "" {
+						log.Printf("Round #%d started with hash: %s", msg.RoundID, msg.Data.Hash)
+					}
 
 					// Помечаем раунд как обработанный
 					h.processMutex.Lock()
@@ -293,6 +317,55 @@ func (h *GameHandler) handleRabbitMQMessage(message messaging.RouletteMessage) e
 		h.processMutex.Unlock()
 	}
 
+	// Преобразуем данные из общего интерфейса в нашу типизированную структуру
+	var roundData *RoundData
+	if message.Data != nil {
+		// Пытаемся конвертировать данные в map
+		if dataMap, ok := message.Data.(map[string]interface{}); ok {
+			roundData = &RoundData{
+				CustomFields: make(map[string]interface{}),
+			}
+
+			// Обрабатываем известные поля
+			if val, exists := dataMap["number"]; exists {
+				if num, ok := val.(int64); ok {
+					roundData.Number = num
+				} else if num, ok := val.(float64); ok {
+					roundData.Number = int64(num)
+				}
+			}
+
+			if val, exists := dataMap["salt_hex"]; exists {
+				if str, ok := val.(string); ok {
+					roundData.SaltHex = str
+				}
+			}
+
+			if val, exists := dataMap["hash"]; exists {
+				if str, ok := val.(string); ok {
+					roundData.Hash = str
+				}
+			}
+
+			if val, exists := dataMap["result"]; exists {
+				if str, ok := val.(string); ok {
+					roundData.Result = str
+				}
+			}
+
+			// Копируем все остальные поля в CustomFields
+			for k, v := range dataMap {
+				switch k {
+				case "number", "salt_hex", "hash", "result", "created_at", "completed_at":
+					// Эти поля уже обработаны выше
+					continue
+				default:
+					roundData.CustomFields[k] = v
+				}
+			}
+		}
+	}
+
 	switch message.Type {
 	case messaging.EventRoundCompleted:
 		log.Printf("Processing round completed message for round #%d", roundID)
@@ -325,7 +398,7 @@ func (h *GameHandler) handleRabbitMQMessage(message messaging.RouletteMessage) e
 			Type:    RoundStartedMessage,
 			RoundID: roundID,
 			Round:   newRound,
-			Data:    message.Data,
+			Data:    roundData,
 		}
 	}
 
@@ -387,7 +460,6 @@ func (h *GameHandler) handleRoundCompletion(round *models.HashEntry) {
 }
 
 // notifyPlayerAboutResult уведомляет игрока о результате раунда
-// notifyPlayerAboutResult уведомляет игрока о результате раунда
 func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round *models.HashEntry, result models.BetOption, userBet models.BetOption) error {
 	log.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, roundID)
 
@@ -403,6 +475,20 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		language = "en"
 	}
 
+	// Получаем информацию о ставке
+	userBets, err := h.service.GetUserBetsForRound(userID, roundID)
+	if err != nil {
+		return fmt.Errorf("error getting bets: %w", err)
+	}
+
+	if len(userBets) == 0 {
+		return fmt.Errorf("no bets found for user %d in round %d", userID, roundID)
+	}
+
+	bet := userBets[0]
+	won := bet.Won
+	points := bet.Points
+
 	// 1. Отправляем сообщение о результате (цвет)
 	var resultLangKey string
 	switch result {
@@ -417,20 +503,6 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	h.bot.SendMessage(userID, MessageOptions{
 		Text: resultText,
 	})
-
-	// Получаем информацию о ставке
-	userBets, err := h.service.GetUserBetsForRound(userID, roundID)
-	if err != nil {
-		return fmt.Errorf("error getting bets: %w", err)
-	}
-
-	if len(userBets) == 0 {
-		return fmt.Errorf("no bets found for user %d in round %d", userID, roundID)
-	}
-
-	bet := userBets[0]
-	won := bet.Won
-	points := bet.Points
 
 	// 2. Отправляем сообщение о выигрыше/проигрыше
 	var winLoseText string
@@ -822,6 +894,13 @@ func (h *GameHandler) Stop() {
 	// Оставить закрытие каналов
 	close(h.stopWorker)
 
+	// Закрываем соединение с RabbitMQ
+	if h.rabbitmq != nil {
+		if err := h.rabbitmq.Close(); err != nil {
+			log.Printf("Error closing RabbitMQ connection: %v", err)
+		}
+	}
+
 	log.Println("Game handler stopped")
 }
 
@@ -865,19 +944,5 @@ func (h *GameHandler) createDetailedBetKeyboard(language string, userID int64, b
 		ResizeKeyboard:  true,
 		OneTimeKeyboard: false,
 		Selective:       true,
-	}
-}
-
-// getOptionText получает текстовое представление опции ставки
-func (h *GameHandler) getOptionText(option models.BetOption, language string) string {
-	switch option {
-	case models.Red:
-		return "🔴 " + (map[string]string{"uk": "Червоне", "en": "Red", "ru": "Красное"})[language]
-	case models.Black:
-		return "⚫ " + (map[string]string{"uk": "Чорне", "en": "Black", "ru": "Черное"})[language]
-	case models.Zero:
-		return "0️⃣ " + (map[string]string{"uk": "Зеро", "en": "Zero", "ru": "Зеро"})[language]
-	default:
-		return string(option)
 	}
 }
