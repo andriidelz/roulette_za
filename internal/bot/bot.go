@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"roulette/internal/models"
 	"roulette/internal/service"
@@ -47,6 +48,12 @@ const (
 	CallbackBetBlack = "bet_black"
 	CallbackBetZero  = "bet_zero"
 	CallbackBack     = "back"
+
+	CallbackReserveSubscription = "reservsubs"
+
+	// Используйте имя канала без символа @
+	// Например: "your_channel_name"
+	ReserveChannelID = "@socialroulette_dev" // https://t.me/socialroulette_dev
 )
 
 // NewBot создает новый экземпляр бота
@@ -151,6 +158,137 @@ func (b *Bot) handleUpdate(update telego.Update) {
 	if update.CallbackQuery != nil {
 		b.handleCallbackQuery(update.CallbackQuery)
 		return
+	}
+}
+
+func (b *Bot) checkChannelSubscription(userID int64, channelUsername string) (bool, error) {
+
+	if !strings.HasPrefix(channelUsername, "@") {
+		channelUsername = "@" + channelUsername
+	}
+
+	log.Printf("Checking subscription for user %d to channel %s", userID, channelUsername)
+
+	// Получаем статус подписки пользователя
+	chatMember, err := b.bot.GetChatMember(&telego.GetChatMemberParams{
+		ChatID: telego.ChatID{
+			Username: channelUsername, // с символом @
+		},
+		UserID: userID,
+	})
+
+	if err != nil {
+		log.Printf("Error checking subscription for user %d: %v", userID, err)
+		return false, err
+	}
+
+	// Проверяем тип участника
+	switch member := chatMember.(type) {
+	case *telego.ChatMemberOwner:
+		// Владелец канала
+		return true, nil
+	case *telego.ChatMemberAdministrator:
+		// Администратор канала
+		return true, nil
+	case *telego.ChatMemberMember:
+		// Обычный участник
+		return true, nil
+	case *telego.ChatMemberRestricted:
+		// Участник с ограничениями
+		return true, nil
+	case *telego.ChatMemberLeft:
+		// Покинул канал
+		return false, nil
+	case *telego.ChatMemberBanned:
+		// Забанен в канале
+		return false, nil
+	default:
+		log.Printf("Unknown chat member type for user %d: %T", userID, member)
+		return false, nil
+	}
+}
+
+// sendSubscriptionRequest отправляет запрос на подписку на резервный канал
+func (b *Bot) sendSubscriptionRequest(chatID int64, language string) {
+	subscriptionText := b.service.GetText("startmessage2", language)
+
+	// Создаем inline клавиатуру с кнопкой подтверждения
+	subscribeButton := telego.InlineKeyboardButton{
+		Text:         b.service.GetText("reservsubs", language),
+		CallbackData: CallbackReserveSubscription,
+	}
+
+	// Формируем ссылку на канал в правильном формате
+	channelUsername := strings.TrimPrefix(ReserveChannelID, "@")
+	channelButton := telego.InlineKeyboardButton{
+		Text: "Перейти в канал",
+		URL:  "https://t.me/" + channelUsername,
+	}
+
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{channelButton},
+			{subscribeButton},
+		},
+	}
+
+	b.SendMessage(chatID, MessageOptions{
+		Text:           subscriptionText,
+		InlineKeyboard: inlineKeyboard,
+	})
+}
+
+// handleReserveSubscriptionCheck обрабатывает нажатие кнопки проверки подписки
+func (b *Bot) handleReserveSubscriptionCheck(query *telego.CallbackQuery) {
+	user := query.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Отвечаем на callback
+	b.answerCallbackQuery(query.ID, "", false)
+
+	// Проверяем подписку
+	isSubscribed, err := b.checkChannelSubscription(user.ID, ReserveChannelID)
+	if err != nil {
+		log.Printf("Error checking subscription: %v", err)
+		// В случае ошибки считаем, что пользователь не подписан
+		isSubscribed = false
+	}
+
+	if isSubscribed {
+		// Подписка подтверждена
+		successText := b.service.GetText("reservok", language)
+
+		// Обновляем сообщение успешной подпиской
+		if query.Message != nil {
+			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				Text: successText,
+			})
+		}
+
+		// Отправляем главное меню после небольшой задержки
+		go func() {
+			time.Sleep(2 * time.Second)
+			b.sendMainMenu(query.Message.Chat.ID, language)
+		}()
+	} else {
+		// Подписка не подтверждена
+		failText := b.service.GetText("reservno", language)
+
+		// Обновляем сообщение с информацией о неудаче
+		if query.Message != nil {
+			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				Text: failText,
+			})
+
+			// Повторно отправляем запрос на подписку через 3 секунды
+			go func() {
+				time.Sleep(3 * time.Second)
+				b.sendSubscriptionRequest(query.Message.Chat.ID, language)
+			}()
+		}
 	}
 }
 
@@ -605,8 +743,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 					log.Printf("Error deleting country selection message: %v", err)
 				}
 
-				// 2. Показываем главное меню
-				b.sendMainMenu(query.Message.Chat.ID, language)
+				b.sendSubscriptionRequest(query.Message.Chat.ID, language)
+				return
 			} else {
 				// Если страна была установлена ранее:
 				// Показываем подтверждение сохранения и кнопку назад
@@ -626,8 +764,6 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 				})
 			}
 		}
-
-		return
 	}
 
 	// Обработка настроек
@@ -814,6 +950,9 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 	// Обработка других callback data
 	switch callbackData {
+	case CallbackReserveSubscription:
+		b.handleReserveSubscriptionCheck(query)
+		return
 	case "rules":
 		text := b.service.GetText("rules", language)
 		b.updateOrSendMessage(query, text)

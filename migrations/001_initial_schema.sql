@@ -863,3 +863,30 @@ INSERT INTO localizations (key, language, value) VALUES
 ('winmessage', 'uk', E'Ви виграли!\nВам зараховано %d рейтингових балів'),
 ('losemessage', 'uk', E'Ви програли!'),
 ('bidrating', 'uk', E'Зараз у вас %d рейтингових балів\nВи займаєте %d позицію в загальному тижневому рейтингу і претендуєте на %.2f $ з призового фонду в %.2f $');
+
+-- Локализации для подписки на канал
+INSERT INTO localizations (key, language, value) VALUES
+('startmessage2', 'ru', 'Для того, чтобы взять участие в борьбе за еженедельный призовой фонд абсолютно бесплатно - подпишись на наш резервный канал, чтобы оставаться на связи. Резервный канал будет активен только при проблемах с доступом к основному боту.'),
+('reservsubs', 'ru', 'Я подписался'),
+('reservok', 'ru', 'Твоя подписка подтверждена! Теперь ты можешь начать играть и зарабатывать'),
+('reservno', 'ru', 'Ты, вероятно, не подписался на канал и не можешь начать играть. Подпишись на резервный канал и запроси проверки подписки еще раз.')
+ON CONFLICT (key, language) DO UPDATE SET 
+value = EXCLUDED.value;
+
+-- Локализации для подписки на канал
+INSERT INTO localizations (key, language, value) VALUES
+('startmessage2', 'en', 'To participate in the weekly prize fund competition absolutely free, subscribe to our reserve channel to stay connected. The reserve channel will only be active when there are issues with access to the main bot.'),
+('reservsubs', 'en', 'I have subscribed'),
+('reservok', 'en', 'Your subscription has been confirmed! Now you can start playing and earning'),
+('reservno', 'en', 'You probably haven''t subscribed to the channel and can''t start playing. Subscribe to the reserve channel and request verification again.')
+ON CONFLICT (key, language) DO UPDATE SET 
+value = EXCLUDED.value;
+
+-- Локализации для подписки на канал
+INSERT INTO localizations (key, language, value) VALUES
+('startmessage2', 'uk', 'Щоб взяти участь у боротьбі за щотижневий призовий фонд абсолютно безкоштовно - підпишись на наш резервний канал, щоб залишатися на зв''язку. Резервний канал буде активний тільки при проблемах з доступом до основного бота.'),
+('reservsubs', 'uk', 'Я підписався'),
+('reservok', 'uk', 'Твоя підписка підтверджена! Тепер ти можеш почати грати та заробляти'),
+('reservno', 'uk', 'Ти, ймовірно, не підписався на канал і не можеш почати грати. Підпишись на резервний канал і запроси перевірки підписки ще раз.')
+ON CONFLICT (key, language) DO UPDATE SET 
+value = EXCLUDED.value;
