@@ -644,6 +644,22 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		b.handleAllStatistics(message)
 	case b.service.GetText("exitstat", language):
 		b.handleHelpCommand(message) // Возврат в главное меню
+
+		// Обработка кнопок меню FAQ
+	case b.service.GetText("faqrules", language):
+		b.handleFAQRules(message)
+	case b.service.GetText("faqawards", language):
+		b.handleFAQAwards(message)
+	case b.service.GetText("faqpayments", language):
+		b.handleFAQPayments(message)
+	case b.service.GetText("faqfairplay", language):
+		b.handleFAQFairPlay(message)
+	case b.service.GetText("privacypolicy", language):
+		b.handleFAQPrivacyPolicy(message)
+	case b.service.GetText("contact", language):
+		b.handleFAQContact(message)
+	case b.service.GetText("faqexit", language):
+		b.handleHelpCommand(message) // Возврат в главное меню
 	default:
 		// Обработка других текстовых сообщений
 		b.handleGenericMessage(message)
@@ -1379,22 +1395,6 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          withdrawText,
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
-	})
-}
-
-func (b *Bot) handleFAQCommand(message *telego.Message) {
-	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
-
-	// Получаем локализированный текст FAQ
-	faqText := b.service.GetText("faq", language)
-
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          faqText,
 		ReplyKeyboard: b.createMainReplyKeyboard(language),
 	})
 }

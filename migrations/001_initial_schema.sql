@@ -890,3 +890,176 @@ INSERT INTO localizations (key, language, value) VALUES
 ('reservno', 'uk', 'Ти, ймовірно, не підписався на канал і не можеш почати грати. Підпишись на резервний канал і запроси перевірки підписки ще раз.')
 ON CONFLICT (key, language) DO UPDATE SET 
 value = EXCLUDED.value;
+
+-- SQL-скрипт для добавления локализаций для раздела FAQ
+
+-- Добавление для английского языка (en)
+INSERT INTO localizations (key, language, value) VALUES ('faqstart', 'en', 'In this section, you can read the rules for participating in the bot, privacy policy, and find answers to the most common questions from participants') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqrules', 'en', 'Rules') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqawards', 'en', 'Prize Distribution') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqpayments', 'en', 'Prize Payments') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqfairplay', 'en', 'Fair Play Principles') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('privacypolicy', 'en', 'Privacy Policy') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('contact', 'en', 'Contact Admin') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqexit', 'en', 'Main Menu') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqrulesm', 'en', '-') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqawardsm', 'en', '-') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqpaymentsm', 'en', '-') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqfairplaym', 'en', 'Fair Play Principles:
+
+Our roulette uses cryptographic verification to ensure result fairness:
+
+1. Before each round, a hash of the result is published
+2. The result cannot be changed after the round begins
+3. After the round, the number and salt are revealed
+4. Players can verify the hash matches the result
+
+Verification steps:
+- Take the number and salt provided after the round
+- Create a string: [number]:[salt]
+- Calculate the SHA-256 hash
+- Compare with the hash provided at the beginning of the round
+
+This ensures 100% fair and unpredictable results.') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('privacypolicym', 'en', 'Privacy Policy:
+
+1. Data we collect:
+   - Telegram ID and username
+   - Name and language settings from Telegram
+   - Country (selected by you)
+   - Cryptocurrency wallet address (for payments)
+   - Game statistics and betting history
+
+2. How we use your data:
+   - To provide gaming services
+   - To calculate ratings and distribute prizes
+   - To process payments
+   - To prevent fraud and abuse
+
+3. Data protection:
+   - We use industry-standard security measures
+   - We do not share your personal data with third parties
+   - We may use anonymized data for analytics
+
+4. Your rights:
+   - Access to your personal data
+   - Correction of inaccurate data
+   - Deletion of your account and data
+
+For questions regarding privacy, contact the administrator.') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('contactm', 'en', 'Here you can leave your suggestion or question, and we will contact you. Please write to our administrator: @roulette_admin') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqnext', 'en', 'Choose the next section for information or return to the main menu') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+
+-- Добавление для русского языка (ru)
+INSERT INTO localizations (key, language, value) VALUES ('faqstart', 'ru', 'В данном разделе вы можете ознакомиться с правилами участия в боте, privacy policy и найти ответы на самые распространенные вопросы участников') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqrules', 'ru', 'Правила') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqawards', 'ru', 'Распределение наград') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqpayments', 'ru', 'Выплаты наград') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqfairplay', 'ru', 'Принципы честной игры') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('privacypolicy', 'ru', 'Privacy policy') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('contact', 'ru', 'Контакт с админом') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqexit', 'ru', 'Главное меню') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqrulesm', 'ru', '-') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqawardsm', 'ru', '-') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqpaymentsm', 'ru', '-') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqfairplaym', 'ru', 'Принципы честной игры:
+
+Наша рулетка использует криптографическую верификацию для обеспечения честности результатов:
+
+1. Перед каждым раундом публикуется хеш результата
+2. Результат не может быть изменен после начала раунда
+3. После раунда раскрываются число и соль
+4. Игроки могут проверить, что хеш соответствует результату
+
+Шаги проверки:
+- Возьмите число и соль, предоставленные после раунда
+- Создайте строку: [число]:[соль]
+- Вычислите хеш SHA-256
+- Сравните с хешем, предоставленным в начале раунда
+
+Это обеспечивает 100% честные и непредсказуемые результаты.') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('privacypolicym', 'ru', 'Политика конфиденциальности:
+
+1. Данные, которые мы собираем:
+   - Telegram ID и имя пользователя
+   - Имя и языковые настройки из Telegram
+   - Страна (выбранная вами)
+   - Адрес криптовалютного кошелька (для платежей)
+   - Игровая статистика и история ставок
+
+2. Как мы используем ваши данные:
+   - Для предоставления игровых услуг
+   - Для расчета рейтингов и распределения призов
+   - Для обработки платежей
+   - Для предотвращения мошенничества и злоупотреблений
+
+3. Защита данных:
+   - Мы используем стандартные отраслевые меры безопасности
+   - Мы не передаем ваши личные данные третьим лицам
+   - Мы можем использовать анонимизированные данные для аналитики
+
+4. Ваши права:
+   - Доступ к вашим личным данным
+   - Исправление неточных данных
+   - Удаление вашего аккаунта и данных
+
+По вопросам конфиденциальности обращайтесь к администратору.') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('contactm', 'ru', 'Тут вы можете оставить свое предложение или вопрос и мы свяжемся с вами. Пожалуйста, напишите нашему администратору: @roulette_admin') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqnext', 'ru', 'Выберите следующий раздел для получения информации или вернитесь в главное меню') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+
+-- Добавление локализаций для украинского языка (uk)
+INSERT INTO localizations (key, language, value) VALUES ('faqstart', 'uk', 'У цьому розділі ви можете ознайомитися з правилами участі в боті, політикою конфіденційності та знайти відповіді на найпоширеніші запитання учасників') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqrules', 'uk', 'Правила') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqawards', 'uk', 'Розподіл нагород') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqpayments', 'uk', 'Виплати нагород') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqfairplay', 'uk', 'Принципи чесної гри') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('privacypolicy', 'uk', 'Політика конфіденційності') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('contact', 'uk', 'Контакт з адміном') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqexit', 'uk', 'Головне меню') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqrulesm', 'uk', '-') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqawardsm', 'uk', '-') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqpaymentsm', 'uk', '-') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqfairplaym', 'uk', 'Принципи чесної гри:
+
+Наша рулетка використовує криптографічну верифікацію для забезпечення чесності результатів:
+
+1. Перед кожним раундом публікується хеш результату
+2. Результат не може бути змінений після початку раунду
+3. Після раунду розкриваються число та сіль
+4. Гравці можуть перевірити, що хеш відповідає результату
+
+Кроки перевірки:
+- Візьміть число та сіль, надані після раунду
+- Створіть рядок: [число]:[сіль]
+- Обчисліть хеш SHA-256
+- Порівняйте з хешем, наданим на початку раунду
+
+Це забезпечує 100% чесні та непередбачувані результати.') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('privacypolicym', 'uk', 'Політика конфіденційності:
+
+1. Дані, які ми збираємо:
+   - Telegram ID та ім''я користувача
+   - Ім''я та мовні налаштування з Telegram
+   - Країна (обрана вами)
+   - Адреса криптовалютного гаманця (для платежів)
+   - Ігрова статистика та історія ставок
+
+2. Як ми використовуємо ваші дані:
+   - Для надання ігрових послуг
+   - Для розрахунку рейтингів та розподілу призів
+   - Для обробки платежів
+   - Для запобігання шахрайству та зловживанням
+
+3. Захист даних:
+   - Ми використовуємо стандартні галузеві заходи безпеки
+   - Ми не передаємо ваші особисті дані третім особам
+   - Ми можемо використовувати анонімізовані дані для аналітики
+
+4. Ваші права:
+   - Доступ до ваших особистих даних
+   - Виправлення неточних даних
+   - Видалення вашого облікового запису та даних
+
+З питань конфіденційності звертайтеся до адміністратора.') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('contactm', 'uk', 'Тут ви можете залишити свою пропозицію або запитання, і ми зв''яжемося з вами. Будь ласка, напишіть нашому адміністратору: @roulette_admin') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+INSERT INTO localizations (key, language, value) VALUES ('faqnext', 'uk', 'Виберіть наступний розділ для отримання інформації або поверніться до головного меню') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
