@@ -9,13 +9,13 @@ import (
 
 // Repository інтерфейс для роботи з базою даних
 type Repository interface {
-	// Користувачі
+	// Пользователи
 	CreateUser(user *models.User) error
 	GetUserByTelegramID(telegramID int64) (*models.User, error)
 	UpdateUser(user *models.User) error
 	GetUserCount() (int64, error)
 
-	// Статистика (нові методи замість UserStats)
+	// Статистика
 	GetUserTotalBets(userID uint) (int, error)
 	GetUserWonBets(userID uint) (int, error)
 	GetUserTotalPoints(userID uint) (int, error)
@@ -25,7 +25,7 @@ type Repository interface {
 	GetUserMonthlyStats(userID uint) (int, int, error)
 	GetDetailedStatsByDate(userID uint, startDate string, endDate string) (map[string]int, error)
 
-	// Ігри і ставки
+	// Игры и стаки
 	CreateBet(bet *models.Bet) error
 	GetUserBets(userID uint, limit int) ([]models.Bet, error)
 	GetUserBetsCount(userID uint) (int, error)
@@ -39,11 +39,20 @@ type Repository interface {
 	GetSuperRating(period string, limit int) ([]models.SuperRating, error)
 	UpdateSuperRating(rating *models.SuperRating) error
 
-	// Налаштування
+	// Новые методы для рейтинга
+	GetCurrentWeekRating(limit int) ([]models.WeeklyRating, error)
+	UpdateWeeklyRatingForUser(userID uint) error
+	GetUserRankAndNeighbors(userID uint, year, week int, neighborsCount int) ([]models.WeeklyRating, int, error)
+	GetPointsToReachPrizeZone(year, week, topCount int) (int, error)
+	RefreshAllWeeklyRatings() error
+	CheckIfPrizesAlreadyDistributed(year, week int) (bool, error)
+	GetPrizeFundWithoutCreation(year, week int) (*models.PrizeFund, error)
+
+	// Натсройки
 	GetSetting(key string) (*models.Setting, error)
 	UpdateSetting(key string, value string) error
 
-	// Локалізації
+	// Локализации
 	GetLocalization(key string, language string) (string, error)
 	SetLocalization(key string, language string, value string) error
 	GetAllLocalizationsForLanguage(language string) ([]models.Localization, error)
@@ -52,26 +61,26 @@ type Repository interface {
 	CheckLocalizationExists(key string) (bool, error)
 	ImportLocalizations(localizations []models.Localization) error
 
-	// Призові фонди
+	// Призовые фонды
 	GetPrizeFund(year, week int) (*models.PrizeFund, error)
 	UpdatePrizeFund(fund *models.PrizeFund) error
 
-	// Сповіщення
+	// Уведомления
 	CreateNotification(notification *models.Notification) error
 	GetUserNotifications(userID uint, limit int) ([]models.Notification, error)
 	MarkNotificationAsRead(id uint) error
 
-	// Виведення коштів
+	// Вывод средств
 	CreateWithdrawal(withdrawal *models.Withdrawal) error
 	GetPendingWithdrawals() ([]models.Withdrawal, error)
 	UpdateWithdrawalStatus(id uint, status string) error
 
-	// Адмін функції
+	// Админ-функции
 	GetUsers(page, perPage int) ([]models.User, int64, error)
 	GetUserByID(id uint) (*models.User, error)
 	GetWithdrawalByID(id uint) (*models.Withdrawal, error)
 
-	// Хеші та раунди
+	// Хеши и раунды
 	SaveHashEntry(entry *models.HashEntry) error
 	GetHashEntries(offset, limit int) ([]models.HashEntry, error)
 	CountHashEntries() (int64, error)

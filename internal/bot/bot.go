@@ -32,17 +32,16 @@ type Bot struct {
 
 // Константы для команд и callback-запитов
 const (
-	CommandStart       = "start"
-	CommandHelp        = "help"
-	CommandPlay        = "play"
-	CommandProfile     = "profile"
-	CommandStats       = "stats"
-	CommandRating      = "rating"
-	CommandSuperRating = "superrating"
-	CommandBalance     = "balance"
-	CommandWithdraw    = "withdraw"
-	CommandFAQ         = "faq"
-	CommandSettings    = "settings"
+	CommandStart    = "start"
+	CommandHelp     = "help"
+	CommandPlay     = "play"
+	CommandProfile  = "profile"
+	CommandStats    = "stats"
+	CommandRating   = "rating"
+	CommandBalance  = "balance"
+	CommandWithdraw = "withdraw"
+	CommandFAQ      = "faq"
+	CommandSettings = "settings"
 
 	CallbackBetRed   = "bet_red"
 	CallbackBetBlack = "bet_black"
@@ -96,7 +95,7 @@ func (b *Bot) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to get bot info: %w", err)
 	}
-	log.Printf("Bot started: @%s", me.Username)
+	log.Printf("Bot started: https://t.me/%s", me.Username)
 
 	// Начало получения обновлений
 	updates, err := b.bot.UpdatesViaLongPolling(&telego.GetUpdatesParams{
@@ -110,6 +109,9 @@ func (b *Bot) Start() error {
 
 	// Запускаем обработку обновлений в фоновом режиме
 	go b.processUpdates()
+
+	// Запускаем планировщик для обновления рейтингов
+	b.StartRatingScheduler()
 
 	b.initialized = true
 	return nil
@@ -536,8 +538,6 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			b.handleStatsCommand(message)
 		case CommandRating:
 			b.handleRatingCommand(message)
-		case CommandSuperRating:
-			b.handleSuperRatingCommand(message)
 		case CommandBalance:
 			b.handleBalanceCommand(message)
 		case CommandWithdraw:
@@ -566,6 +566,10 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	btnZeroLockedText := b.service.GetText("btn_bet_zero_locked", language)
 	btnBackText := b.service.GetText("btn_back", language)
 	btnStopText := b.service.GetText("stop", language)
+
+	weekRatingText := b.service.GetText("weekrat", language)
+	personalRatingText := b.service.GetText("personalrat", language)
+	exitRatingText := b.service.GetText("exitrat", language)
 
 	// Обработка клавиатуры главного меню
 	switch text {
@@ -633,7 +637,8 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		// Остановка игры и возврат в главное меню
 		b.gameHandler.HandleStopGameButton(user.ID)
 		b.handleHelpCommand(message)
-	// Обработка кнопок статистики
+
+		// Обработка кнопок статистики
 	case b.service.GetText("daystat", language):
 		b.handleDayStatistics(message)
 	case b.service.GetText("weekstat", language):
@@ -643,6 +648,14 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	case b.service.GetText("allstat", language):
 		b.handleAllStatistics(message)
 	case b.service.GetText("exitstat", language):
+		b.handleHelpCommand(message) // Возврат в главное меню
+
+		// Обработка кнопок рейтинга
+	case weekRatingText:
+		b.handleWeeklyRating(message)
+	case personalRatingText:
+		b.handlePersonalRating(message)
+	case exitRatingText:
 		b.handleHelpCommand(message) // Возврат в главное меню
 
 		// Обработка кнопок меню FAQ
@@ -660,6 +673,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		b.handleFAQContact(message)
 	case b.service.GetText("faqexit", language):
 		b.handleHelpCommand(message) // Возврат в главное меню
+
 	default:
 		// Обработка других текстовых сообщений
 		b.handleGenericMessage(message)
@@ -1291,40 +1305,6 @@ func (b *Bot) handleStatsCommand(message *telego.Message) {
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          statisticsStartText,
 		ReplyKeyboard: statsKeyboard,
-	})
-}
-
-func (b *Bot) handleRatingCommand(message *telego.Message) {
-	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
-
-	// Обработка команды рейтинга
-	// Добавить позже логику получения и отображения рейтинга
-	ratingText := "The rating system is under development."
-
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          ratingText,
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
-	})
-}
-
-func (b *Bot) handleSuperRatingCommand(message *telego.Message) {
-	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
-
-	// Обработка команды супер-рейтинга
-	// Добавить позже логику получения и отображения супер-рейтинга
-	superRatingText := "The super-rating system is under development."
-
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          superRatingText,
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
 	})
 }
 

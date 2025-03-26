@@ -1063,3 +1063,144 @@ INSERT INTO localizations (key, language, value) VALUES ('privacypolicym', 'uk',
 З питань конфіденційності звертайтеся до адміністратора.') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
 INSERT INTO localizations (key, language, value) VALUES ('contactm', 'uk', 'Тут ви можете залишити свою пропозицію або запитання, і ми зв''яжемося з вами. Будь ласка, напишіть нашому адміністратору: @roulette_admin') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
 INSERT INTO localizations (key, language, value) VALUES ('faqnext', 'uk', 'Виберіть наступний розділ для отримання інформації або поверніться до головного меню') ON CONFLICT (key, language) DO UPDATE SET value = EXCLUDED.value;
+
+-- Локализации для рейтинга на русском языке
+INSERT INTO localizations (key, language, value) 
+VALUES ('ratingstart', 'ru', 'В данном разделе доступен просмотр актуального рейтинга
+Выберите тип рейтинга для просмотра');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekrat', 'ru', 'Недельный топ');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personalrat', 'ru', 'Ваша позиция');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('exitrat', 'ru', 'Главное меню');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekratm', 'ru', 'Актуальный анонимизированный рейтинг игроков, которые респределят между собой награду за текущую неделю
+Внимание: мы анонимизируем имена игроков и выводим лишь количество рейтиговых балов для того, чтобы продемонстрировать сколько рейтинговых балов на данный момент енобходимы заработать, чтобы принять участие в распределении награды.');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personalratm', 'ru', 'Ваша место в общем рейтинге');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('ratingnext', 'ru', 'Выберите другой тип рейтинга для отображения или вернитесь в главное меню');
+
+-- Локализации для рейтинга на украинском языке
+INSERT INTO localizations (key, language, value) 
+VALUES ('ratingstart', 'uk', 'У цьому розділі доступний перегляд актуального рейтингу
+Оберіть тип рейтингу для перегляду');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekrat', 'uk', 'Тижневий топ');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personalrat', 'uk', 'Ваша позиція');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('exitrat', 'uk', 'Головне меню');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekratm', 'uk', 'Актуальний анонімізований рейтинг гравців, які розподілять між собою нагороду за поточний тиждень
+Увага: ми анонімізуємо імена гравців і виводимо лише кількість рейтингових балів для того, щоб продемонструвати скільки рейтингових балів на даний момент необхідно заробити, щоб взяти участь у розподілі нагороди.');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personalratm', 'uk', 'Ваше місце в загальному рейтингу');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('ratingnext', 'uk', 'Оберіть інший тип рейтингу для відображення або поверніться до головного меню');
+
+-- Локализации для рейтинга на английском языке
+INSERT INTO localizations (key, language, value) 
+VALUES ('ratingstart', 'en', 'In this section you can view the current rating
+Select a rating type to view');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekrat', 'en', 'Weekly top');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personalrat', 'en', 'Your position');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('exitrat', 'en', 'Main menu');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekratm', 'en', 'Current anonymized ranking of players who will share the reward for the current week
+Note: we anonymize player names and only show the number of rating points to demonstrate how many rating points are currently needed to participate in the distribution of the reward.');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personalratm', 'en', 'Your place in the overall ranking');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('ratingnext', 'en', 'Select another rating type to display or return to the main menu');
+
+
+-- ВОЗМОЖНО ЭТО СТОИТ УДАЛИТЬ (НИЖЕ)
+-- Создание таблицы weekly_ratings, если она еще не существует
+CREATE TABLE IF NOT EXISTS weekly_ratings (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    week INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    points INTEGER DEFAULT 0 NOT NULL,
+    bets INTEGER DEFAULT 0 NOT NULL,
+    efficiency FLOAT DEFAULT 0 NOT NULL,
+    position INTEGER DEFAULT 0 NOT NULL,
+    prize FLOAT DEFAULT 0 NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, week, year)
+);
+
+-- Создание индексов для быстрого поиска
+CREATE INDEX IF NOT EXISTS idx_weekly_ratings_user_id ON weekly_ratings(user_id);
+CREATE INDEX IF NOT EXISTS idx_weekly_ratings_week_year ON weekly_ratings(week, year);
+CREATE INDEX IF NOT EXISTS idx_weekly_ratings_points ON weekly_ratings(points DESC);
+CREATE INDEX IF NOT EXISTS idx_weekly_ratings_position ON weekly_ratings(position);
+
+-- Создание таблицы super_ratings, если она еще не существует
+CREATE TABLE IF NOT EXISTS super_ratings (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    period VARCHAR(20) NOT NULL,
+    points INTEGER DEFAULT 0 NOT NULL,
+    positions INTEGER DEFAULT 0 NOT NULL,
+    position INTEGER DEFAULT 0 NOT NULL,
+    prize FLOAT DEFAULT 0 NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, period)
+);
+
+-- Создание индексов для super_ratings
+CREATE INDEX IF NOT EXISTS idx_super_ratings_user_id ON super_ratings(user_id);
+CREATE INDEX IF NOT EXISTS idx_super_ratings_period ON super_ratings(period);
+CREATE INDEX IF NOT EXISTS idx_super_ratings_points ON super_ratings(points DESC);
+CREATE INDEX IF NOT EXISTS idx_super_ratings_position ON super_ratings(position);
+
+-- Создание таблицы prize_funds, если она еще не существует
+CREATE TABLE IF NOT EXISTS prize_funds (
+    id SERIAL PRIMARY KEY,
+    week INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    amount FLOAT DEFAULT 0 NOT NULL,
+    top_count INTEGER DEFAULT 100 NOT NULL,
+    processed BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE (week, year)
+);
+
+-- Создание индекса для prize_funds
+CREATE INDEX IF NOT EXISTS idx_prize_funds_week_year ON prize_funds(week, year);
+
+-- Добавим некоторые базовые локализации, если отсутствуют
+INSERT INTO localizations (key, language, value)
+VALUES 
+    ('rating_title', 'ru', 'Рейтинг игроков'),
+    ('rating_title', 'uk', 'Рейтинг гравців'),
+    ('rating_title', 'en', 'Player Ranking')
+ON CONFLICT (key, language) DO NOTHING;
+-- ВОЗМОЖНО ЭТО СТОИТ УДАЛИТЬ (ВЫШЕ)

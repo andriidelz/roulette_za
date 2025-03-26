@@ -42,6 +42,16 @@ type Service interface {
 	DistributePrizes() error
 	GetPrizeFund(year, week int) (*models.PrizeFund, error)
 
+	// Новые методы для рейтинга
+	GetWeeklyTopRating(limit int) ([]models.WeeklyRating, error)
+	GetUserRatingPosition(telegramID int64, neighborsCount int) ([]models.WeeklyRating, int, error)
+	GetPointsToReachPrizeZone() (int, error)
+	GetPointsNeededForUser(telegramID int64) (int, error)
+	RefreshAllRatings() error
+	FormatRatingForDisplay(ratings []models.WeeklyRating, currentUserID int64) []string
+	GetPrizeDistributionStatus(year, week int) (string, error)
+	FormatRatingList(ratings []models.WeeklyRating, currentUserID int64, language string) string
+
 	// Настройки и локализация
 	GetText(key string, languageCode string) string
 	GetSettings() (map[string]string, error)
