@@ -10,6 +10,12 @@ import (
 
 // GetWeeklyTopRating получает текущий недельный рейтинг (топ игроков)
 func (s *ServiceImpl) GetWeeklyTopRating(limit int) ([]models.WeeklyRating, error) {
+	// Обновляем все рейтинги для актуальности данных
+	// TODO: добавление кэширования результатов с кратковременным TTL (например, 30 секунд)
+	if err := s.repo.RefreshAllWeeklyRatings(); err != nil {
+		return nil, err
+	}
+
 	// Получаем текущий недельный рейтинг
 	return s.repo.GetCurrentWeekRating(limit)
 }
