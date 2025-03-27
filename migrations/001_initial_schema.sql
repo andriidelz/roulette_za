@@ -1204,3 +1204,277 @@ VALUES
     ('rating_title', 'en', 'Player Ranking')
 ON CONFLICT (key, language) DO NOTHING;
 -- ВОЗМОЖНО ЭТО СТОИТ УДАЛИТЬ (ВЫШЕ)
+
+-- Локализации для полных сообщений рейтинга
+
+-- Русский язык
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekly_rating_empty', 'ru', 'Актуальный анонимизированный рейтинг игроков, которые распределят между собой награду за текущую неделю
+Внимание: мы анонимизируем имена игроков и выводим лишь количество рейтинговых баллов для того, чтобы продемонстрировать сколько рейтинговых баллов на данный момент необходимы заработать, чтобы принять участие в распределении награды.
+
+В настоящее время рейтинг пуст. Будьте первым, кто заработает баллы!');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekly_rating_top', 'ru', 'Актуальный анонимизированный рейтинг игроков, которые распределят между собой награду за текущую неделю
+Внимание: мы анонимизируем имена игроков и выводим лишь количество рейтинговых баллов для того, чтобы продемонстрировать сколько рейтинговых баллов на данный момент необходимы заработать, чтобы принять участие в распределении награды.
+
+Топ %d игроков:
+
+%s');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekly_rating_all', 'ru', 'Актуальный анонимизированный рейтинг игроков, которые распределят между собой награду за текущую неделю
+Внимание: мы анонимизируем имена игроков и выводим лишь количество рейтинговых баллов для того, чтобы продемонстрировать сколько рейтинговых баллов на данный момент необходимы заработать, чтобы принять участие в распределении награды.
+
+Текущий рейтинг:
+
+%s');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personal_rating_empty', 'ru', 'Ваше место в общем рейтинге
+
+Ваша позиция: %d
+
+В настоящее время рейтинг пуст. Будьте первым, кто заработает баллы!');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personal_rating_prize_zone', 'ru', 'Ваше место в общем рейтинге
+
+Ваша позиция: %d
+
+%s
+
+Поздравляем! Вы входите в призовую зону и примете участие в распределении еженедельной награды.');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personal_rating_need_points', 'ru', 'Ваше место в общем рейтинге
+
+Ваша позиция: %d
+
+%s
+
+Вам не хватает %d баллов, чтобы принять участие в распределении еженедельной награды.');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('player_points', 'ru', 'Игрок %d - %d баллов');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('player_points_efficiency', 'ru', 'Игрок %d - %d баллов (%.1f%%)');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('you_points', 'ru', '*Вы* - %d баллов');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('you_points_efficiency', 'ru', '*Вы* - %d баллов (%.1f%%)');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('username_points', 'ru', '*%s* - %d баллов');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('username_points_efficiency', 'ru', '*%s* - %d баллов (%.1f%%)');
+
+-- Украинский язык
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekly_rating_empty', 'uk', 'Актуальний анонімізований рейтинг гравців, які розподілять між собою нагороду за поточний тиждень
+Увага: ми анонімізуємо імена гравців і виводимо лише кількість рейтингових балів для того, щоб продемонструвати скільки рейтингових балів на даний момент необхідно заробити, щоб взяти участь у розподілі нагороди.
+
+На даний момент рейтинг порожній. Будьте першим, хто заробить бали!');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekly_rating_top', 'uk', 'Актуальний анонімізований рейтинг гравців, які розподілять між собою нагороду за поточний тиждень
+Увага: ми анонімізуємо імена гравців і виводимо лише кількість рейтингових балів для того, щоб продемонструвати скільки рейтингових балів на даний момент необхідно заробити, щоб взяти участь у розподілі нагороди.
+
+Топ %d гравців:
+
+%s');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekly_rating_all', 'uk', 'Актуальний анонімізований рейтинг гравців, які розподілять між собою нагороду за поточний тиждень
+Увага: ми анонімізуємо імена гравців і виводимо лише кількість рейтингових балів для того, щоб продемонструвати скільки рейтингових балів на даний момент необхідно заробити, щоб взяти участь у розподілі нагороди.
+
+Поточний рейтинг:
+
+%s');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personal_rating_empty', 'uk', 'Ваше місце в загальному рейтингу
+
+Ваша позиція: %d
+
+На даний момент рейтинг порожній. Будьте першим, хто заробить бали!');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personal_rating_prize_zone', 'uk', 'Ваше місце в загальному рейтингу
+
+Ваша позиція: %d
+
+%s
+
+Вітаємо! Ви входите до призової зони і візьмете участь у розподілі щотижневої нагороди.');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personal_rating_need_points', 'uk', 'Ваше місце в загальному рейтингу
+
+Ваша позиція: %d
+
+%s
+
+Вам не вистачає %d балів, щоб взяти участь у розподілі щотижневої нагороди.');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('player_points', 'uk', 'Гравець %d - %d балів');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('player_points_efficiency', 'uk', 'Гравець %d - %d балів (%.1f%%)');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('you_points', 'uk', '*Ви* - %d балів');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('you_points_efficiency', 'uk', '*Ви* - %d балів (%.1f%%)');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('username_points', 'uk', '*%s* - %d балів');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('username_points_efficiency', 'uk', '*%s* - %d балів (%.1f%%)');
+
+-- Английский язык
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekly_rating_empty', 'en', 'Current anonymized ranking of players who will share the reward for the current week
+Note: we anonymize player names and only show the number of rating points to demonstrate how many rating points are currently needed to participate in the distribution of the reward.
+
+The rating is currently empty. Be the first to earn points!');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekly_rating_top', 'en', 'Current anonymized ranking of players who will share the reward for the current week
+Note: we anonymize player names and only show the number of rating points to demonstrate how many rating points are currently needed to participate in the distribution of the reward.
+
+Top %d players:
+
+%s');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('weekly_rating_all', 'en', 'Current anonymized ranking of players who will share the reward for the current week
+Note: we anonymize player names and only show the number of rating points to demonstrate how many rating points are currently needed to participate in the distribution of the reward.
+
+Current rating:
+
+%s');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personal_rating_empty', 'en', 'Your place in the overall ranking
+
+Your position: %d
+
+The rating is currently empty. Be the first to earn points!');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personal_rating_prize_zone', 'en', 'Your place in the overall ranking
+
+Your position: %d
+
+%s
+
+Congratulations! You are in the prize zone and will take part in the distribution of the weekly reward.');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('personal_rating_need_points', 'en', 'Your place in the overall ranking
+
+Your position: %d
+
+%s
+
+You need %d more points to participate in the distribution of the weekly reward.');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('player_points', 'en', 'Player %d - %d points');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('player_points_efficiency', 'en', 'Player %d - %d points (%.1f%%)');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('you_points', 'en', '*You* - %d points');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('you_points_efficiency', 'en', '*You* - %d points (%.1f%%)');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('username_points', 'en', '*%s* - %d points');
+
+INSERT INTO localizations (key, language, value) 
+VALUES ('username_points_efficiency', 'en', '*%s* - %d points (%.1f%%)');
+
+-- SQL-скрипт для добавления локализаций для функционала "Аккаунт"
+
+-- Локализации для русского языка (ru)
+INSERT INTO localizations (key, language, value) VALUES
+    ('accstart', 'ru', 'В данном разделе вы можете управлять личным счетом'),
+    ('balance', 'ru', 'Баланс'),
+    ('withdraw', 'ru', 'Вывод'),
+    ('bonus', 'ru', 'Бонусы'),
+    ('buybets', 'ru', 'Конвертация в попытки'),
+    ('exitacc', 'ru', 'Главное меню'),
+    ('balanceacclow', 'ru', 'На вашем балансе %.2f USDT. Суммы недостаточно для вывода. Играйте больше, чтобы войти в топ игроков недели и распределить призовой фонд!'),
+    ('balanceaccok', 'ru', 'На вашем балансе %.2f USDT. Суммы достаточно для вывода. Вы можете оформить вывод в пункте меню Вывод.'),
+    ('balaccokwith', 'ru', 'Заказать вывод'),
+    ('balancenext', 'ru', 'Выберите следующее действие с личным счетом или вернитесь в главное меню'),
+    ('withdrawlow', 'ru', 'На вашем балансе %.2f USDT. Суммы недостаточно для вывода. Играйте больше, чтобы войти в топ игроков недели и распределить призовой фонд!'),
+    ('withdrawok', 'ru', 'На вашем балансе %.2f USDT. Вы можете оформить вывод, продолжив'),
+    ('withdrawproc', 'ru', 'Запросить вывод'),
+    ('withdrawlownext', 'ru', 'Выберите следующее действие с личным счетом или вернитесь в главное меню'),
+    ('no_wallet_address', 'ru', 'Для вывода необходимо указать адрес кошелька в настройках профиля.'),
+    ('go_to_settings', 'ru', 'Перейти в настройки'),
+    ('insufficient_balance', 'ru', 'Недостаточная сумма для вывода. Минимальная сумма: 10 USDT'),
+    ('withdrawal_error', 'ru', 'Ошибка при создании запроса на вывод. Пожалуйста, попробуйте позже.'),
+    ('withdrawal_success', 'ru', 'Запрос на вывод %.2f USDT успешно создан. Средства будут отправлены на кошелек %s в течение 24 часов.')
+ON CONFLICT (key, language) DO UPDATE SET
+    value = EXCLUDED.value;
+
+-- Локализации для английского языка (en)
+INSERT INTO localizations (key, language, value) VALUES
+    ('accstart', 'en', 'In this section you can manage your personal account'),
+    ('balance', 'en', 'Balance'),
+    ('withdraw', 'en', 'Withdraw'),
+    ('bonus', 'en', 'Bonuses'),
+    ('buybets', 'en', 'Convert to attempts'),
+    ('exitacc', 'en', 'Main menu'),
+    ('balanceacclow', 'en', 'Your balance is %.2f USDT. The amount is insufficient for withdrawal. Play more to enter the top players of the week and distribute the prize fund!'),
+    ('balanceaccok', 'en', 'Your balance is %.2f USDT. The amount is sufficient for withdrawal. You can make a withdrawal in the Withdraw menu item.'),
+    ('balaccokwith', 'en', 'Request withdrawal'),
+    ('balancenext', 'en', 'Select the next action with your personal account or return to the main menu'),
+    ('withdrawlow', 'en', 'Your balance is %.2f USDT. The amount is insufficient for withdrawal. Play more to enter the top players of the week and distribute the prize fund!'),
+    ('withdrawok', 'en', 'Your balance is %.2f USDT. You can make a withdrawal by continuing'),
+    ('withdrawproc', 'en', 'Request withdrawal'),
+    ('withdrawlownext', 'en', 'Select the next action with your personal account or return to the main menu'),
+    ('no_wallet_address', 'en', 'To withdraw funds, you need to specify a wallet address in your profile settings.'),
+    ('go_to_settings', 'en', 'Go to settings'),
+    ('insufficient_balance', 'en', 'Insufficient amount for withdrawal. Minimum amount: 10 USDT'),
+    ('withdrawal_error', 'en', 'Error creating withdrawal request. Please try again later.'),
+    ('withdrawal_success', 'en', 'Withdrawal request for %.2f USDT successfully created. Funds will be sent to wallet %s within 24 hours.')
+ON CONFLICT (key, language) DO UPDATE SET
+    value = EXCLUDED.value;
+
+-- Локализации для украинского языка (uk)
+INSERT INTO localizations (key, language, value) VALUES
+    ('accstart', 'uk', 'У цьому розділі ви можете керувати особистим рахунком'),
+    ('balance', 'uk', 'Баланс'),
+    ('withdraw', 'uk', 'Виведення'),
+    ('bonus', 'uk', 'Бонуси'),
+    ('buybets', 'uk', 'Конвертація в спроби'),
+    ('exitacc', 'uk', 'Головне меню'),
+    ('balanceacclow', 'uk', 'На вашому балансі %.2f USDT. Суми недостатньо для виведення. Грайте більше, щоб увійти до топ гравців тижня та розподілити призовий фонд!'),
+    ('balanceaccok', 'uk', 'На вашому балансі %.2f USDT. Суми достатньо для виведення. Ви можете оформити виведення в пункті меню Виведення.'),
+    ('balaccokwith', 'uk', 'Замовити виведення'),
+    ('balancenext', 'uk', 'Виберіть наступну дію з особистим рахунком або поверніться до головного меню'),
+    ('withdrawlow', 'uk', 'На вашому балансі %.2f USDT. Суми недостатньо для виведення. Грайте більше, щоб увійти до топ гравців тижня та розподілити призовий фонд!'),
+    ('withdrawok', 'uk', 'На вашому балансі %.2f USDT. Ви можете оформити виведення, продовживши'),
+    ('withdrawproc', 'uk', 'Запросити виведення'),
+    ('withdrawlownext', 'uk', 'Виберіть наступну дію з особистим рахунком або поверніться до головного меню'),
+    ('no_wallet_address', 'uk', 'Для виведення необхідно вказати адресу гаманця в налаштуваннях профілю.'),
+    ('go_to_settings', 'uk', 'Перейти в налаштування'),
+    ('insufficient_balance', 'uk', 'Недостатня сума для виведення. Мінімальна сума: 10 USDT'),
+    ('withdrawal_error', 'uk', 'Помилка при створенні запиту на виведення. Будь ласка, спробуйте пізніше.'),
+    ('withdrawal_success', 'uk', 'Запит на виведення %.2f USDT успішно створено. Кошти будуть відправлені на гаманець %s протягом 24 годин.')
+ON CONFLICT (key, language) DO UPDATE SET
+    value = EXCLUDED.value;

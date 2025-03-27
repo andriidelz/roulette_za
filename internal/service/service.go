@@ -67,6 +67,9 @@ type Service interface {
 
 	UpdateUserLanguage(telegramID int64, languageCode string) error
 	UpdateUser(user *models.User) error
+
+	// Вывод средств
+	CreateWithdrawal(withdrawal *models.Withdrawal) error
 }
 
 type ServiceImpl struct {
@@ -681,4 +684,9 @@ func (s *ServiceImpl) UpdateUserLanguage(telegramID int64, languageCode string) 
 // UpdateUser обновляет информацию о пользователе
 func (s *ServiceImpl) UpdateUser(user *models.User) error {
 	return s.repo.UpdateUser(user)
+}
+
+// Реализация метода в ServiceImpl
+func (s *ServiceImpl) CreateWithdrawal(withdrawal *models.Withdrawal) error {
+	return s.repo.CreateWithdrawal(withdrawal)
 }

@@ -580,7 +580,8 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	case btnRatingText:
 		b.handleRatingCommand(message)
 	case btnAccountText:
-		b.handleBalanceCommand(message)
+		b.handleAccountCommand(message)
+		return
 	case btnFAQText:
 		b.handleFAQCommand(message)
 	// Обработка ставок по тексту кнопки
@@ -656,6 +657,21 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	case personalRatingText:
 		b.handlePersonalRating(message)
 	case exitRatingText:
+		b.handleHelpCommand(message) // Возврат в главное меню
+
+	// Обработка кнопок аккаунта
+	case b.service.GetText("balance", language):
+		b.handleBalanceCommand(message)
+		return
+	case b.service.GetText("withdraw", language):
+		b.handleWithdrawCommand(message)
+	case b.service.GetText("bonus", language):
+		// Временно просто возвращаем в меню аккаунта
+		b.handleAccountCommand(message)
+	case b.service.GetText("buybets", language):
+		// Временно просто возвращаем в меню аккаунта
+		b.handleAccountCommand(message)
+	case b.service.GetText("exitacc", language):
 		b.handleHelpCommand(message) // Возврат в главное меню
 
 		// Обработка кнопок меню FAQ
@@ -1012,6 +1028,10 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Обработка показа рейтинга
 		b.handleRatingCommand(query.Message)
 		b.answerCallbackQuery(query.ID, "", false)
+	case CallbackRequestWithdraw:
+		b.handleRequestWithdrawCallback(query)
+	case CallbackProcessWithdraw:
+		b.handleProcessWithdrawCallback(query)
 	case "stop_game":
 		// Обработка остановки игры
 		b.gameHandler.HandleStopGameButton(user.ID)
@@ -1305,77 +1325,6 @@ func (b *Bot) handleStatsCommand(message *telego.Message) {
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          statisticsStartText,
 		ReplyKeyboard: statsKeyboard,
-	})
-}
-
-func (b *Bot) handleBalanceCommand(message *telego.Message) {
-	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
-
-	// Получаем информацию о пользователе для проверки баланса
-	dbUser, err := b.service.GetUser(user.ID)
-	if err != nil {
-		log.Printf("Error getting user: %v", err)
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: "Error retrieving balance. Please try again.",
-		})
-		return
-	}
-
-	// Получаем шаблон баланса
-	var balanceText string
-	minWithdrawal := 10.0 // Значение по умолчанию
-
-	// Проверяем достаточно ли денег для вывода
-	if dbUser.Balance >= minWithdrawal {
-		balanceTemplate := b.service.GetText("balanceaccok", language)
-		balanceText = fmt.Sprintf(balanceTemplate, dbUser.Balance)
-	} else {
-		balanceTemplate := b.service.GetText("balanceacclow", language)
-		balanceText = fmt.Sprintf(balanceTemplate, dbUser.Balance)
-	}
-
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          balanceText,
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
-	})
-}
-
-func (b *Bot) handleWithdrawCommand(message *telego.Message) {
-	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
-
-	// Получаем информацию о пользователе для проверки баланса
-	dbUser, err := b.service.GetUser(user.ID)
-	if err != nil {
-		log.Printf("Error getting user: %v", err)
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: "Error retrieving data. Please try again.",
-		})
-		return
-	}
-
-	minWithdrawal := 10.0 // Значение по умолчанию
-
-	// Проверяем достаточно ли денег для вывода
-	var withdrawText string
-	if dbUser.Balance >= minWithdrawal {
-		withdrawTemplate := b.service.GetText("withdrawok", language)
-		withdrawText = fmt.Sprintf(withdrawTemplate, dbUser.Balance)
-	} else {
-		withdrawTemplate := b.service.GetText("withdrawlow", language)
-		withdrawText = fmt.Sprintf(withdrawTemplate, dbUser.Balance)
-	}
-
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          withdrawText,
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
 	})
 }
 
