@@ -14,6 +14,8 @@ type Repository interface {
 	GetUserByTelegramID(telegramID int64) (*models.User, error)
 	UpdateUser(user *models.User) error
 	GetUserCount() (int64, error)
+	GetUserWithdrawals(userID uint, limit int) ([]models.Withdrawal, error)
+	SearchUsers(query string, page, perPage int) ([]models.User, int64, error)
 
 	// Статистика
 	GetUserTotalBets(userID uint) (int, error)
@@ -48,7 +50,7 @@ type Repository interface {
 	CheckIfPrizesAlreadyDistributed(year, week int) (bool, error)
 	GetPrizeFundWithoutCreation(year, week int) (*models.PrizeFund, error)
 
-	// Натсройки
+	// Настройки
 	GetSetting(key string) (*models.Setting, error)
 	UpdateSetting(key string, value string) error
 
@@ -97,6 +99,8 @@ type Repository interface {
 	GetUserCountry(userID uint) (string, error)
 
 	GetBetsByHashEntryIDWithUsers(hashEntryID uint) ([]models.Bet, error)
+
+	GetCurrentYearWeek() (int, int) // Возвращает текущий год и неделю
 
 	// Закрытие соединения
 	Close() error
@@ -414,6 +418,10 @@ func (r *PostgresRepository) GetBetsByHashEntryIDWithUsers(hashEntryID uint) ([]
 		return nil, err
 	}
 	return bets, nil
+}
+
+func (r *PostgresRepository) GetCurrentYearWeek() (int, int) {
+	return time.Now().ISOWeek()
 }
 
 // Close закриває з'єднання з базою даних

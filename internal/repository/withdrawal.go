@@ -31,3 +31,19 @@ func (r *PostgresRepository) GetWithdrawalByID(id uint) (*models.Withdrawal, err
 	}
 	return &withdrawal, nil
 }
+
+// GetUserWithdrawals получает историю выводов для конкретного пользователя
+func (r *PostgresRepository) GetUserWithdrawals(userID uint, limit int) ([]models.Withdrawal, error) {
+	var withdrawals []models.Withdrawal
+	query := r.db.Where("user_id = ?", userID).Order("created_at desc")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Find(&withdrawals).Error; err != nil {
+		return nil, err
+	}
+
+	return withdrawals, nil
+}

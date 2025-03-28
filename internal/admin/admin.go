@@ -107,10 +107,17 @@ func (a *AdminPanel) setupRoutes() {
 	{
 		admin.GET("/", a.dashboard)
 
+		// Раздел управления пользователями
 		admin.GET("/users", a.usersList)
 		admin.GET("/user/:id", a.userDetails)
 		admin.POST("/user/:id/ban", a.userBan)
 		admin.POST("/user/:id/unban", a.userUnban)
+		admin.POST("/user/:id/update", a.updateUserProfile)
+		admin.POST("/user/:id/balance", a.updateUserBalance)
+
+		// JSON API для данных пользователя
+		admin.GET("/user/:id/json", a.getUserJSON)
+		admin.GET("/user/:id/stats/json", a.getUserDetailedStats)
 
 		admin.GET("/stats", a.statistics)
 

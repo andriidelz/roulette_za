@@ -70,6 +70,8 @@ type Service interface {
 
 	// Вывод средств
 	CreateWithdrawal(withdrawal *models.Withdrawal) error
+
+	GetCurrentYearWeek() (int, int)
 }
 
 type ServiceImpl struct {
@@ -689,4 +691,8 @@ func (s *ServiceImpl) UpdateUser(user *models.User) error {
 // Реализация метода в ServiceImpl
 func (s *ServiceImpl) CreateWithdrawal(withdrawal *models.Withdrawal) error {
 	return s.repo.CreateWithdrawal(withdrawal)
+}
+
+func (s *ServiceImpl) GetCurrentYearWeek() (int, int) {
+	return time.Now().ISOWeek()
 }

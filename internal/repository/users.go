@@ -82,3 +82,29 @@ func (r *PostgresRepository) GetUserCountry(userID uint) (string, error) {
 	}
 	return user.Country, nil
 }
+
+// SearchUsers поиск пользователей по запросу
+func (r *PostgresRepository) SearchUsers(query string, page, perPage int) ([]models.User, int64, error) {
+	var users []models.User
+	var totalCount int64
+
+	// Строим запрос с фильтрацией
+	searchQuery := "%" + query + "%"
+	baseQuery := r.db.Model(&models.User{}).Where(
+		"username LIKE ? OR first_name LIKE ? OR last_name LIKE ? OR CAST(telegram_id AS TEXT) LIKE ?",
+		searchQuery, searchQuery, searchQuery, searchQuery,
+	)
+
+	// Получаем общее количество пользователей, соответствующих критериям поиска
+	if err := baseQuery.Count(&totalCount).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Получаем пользователей с пагинацией
+	offset := (page - 1) * perPage
+	if err := baseQuery.Offset(offset).Limit(perPage).Order("id desc").Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return users, totalCount, nil
+}

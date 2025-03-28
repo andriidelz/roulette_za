@@ -8,319 +8,743 @@
         <div class="row mb-4">
           <div class="col-12">
               <div class="d-flex justify-content-between align-items-center">
-                  <h1>User Profile</h1>
-                  <a href="/admin/users" class="btn btn-outline-secondary">
-                      <i class="bi bi-arrow-left"></i> Back to List
-                  </a>
+                  <h1>Профиль пользователя</h1>
+                  <div>
+                    <a href="/admin/users" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-left"></i> Назад к списку
+                    </a>
+                    {{ if .user.Banned }}
+                    <button class="btn btn-success unban-user-btn" data-id="{{ .user.ID }}">
+                        <i class="bi bi-unlock"></i> Разбанить пользователя
+                    </button>
+                    {{ else }}
+                    <button class="btn btn-danger ban-user-btn" data-id="{{ .user.ID }}">
+                        <i class="bi bi-lock"></i> Забанить пользователя
+                    </button>
+                    {{ end }}
+                  </div>
               </div>
           </div>
-      </div>
+        </div>
 
-      <div class="row">
+        <div class="row">
           <div class="col-md-4 mb-4">
-              <div class="card">
-                  <div class="card-header">
-                      <h5 class="mb-0">Basic Information</h5>
-                  </div>
-                  <div class="card-body">
-                      <div class="mb-3 text-center">
-                          <div style="width: 100px; height: 100px; background-color: #e9ecef; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
-                              <i class="bi bi-person-circle" style="font-size: 3rem;"></i>
-                          </div>
-                          <h5>{{ .user.Username }}</h5>
-                      </div>
-                      <table class="table">
-                          <tbody>
-                              <tr>
-                                  <th>ID:</th>
-                                  <td>{{ .user.ID }}</td>
-                              </tr>
-                              <tr>
-                                  <th>Telegram ID:</th>
-                                  <td>{{ .user.TelegramID }}</td>
-                              </tr>
-                              <tr>
-                                  <th>First Name:</th>
-                                  <td>{{ .user.FirstName }}</td>
-                              </tr>
-                              <tr>
-                                  <th>Last Name:</th>
-                                  <td>{{ .user.LastName }}</td>
-                              </tr>
-                              <tr>
-                                  <th>Language:</th>
-                                  <td>{{ .user.LanguageCode }}</td>
-                              </tr>
-                              <tr>
-                                  <th>Registration Date:</th>
-                                  <td>{{ .user.CreatedAt.Format "02.01.2006 15:04" }}</td>
-                              </tr>
-                              <tr>
-                                  <th>Status:</th>
-                                  <td>
-                                      {{ if .user.Banned }}
-                                      <span class="badge bg-danger">Banned</span>
-                                      {{ else }}
-                                      <span class="badge bg-success">Active</span>
-                                      {{ end }}
-                                  </td>
-                              </tr>
-                          </tbody>
-                      </table>
-                      <div class="d-grid gap-2 mt-3">
-                          {{ if .user.Banned }}
-                          <button class="btn btn-success unban-user" data-id="{{ .user.ID }}">
-                              <i class="bi bi-unlock"></i> Unban
-                          </button>
-                          {{ else }}
-                          <button class="btn btn-danger ban-user" data-id="{{ .user.ID }}">
-                              <i class="bi bi-lock"></i> Ban
-                          </button>
-                          {{ end }}
-                      </div>
-                  </div>
+            <div class="card h-100">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Основная информация</h5>
+                <button class="btn btn-sm btn-outline-primary edit-profile-btn" data-toggle="tooltip" title="Редактировать профиль">
+                  <i class="bi bi-pencil"></i>
+                </button>
               </div>
+              <div class="card-body">
+                <div class="text-center mb-4">
+                  <div class="avatar-placeholder mb-3">
+                    <i class="bi bi-person-circle display-4"></i>
+                  </div>
+                  <h4>{{ if .user.Username }}@{{ .user.Username }}{{ else }}Пользователь {{ .user.ID }}{{ end }}</h4>
+                  <p class="text-muted">
+                    {{ if or .user.FirstName .user.LastName }}
+                      {{ .user.FirstName }} {{ .user.LastName }}
+                    {{ else }}
+                      Имя не указано
+                    {{ end }}
+                  </p>
+                  
+                  {{ if .user.Banned }}
+                  <div class="badge bg-danger p-2"><i class="bi bi-lock"></i> Забанен</div>
+                  {{ else }}
+                  <div class="badge bg-success p-2"><i class="bi bi-check-circle"></i> Активен</div>
+                  {{ end }}
+                </div>
+                
+                <dl class="row mb-0">
+                  <dt class="col-sm-5">ID:</dt>
+                  <dd class="col-sm-7">{{ .user.ID }}</dd>
+                  
+                  <dt class="col-sm-5">Telegram ID:</dt>
+                  <dd class="col-sm-7">{{ .user.TelegramID }}</dd>
+                  
+                  <dt class="col-sm-5">Язык:</dt>
+                  <dd class="col-sm-7">
+                    {{ if .user.LanguageCode }}
+                      {{ if eq .user.LanguageCode "en" }}
+                        <span class="badge bg-primary">English</span>
+                      {{ else if eq .user.LanguageCode "ru" }}
+                        <span class="badge bg-info">Русский</span>
+                      {{ else if eq .user.LanguageCode "uk" }}
+                        <span class="badge bg-warning">Українська</span>
+                      {{ else }}
+                        <span class="badge bg-secondary">{{ .user.LanguageCode }}</span>
+                      {{ end }}
+                    {{ else }}
+                      <span class="text-muted">Не указан</span>
+                    {{ end }}
+                  </dd>
+                  
+                  <dt class="col-sm-5">Страна:</dt>
+                  <dd class="col-sm-7">
+                    {{ if .user.Country }}
+                      {{ .userCountryEmoji }} {{ .userCountryName }}
+                    {{ else }}
+                      <span class="text-muted">Не указана</span>
+                    {{ end }}
+                  </dd>
+                  
+                  <dt class="col-sm-5">Регистрация:</dt>
+                  <dd class="col-sm-7">{{ .user.CreatedAt.Format "02.01.2006 15:04" }}</dd>
+                  
+                  <dt class="col-sm-5">Обновлено:</dt>
+                  <dd class="col-sm-7">{{ .user.UpdatedAt.Format "02.01.2006 15:04" }}</dd>
+                </dl>
+              </div>
+            </div>
           </div>
-
+          
           <div class="col-md-4 mb-4">
-              <div class="card">
-                  <div class="card-header">
-                      <h5 class="mb-0">Financial Information</h5>
-                  </div>
-                  <div class="card-body">
-                      <table class="table">
-                          <tbody>
-                              <tr>
-                                  <th>Current Balance:</th>
-                                  <td>{{ .user.Balance }}</td>
-                              </tr>
-                              <tr>
-                                  <th>Total Points Earned:</th>
-                                  <td>{{ .stats.TotalPoints }}</td>
-                              </tr>
-                              <tr>
-                                  <th>Weekly Balance:</th>
-                                  <td>{{ .stats.WeeklyPoints }}</td>
-                              </tr>
-                          </tbody>
-                      </table>
-                      <div class="mt-3">
-                          <h6>Balance Operations</h6>
-                          <form id="balance-form" class="mt-2">
-                              <div class="mb-3">
-                                  <label for="amount" class="form-label">Amount</label>
-                                  <input type="number" class="form-control" id="amount" name="amount" step="0.01" required>
-                              </div>
-                              <div class="d-grid gap-2">
-                                  <button type="button" class="btn btn-success" id="add-balance">
-                                      <i class="bi bi-plus-circle"></i> Add
-                                  </button>
-                                  <button type="button" class="btn btn-warning" id="subtract-balance">
-                                      <i class="bi bi-dash-circle"></i> Subtract
-                                  </button>
-                              </div>
-                          </form>
-                      </div>
-                  </div>
+            <div class="card h-100">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Финансовая информация</h5>
+                <button class="btn btn-sm btn-outline-primary edit-balance-btn" data-toggle="tooltip" title="Управление балансом">
+                  <i class="bi bi-cash-coin"></i>
+                </button>
               </div>
+              <div class="card-body">
+                <div class="mb-4">
+                  <h2 class="text-center mb-3">{{ .user.Balance }} $</h2>
+                  <div class="progress mb-3">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                  </div>
+                </div>
+                
+                <dl class="row mb-0">
+                  <dt class="col-sm-5">Кошелек:</dt>
+                  <dd class="col-sm-7">
+                    {{ if .user.WalletAddress }}
+                      <span class="wallet-address">{{ .user.WalletAddress }}</span>
+                      <button class="btn btn-sm btn-outline-secondary copy-address-btn" data-address="{{ .user.WalletAddress }}" data-toggle="tooltip" title="Копировать адрес">
+                        <i class="bi bi-clipboard"></i>
+                      </button>
+                    {{ else }}
+                      <span class="text-muted">Не указан</span>
+                    {{ end }}
+                  </dd>
+                  
+                  <dt class="col-sm-5">Всего очков:</dt>
+                  <dd class="col-sm-7">{{ .stats.TotalPoints }}</dd>
+                  
+                  <dt class="col-sm-5">Недельный баланс:</dt>
+                  <dd class="col-sm-7">{{ .stats.WeeklyPoints }}</dd>
+                  
+                  {{ if .rating }}
+                  <dt class="col-sm-5">Позиция в рейтинге:</dt>
+                  <dd class="col-sm-7">
+                    <span class="badge bg-primary">{{ .rating.Position }}</span>
+                  </dd>
+                  
+                  <dt class="col-sm-5">Еженедельный приз:</dt>
+                  <dd class="col-sm-7">{{ .rating.Prize }} $</dd>
+                  {{ end }}
+                </dl>
+                
+                <hr>
+                
+                <h6 class="mb-3">История выводов</h6>
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Дата</th>
+                        <th>Сумма</th>
+                        <th>Статус</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {{ if .withdrawals }}
+                        {{ range .withdrawals }}
+                        <tr>
+                          <td>{{ .CreatedAt.Format "02.01.2006" }}</td>
+                          <td>{{ .Amount }} $</td>
+                          <td>
+                            {{ if eq .Status "pending" }}
+                              <span class="badge bg-warning">Ожидание</span>
+                            {{ else if eq .Status "approved" }}
+                              <span class="badge bg-success">Выполнено</span>
+                            {{ else }}
+                              <span class="badge bg-danger">Отклонено</span>
+                            {{ end }}
+                          </td>
+                        </tr>
+                        {{ end }}
+                      {{ else }}
+                        <tr>
+                          <td colspan="3" class="text-center">Нет выводов</td>
+                        </tr>
+                      {{ end }}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
-
+          
           <div class="col-md-4 mb-4">
-              <div class="card">
-                  <div class="card-header">
-                      <h5 class="mb-0">Statistics</h5>
-                  </div>
-                  <div class="card-body">
-                      <table class="table">
-                          <tbody>
-                              <tr>
-                                  <th>Total Bets:</th>
-                                  <td>{{ .stats.TotalBets }}</td>
-                              </tr>
-                              <tr>
-                                  <th>Winning Bets:</th>
-                                  <td>{{ .stats.WonBets }}</td>
-                              </tr>
-                              <tr>
-                                  <th>Efficiency:</th>
-                                  <td>
-                                      {{ if gt .stats.TotalBets 0 }}
-                                          {{ printf "%.2f" (multiply (divide .stats.WonBets .stats.TotalBets) 100) }}%
-                                      {{ else }}
-                                          0%
-                                      {{ end }}
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <th>Bets Today:</th>
-                                  <td>{{ .user.TodayBets }}</td>
-                              </tr>
-                              <tr>
-                                  <th>Bets This Week:</th>
-                                  <td>{{ .stats.WeeklyBets }}</td>
-                              </tr>
-                              <tr>
-                                  <th>Bets This Month:</th>
-                                  <td>{{ .stats.MonthlyBets }}</td>
-                              </tr>
-                              <tr>
-                                  <th>Ranking Position:</th>
-                                  <td>
-                                      {{ if .rating }}
-                                          {{ .rating.Position }}
-                                      {{ else }}
-                                          Not ranked
-                                      {{ end }}
-                                  </td>
-                              </tr>
-                          </tbody>
-                      </table>
-                  </div>
+            <div class="card h-100">
+              <div class="card-header">
+                <h5 class="mb-0">Статистика</h5>
               </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-6 mb-4">
+                    <div class="text-center">
+                      <h1>{{ .stats.TotalBets }}</h1>
+                      <p class="mb-0 text-muted">Всего ставок</p>
+                    </div>
+                  </div>
+                  
+                  <div class="col-6 mb-4">
+                    <div class="text-center">
+                      <h1>{{ .stats.WonBets }}</h1>
+                      <p class="mb-0 text-muted">Выигрышей</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Эффективность</label>
+                  <div class="progress">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ .stats.Efficiency }}%" 
+                    aria-valuenow="{{ .stats.Efficiency }}" aria-valuemin="0" aria-valuemax="100">
+                      {{ printf "%.1f" .stats.Efficiency }}%
+                    </div>
+                  </div>
+                </div>
+                
+                <hr>
+                
+                <h6 class="mb-3">Активность</h6>
+                <div class="row">
+                  <div class="col-4 text-center">
+                    <div class="circle-stat">
+                      <span>{{ .stats.DailyBets }}</span>
+                    </div>
+                    <p class="mb-0 mt-2 small">Сегодня</p>
+                  </div>
+                  
+                  <div class="col-4 text-center">
+                    <div class="circle-stat">
+                      <span>{{ .stats.WeeklyBets }}</span>
+                    </div>
+                    <p class="mb-0 mt-2 small">Неделя</p>
+                  </div>
+                  
+                  <div class="col-4 text-center">
+                    <div class="circle-stat">
+                      <span>{{ .stats.MonthlyBets }}</span>
+                    </div>
+                    <p class="mb-0 mt-2 small">Месяц</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-      </div>
+        </div>
 
-      <div class="row">
+        <div class="row">
           <div class="col-12">
-              <div class="card">
-                  <div class="card-header">
-                      <h5 class="mb-0">Recent Bets</h5>
+            <div class="card">
+              <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="myTab" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="bets-tab" data-bs-toggle="tab" data-bs-target="#bets" type="button" role="tab" aria-controls="bets" aria-selected="true">
+                      <i class="bi bi-dice-5"></i> Последние ставки
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats" type="button" role="tab" aria-controls="stats" aria-selected="false">
+                      <i class="bi bi-bar-chart"></i> Детальная статистика
+                    </button>
+                  </li>
+                </ul>
+              </div>
+              <div class="card-body">
+                <div class="tab-content" id="myTabContent">
+                  <!-- Вкладка со ставками -->
+                  <div class="tab-pane fade show active" id="bets" role="tabpanel" aria-labelledby="bets-tab">
+                    <div class="table-responsive">
+                      <table class="table table-striped">
+                        <thead>
+                          <tr>
+                            <th>ID</th>
+                            <th>Дата</th>
+                            <th>Ставка</th>
+                            <th>Результат</th>
+                            <th>Очки</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {{ if .bets }}
+                            {{ range .bets }}
+                            <tr>
+                              <td>{{ .ID }}</td>
+                              <td>{{ .CreatedAt.Format "02.01.2006 15:04" }}</td>
+                              <td>
+                                {{ if eq .Option "red" }}
+                                <span class="badge bg-danger">Красное</span>
+                                {{ else if eq .Option "black" }}
+                                <span class="badge bg-dark">Черное</span>
+                                {{ else }}
+                                <span class="badge bg-success">Зеро</span>
+                                {{ end }}
+                              </td>
+                              <td>
+                                {{ if .Won }}
+                                <span class="text-success"><i class="bi bi-check-circle"></i> Выигрыш</span>
+                                {{ else }}
+                                <span class="text-danger"><i class="bi bi-x-circle"></i> Проигрыш</span>
+                                {{ end }}
+                              </td>
+                              <td>{{ .Points }}</td>
+                            </tr>
+                            {{ end }}
+                          {{ else }}
+                            <tr>
+                              <td colspan="5" class="text-center">
+                                <div class="alert alert-info mb-0">
+                                  <i class="bi bi-info-circle me-2"></i>У пользователя нет ставок
+                                </div>
+                              </td>
+                            </tr>
+                          {{ end }}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  <div class="card-body">
-                      <div class="table-responsive">
-                          <table class="table table-hover">
+                  
+                  <!-- Вкладка с детальной статистикой -->
+                  <div class="tab-pane fade" id="stats" role="tabpanel" aria-labelledby="stats-tab">
+                    <div class="row">
+                      <div class="col-md-6">
+                        <div class="card mb-3">
+                          <div class="card-header bg-light">
+                            <h6 class="mb-0">Статистика ставок</h6>
+                          </div>
+                          <div class="card-body">
+                            <table class="table table-bordered">
                               <thead>
-                                  <tr>
-                                      <th>ID</th>
-                                      <th>Date</th>
-                                      <th>Bet</th>
-                                      <th>Result</th>
-                                      <th>Win</th>
-                                      <th>Points</th>
-                                  </tr>
+                                <tr>
+                                  <th>Тип</th>
+                                  <th>Всего</th>
+                                  <th>Выиграно</th>
+                                  <th>Проиграно</th>
+                                </tr>
                               </thead>
                               <tbody>
-                                  {{ if .bets }}
-                                      {{ range .bets }}
-                                      <tr>
-                                          <td>{{ .ID }}</td>
-                                          <td>{{ .CreatedAt.Format "02.01.2006 15:04" }}</td>
-                                          <td>
-                                              {{ if eq .Option "red" }}
-                                              <span class="badge bg-danger">Red</span>
-                                              {{ else if eq .Option "black" }}
-                                              <span class="badge bg-dark">Black</span>
-                                              {{ else }}
-                                              <span class="badge bg-success">Zero</span>
-                                              {{ end }}
-                                          </td>
-                                          <td>
-                                              {{ if .Game }}
-                                                  {{ if eq .Game.Result "red" }}
-                                                  <span class="badge bg-danger">Red</span>
-                                                  {{ else if eq .Game.Result "black" }}
-                                                  <span class="badge bg-dark">Black</span>
-                                                  {{ else }}
-                                                  <span class="badge bg-success">Zero</span>
-                                                  {{ end }}
-                                              {{ else }}
-                                                  <span class="badge bg-secondary">Unknown</span>
-                                              {{ end }}
-                                          </td>
-                                          <td>
-                                              {{ if .Won }}
-                                              <span class="text-success"><i class="bi bi-check-circle"></i> Win</span>
-                                              {{ else }}
-                                              <span class="text-danger"><i class="bi bi-x-circle"></i> Loss</span>
-                                              {{ end }}
-                                          </td>
-                                          <td>{{ .Points }}</td>
-                                      </tr>
-                                      {{ end }}
-                                  {{ else }}
-                                      <tr>
-                                          <td colspan="6" class="text-center">No bets found</td>
-                                      </tr>
-                                  {{ end }}
+                                <tr>
+                                  <td>Красное</td>
+                                  <td>{{ if .detailedStats.redBets }}{{ .detailedStats.redBets }}{{ else }}0{{ end }}</td>
+                                  <td>{{ if .detailedStats.wonRedBets }}{{ .detailedStats.wonRedBets }}{{ else }}0{{ end }}</td>
+                                  <td>{{ if .detailedStats.lostRedBets }}{{ .detailedStats.lostRedBets }}{{ else }}0{{ end }}</td>
+                                </tr>
+                                <tr>
+                                  <td>Черное</td>
+                                  <td>{{ if .detailedStats.blackBets }}{{ .detailedStats.blackBets }}{{ else }}0{{ end }}</td>
+                                  <td>{{ if .detailedStats.wonBlackBets }}{{ .detailedStats.wonBlackBets }}{{ else }}0{{ end }}</td>
+                                  <td>{{ if .detailedStats.lostBlackBets }}{{ .detailedStats.lostBlackBets }}{{ else }}0{{ end }}</td>
+                                </tr>
+                                <tr>
+                                  <td>Зеро</td>
+                                  <td>{{ if .detailedStats.zeroBets }}{{ .detailedStats.zeroBets }}{{ else }}0{{ end }}</td>
+                                  <td>{{ if .detailedStats.wonZeroBets }}{{ .detailedStats.wonZeroBets }}{{ else }}0{{ end }}</td>
+                                  <td>{{ if .detailedStats.lostZeroBets }}{{ .detailedStats.lostZeroBets }}{{ else }}0{{ end }}</td>
+                                </tr>
+                                <tr class="table-secondary">
+                                  <td><strong>Всего</strong></td>
+                                  <td><strong>{{ .stats.TotalBets }}</strong></td>
+                                  <td><strong>{{ .stats.WonBets }}</strong></td>
+                                  <td><strong>{{ subtract .stats.TotalBets .stats.WonBets }}</strong></td>
+                                </tr>
                               </tbody>
-                          </table>
+                            </table>
+                          </div>
+                        </div>
                       </div>
+                      
+                      <div class="col-md-6">
+                        <div class="card mb-3">
+                          <div class="card-header bg-light">
+                            <h6 class="mb-0">Активность по периодам</h6>
+                          </div>
+                          <div class="card-body">
+                            <canvas id="activityChart" width="400" height="250"></canvas>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="row">
+                      <div class="col-12">
+                        <div class="card">
+                          <div class="card-header bg-light">
+                            <h6 class="mb-0">Успешность по типам ставок</h6>
+                          </div>
+                          <div class="card-body">
+                            <canvas id="betTypeChart" width="400" height="150"></canvas>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                </div>
               </div>
+            </div>
           </div>
-      </div>
+        </div>
       </div>
     </main>
   </div>
 
+  <!-- Модальное окно редактирования профиля -->
+  <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editProfileModalLabel">Редактирование профиля</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editProfileForm">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="username" class="form-label">Имя пользователя</label>
+                  <input type="text" class="form-control" id="username" name="username" value="{{ .user.Username }}">
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="telegram-id" class="form-label">Telegram ID</label>
+                  <input type="text" class="form-control" id="telegram-id" value="{{ .user.TelegramID }}" readonly>
+                </div>
+              </div>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="first-name" class="form-label">Имя</label>
+                  <input type="text" class="form-control" id="first-name" name="firstName" value="{{ .user.FirstName }}">
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="last-name" class="form-label">Фамилия</label>
+                  <input type="text" class="form-control" id="last-name" name="lastName" value="{{ .user.LastName }}">
+                </div>
+              </div>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="language" class="form-label">Язык</label>
+                  <select class="form-select" id="language" name="languageCode">
+                    <option value="en" {{ if eq .user.LanguageCode "en" }}selected{{ end }}>English</option>
+                    <option value="ru" {{ if eq .user.LanguageCode "ru" }}selected{{ end }}>Русский</option>
+                    <option value="uk" {{ if eq .user.LanguageCode "uk" }}selected{{ end }}>Українська</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="country" class="form-label">Страна</label>
+                  <select class="form-select" id="country" name="country">
+                    <option value="">Не выбрано</option>
+                    {{range $country := .countries}}
+                    <option value="{{$country.Code}}" {{ if eq $.user.Country $country.Code }}selected{{ end }}>{{$country.Emoji}} {{$country.Name}}</option>
+                    {{end}}
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="wallet-address" class="form-label">Адрес кошелька</label>
+              <input type="text" class="form-control" id="wallet-address" name="walletAddress" value="{{ .user.WalletAddress }}">
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="button" class="btn btn-primary" id="save-profile-btn">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно управления балансом -->
+  <div class="modal fade" id="balanceModal" tabindex="-1" aria-labelledby="balanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="balanceModalLabel">Управление балансом</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <h3 class="text-center">Текущий баланс: <span id="current-balance">{{ .user.Balance }}</span> $</h3>
+          </div>
+          
+          <form id="balanceForm">
+            <div class="mb-3">
+              <label for="amount" class="form-label">Сумма</label>
+              <input type="number" class="form-control" id="amount" name="amount" min="0.01" step="0.01">
+            </div>
+            
+            <div class="mb-3">
+              <label for="operation" class="form-label">Операция</label>
+              <select class="form-select" id="operation" name="operation">
+                <option value="add">Пополнить</option>
+                <option value="subtract">Списать</option>
+              </select>
+            </div>
+            
+            <div class="mb-3">
+              <label for="balance-note" class="form-label">Примечание (не обязательно)</label>
+              <textarea class="form-control" id="balance-note" name="note" rows="2"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="button" class="btn btn-primary" id="update-balance-btn">Обновить баланс</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {{block "additionalStyles" .}}
+  <style>
+    .wallet-address {
+      display: inline-block;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    
+    .avatar-placeholder {
+      width: 100px;
+      height: 100px;
+      background-color: #f8f9fa;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+    }
+    
+    .circle-stat {
+      width: 50px;
+      height: 50px;
+      background-color: #f8f9fa;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+      font-weight: bold;
+    }
+  </style>
+  {{end}}
+
   {{block "additionalScripts" .}}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
   $(document).ready(function() {
-      // Ban user handler
-      $('.ban-user').click(function() {
-          var userId = $(this).data('id');
-          if (confirm('Are you sure you want to ban this user?')) {
-              $.post('/admin/user/' + userId + '/ban', function(data) {
-                  if (data.success) {
-                      window.location.reload();
-                  } else {
-                      alert('Error: ' + data.error);
-                  }
-              });
+    // Бан пользователя
+    $('.ban-user-btn').click(function() {
+      var userId = $(this).data('id');
+      if (confirm('Вы уверены, что хотите забанить этого пользователя?')) {
+        $.post('/admin/user/' + userId + '/ban', function(data) {
+          if (data.success) {
+            window.location.reload();
+          } else {
+            alert('Ошибка: ' + data.error);
           }
-      });
+        });
+      }
+    });
+    
+    // Разбан пользователя
+    $('.unban-user-btn').click(function() {
+      var userId = $(this).data('id');
+      if (confirm('Вы уверены, что хотите разбанить этого пользователя?')) {
+        $.post('/admin/user/' + userId + '/unban', function(data) {
+          if (data.success) {
+            window.location.reload();
+          } else {
+            alert('Ошибка: ' + data.error);
+          }
+        });
+      }
+    });
+
+    // Открытие модального окна редактирования профиля
+    $('.edit-profile-btn').click(function() {
+      $('#editProfileModal').modal('show');
+    });
+    
+    // Сохранение изменений профиля
+    $('#save-profile-btn').click(function() {
+      var formData = {
+        username: $('#username').val(),
+        firstName: $('#first-name').val(),
+        lastName: $('#last-name').val(),
+        languageCode: $('#language').val(),
+        country: $('#country').val(),
+        walletAddress: $('#wallet-address').val(),
+      };
       
-      // Unban user handler
-      $('.unban-user').click(function() {
-          var userId = $(this).data('id');
-          if (confirm('Are you sure you want to unban this user?')) {
-              $.post('/admin/user/' + userId + '/unban', function(data) {
-                  if (data.success) {
-                      window.location.reload();
-                  } else {
-                      alert('Error: ' + data.error);
-                  }
-              });
-          }
+      $.post('/admin/user/{{ .user.ID }}/update', formData, function(response) {
+        if (response.success) {
+          $('#editProfileModal').modal('hide');
+          alert('Профиль успешно обновлен');
+          window.location.reload();
+        } else {
+          alert('Ошибка: ' + response.error);
+        }
       });
+    });
+
+    // Открытие модального окна управления балансом
+    $('.edit-balance-btn').click(function() {
+      $('#balanceModal').modal('show');
+    });
+    
+    // Обновление баланса
+    $('#update-balance-btn').click(function() {
+      var amount = $('#amount').val();
+      var operation = $('#operation').val();
+      var note = $('#balance-note').val();
       
-      // Add balance handler
-      $('#add-balance').click(function() {
-          var amount = $('#amount').val();
-          if (!amount || amount <= 0) {
-              alert('Please enter a valid amount');
-              return;
-          }
-          
-          if (confirm('Are you sure you want to add ' + amount + ' to the balance?')) {
-              $.post('/admin/user/{{ .user.ID }}/add-balance', { amount: amount }, function(data) {
-                  if (data.success) {
-                      window.location.reload();
-                  } else {
-                      alert('Error: ' + data.error);
-                  }
-              });
-          }
-      });
+      if (!amount || amount <= 0) {
+        alert('Пожалуйста, введите корректную сумму');
+        return;
+      }
       
-      // Subtract balance handler
-      $('#subtract-balance').click(function() {
-          var amount = $('#amount').val();
-          if (!amount || amount <= 0) {
-              alert('Please enter a valid amount');
-              return;
-          }
-          
-          if (confirm('Are you sure you want to subtract ' + amount + ' from the balance?')) {
-              $.post('/admin/user/{{ .user.ID }}/subtract-balance', { amount: amount }, function(data) {
-                  if (data.success) {
-                      window.location.reload();
-                  } else {
-                      alert('Error: ' + data.error);
-                  }
-              });
-          }
+      $.post('/admin/user/{{ .user.ID }}/balance', {
+        amount: amount,
+        operation: operation,
+        note: note
+      }, function(response) {
+        if (response.success) {
+          $('#balanceModal').modal('hide');
+          $('#current-balance').text(response.balance);
+          alert('Баланс успешно обновлен');
+          window.location.reload();
+        } else {
+          alert('Ошибка: ' + response.error);
+        }
       });
+    });
+
+    // Копирование адреса кошелька
+    $('.copy-address-btn').click(function() {
+      var address = $(this).data('address');
+      navigator.clipboard.writeText(address).then(function() {
+        $(this).attr('title', 'Скопировано!');
+        $(this).tooltip('show');
+        setTimeout(function() {
+          $(this).attr('title', 'Копировать адрес');
+        }.bind(this), 2000);
+      }.bind(this));
+    });
+
+    // Инициализация tooltip
+    $('[data-toggle="tooltip"]').tooltip();
+
+    // Инициализация графика активности
+    var activityCtx = document.getElementById('activityChart');
+    if (activityCtx) {
+      var activityChart = new Chart(activityCtx, {
+        type: 'bar',
+        data: {
+          labels: ['День', 'Неделя', 'Месяц'],
+          datasets: [{
+            label: 'Количество ставок',
+            data: [
+              {{ .stats.DailyBets }}, 
+              {{ .stats.WeeklyBets }}, 
+              {{ .stats.MonthlyBets }}
+            ],
+            backgroundColor: [
+              'rgba(255, 99, 132, 0.2)',
+              'rgba(54, 162, 235, 0.2)',
+              'rgba(75, 192, 192, 0.2)'
+            ],
+            borderColor: [
+              'rgba(255, 99, 132, 1)',
+              'rgba(54, 162, 235, 1)',
+              'rgba(75, 192, 192, 1)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    // Инициализация графика типов ставок
+    var betTypeCtx = document.getElementById('betTypeChart');
+    if (betTypeCtx) {
+      var betTypeChart = new Chart(betTypeCtx, {
+        type: 'horizontalBar',
+        data: {
+          labels: ['Красное', 'Черное', 'Зеро'],
+          datasets: [
+            {
+              label: 'Выигрыши',
+              data: [
+                {{ if .detailedStats.wonRedBets }}{{ .detailedStats.wonRedBets }}{{ else }}0{{ end }},
+                {{ if .detailedStats.wonBlackBets }}{{ .detailedStats.wonBlackBets }}{{ else }}0{{ end }},
+                {{ if .detailedStats.wonZeroBets }}{{ .detailedStats.wonZeroBets }}{{ else }}0{{ end }}
+              ],
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1
+            },
+            {
+              label: 'Проигрыши',
+              data: [
+                {{ if .detailedStats.lostRedBets }}{{ .detailedStats.lostRedBets }}{{ else }}0{{ end }},
+                {{ if .detailedStats.lostBlackBets }}{{ .detailedStats.lostBlackBets }}{{ else }}0{{ end }},
+                {{ if .detailedStats.lostZeroBets }}{{ .detailedStats.lostZeroBets }}{{ else }}0{{ end }}
+              ],
+              backgroundColor: 'rgba(255, 99, 132, 0.2)',
+              borderColor: 'rgba(255, 99, 132, 1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          scales: {
+            x: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
   });
   </script>
   {{end}}
