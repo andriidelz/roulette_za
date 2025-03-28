@@ -144,8 +144,9 @@
                 }
                 
                 const formData = new FormData(this);
+                const actionUrl = distributeForm.getAttribute('action');
                 
-                fetch(this.action, {
+                fetch(actionUrl, {
                     method: 'POST',
                     body: formData
                 })
