@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"roulette/internal/data"
 	"roulette/internal/models"
 	"roulette/internal/service"
 	"roulette/internal/utils"
@@ -1145,19 +1146,19 @@ func (b *Bot) sendMainMenu(chatID int64, language string) {
 func (b *Bot) createCountriesKeyboard(page int) *telego.InlineKeyboardMarkup {
 	// Создаем массив кнопок для постраничной навигации
 	// Сортировка - сначала избранные страны, затем остальные по коду
-	sort.Slice(countries, func(i, j int) bool {
-		if countries[i].Favorite && !countries[j].Favorite {
+	sort.Slice(data.Countries, func(i, j int) bool {
+		if data.Countries[i].Favorite && !data.Countries[j].Favorite {
 			return true
 		}
-		if !countries[i].Favorite && countries[j].Favorite {
+		if !data.Countries[i].Favorite && data.Countries[j].Favorite {
 			return false
 		}
-		return countries[i].Code < countries[j].Code
+		return data.Countries[i].Code < data.Countries[j].Code
 	})
 
 	// Создаем массив кнопок для постраничной навигации
 	var buttons []utils.PaginatedKeyboardButton
-	for _, country := range countries {
+	for _, country := range data.Countries {
 		buttonText := fmt.Sprintf("%s %s", country.Emoji, country.Code)
 		buttonData := fmt.Sprintf("country:%s", country.Code)
 

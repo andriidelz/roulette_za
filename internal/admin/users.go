@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"roulette/internal/data"
 	"roulette/internal/models"
 	"strconv"
 
@@ -51,7 +52,7 @@ func (a *AdminPanel) usersList(c *gin.Context) {
 
 		// Добавляем информацию о стране
 		var countryEmoji string
-		for _, country := range CountryList {
+		for _, country := range data.Countries {
 			if country.Code == user.Country {
 				countryEmoji = country.Emoji
 				break
@@ -77,7 +78,7 @@ func (a *AdminPanel) usersList(c *gin.Context) {
 
 	// Получаем список стран для фильтрации
 	var countries []gin.H
-	for _, country := range CountryList {
+	for _, country := range data.Countries {
 		countries = append(countries, gin.H{
 			"Code":  country.Code,
 			"Name":  country.Name,
@@ -201,7 +202,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 
 	// Получаем список всех доступных стран для выбора
 	var countries []gin.H
-	for _, country := range CountryList {
+	for _, country := range data.Countries {
 		countries = append(countries, gin.H{
 			"Code":  country.Code,
 			"Name":  country.Name,
@@ -212,7 +213,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	// Находим флаг страны пользователя
 	userCountryEmoji := ""
 	userCountryName := ""
-	for _, country := range CountryList {
+	for _, country := range data.Countries {
 		if country.Code == user.Country {
 			userCountryEmoji = country.Emoji
 			userCountryName = country.Name

@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"log"
+	"roulette/internal/data"
 
 	"github.com/mymmrac/telego"
 )
@@ -85,7 +86,7 @@ func (b *Bot) createSettingsKeyboard(language string, userID int64) *telego.Inli
 		countryDisplay = "-"
 	} else {
 		// Добавляем эмодзи флага, если есть страна
-		for _, c := range countries {
+		for _, c := range data.Countries {
 			if c.Code == countryDisplay {
 				countryDisplay = c.Emoji + " " + countryDisplay
 				break
