@@ -34,6 +34,12 @@ type Service interface {
 	GetUserBetsForRound(telegramID int64, hashEntryID uint) ([]models.Bet, error)
 	GetHashEntryByID(id uint) (*models.HashEntry, error)
 
+	// Статистика
+	GetTotalStats() (map[string]int64, error)
+	GetSuccessRateStats() (map[string]float64, error)
+	GetTopPlayersBySuccessRate(limit int) ([]map[string]interface{}, error)
+	GetTopPlayersByAttempts(limit int) ([]map[string]interface{}, error)
+
 	// Рейтинги
 	GetWeeklyRating(limit int) ([]models.WeeklyRating, error)
 	GetUserPosition(telegramID int64) (int, error)
@@ -41,8 +47,6 @@ type Service interface {
 	UpdateWeeklyRatings() error
 	DistributePrizes() error
 	GetPrizeFund(year, week int) (*models.PrizeFund, error)
-
-	// Новые методы для рейтинга
 	GetWeeklyTopRating(limit int) ([]models.WeeklyRating, error)
 	GetUserRatingPosition(telegramID int64, neighborsCount int) ([]models.WeeklyRating, int, error)
 	GetPointsToReachPrizeZone() (int, error)

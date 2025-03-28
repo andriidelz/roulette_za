@@ -26,6 +26,10 @@ type Repository interface {
 	GetUserWeeklyStats(userID uint) (int, int, error)
 	GetUserMonthlyStats(userID uint) (int, int, error)
 	GetDetailedStatsByDate(userID uint, startDate string, endDate string) (map[string]int, error)
+	GetTotalStats() (map[string]int64, error)
+	GetSuccessRateStats() (map[string]float64, error)
+	GetTopPlayersBySuccessRate(limit int) ([]map[string]interface{}, error)
+	GetTopPlayersByAttempts(limit int) ([]map[string]interface{}, error)
 
 	// Игры и стаки
 	CreateBet(bet *models.Bet) error

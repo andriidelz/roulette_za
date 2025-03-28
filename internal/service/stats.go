@@ -65,3 +65,23 @@ func (s *ServiceImpl) getDetailedStatsByDate(userID uint, startDate string, endD
 	// Запрос к репозиторию для получения детальной статистики
 	return s.repo.GetDetailedStatsByDate(userID, startDate, endDate)
 }
+
+// GetTotalStats возвращает общую статистику ставок
+func (s *ServiceImpl) GetTotalStats() (map[string]int64, error) {
+	return s.repo.GetTotalStats()
+}
+
+// GetSuccessRateStats возвращает статистику успешных угадываний
+func (s *ServiceImpl) GetSuccessRateStats() (map[string]float64, error) {
+	return s.repo.GetSuccessRateStats()
+}
+
+// GetTopPlayersBySuccessRate возвращает топ игроков по успешным угадываниям
+func (s *ServiceImpl) GetTopPlayersBySuccessRate(limit int) ([]map[string]interface{}, error) {
+	return s.repo.GetTopPlayersBySuccessRate(limit)
+}
+
+// GetTopPlayersByAttempts возвращает топ игроков по количеству попыток
+func (s *ServiceImpl) GetTopPlayersByAttempts(limit int) ([]map[string]interface{}, error) {
+	return s.repo.GetTopPlayersByAttempts(limit)
+}
