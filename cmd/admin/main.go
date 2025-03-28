@@ -35,7 +35,7 @@ func main() {
 	repo := repository.NewRepository(db)
 
 	// Створюємо сервіс
-	svc := service.NewService(repo)
+	svc := service.NewService(repo, cfg.TelegramToken)
 
 	// Створюємо налаштування для адмін-панелі
 	adminSettings := &admin.Settings{

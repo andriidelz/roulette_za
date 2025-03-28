@@ -37,7 +37,7 @@ func main() {
 	repo := repository.NewRepository(db)
 
 	// Создаем сервис
-	svc := service.NewService(repo)
+	svc := service.NewService(repo, cfg.TelegramToken)
 
 	// Создаем бота с URL для RabbitMQ
 	telegramBot, err := bot.NewBot(cfg.TelegramToken, svc, cfg.RabbitMQURL)

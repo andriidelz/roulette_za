@@ -8,21 +8,21 @@
         <div class="row">
           <div class="col-12">
               <div class="d-flex justify-content-between align-items-center mb-4">
-                  <h1>Roulette Hashes</h1>
+                  <h1>Хеши рулетки</h1>
                   <div>
                       <button id="refresh-hashes" class="btn btn-outline-primary refresh-button">
-                          <i class="bi bi-arrow-clockwise"></i> Refresh
+                          <i class="bi bi-arrow-clockwise"></i> Обновить
                       </button>
                       <div class="btn-group ms-2">
                           <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="autoRefreshDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                              <i class="bi bi-clock"></i> Auto-refresh
+                              <i class="bi bi-clock"></i> Автообновление
                           </button>
                           <ul class="dropdown-menu" aria-labelledby="autoRefreshDropdown">
-                              <li><a class="dropdown-item auto-refresh" href="#" data-seconds="0">Off</a></li>
-                              <li><a class="dropdown-item auto-refresh" href="#" data-seconds="5">Every 5 seconds</a></li>
-                              <li><a class="dropdown-item auto-refresh" href="#" data-seconds="15">Every 15 seconds</a></li>
-                              <li><a class="dropdown-item auto-refresh" href="#" data-seconds="30">Every 30 seconds</a></li>
-                              <li><a class="dropdown-item auto-refresh" href="#" data-seconds="60">Every minute</a></li>
+                              <li><a class="dropdown-item auto-refresh" href="#" data-seconds="0">Выкл</a></li>
+                              <li><a class="dropdown-item auto-refresh" href="#" data-seconds="5">Каждые 5 секунд</a></li>
+                              <li><a class="dropdown-item auto-refresh" href="#" data-seconds="15">Каждые 15 секунд</a></li>
+                              <li><a class="dropdown-item auto-refresh" href="#" data-seconds="30">Каждые 30 секунд</a></li>
+                              <li><a class="dropdown-item auto-refresh" href="#" data-seconds="60">Каждую минуту</a></li>
                           </ul>
                       </div>
                   </div>
@@ -32,9 +32,9 @@
 
       <div class="card mb-4">
           <div class="card-header d-flex justify-content-between align-items-center">
-              <h5 class="mb-0">Hash List</h5>
+              <h5 class="mb-0">Список хешей</h5>
               <div id="auto-refresh-status" class="text-muted small">
-                  Auto-refresh: <span id="refresh-interval-text">off</span>
+                  Автообновление: <span id="refresh-interval-text">выкл</span>
               </div>
           </div>
           <div class="card-body">
@@ -43,12 +43,12 @@
                       <thead>
                           <tr>
                               <th>ID/Base62</th>
-                              <th>Number</th>
-                              <th>Color</th>
-                              <th>Hash</th>
-                              <th>Salt (HEX)</th>
-                              <th>Created</th>
-                              <th>Actions</th>
+                              <th>Номер</th>
+                              <th>Цвет</th>
+                              <th>Хеш</th>
+                              <th>Соль (HEX)</th>
+                              <th>Создан</th>
+                              <th>Действия</th>
                           </tr>
                       </thead>
                       <tbody id="hashes-table-body">
@@ -59,11 +59,11 @@
                                   <td>{{ .Number }}</td>
                                   <td>
                                       {{ if eq .Color "red" }}
-                                      <span><span class="color-indicator color-red"></span>Red</span>
+                                      <span><span class="color-indicator color-red"></span>Красный</span>
                                       {{ else if eq .Color "black" }}
-                                      <span><span class="color-indicator color-black"></span>Black</span>
+                                      <span><span class="color-indicator color-black"></span>Чёрный</span>
                                       {{ else }}
-                                      <span><span class="color-indicator color-green"></span>Zero</span>
+                                      <span><span class="color-indicator color-green"></span>Зеро</span>
                                       {{ end }}
                                   </td>
                                   <td><span class="hash-label" title="{{ .Hash }}">{{ .Hash }}</span></td>
@@ -94,7 +94,7 @@
                               <tr>
                                   <td colspan="7" class="text-center">
                                       <div class="alert alert-info mb-0">
-                                          <i class="bi bi-info-circle me-2"></i>No hashes found
+                                          <i class="bi bi-info-circle me-2"></i>Хеши не найдены
                                       </div>
                                   </td>
                               </tr>
@@ -144,12 +144,12 @@
           </div>
       </div>
 
-      <!-- Hash Details Modal -->
+      <!-- Модальное окно деталей хеша -->
       <div class="modal fade" id="hashDetailsModal" tabindex="-1" aria-labelledby="hashDetailsModalLabel" aria-hidden="true">
           <div class="modal-dialog modal-lg">
               <div class="modal-content">
                   <div class="modal-header">
-                      <h5 class="modal-title" id="hashDetailsModalLabel">Hash Details</h5>
+                      <h5 class="modal-title" id="hashDetailsModalLabel">Детали хеша</h5>
                       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                   </div>
                   <div class="modal-body">
@@ -158,67 +158,67 @@
                           <div class="p-2 bg-light rounded" id="modal-id"></div>
                       </div>
                       <div class="mb-3">
-                          <label class="form-label">Number:</label>
+                          <label class="form-label">Номер:</label>
                           <div class="p-2 bg-light rounded" id="modal-number"></div>
                       </div>
                       <div class="mb-3">
-                          <label class="form-label">Color:</label>
+                          <label class="form-label">Цвет:</label>
                           <div class="p-2 bg-light rounded" id="modal-color"></div>
                       </div>
                       <div class="mb-3">
-                          <label class="form-label">Hash:</label>
+                          <label class="form-label">Хеш:</label>
                           <div class="p-2 bg-light rounded hash-label-full" id="modal-hash"></div>
                       </div>
                       <div class="mb-3">
-                          <label class="form-label">Salt (HEX):</label>
+                          <label class="form-label">Соль (HEX):</label>
                           <div class="p-2 bg-light rounded hash-label-full" id="modal-salt"></div>
                       </div>
                       <div class="mb-3">
-                          <label class="form-label">Created:</label>
+                          <label class="form-label">Создан:</label>
                           <div class="p-2 bg-light rounded" id="modal-created"></div>
                       </div>
                   </div>
                   <div class="modal-footer">
-                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                      <button type="button" class="btn btn-primary" id="verify-modal-hash">Verify</button>
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                      <button type="button" class="btn btn-primary" id="verify-modal-hash">Проверить</button>
                   </div>
               </div>
           </div>
       </div>
 
-      <!-- Hash Verification Modal -->
+      <!-- Модальное окно проверки хеша -->
       <div class="modal fade" id="verifyHashModal" tabindex="-1" aria-labelledby="verifyHashModalLabel" aria-hidden="true">
           <div class="modal-dialog">
               <div class="modal-content">
                   <div class="modal-header">
-                      <h5 class="modal-title" id="verifyHashModalLabel">Hash Verification</h5>
+                      <h5 class="modal-title" id="verifyHashModalLabel">Проверка хеша</h5>
                       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                   </div>
                   <div class="modal-body">
                       <div id="verify-result" class="alert alert-info">
                           <i class="bi bi-info-circle me-2"></i>
-                          Click "Verify" to check the hash
+                          Нажмите "Проверить", чтобы проверить хеш
                       </div>
                       <div class="mb-3">
-                          <label for="verify-number" class="form-label">Number:</label>
+                          <label for="verify-number" class="form-label">Номер:</label>
                           <input type="number" class="form-control" id="verify-number" min="0" max="36">
                       </div>
                       <div class="mb-3">
-                          <label for="verify-salt" class="form-label">Salt (HEX):</label>
+                          <label for="verify-salt" class="form-label">Соль (HEX):</label>
                           <input type="text" class="form-control" id="verify-salt">
                       </div>
                       <div class="mb-3">
-                          <label for="verify-hash" class="form-label">Hash (original):</label>
+                          <label for="verify-hash" class="form-label">Хеш (оригинальный):</label>
                           <input type="text" class="form-control" id="verify-hash" readonly>
                       </div>
                       <div class="mb-3">
-                          <label for="verify-computed-hash" class="form-label">Computed Hash:</label>
+                          <label for="verify-computed-hash" class="form-label">Вычисленный хеш:</label>
                           <input type="text" class="form-control" id="verify-computed-hash" readonly>
                       </div>
                   </div>
                   <div class="modal-footer">
-                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                      <button type="button" class="btn btn-primary" id="do-verify-hash">Verify</button>
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                      <button type="button" class="btn btn-primary" id="do-verify-hash">Проверить</button>
                   </div>
               </div>
           </div>
@@ -235,7 +235,7 @@
       let autoRefreshInterval = null;
       let refreshSeconds = 0;
 
-      // Function to update hash table
+      // Функция для обновления таблицы хешей
       function refreshHashes() {
           $('#refresh-hashes').addClass('spinning');
           
@@ -250,26 +250,26 @@
               },
               error: function() {
                   $('#refresh-hashes').removeClass('spinning');
-                  alert('Error updating data');
+                  alert('Ошибка обновления данных');
               }
           });
       }
 
-      // Update hash table
+      // Обновление таблицы хешей
       function updateHashesTable(entries) {
           let tableBody = '';
           
           if (entries && entries.length > 0) {
               entries.forEach(function(entry) {
                   let colorClass = 'color-black';
-                  let colorText = 'Black';
+                  let colorText = 'Чёрный';
                   
                   if (entry.Color === 'red') {
                       colorClass = 'color-red';
-                      colorText = 'Red';
+                      colorText = 'Красный';
                   } else if (entry.Color === 'zero') {
                       colorClass = 'color-green';
-                      colorText = 'Zero';
+                      colorText = 'Зеро';
                   }
                   
                   tableBody += `
@@ -309,7 +309,7 @@
               <tr>
                   <td colspan="7" class="text-center">
                       <div class="alert alert-info mb-0">
-                          <i class="bi bi-info-circle me-2"></i>No hashes found
+                          <i class="bi bi-info-circle me-2"></i>Хеши не найдены
                       </div>
                   </td>
               </tr>
@@ -320,11 +320,11 @@
           attachEventListeners();
       }
 
-      // Update pagination
+      // Обновление пагинации
       function updatePagination(currentPage, totalPages) {
           let pagination = '';
           
-          // Previous page
+          // Предыдущая страница
           if (currentPage > 1) {
               pagination += `
               <li class="page-item">
@@ -341,15 +341,15 @@
               `;
           }
           
-          // Determine which pages to show
+          // Определяем, какие страницы показывать
           let pagesToShow = [];
           if (totalPages <= 7) {
-              // If total pages is not more than 7, show all
+              // Если всего страниц не более 7, показать все
               for (let i = 1; i <= totalPages; i++) {
                   pagesToShow.push(i);
               }
           } else {
-              // Otherwise show current page, 2 previous, 2 next, first and last
+              // Иначе показать текущую страницу, 2 предыдущих, 2 следующих, первую и последнюю
               pagesToShow.push(1);
               
               let start = currentPage - 2;
@@ -363,7 +363,7 @@
               }
               
               if (start > 2) {
-                  pagesToShow.push(-1); // Add "..."
+                  pagesToShow.push(-1); // Добавить "..."
               }
               
               for (let i = start; i <= end; i++) {
@@ -371,13 +371,13 @@
               }
               
               if (end < totalPages - 1) {
-                  pagesToShow.push(-1); // Add "..."
+                  pagesToShow.push(-1); // Добавить "..."
               }
               
               pagesToShow.push(totalPages);
           }
           
-          // Add pages to pagination
+          // Добавить страницы в пагинацию
           for (let page of pagesToShow) {
               if (page === -1) {
                   pagination += '<li class="page-item disabled"><span class="page-link">...</span></li>';
@@ -388,7 +388,7 @@
               }
           }
           
-          // Next page
+          // Следующая страница
           if (currentPage < totalPages) {
               pagination += `
               <li class="page-item">
@@ -408,9 +408,9 @@
           $('#pagination').html(pagination);
       }
 
-      // Auto-refresh setup
+      // Настройка автообновления
       function setupAutoRefresh(seconds) {
-          // Stop previous refresh if it exists
+          // Остановить предыдущее обновление, если оно существует
           if (autoRefreshInterval) {
               clearInterval(autoRefreshInterval);
               autoRefreshInterval = null;
@@ -418,31 +418,31 @@
           
           refreshSeconds = seconds;
           
-          // Update status
+          // Обновить статус
           if (seconds > 0) {
-              $('#refresh-interval-text').text(`every ${seconds} ${getSecondsText(seconds)}`);
+              $('#refresh-interval-text').text(`каждые ${seconds} ${getSecondsText(seconds)}`);
               autoRefreshInterval = setInterval(refreshHashes, seconds * 1000);
           } else {
-              $('#refresh-interval-text').text('off');
+              $('#refresh-interval-text').text('выкл');
           }
       }
 
-      // Get proper seconds text
+      // Получить правильный текст для секунд
       function getSecondsText(seconds) {
           if (seconds % 10 === 1 && seconds % 100 !== 11) {
-              return 'second';
+              return 'секунду';
           } else if ([2, 3, 4].includes(seconds % 10) && ![12, 13, 14].includes(seconds % 100)) {
-              return 'seconds';
+              return 'секунды';
           } else {
-              return 'seconds';
+              return 'секунд';
           }
       }
 
-      // Attach event handlers
+      // Привязка обработчиков событий
       function attachEventListeners() {
-          // View hash details
+          // Посмотреть детали хеша
           $('.view-details-btn').click(function() {
-              // Get data from data attributes
+              // Получить данные из атрибутов data
               const hashId = $(this).data('id');
               const base62Id = $(this).data('base62');
               const number = $(this).data('number');
@@ -451,19 +451,19 @@
               const salt = $(this).data('salt');
               const created = $(this).data('created');
               
-              // Set data directly in the modal
+              // Установить данные прямо в модальном окне
               $('#modal-id').text(hashId + '/' + base62Id);
               $('#modal-number').text(number);
               
               let colorClass = 'color-black';
-              let colorText = 'Black';
+              let colorText = 'Чёрный';
               
               if (color === 'red') {
                   colorClass = 'color-red';
-                  colorText = 'Red';
+                  colorText = 'Красный';
               } else if (color === 'zero') {
                   colorClass = 'color-green';
-                  colorText = 'Zero';
+                  colorText = 'Зеро';
               }
               
               $('#modal-color').html(`<span><span class="color-indicator ${colorClass}"></span>${colorText}</span>`);
@@ -471,71 +471,71 @@
               $('#modal-salt').text(salt);
               $('#modal-created').text(created);
               
-              // Save data for verification
+              // Сохранить данные для проверки
               $('#verify-modal-hash').data('id', hashId);
               $('#verify-modal-hash').data('number', number);
               $('#verify-modal-hash').data('hash', hash);
               $('#verify-modal-hash').data('salt', salt);
               
-              // Show the modal
+              // Показать модальное окно
               $('#hashDetailsModal').modal('show');
           });
           
-          // Verify hash button in the table
+          // Кнопка проверки хеша в таблице
           $('.verify-hash-btn').click(function() {
-              // Get data from data attributes
+              // Получить данные из атрибутов data
               const number = $(this).data('number');
               const hash = $(this).data('hash');
               const salt = $(this).data('salt');
               
-              // Set data directly in the verification modal
+              // Установить данные прямо в модальном окне проверки
               $('#verify-number').val(number);
               $('#verify-salt').val(salt);
               $('#verify-hash').val(hash);
               $('#verify-computed-hash').val('');
               
-              // Reset the result message
+              // Сбросить сообщение о результате
               $('#verify-result').removeClass('alert-success alert-danger').addClass('alert-info');
-              $('#verify-result').html('<i class="bi bi-info-circle me-2"></i>Click "Verify" to check the hash');
+              $('#verify-result').html('<i class="bi bi-info-circle me-2"></i>Нажмите "Проверить", чтобы проверить хеш');
               
-              // Show the verification modal
+              // Показать модальное окно проверки
               $('#verifyHashModal').modal('show');
           });
       }
 
-      // Initial event listeners attachment
+      // Начальная привязка обработчиков событий
       attachEventListeners();
 
-      // Verify hash from details modal
+      // Проверка хеша из модального окна деталей
       $('#verify-modal-hash').click(function() {
-          // Get data directly from data attributes
+          // Получить данные прямо из атрибутов data
           const number = $(this).data('number');
           const hash = $(this).data('hash');
           const salt = $(this).data('salt');
           
-          // Fill verification modal
+          // Заполнить модальное окно проверки
           $('#verify-number').val(number);
           $('#verify-salt').val(salt);
           $('#verify-hash').val(hash);
           $('#verify-computed-hash').val('');
           
-          // Reset the result message
+          // Сбросить сообщение о результате
           $('#verify-result').removeClass('alert-success alert-danger').addClass('alert-info');
-          $('#verify-result').html('<i class="bi bi-info-circle me-2"></i>Click "Verify" to check the hash');
+          $('#verify-result').html('<i class="bi bi-info-circle me-2"></i>Нажмите "Проверить", чтобы проверить хеш');
           
-          // Hide details modal and show verification modal
+          // Скрыть модальное окно деталей и показать модальное окно проверки
           $('#hashDetailsModal').modal('hide');
           $('#verifyHashModal').modal('show');
       });
       
-      // Verify hash action
+      // Действие проверки хеша
       $('#do-verify-hash').click(function() {
           const number = $('#verify-number').val();
           const salt = $('#verify-salt').val();
           const originalHash = $('#verify-hash').val();
           
           if (!number || !salt || !originalHash) {
-              alert('Fill in all fields');
+              alert('Заполните все поля');
               return;
           }
           
@@ -554,24 +554,24 @@
                   
                   if (data.valid) {
                       $('#verify-result').removeClass('alert-info alert-danger').addClass('alert-success');
-                      $('#verify-result').html('<i class="bi bi-check-circle me-2"></i>Valid hash! Data is authentic.');
+                      $('#verify-result').html('<i class="bi bi-check-circle me-2"></i>Действительный хеш! Данные подлинны.');
                   } else {
                       $('#verify-result').removeClass('alert-info alert-success').addClass('alert-danger');
-                      $('#verify-result').html('<i class="bi bi-x-circle me-2"></i>Invalid hash! Data may be tampered with.');
+                      $('#verify-result').html('<i class="bi bi-x-circle me-2"></i>Недействительный хеш! Данные могли быть изменены.');
                   }
               },
               error: function() {
-                  alert('Error verifying hash');
+                  alert('Ошибка проверки хеша');
               }
           });
       });
       
-      // Manual hash refresh
+      // Ручное обновление хешей
       $('#refresh-hashes').click(function() {
           refreshHashes();
       });
       
-      // Auto-refresh setup
+      // Настройка автообновления
       $('.auto-refresh').click(function(e) {
           e.preventDefault();
           const seconds = parseInt($(this).data('seconds'));

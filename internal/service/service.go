@@ -83,12 +83,16 @@ type Service interface {
 }
 
 type ServiceImpl struct {
-	repo repository.Repository
+	repo          repository.Repository
+	telegramToken string // Токен для доступа к Telegram API
 }
 
 // NewService створює новий екземпляр сервісу
-func NewService(repo repository.Repository) Service {
-	return &ServiceImpl{repo: repo}
+func NewService(repo repository.Repository, telegramToken string) Service {
+	return &ServiceImpl{
+		repo:          repo,
+		telegramToken: telegramToken,
+	}
 }
 
 // Реалізація методів для користувачів
@@ -124,6 +128,14 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 			updateNeeded = true
 		}
 
+		// Если у пользователя нет аватарки, попробуем получить ее из Telegram
+		if existingUser.AvatarURL == "" {
+			if avatarURL, err := utils.GetUserProfilePhoto(s.telegramToken, telegramID); err == nil && avatarURL != "" {
+				existingUser.AvatarURL = avatarURL
+				updateNeeded = true
+			}
+		}
+
 		// Обновляем пользователя только если были изменения
 		if updateNeeded {
 			if err := s.repo.UpdateUser(existingUser); err != nil {
@@ -134,6 +146,12 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 		return existingUser, nil
 	}
 
+	// Получаем аватарку пользователя из Telegram
+	avatarURL := ""
+	if avatar, err := utils.GetUserProfilePhoto(s.telegramToken, telegramID); err == nil {
+		avatarURL = avatar
+	}
+
 	// Создаем нового пользователя
 	user := &models.User{
 		TelegramID:   telegramID,
@@ -141,6 +159,7 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 		FirstName:    firstName,
 		LastName:     lastName,
 		LanguageCode: languageCode,
+		AvatarURL:    avatarURL,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}

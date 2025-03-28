@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     language_code VARCHAR(10),
     country VARCHAR(2),  -- ISO 3166-1 alpha-2 код страны
     wallet_address VARCHAR(255), -- Адрес кошелька USDT
+    avatar_url VARCHAR(512), -- Адрес кошелька USDT
     balance FLOAT DEFAULT 0,
     banned BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
