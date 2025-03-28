@@ -44,6 +44,7 @@ type Repository interface {
 	CalculateWeeklyRatings(year, week int) error
 	GetSuperRating(period string, limit int) ([]models.SuperRating, error)
 	UpdateSuperRating(rating *models.SuperRating) error
+	FixPartiallyDistributedPrizes(year, week int, action string) error
 
 	// Новые методы для рейтинга
 	GetCurrentWeekRating(limit int) ([]models.WeeklyRating, error)

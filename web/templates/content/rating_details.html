@@ -1,0 +1,171 @@
+{{define "rating_details"}}
+  {{template "header" .}}
+  {{template "navbar" .}}
+  <div class="d-flex">
+    {{template "sidebar" .}}
+    <main class="main-content flex-grow-1">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-12">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                  <h1>Рейтинг недели {{.week}} / {{.year}}</h1>
+                  <a href="/admin/ratings" class="btn btn-secondary">Назад к списку</a>
+              </div>
+          </div>
+        </div>
+
+        <div class="row mb-4">
+          <div class="col-md-6 col-xl-3 mb-3">
+              <div class="card bg-light">
+                  <div class="card-body">
+                      <h5 class="card-title">Период</h5>
+                      <p class="card-text">{{.startDate}} - {{.endDate}}</p>
+                  </div>
+              </div>
+          </div>
+          <div class="col-md-6 col-xl-3 mb-3">
+              <div class="card bg-light">
+                  <div class="card-body">
+                      <h5 class="card-title">Призовой фонд</h5>
+                      <p class="card-text">{{.prizeFund.Amount}}$</p>
+                  </div>
+              </div>
+          </div>
+          <div class="col-md-6 col-xl-3 mb-3">
+              <div class="card bg-light">
+                  <div class="card-body">
+                      <h5 class="card-title">Призовых мест</h5>
+                      <p class="card-text">{{.prizeFund.TopCount}}</p>
+                  </div>
+              </div>
+          </div>
+          <div class="col-md-6 col-xl-3 mb-3">
+              <div class="card 
+                  {{if eq .prizeStatus "DISTRIBUTED"}}
+                      bg-success text-white
+                  {{else if eq .prizeStatus "PARTIALLY_DISTRIBUTED"}}
+                      bg-warning
+                  {{else}}
+                      bg-light
+                  {{end}}">
+                  <div class="card-body">
+                      <h5 class="card-title">Статус призов</h5>
+                      <p class="card-text">
+                          {{if eq .prizeStatus "DISTRIBUTED"}}
+                              Распределены
+                          {{else if eq .prizeStatus "PARTIALLY_DISTRIBUTED"}}
+                              Частично распределены
+                          {{else}}
+                              Ожидают распределения
+                          {{end}}
+                      </p>
+                  </div>
+              </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-12">
+              <div class="card">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                      <h5 class="mb-0">Участники рейтинга</h5>
+                      {{if eq .prizeStatus "PENDING"}}
+                          <form id="distributeForm" action="/admin/rating/{{.year}}/{{.week}}/distribute" method="post" class="d-inline">
+                              <input type="hidden" name="amount" value="{{.prizeFund.Amount}}">
+                              <input type="hidden" name="top_count" value="{{.prizeFund.TopCount}}">
+                              <input type="hidden" name="action" value="distribute">
+                              <button type="submit" class="btn btn-success">Распределить призы</button>
+                          </form>
+                      {{end}}
+                  </div>
+                  <div class="card-body">
+                      <div class="table-responsive">
+                          <table class="table table-striped table-hover">
+                              <thead>
+                                  <tr>
+                                      <th>Позиция</th>
+                                      <th>Пользователь</th>
+                                      <th>Баллы</th>
+                                      <th>Ставок</th>
+                                      <th>Эффективность</th>
+                                      <th>Приз</th>
+                                      <th>Действия</th>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  {{if and .ratings (gt (len .ratings) 0)}}
+                                      {{range .ratings}}
+                                      <tr {{if le .Position $.prizeFund.TopCount}}class="table-success"{{end}}>
+                                          <td>{{.Position}}</td>
+                                          <td>
+                                              <a href="/admin/user/{{.UserID}}">
+                                                  {{if .User.Username}}
+                                                      @{{.User.Username}}
+                                                  {{else}}
+                                                      {{.User.FirstName}} {{.User.LastName}}
+                                                  {{end}}
+                                              </a>
+                                          </td>
+                                          <td>{{.Points}}</td>
+                                          <td>{{.Bets}}</td>
+                                          <td>{{printf "%.2f" .Efficiency}}%</td>
+                                          <td>{{printf "%.2f" .Prize}}$</td>
+                                          <td>
+                                              <a href="/admin/user/{{.UserID}}" class="btn btn-sm btn-outline-primary">Профиль</a>
+                                          </td>
+                                      </tr>
+                                      {{end}}
+                                  {{else}}
+                                      <tr>
+                                          <td colspan="7" class="text-center">Нет данных о рейтинге для этой недели</td>
+                                      </tr>
+                                  {{end}}
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
+              </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const distributeForm = document.getElementById('distributeForm');
+        if (distributeForm) {
+            distributeForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                if (!confirm('Вы уверены, что хотите распределить призы? Это действие нельзя отменить.')) {
+                    return;
+                }
+                
+                const formData = new FormData(this);
+                
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Призы успешно распределены!');
+                        location.reload();
+                    } else {
+                        alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                    }
+                })
+                .catch(error => {
+                    alert('Произошла ошибка при распределении призов');
+                    console.error('Error:', error);
+                });
+            });
+        }
+    });
+  </script>
+  
+  {{template "footer" .}}
+{{end}}
