@@ -5,5 +5,10 @@
     </div>
 </footer>
 </body>
+
+{{block "additionalScripts" .}}
+  {{template (print "additionalScripts_" .activeTab) .}}
+{{end}}
+
 </html>
 {{end}}

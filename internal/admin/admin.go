@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"path/filepath"
@@ -64,6 +65,7 @@ func (a *AdminPanel) Start() error {
 func (a *AdminPanel) setupRoutes() {
 
 	a.router.SetFuncMap(template.FuncMap{
+		"print": fmt.Sprint,
 		"add": func(a, b int) int {
 			return a + b
 		},
