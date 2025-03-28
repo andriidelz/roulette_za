@@ -2,8 +2,10 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"roulette/internal/models"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -266,4 +268,84 @@ func (s *ServiceImpl) FormatRatingList(ratings []models.WeeklyRating, currentUse
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// CreateNewWeeklyRating создает новый недельный рейтинг
+// и инициализирует призовой фонд на основе текущих настроек
+func (s *ServiceImpl) CreateNewWeeklyRating(year, week int) error {
+	// Получаем настройки
+	settings, err := s.GetSettings()
+	if err != nil {
+		return fmt.Errorf("error getting settings: %w", err)
+	}
+
+	// Получаем значения для призового фонда из настроек
+	prizeAmount := 1000.0 // Значение по умолчанию
+	if amountStr, ok := settings["weekly_prize_amount"]; ok && amountStr != "" {
+		amount, err := strconv.ParseFloat(amountStr, 64)
+		if err == nil {
+			prizeAmount = amount
+		}
+	}
+
+	topCount := 100 // Значение по умолчанию
+	if countStr, ok := settings["weekly_prize_top"]; ok && countStr != "" {
+		count, err := strconv.Atoi(countStr)
+		if err == nil {
+			topCount = count
+		}
+	}
+
+	// Создаем призовой фонд
+	prizeFund := &models.PrizeFund{
+		Year:      year,
+		Week:      week,
+		Amount:    prizeAmount,
+		TopCount:  topCount,
+		Processed: false,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Сохраняем призовой фонд, используя существующий метод
+	if err := s.repo.UpdatePrizeFund(prizeFund); err != nil {
+		return fmt.Errorf("error creating prize fund: %w", err)
+	}
+
+	log.Printf("Created new weekly rating for %d/%d with prize amount %.2f and top count %d",
+		year, week, prizeAmount, topCount)
+
+	return nil
+}
+
+// UpdateCurrentPrizeFund обновляет призовой фонд для текущей недели
+// на основе переданных значений
+func (s *ServiceImpl) UpdateCurrentPrizeFund(amount float64, topCount int) error {
+	// Получаем текущий год и неделю
+	year, week := time.Now().ISOWeek()
+
+	// Получаем текущий призовой фонд
+	prizeFund, err := s.repo.GetPrizeFund(year, week)
+	if err != nil {
+		return fmt.Errorf("ошибка получения призового фонда: %w", err)
+	}
+
+	// Проверяем, не распределен ли уже фонд
+	if prizeFund.Processed {
+		return fmt.Errorf("призовой фонд для недели %d/%d уже распределен", year, week)
+	}
+
+	// Обновляем значения
+	prizeFund.Amount = amount
+	prizeFund.TopCount = topCount
+
+	// Сохраняем изменения
+	if err := s.repo.UpdatePrizeFund(prizeFund); err != nil {
+		return fmt.Errorf("ошибка обновления призового фонда: %w", err)
+	}
+
+	log.Printf("Обновлен призовой фонд %d/%d: сумма = %.2f, топ = %d",
+		year, week, amount, topCount)
+
+	return nil
 }

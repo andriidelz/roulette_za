@@ -2,6 +2,7 @@ package repository
 
 import (
 	"roulette/internal/models"
+	"strconv"
 	"time"
 
 	"gorm.io/gorm"
@@ -45,8 +46,6 @@ type Repository interface {
 	GetSuperRating(period string, limit int) ([]models.SuperRating, error)
 	UpdateSuperRating(rating *models.SuperRating) error
 	FixPartiallyDistributedPrizes(year, week int, action string) error
-
-	// Новые методы для рейтинга
 	GetCurrentWeekRating(limit int) ([]models.WeeklyRating, error)
 	UpdateWeeklyRatingForUser(userID uint) error
 	GetUserRankAndNeighbors(userID uint, year, week int, neighborsCount int) ([]models.WeeklyRating, int, error)
@@ -54,6 +53,8 @@ type Repository interface {
 	RefreshAllWeeklyRatings() error
 	CheckIfPrizesAlreadyDistributed(year, week int) (bool, error)
 	GetPrizeFundWithoutCreation(year, week int) (*models.PrizeFund, error)
+	GetRecentPrizeFunds(limit int) ([]models.PrizeFund, error)
+	CreatePrizeFund(fund *models.PrizeFund) error
 
 	// Методы для работы с настройками
 	GetSetting(key string) (*models.Setting, error)
@@ -269,17 +270,44 @@ func (r *PostgresRepository) GetPrizeFund(year, week int) (*models.PrizeFund, er
 	var fund models.PrizeFund
 	err := r.db.Where("year = ? AND week = ?", year, week).First(&fund).Error
 
-	// Якщо фонду немає, створюємо новий
+	// Якщо фонду немає, створюємо новий на основе настроек
 	if err == gorm.ErrRecordNotFound {
+		// Получаем настройки для призового фонда
+		prizeAmountSetting, err := r.GetSetting("weekly_prize_amount")
+		if err != nil {
+			// Если настройка не найдена, используем значение по умолчанию
+			prizeAmountSetting = &models.Setting{Value: "1000"}
+		}
+
+		topCountSetting, err := r.GetSetting("weekly_prize_top")
+		if err != nil {
+			// Если настройка не найдена, используем значение по умолчанию
+			topCountSetting = &models.Setting{Value: "100"}
+		}
+
+		// Преобразуем значения в нужные типы
+		prizeAmount, err := strconv.ParseFloat(prizeAmountSetting.Value, 64)
+		if err != nil {
+			prizeAmount = 1000 // Значение по умолчанию
+		}
+
+		topCount, err := strconv.Atoi(topCountSetting.Value)
+		if err != nil {
+			topCount = 100 // Значение по умолчанию
+		}
+
+		// Создаем новый фонд с полученными настройками
 		fund = models.PrizeFund{
 			Year:     year,
 			Week:     week,
-			Amount:   1000,
-			TopCount: 100,
+			Amount:   prizeAmount,
+			TopCount: topCount,
 		}
+
 		if err := r.db.Create(&fund).Error; err != nil {
 			return nil, err
 		}
+
 		return &fund, nil
 	} else if err != nil {
 		return nil, err

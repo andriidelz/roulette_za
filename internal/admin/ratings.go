@@ -27,6 +27,7 @@ func (a *AdminPanel) ratingsList(c *gin.Context) {
 	}
 
 	// Получаем данные о текущем призовом фонде
+	// Принудительно обновляем данные из базы, игнорируя возможный кэш
 	prizeFund, err := a.repo.GetPrizeFund(currentYear, currentWeek)
 	if err != nil {
 		prizeFund = &models.PrizeFund{
@@ -63,49 +64,43 @@ func (a *AdminPanel) ratingsList(c *gin.Context) {
 func (a *AdminPanel) getWeeklyRatingsHistory(currentYear, currentWeek int, limit int) ([]gin.H, error) {
 	var result []gin.H
 
-	// Создаем слайс дат (год, неделя) для последних недель
-	var dates []gin.H
-	year, week := currentYear, currentWeek
-
-	for i := 0; i < limit; i++ {
-		dates = append(dates, gin.H{
-			"year": year,
-			"week": week,
-		})
-
-		// Переходим к предыдущей неделе
-		week--
-		if week < 1 {
-			year--
-			// Получаем количество недель в предыдущем году (обычно 52 или 53)
-			_, lastWeek := time.Date(year, 12, 31, 0, 0, 0, 0, time.UTC).ISOWeek()
-			week = lastWeek
-		}
+	// Получаем фактические данные о недельных рейтингах из базы данных
+	prizeFunds, err := a.repo.GetRecentPrizeFunds(limit)
+	if err != nil {
+		return nil, err
 	}
 
-	// Для каждой даты получаем информацию о рейтинге
-	for _, date := range dates {
-		year := date["year"].(int)
-		week := date["week"].(int)
+	// Если в базе нет данных о фондах, создаем только одну запись для текущей недели
+	if len(prizeFunds) == 0 {
+		// Определяем статус текущей недели
+		status := "active"
+		statusText := "Активен"
+		badgeClass := "bg-primary"
 
-		// Получаем призовой фонд
-		prizeFund, err := a.repo.GetPrizeFund(year, week)
-		if err != nil {
-			// Если фонд не найден, создаем пустой
-			prizeFund = &models.PrizeFund{
-				Year:     year,
-				Week:     week,
-				Amount:   1000,
-				TopCount: 100,
-			}
+		// Создаем запись для текущей недели
+		weekRating := gin.H{
+			"year":       currentYear,
+			"week":       currentWeek,
+			"amount":     1000.0, // Значение по умолчанию
+			"topCount":   100,    // Значение по умолчанию
+			"processed":  false,
+			"status":     status,
+			"statusText": statusText,
+			"badgeClass": badgeClass,
 		}
 
+		result = append(result, weekRating)
+		return result, nil
+	}
+
+	// Преобразуем полученные данные в нужный формат для шаблона
+	for _, fund := range prizeFunds {
 		// Определяем статус рейтинга
 		status := "pending"
 		statusText := "В ожидании"
 		badgeClass := "bg-warning"
 
-		if prizeFund.Processed {
+		if fund.Processed {
 			status = "completed"
 			statusText = "Завершен"
 			badgeClass = "bg-success"
@@ -114,11 +109,11 @@ func (a *AdminPanel) getWeeklyRatingsHistory(currentYear, currentWeek int, limit
 			now := time.Now()
 			currentYear, currentWeek := now.ISOWeek()
 
-			if year < currentYear || (year == currentYear && week < currentWeek) {
+			if fund.Year < currentYear || (fund.Year == currentYear && fund.Week < currentWeek) {
 				status = "ended"
 				statusText = "Незавершен"
 				badgeClass = "bg-danger"
-			} else if year == currentYear && week == currentWeek {
+			} else if fund.Year == currentYear && fund.Week == currentWeek {
 				status = "active"
 				statusText = "Активен"
 				badgeClass = "bg-primary"
@@ -127,11 +122,11 @@ func (a *AdminPanel) getWeeklyRatingsHistory(currentYear, currentWeek int, limit
 
 		// Формируем данные для шаблона
 		weekRating := gin.H{
-			"year":       year,
-			"week":       week,
-			"amount":     prizeFund.Amount,
-			"topCount":   prizeFund.TopCount,
-			"processed":  prizeFund.Processed,
+			"year":       fund.Year,
+			"week":       fund.Week,
+			"amount":     fund.Amount,
+			"topCount":   fund.TopCount,
+			"processed":  fund.Processed,
 			"status":     status,
 			"statusText": statusText,
 			"badgeClass": badgeClass,

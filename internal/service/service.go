@@ -55,6 +55,8 @@ type Service interface {
 	FormatRatingForDisplay(ratings []models.WeeklyRating, currentUserID int64) []string
 	GetPrizeDistributionStatus(year, week int) (string, error)
 	FormatRatingList(ratings []models.WeeklyRating, currentUserID int64, language string) string
+	CreateNewWeeklyRating(year, week int) error
+	UpdateCurrentPrizeFund(amount float64, topCount int) error
 
 	// Настройки и локализация
 	GetText(key string, languageCode string) string
@@ -521,9 +523,32 @@ func (s *ServiceImpl) GetSuperRating(limit int) ([]models.SuperRating, error) {
 	return s.repo.GetSuperRating(quarter, limit)
 }
 
+// UpdateWeeklyRatings обновляет еженедельные рейтинги при начале новой недели
+// и создает новый рейтинг на основе актуальных настроек
 func (s *ServiceImpl) UpdateWeeklyRatings() error {
-	year, week := time.Now().ISOWeek()
-	return s.repo.CalculateWeeklyRatings(year, week)
+	// Получаем предыдущую неделю (поскольку это вызывается в понедельник)
+	now := time.Now()
+	previousDate := now.AddDate(0, 0, -1) // Воскресенье
+	prevYear, prevWeek := previousDate.ISOWeek()
+
+	// Текущая неделя (началась сегодня)
+	currentYear, currentWeek := now.ISOWeek()
+
+	// Обновляем рейтинги для предыдущей недели
+	if err := s.repo.CalculateWeeklyRatings(prevYear, prevWeek); err != nil {
+		return fmt.Errorf("error calculating ratings for previous week: %w", err)
+	}
+
+	// Проверяем существование призового фонда для текущей недели
+	_, err := s.repo.GetPrizeFundWithoutCreation(currentYear, currentWeek)
+	if err != nil {
+		// Если призовой фонд не найден, создаем новый
+		if err := s.CreateNewWeeklyRating(currentYear, currentWeek); err != nil {
+			return fmt.Errorf("error creating new weekly rating: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (s *ServiceImpl) DistributePrizes() error {

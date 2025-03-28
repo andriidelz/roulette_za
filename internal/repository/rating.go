@@ -278,6 +278,19 @@ func (r *PostgresRepository) GetPrizeFundWithoutCreation(year, week int) (*model
 	return &fund, nil
 }
 
+// GetRecentPrizeFunds получает список последних призовых фондов
+func (r *PostgresRepository) GetRecentPrizeFunds(limit int) ([]models.PrizeFund, error) {
+	var funds []models.PrizeFund
+
+	// Получаем последние призовые фонды, сортируя по году и неделе в убывающем порядке
+	err := r.db.Order("year DESC, week DESC").Limit(limit).Find(&funds).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return funds, nil
+}
+
 // CheckIfPrizesAlreadyDistributed проверяет, были ли уже распределены призы за указанную неделю
 func (r *PostgresRepository) CheckIfPrizesAlreadyDistributed(year, week int) (bool, error) {
 	var count int64
