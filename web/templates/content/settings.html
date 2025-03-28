@@ -7,48 +7,96 @@
       <div class="container-fluid">
         <div class="row">
           <div class="col-12">
-              <h1 class="mb-4">Settings</h1>
+              <h1 class="mb-4">Настройки</h1>
           </div>
-      </div>
+        </div>
 
-      <div class="row">
+        <div class="row">
           <div class="col-lg-6 mb-4">
-              <div class="card">
-                  <div class="card-header">
-                      <h5 class="mb-0">General Settings</h5>
-                  </div>
-                  <div class="card-body">
-                      <form id="general-settings-form">
-                          <div class="mb-3">
-                              <label for="daily_bets_limit" class="form-label">Daily Bet Limit for Zero</label>
-                              <input type="number" class="form-control" id="daily_bets_limit" name="daily_bets_limit" value="{{ if .settings.daily_bets_limit }}{{ .settings.daily_bets_limit }}{{ else }}100{{ end }}">
-                              <div class="form-text">The number of bets a user must make before they can bet on Zero.</div>
-                          </div>
-                          <div class="mb-3">
-                              <label for="weekly_prize_amount" class="form-label">Weekly Prize Pool Amount</label>
-                              <div class="input-group">
-                                  <input type="number" class="form-control" id="weekly_prize_amount" name="weekly_prize_amount" value="{{ if .settings.weekly_prize_amount }}{{ .settings.weekly_prize_amount }}{{ else }}1000{{ end }}">
-                                  <span class="input-group-text">$</span>
-                              </div>
-                          </div>
-                          <div class="mb-3">
-                              <label for="weekly_prize_top" class="form-label">Number of Prize Places in Weekly Ranking</label>
-                              <input type="number" class="form-control" id="weekly_prize_top" name="weekly_prize_top" value="{{ if .settings.weekly_prize_top }}{{ .settings.weekly_prize_top }}{{ else }}100{{ end }}">
-                          </div>
-                          <div class="mb-3">
-                              <label for="minimum_withdrawal" class="form-label">Minimum Withdrawal Amount</label>
-                              <div class="input-group">
-                                  <input type="number" class="form-control" id="minimum_withdrawal" name="minimum_withdrawal" value="{{ if .settings.minimum_withdrawal }}{{ .settings.minimum_withdrawal }}{{ else }}10{{ end }}">
-                                  <span class="input-group-text">$</span>
-                              </div>
-                          </div>
-                          <button type="submit" class="btn btn-primary">Save</button>
-                      </form>
-                  </div>
+            <div class="card">
+              <div class="card-header">
+                <h5 class="mb-0">Общие настройки</h5>
               </div>
+              <div class="card-body">
+                <form id="general-settings-form">
+                  <div class="mb-3">
+                    <label for="daily_bets_limit" class="form-label">Лимит ставок за день</label>
+                    <input type="number" class="form-control" id="daily_bets_limit" name="daily_bets_limit" 
+                           value="{{with index .settings "daily_bets_limit"}}{{.Value}}{{end}}" min="1">
+                    <div class="form-text">Максимальное количество ставок, которое может сделать пользователь за день</div>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label for="daily_bets_zero_limit" class="form-label">Лимит ставок для Zero</label>
+                    <input type="number" class="form-control" id="daily_bets_zero_limit" name="daily_bets_zero_limit" 
+                           value="{{with index .settings "daily_bets_zero_limit"}}{{.Value}}{{end}}" min="1">
+                    <div class="form-text">Количество ставок, которые пользователь должен сделать, прежде чем сможет ставить на Zero</div>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label for="minimum_withdrawal" class="form-label">Минимальная сумма для вывода</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="minimum_withdrawal" name="minimum_withdrawal" 
+                             value="{{with index .settings "minimum_withdrawal"}}{{.Value}}{{end}}" min="0" step="0.01">
+                      <span class="input-group-text">$</span>
+                    </div>
+                    <div class="form-text">Минимальная сумма, которую пользователь может вывести</div>
+                  </div>
+                  
+                  <button type="submit" class="btn btn-primary">Сохранить</button>
+                </form>
+              </div>
+            </div>
           </div>
-      </div>
-
+          
+          <div class="col-lg-6 mb-4">
+            <div class="card">
+              <div class="card-header">
+                <h5 class="mb-0">Настройки призового фонда</h5>
+              </div>
+              <div class="card-body">
+                <form id="prize-settings-form">
+                  <div class="mb-3">
+                    <label for="weekly_prize_amount" class="form-label">Сумма недельного призового фонда</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="weekly_prize_amount" name="weekly_prize_amount" 
+                             value="{{with index .settings "weekly_prize_amount"}}{{.Value}}{{end}}" min="0" step="0.01">
+                      <span class="input-group-text">$</span>
+                    </div>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label for="weekly_prize_top" class="form-label">Количество призовых мест</label>
+                    <input type="number" class="form-control" id="weekly_prize_top" name="weekly_prize_top" 
+                           value="{{with index .settings "weekly_prize_top"}}{{.Value}}{{end}}" min="1">
+                    <div class="form-text">Количество мест в еженедельном рейтинге, которые получат призы</div>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label for="prize_distribution_day" class="form-label">День раздачи призов</label>
+                    <select class="form-select" id="prize_distribution_day" name="prize_distribution_day">
+                      {{$selectedDay := ""}}
+                      {{with index .settings "prize_distribution_day"}}{{$selectedDay = .Value}}{{end}}
+                      {{range .daysOfWeek}}
+                        <option value="{{.Value}}" {{if eq $selectedDay .Value}}selected{{end}}>{{.Name}}</option>
+                      {{end}}
+                    </select>
+                    <div class="form-text">День недели, когда будут раздаваться призы</div>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label for="prize_distribution_time" class="form-label">Время раздачи призов (UTC+0)</label>
+                    <input type="time" class="form-control" id="prize_distribution_time" name="prize_distribution_time" 
+                           value="{{with index .settings "prize_distribution_time"}}{{.Value}}{{end}}">
+                    <div class="form-text">Время раздачи призов в часовом поясе UTC+0</div>
+                  </div>
+                  
+                  <button type="submit" class="btn btn-primary">Сохранить</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -56,57 +104,35 @@
   {{block "additionalScripts_settings" .}}
   <script>
   $(document).ready(function() {
-      // General settings form handler
+      // Обработчик формы общих настроек
       $('#general-settings-form').submit(function(e) {
           e.preventDefault();
+          saveSettings($(this));
+      });
+      
+      // Обработчик формы настроек призового фонда
+      $('#prize-settings-form').submit(function(e) {
+          e.preventDefault();
+          saveSettings($(this));
+      });
+      
+      // Функция для сохранения настроек
+      function saveSettings(form) {
+          // Собираем данные формы
+          var formData = form.serialize();
           
-          // Collect form data
-          var formData = $(this).serialize();
-          
-          // Send data to server
+          // Отправляем данные на сервер
           $.post('/admin/settings', formData, function(data) {
               if (data.success) {
-                  alert('Settings saved!');
+                  toastr.success('Настройки успешно сохранены');
               } else {
-                  alert('Error: ' + data.error);
+                  toastr.error('Ошибка: ' + data.error);
               }
+          })
+          .fail(function(response) {
+              toastr.error('Ошибка при сохранении настроек');
           });
-      });
-      
-      // Probability settings form handler
-      $('#probability-settings-form').submit(function(e) {
-          e.preventDefault();
-          
-          // Check that probabilities add up to approximately 100%
-          var zeroProb = parseFloat($('#zero_probability').val());
-          var redProb = parseFloat($('#red_probability').val());
-          var blackProb = parseFloat($('#black_probability').val());
-          var totalProb = zeroProb + redProb + blackProb;
-          
-          if (Math.abs(totalProb - 100) > 0.1) {
-              alert('Probability sum must equal 100%. Current sum: ' + totalProb.toFixed(2) + '%');
-              return;
-          }
-          
-          // Collect form data
-          var formData = $(this).serialize();
-          
-          // Send data to server
-          $.post('/admin/settings/probability', formData, function(data) {
-              if (data.success) {
-                  alert('Probability settings saved!');
-              } else {
-                  alert('Error: ' + data.error);
-              }
-          });
-      });
-      
-      // Restore default probabilities
-      $('#restore-default').click(function() {
-          $('#zero_probability').val('2.7');
-          $('#red_probability').val('48.65');
-          $('#black_probability').val('48.65');
-      });
+      }
   });
   </script>
   {{end}}

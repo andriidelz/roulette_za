@@ -56,6 +56,8 @@ type Service interface {
 	GetText(key string, languageCode string) string
 	GetSettings() (map[string]string, error)
 	UpdateSetting(key, value string) error
+	GetSettingsWithInfo() (map[string]models.SettingInfo, error)
+	SaveSettings(settings map[string]string) error
 
 	// Хеши и история раундов
 	GetHashEntries(page, limit int) ([]models.HashEntry, int, error)
@@ -605,11 +607,6 @@ func (s *ServiceImpl) GetText(key string, languageCode string) string {
 		return key
 	}
 	return text
-}
-
-func (s *ServiceImpl) GetSettings() (map[string]string, error) {
-	// Цей метод для адмін-панелі, можна розширити пізніше
-	return map[string]string{}, nil
 }
 
 func (s *ServiceImpl) UpdateSetting(key, value string) error {

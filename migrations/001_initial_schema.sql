@@ -157,4 +157,6 @@ INSERT INTO settings (key, value, default_value, description) VALUES
     ('daily_bets_zero_limit', '100', '100', 'Лимит ставок за день для возможности ставить на zero'),
     ('weekly_prize_amount', '1000', '1000', 'Сумма недельного призового фонда'),
     ('weekly_prize_top', '100', '100', 'Количество призовых мест в недельном рейтинге'),
-    ('minimum_withdrawal', '10', '10', 'Минимальная сумма для вывода средств');
+    ('minimum_withdrawal', '10', '10', 'Минимальная сумма для вывода средств'),
+    ('prize_distribution_day', '1', '1', 'День недели для раздачи призов (1-7, где 1 - Понедельник)'),
+    ('prize_distribution_time', '00:00', '00:00', 'Время раздачи призов (UTC+0)')

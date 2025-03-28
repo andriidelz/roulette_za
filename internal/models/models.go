@@ -112,6 +112,15 @@ type Setting struct {
 	Description  string `gorm:"type:text"`
 }
 
+// SettingInfo представляет информацию о настройке с типизированным значением
+type SettingInfo struct {
+	Key          string
+	Value        string
+	DefaultValue string
+	Description  string
+	Type         string // "int", "float", "string", "bool", "time", "day"
+}
+
 // Мовні локалізації
 type Localization struct {
 	ID       uint   `gorm:"primaryKey"`

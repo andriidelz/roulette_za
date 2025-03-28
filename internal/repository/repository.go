@@ -50,9 +50,12 @@ type Repository interface {
 	CheckIfPrizesAlreadyDistributed(year, week int) (bool, error)
 	GetPrizeFundWithoutCreation(year, week int) (*models.PrizeFund, error)
 
-	// Настройки
+	// Методы для работы с настройками
 	GetSetting(key string) (*models.Setting, error)
 	UpdateSetting(key string, value string) error
+	GetAllSettings() (map[string]*models.Setting, error)
+	CreateOrUpdateSetting(key, value, defaultValue, description string) error
+	GetSettingWithDefault(key string) (*models.Setting, error)
 
 	// Локализации
 	GetLocalization(key string, language string) (string, error)

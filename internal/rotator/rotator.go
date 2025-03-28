@@ -10,11 +10,12 @@ import (
 
 // Rotator отвечает за периодическую генерацию хешей и смену раундов
 type Rotator struct {
-	service    service.Service
-	interval   time.Duration
-	ctx        context.Context
-	cancelFunc context.CancelFunc
-	rabbitmq   *messaging.RabbitMQ // Добавлен клиент RabbitMQ
+	service        service.Service
+	interval       time.Duration
+	ctx            context.Context
+	cancelFunc     context.CancelFunc
+	rabbitmq       *messaging.RabbitMQ
+	prizeScheduler *PrizeScheduler // Добавляем поле для планировщика
 }
 
 // NewRotator создает новый экземпляр ротатора
@@ -24,16 +25,24 @@ func NewRotator(service service.Service, interval time.Duration, rabbitmqURL str
 	// Создаем клиент RabbitMQ
 	rmq, err := messaging.NewRabbitMQ(rabbitmqURL, "roulette_events", "rotator")
 	if err != nil {
+		cancel() // Освобождаем ресурсы в случае ошибки
 		return nil, err
 	}
 
-	return &Rotator{
+	// Создаем экземпляр ротатора
+	rotator := &Rotator{
 		service:    service,
 		interval:   interval,
 		ctx:        ctx,
 		cancelFunc: cancel,
 		rabbitmq:   rmq,
-	}, nil
+	}
+
+	// Создаем и инициализируем планировщик призов
+	rotator.prizeScheduler = NewPrizeScheduler(service)
+	rotator.prizeScheduler.Start()
+
+	return rotator, nil
 }
 
 // Start запускает процесс периодической смены раундов
@@ -156,6 +165,11 @@ func (r *Rotator) Start() {
 func (r *Rotator) Stop() {
 	log.Println("Stopping hash rotator...")
 	r.cancelFunc()
+
+	// Останавливаем планировщик призов, если он был инициализирован
+	if r.prizeScheduler != nil {
+		r.prizeScheduler.Stop()
+	}
 
 	// Закрываем соединение с RabbitMQ
 	if r.rabbitmq != nil {
