@@ -6,8 +6,10 @@
 </footer>
 </body>
 
-{{block "additionalScripts" .}}
-  {{template (print "additionalScripts_" .activeTab) .}}
+{{if eq .activeTab "users"}}
+  {{template "additionalScripts_users" .}}
+{{else if eq .activeTab "withdrawals"}}
+  {{template "additionalScripts_withdrawals" .}}
 {{end}}
 
 </html>
