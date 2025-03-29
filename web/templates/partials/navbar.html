@@ -1,13 +1,18 @@
 {{define "navbar"}}
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
     <div class="container-fluid">
+        <!-- Кнопка гамбургер для бокового меню -->
         <button class="navbar-toggler me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
             <i class="bi bi-list"></i>
         </button>
-        <a class="navbar-brand" href="/admin">Roulette Admin Panel</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+        
+        <!-- Логотип/название приложения -->
+        <a class="navbar-brand text-truncate" href="/admin">Roulette Admin</a>
+        
+        <!-- На мобильных устройствах верхняя панель будет содержать только логотип и кнопку меню -->
+        <div class="d-lg-none" style="width: 42px;"><!-- Пустой блок для выравнивания --></div>
+        
+        <!-- На десктопе показываем кнопку выхода в верхней панели -->
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">

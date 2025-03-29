@@ -7,15 +7,15 @@
       <div class="container-fluid">
         <div class="row">
           <div class="col-12">
-              <div class="d-flex justify-content-between align-items-center mb-4">
-                  <h1>Хеши рулетки</h1>
-                  <div>
-                      <button id="refresh-hashes" class="btn btn-outline-primary refresh-button">
+              <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+                  <h1 class="mb-3 mb-md-0">Хеши рулетки</h1>
+                  <div class="d-flex flex-wrap">
+                      <button id="refresh-hashes" class="btn btn-outline-primary refresh-button me-2 mb-2">
                           <i class="bi bi-arrow-clockwise"></i> Обновить
                       </button>
-                      <div class="btn-group ms-2">
+                      <div class="dropdown mb-2">
                           <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="autoRefreshDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                              <i class="bi bi-clock"></i> Автообновление
+                              <i class="bi bi-clock"></i> <span class="d-none d-sm-inline">Автообновление</span>
                           </button>
                           <ul class="dropdown-menu" aria-labelledby="autoRefreshDropdown">
                               <li><a class="dropdown-item auto-refresh" href="#" data-seconds="0">Выкл</a></li>
@@ -39,15 +39,15 @@
           </div>
           <div class="card-body">
               <div class="table-responsive">
-                  <table class="table table-hover">
+                  <table class="table table-hover card-view-on-mobile">
                       <thead>
                           <tr>
                               <th>ID/Base62</th>
                               <th>Номер</th>
                               <th>Цвет</th>
-                              <th>Хеш</th>
-                              <th>Соль (HEX)</th>
-                              <th>Создан</th>
+                              <th class="d-none d-md-table-cell">Хеш</th>
+                              <th class="d-none d-md-table-cell">Соль (HEX)</th>
+                              <th class="d-none d-lg-table-cell">Создан</th>
                               <th>Действия</th>
                           </tr>
                       </thead>
@@ -55,7 +55,7 @@
                           {{ if .entries }}
                               {{ range .entries }}
                               <tr>
-                                  <td>{{ .ID }}/{{ .Base62ID }}</td>
+                                  <td><span class="text-nowrap">{{ .ID }}/{{ .Base62ID }}</span></td>
                                   <td>{{ .Number }}</td>
                                   <td>
                                       {{ if eq .Color "red" }}
@@ -66,27 +66,29 @@
                                       <span><span class="color-indicator color-green"></span>Зеро</span>
                                       {{ end }}
                                   </td>
-                                  <td><span class="hash-label" title="{{ .Hash }}">{{ .Hash }}</span></td>
-                                  <td><span class="hash-label" title="{{ .SaltHEX }}">{{ .SaltHEX }}</span></td>
-                                  <td>{{ .CreatedAt }}</td>
+                                  <td class="d-none d-md-table-cell"><span class="hash-label" title="{{ .Hash }}">{{ .Hash }}</span></td>
+                                  <td class="d-none d-md-table-cell"><span class="hash-label" title="{{ .SaltHEX }}">{{ .SaltHEX }}</span></td>
+                                  <td class="d-none d-lg-table-cell">{{ .CreatedAt }}</td>
                                   <td>
-                                      <button class="btn btn-sm btn-outline-info view-details-btn" 
-                                              data-id="{{ .ID }}" 
-                                              data-base62="{{ .Base62ID }}"
-                                              data-number="{{ .Number }}"
-                                              data-color="{{ .Color }}"
-                                              data-hash="{{ .Hash }}"
-                                              data-salt="{{ .SaltHEX }}"
-                                              data-created="{{ .CreatedAt }}">
-                                          <i class="bi bi-eye"></i>
-                                      </button>
-                                      <button class="btn btn-sm btn-outline-secondary verify-hash-btn" 
-                                              data-id="{{ .ID }}"
-                                              data-number="{{ .Number }}"
-                                              data-hash="{{ .Hash }}"
-                                              data-salt="{{ .SaltHEX }}">
-                                          <i class="bi bi-check-circle"></i>
-                                      </button>
+                                      <div class="btn-group">
+                                          <button class="btn btn-sm btn-outline-info view-details-btn" 
+                                                  data-id="{{ .ID }}" 
+                                                  data-base62="{{ .Base62ID }}"
+                                                  data-number="{{ .Number }}"
+                                                  data-color="{{ .Color }}"
+                                                  data-hash="{{ .Hash }}"
+                                                  data-salt="{{ .SaltHEX }}"
+                                                  data-created="{{ .CreatedAt }}">
+                                              <i class="bi bi-eye"></i>
+                                          </button>
+                                          <button class="btn btn-sm btn-outline-secondary verify-hash-btn" 
+                                                  data-id="{{ .ID }}"
+                                                  data-number="{{ .Number }}"
+                                                  data-hash="{{ .Hash }}"
+                                                  data-salt="{{ .SaltHEX }}">
+                                              <i class="bi bi-check-circle"></i>
+                                          </button>
+                                      </div>
                                   </td>
                               </tr>
                               {{ end }}
@@ -105,7 +107,7 @@
           </div>
           <div class="card-footer">
               <nav aria-label="Page navigation">
-                  <ul class="pagination justify-content-center" id="pagination">
+                  <ul class="pagination justify-content-center flex-wrap" id="pagination">
                       {{ if gt .currentPage 1 }}
                       <li class="page-item">
                           <a class="page-link" href="/admin/hashes?page={{ subtract .currentPage 1 }}" aria-label="Previous">
@@ -144,9 +146,9 @@
           </div>
       </div>
 
-      <!-- Модальное окно деталей хеша -->
+      <!-- Модальное окно деталей хеша - оптимизировано для мобильных -->
       <div class="modal fade" id="hashDetailsModal" tabindex="-1" aria-labelledby="hashDetailsModalLabel" aria-hidden="true">
-          <div class="modal-dialog modal-lg">
+          <div class="modal-dialog modal-lg modal-fullscreen-md-down">
               <div class="modal-content">
                   <div class="modal-header">
                       <h5 class="modal-title" id="hashDetailsModalLabel">Детали хеша</h5>
@@ -154,27 +156,27 @@
                   </div>
                   <div class="modal-body">
                       <div class="mb-3">
-                          <label class="form-label">ID/Base62:</label>
+                          <label class="form-label fw-bold">ID/Base62:</label>
                           <div class="p-2 bg-light rounded" id="modal-id"></div>
                       </div>
                       <div class="mb-3">
-                          <label class="form-label">Номер:</label>
+                          <label class="form-label fw-bold">Номер:</label>
                           <div class="p-2 bg-light rounded" id="modal-number"></div>
                       </div>
                       <div class="mb-3">
-                          <label class="form-label">Цвет:</label>
+                          <label class="form-label fw-bold">Цвет:</label>
                           <div class="p-2 bg-light rounded" id="modal-color"></div>
                       </div>
                       <div class="mb-3">
-                          <label class="form-label">Хеш:</label>
-                          <div class="p-2 bg-light rounded hash-label-full" id="modal-hash"></div>
+                          <label class="form-label fw-bold">Хеш:</label>
+                          <div class="p-2 bg-light rounded hash-label-full text-break" id="modal-hash"></div>
                       </div>
                       <div class="mb-3">
-                          <label class="form-label">Соль (HEX):</label>
-                          <div class="p-2 bg-light rounded hash-label-full" id="modal-salt"></div>
+                          <label class="form-label fw-bold">Соль (HEX):</label>
+                          <div class="p-2 bg-light rounded hash-label-full text-break" id="modal-salt"></div>
                       </div>
                       <div class="mb-3">
-                          <label class="form-label">Создан:</label>
+                          <label class="form-label fw-bold">Создан:</label>
                           <div class="p-2 bg-light rounded" id="modal-created"></div>
                       </div>
                   </div>
@@ -186,9 +188,9 @@
           </div>
       </div>
 
-      <!-- Модальное окно проверки хеша -->
+      <!-- Модальное окно проверки хеша - оптимизировано для мобильных -->
       <div class="modal fade" id="verifyHashModal" tabindex="-1" aria-labelledby="verifyHashModalLabel" aria-hidden="true">
-          <div class="modal-dialog">
+          <div class="modal-dialog modal-fullscreen-sm-down">
               <div class="modal-content">
                   <div class="modal-header">
                       <h5 class="modal-title" id="verifyHashModalLabel">Проверка хеша</h5>

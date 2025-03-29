@@ -1,9 +1,10 @@
 {{define "sidebar"}}
+<!-- Десктопное боковое меню -->
 <div class="sidebar d-none d-lg-block">
     <ul class="nav flex-column">
         <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "dashboard"}}active{{end}}" href="/admin">
-                <i class="bi bi-speedometer2"></i> Панель управления
+                <i class="bi bi-speedometer2"></i> Dashboard
             </a>
         </li>
         <li class="nav-item">
@@ -44,52 +45,70 @@
     </ul>
 </div>
 
-<!-- Мобильное боковое меню (offcanvas) -->
-<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="mobileSidebarLabel">Roulette Admin Panel</h5>
-        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+<!-- Мобильное боковое меню с улучшенным дизайном -->
+<div class="offcanvas offcanvas-start bg-dark text-white" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+    <div class="offcanvas-header border-bottom border-secondary">
+        <h5 class="offcanvas-title text-white" id="mobileSidebarLabel">Roulette Admin</h5>
+        <button type="button" class="btn-close btn-close-white text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
-    <div class="offcanvas-body">
+    <div class="offcanvas-body p-0">
+<!--
+        <div class="user-info p-3 border-bottom border-secondary mb-2">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-light text-dark d-flex justify-content-center align-items-center me-2" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person"></i>
+                </div>
+                <div>
+                    <div class="fw-bold">Администратор</div>
+                    <small class="text-muted">Активен</small>
+                </div>
+            </div>
+        </div>
+-->
         <ul class="nav flex-column">
             <li class="nav-item">
-                <a class="nav-link {{if eq .activeTab "dashboard"}}active{{end}}" href="/admin">
-                    <i class="bi bi-speedometer2"></i> Панель управления
+                <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "dashboard"}}active{{end}}" href="/admin">
+                    <i class="bi bi-speedometer2 me-2"></i> Dashboard
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{if eq .activeTab "users"}}active{{end}}" href="/admin/users">
-                    <i class="bi bi-people"></i> Пользователи
+                <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "users"}}active{{end}}" href="/admin/users">
+                    <i class="bi bi-people me-2"></i> Пользователи
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{if eq .activeTab "stats"}}active{{end}}" href="/admin/stats">
-                    <i class="bi bi-bar-chart"></i> Статистика
+                <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "stats"}}active{{end}}" href="/admin/stats">
+                    <i class="bi bi-bar-chart me-2"></i> Статистика
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
-                    <i class="bi bi-trophy"></i> Рейтинг
+                <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
+                    <i class="bi bi-trophy me-2"></i> Рейтинг
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{if eq .activeTab "withdrawals"}}active{{end}}" href="/admin/withdrawals">
-                    <i class="bi bi-cash-coin"></i> Выплаты
+                <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "withdrawals"}}active{{end}}" href="/admin/withdrawals">
+                    <i class="bi bi-cash-coin me-2"></i> Выплаты
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{if eq .activeTab "hashes"}}active{{end}}" href="/admin/hashes">
-                    <i class="bi bi-hash"></i> Хэши рулетки
+                <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "hashes"}}active{{end}}" href="/admin/hashes">
+                    <i class="bi bi-hash me-2"></i> Хэши рулетки
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{if eq .activeTab "localizations"}}active{{end}}" href="/admin/localizations">
-                    <i class="bi bi-translate"></i> Локализация
+                <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "localizations"}}active{{end}}" href="/admin/localizations">
+                    <i class="bi bi-translate me-2"></i> Локализация
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{if eq .activeTab "settings"}}active{{end}}" href="/admin/settings">
-                    <i class="bi bi-gear"></i> Настройки
+                <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "settings"}}active{{end}}" href="/admin/settings">
+                    <i class="bi bi-gear me-2"></i> Настройки
+                </a>
+            </li>
+            <li class="nav-item mt-2 border-top border-secondary">
+                <a class="nav-link text-white py-3 px-3" href="/logout">
+                    <i class="bi bi-box-arrow-right me-2"></i> Выход
                 </a>
             </li>
         </ul>
