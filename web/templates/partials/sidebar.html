@@ -43,4 +43,56 @@
         </li>
     </ul>
 </div>
+
+<!-- Мобильное боковое меню (offcanvas) -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="mobileSidebarLabel">Roulette Admin Panel</h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {{if eq .activeTab "dashboard"}}active{{end}}" href="/admin">
+                    <i class="bi bi-speedometer2"></i> Панель управления
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{if eq .activeTab "users"}}active{{end}}" href="/admin/users">
+                    <i class="bi bi-people"></i> Пользователи
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{if eq .activeTab "stats"}}active{{end}}" href="/admin/stats">
+                    <i class="bi bi-bar-chart"></i> Статистика
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
+                    <i class="bi bi-trophy"></i> Рейтинг
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{if eq .activeTab "withdrawals"}}active{{end}}" href="/admin/withdrawals">
+                    <i class="bi bi-cash-coin"></i> Выплаты
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{if eq .activeTab "hashes"}}active{{end}}" href="/admin/hashes">
+                    <i class="bi bi-hash"></i> Хэши рулетки
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{if eq .activeTab "localizations"}}active{{end}}" href="/admin/localizations">
+                    <i class="bi bi-translate"></i> Локализация
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{if eq .activeTab "settings"}}active{{end}}" href="/admin/settings">
+                    <i class="bi bi-gear"></i> Настройки
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
 {{end}}
