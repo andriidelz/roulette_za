@@ -706,9 +706,14 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	log.Printf("MakeBet called for user %d with option %s", userID, option)
 
 	// Получаем пользователя
-	_, err := h.service.GetUser(userID)
+	user, err := h.service.GetUser(userID)
 	if err != nil {
 		return fmt.Errorf("error getting user: %w", err)
+	}
+
+	// Проверяем статус бана
+	if user.Banned {
+		return fmt.Errorf("user is banned")
 	}
 
 	// Получаем текущий раунд

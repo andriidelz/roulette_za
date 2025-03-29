@@ -360,6 +360,13 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 func (b *Bot) handleMessage(message *telego.Message) {
 	user := message.From
 
+	// Получаем данные пользователя из базы
+	dbUser, err := b.service.GetUser(user.ID)
+	if err == nil && dbUser.Banned {
+		// Если пользователь забанен, молча игнорируем сообщение
+		return
+	}
+
 	// Проверяем состояние пользователя
 	state, messageID, exists := b.stateManager.GetState(user.ID)
 	if exists && state != StateNone {
@@ -500,7 +507,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	}
 
 	// Регистрация пользователя, если он новый
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err = b.service.GetUser(user.ID)
 	if err != nil {
 		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
 		if err != nil {
