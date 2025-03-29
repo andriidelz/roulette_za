@@ -48,7 +48,7 @@ func (a *AdminPanel) getUserJSON(c *gin.Context) {
 
 	// Получаем текущую позицию пользователя в рейтинге
 	year, week := a.service.GetCurrentYearWeek()
-	rating, err := a.repo.GetUserWeeklyRating(user.ID, year, week)
+	rating, _ := a.repo.GetUserWeeklyRating(user.ID, year, week)
 
 	// Получаем детальную статистику для детализированного отображения
 	detailedStats, err := a.service.GetDetailedUserStats(user.TelegramID, "all")

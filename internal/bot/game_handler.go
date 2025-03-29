@@ -688,19 +688,6 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	return nil
 }
 
-func getOptionTextSimple(option models.BetOption, language string) string {
-	switch option {
-	case models.Red:
-		return "🔴 " + (map[string]string{"uk": "Червоне", "en": "Red", "ru": "Красное"})[language]
-	case models.Black:
-		return "⚫ " + (map[string]string{"uk": "Чорне", "en": "Black", "ru": "Черное"})[language]
-	case models.Zero:
-		return "0️⃣ " + (map[string]string{"uk": "Зеро", "en": "Zero", "ru": "Зеро"})[language]
-	default:
-		return string(option)
-	}
-}
-
 // MakeBet делает ставку в текущем раунде
 func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	log.Printf("MakeBet called for user %d with option %s", userID, option)

@@ -13,11 +13,6 @@ import (
 	logger "roulette/internal/logger"
 )
 
-const (
-	chars    = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	lenChars = len(chars)
-)
-
 func DumpInterface(in interface{}) {
 	b, err := json.MarshalIndent(in, "", "  ")
 	if err != nil {

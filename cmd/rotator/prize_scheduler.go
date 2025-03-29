@@ -1,4 +1,4 @@
-package rotator
+package main
 
 import (
 	"context"
@@ -139,9 +139,6 @@ func (p *PrizeScheduler) distributePrizes() {
 
 // Rotator отвечает за периодическую генерацию хешей и смену раундов
 type Rotator struct {
-	service        service.Service
-	interval       time.Duration
-	ctx            context.Context
 	cancelFunc     context.CancelFunc
 	rabbitmq       *messaging.RabbitMQ
 	prizeScheduler *PrizeScheduler // Добавляем поле для планировщика

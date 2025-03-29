@@ -34,13 +34,12 @@ type Bot struct {
 // Константы для команд и callback-запитов
 const (
 	CommandStart    = "start"
-	CommandHelp     = "help"
+	CommandPrivacy  = "privacy"
+	CommandContact  = "contact"
 	CommandPlay     = "play"
-	CommandProfile  = "profile"
-	CommandStats    = "stats"
+	CommandStats    = "statistics"
 	CommandRating   = "rating"
-	CommandBalance  = "balance"
-	CommandWithdraw = "withdraw"
+	CommandAccount  = "account"
 	CommandFAQ      = "faq"
 	CommandSettings = "settings"
 
@@ -209,6 +208,52 @@ func (b *Bot) checkChannelSubscription(userID int64, channelUsername string) (bo
 		log.Printf("Unknown chat member type for user %d: %T", userID, member)
 		return false, nil
 	}
+}
+
+// handlePrivacyCommand обрабатывает команду /privacy
+func (b *Bot) handlePrivacyCommand(message *telego.Message) {
+	dbUser, err := b.service.GetUser(message.From.ID)
+	if err != nil {
+		log.Printf("Error getting user for privacy policy: %v", err)
+		return
+	}
+
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Получаем локализированный текст privacy policy
+	privacyPolicyText := b.service.GetText("privacypolicym", language)
+
+	// Отправляем текст privacy policy
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          privacyPolicyText,
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
+	})
+}
+
+// handleContactCommand обрабатывает команду /contact
+func (b *Bot) handleContactCommand(message *telego.Message) {
+	dbUser, err := b.service.GetUser(message.From.ID)
+	if err != nil {
+		log.Printf("Error getting user for contact: %v", err)
+		return
+	}
+
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Получаем локализированный текст для раздела "Контакт с админом"
+	contactText := b.service.GetText("contactm", language)
+
+	// Отправляем текст о контакте с админом
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          contactText,
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
+	})
 }
 
 // sendSubscriptionRequest отправляет запрос на подписку на резервный канал
@@ -536,20 +581,16 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		switch command {
 		case CommandStart:
 			b.handleStartCommand(message)
-		case CommandHelp:
-			b.handleHelpCommand(message)
+		case CommandPrivacy:
+			b.handlePrivacyCommand(message)
+		case CommandContact:
+			b.handleContactCommand(message)
 		case CommandPlay:
 			b.gameHandler.HandlePlayCommand(message)
-		case CommandProfile:
-			b.handleProfileCommand(message)
 		case CommandStats:
 			b.handleStatsCommand(message)
 		case CommandRating:
 			b.handleRatingCommand(message)
-		case CommandBalance:
-			b.handleBalanceCommand(message)
-		case CommandWithdraw:
-			b.handleWithdrawCommand(message)
 		case CommandFAQ:
 			b.handleFAQCommand(message)
 		case CommandSettings: // Добавляем обработку команды настроек
@@ -1058,11 +1099,11 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 	user := message.From
 
 	// Проверяем, существует ли пользователь
-	dbUser, err := b.service.GetUser(user.ID)
+	_, err := b.service.GetUser(user.ID)
 	isNewUser := err != nil // Флаг нового пользователя
 
 	// Регистрируем пользователя или обновляем информацию
-	dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+	dbUser, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
 	if err != nil {
 		log.Printf("Error registering user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
@@ -1121,31 +1162,40 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 
 // Вспомогательный метод для отправки главного меню
 func (b *Bot) sendMainMenu(chatID int64, language string) {
-	// Создаем reply клавиатуру для главного меню
-	replyKeyboard := &telego.ReplyKeyboardMarkup{
+	b.SendMessage(chatID, MessageOptions{
+		Text:          b.service.GetText("main_menu", language),
+		ReplyKeyboard: b.createMainReplyKeyboard(language),
+	})
+}
+
+// createMainReplyKeyboard создает основную reply клавиатуру
+func (b *Bot) createMainReplyKeyboard(language string) *telego.ReplyKeyboardMarkup {
+
+	// Получаем локализированные тексты для кнопок
+	btnPlayText := b.service.GetText("btn_play", language)
+	btnStatisticsText := b.service.GetText("btn_statistics", language)
+	btnRatingText := b.service.GetText("btn_rating", language)
+	btnAccountText := b.service.GetText("btn_account", language)
+	btnFAQText := b.service.GetText("btn_faq", language)
+
+	return &telego.ReplyKeyboardMarkup{
 		Keyboard: [][]telego.KeyboardButton{
 			{
-				{Text: b.service.GetText("btn_play", language)},
-				{Text: b.service.GetText("btn_statistics", language)},
+				{Text: btnPlayText},
+				{Text: btnStatisticsText},
 			},
 			{
-				{Text: b.service.GetText("btn_rating", language)},
-				{Text: b.service.GetText("btn_account", language)},
+				{Text: btnRatingText},
+				{Text: btnAccountText},
 			},
 			{
-				{Text: b.service.GetText("btn_faq", language)},
+				{Text: btnFAQText},
 			},
 		},
 		ResizeKeyboard:  true,
 		OneTimeKeyboard: false,
+		Selective:       false,
 	}
-
-	// Отправляем сообщение с главным меню и минимальным текстом
-	menuText := b.service.GetText("main_menu", language)
-	b.SendMessage(chatID, MessageOptions{
-		Text:          menuText,
-		ReplyKeyboard: replyKeyboard,
-	})
 }
 
 // createCountriesKeyboard создает клавиатуру с флагами стран и постраничной навигацией
@@ -1266,54 +1316,6 @@ func (b *Bot) handleHelpCommand(message *telego.Message) {
 
 	// Отправляем главное меню
 	b.sendMainMenu(message.Chat.ID, language)
-}
-
-func (b *Bot) handleProfileCommand(message *telego.Message) {
-	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
-
-	// Получаем информацию о пользователе и его статистику
-	dbUser, err := b.service.GetUser(user.ID)
-	if err != nil {
-		log.Printf("Error getting user: %v", err)
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: "Error retrieving profile. Please try again.",
-		})
-		return
-	}
-
-	// Получаем статистику пользователя - теперь stats это map[string]int
-	stats, err := b.service.GetUserStats(user.ID)
-	if err != nil {
-		log.Printf("Error getting user stats: %v", err)
-		stats = make(map[string]int) // Пустая статистика, если не удалось получить
-	}
-
-	// Расчет эффективности
-	efficiency := 0.0
-	if stats["totalBets"] > 0 {
-		efficiency = float64(stats["wonBets"]) / float64(stats["totalBets"]) * 100
-	}
-
-	// Получаем шаблон профиля и форматируем его
-	profileTemplate := b.service.GetText("profile_template", language)
-	profileText := fmt.Sprintf(
-		profileTemplate,
-		dbUser.Username,
-		dbUser.Balance,
-		stats["totalBets"],
-		stats["wonBets"],
-		efficiency,
-		stats["totalPoints"],
-	)
-
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          profileText,
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
-	})
 }
 
 func (b *Bot) handleStatsCommand(message *telego.Message) {
@@ -1472,63 +1474,6 @@ func (b *Bot) showStatisticsForPeriod(message *telego.Message, period string) {
 }
 
 // Допоміжні методи
-
-// createMainKeyboard создает основную inline клавиатуру
-func (b *Bot) createMainKeyboard(language string) *telego.InlineKeyboardMarkup {
-	// Получаем локализированные тексты для кнопок
-	btnPlayText := b.service.GetText("btn_play", language)
-	btnProfileText := b.service.GetText("btn_profile", language)
-	btnStatsText := b.service.GetText("btn_stats", language)
-	btnRatingText := b.service.GetText("btn_rating", language)
-	btnBalanceText := b.service.GetText("btn_balance", language)
-	btnFAQText := b.service.GetText("btn_faq", language)
-
-	return &telego.InlineKeyboardMarkup{
-		InlineKeyboard: [][]telego.InlineKeyboardButton{
-			{
-				{Text: btnPlayText, CallbackData: CommandPlay},
-				{Text: btnProfileText, CallbackData: CommandProfile},
-			},
-			{
-				{Text: btnStatsText, CallbackData: CommandStats},
-				{Text: btnRatingText, CallbackData: CommandRating},
-			},
-			{
-				{Text: btnBalanceText, CallbackData: CommandBalance},
-				{Text: btnFAQText, CallbackData: CommandFAQ},
-			},
-		},
-	}
-}
-
-// createMainReplyKeyboard создает основную reply клавиатуру
-func (b *Bot) createMainReplyKeyboard(language string) *telego.ReplyKeyboardMarkup {
-	// Получаем локализированные тексты для кнопок
-	btnPlayText := b.service.GetText("btn_play", language)
-	btnStatisticsText := b.service.GetText("btn_statistics", language)
-	btnRatingText := b.service.GetText("btn_rating", language)
-	btnAccountText := b.service.GetText("btn_account", language)
-	btnFAQText := b.service.GetText("btn_faq", language)
-
-	return &telego.ReplyKeyboardMarkup{
-		Keyboard: [][]telego.KeyboardButton{
-			{
-				{Text: btnPlayText},
-				{Text: btnStatisticsText},
-			},
-			{
-				{Text: btnRatingText},
-				{Text: btnAccountText},
-			},
-			{
-				{Text: btnFAQText},
-			},
-		},
-		ResizeKeyboard:  true,
-		OneTimeKeyboard: false,
-		Selective:       false,
-	}
-}
 
 // createStatsKeyboard создает клавиатуру для выбора периода статистики
 func (b *Bot) createStatsKeyboard(language string) *telego.ReplyKeyboardMarkup {

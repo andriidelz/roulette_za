@@ -5,7 +5,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 )
@@ -51,7 +51,7 @@ func GetUserProfilePhoto(telegramToken string, userID int64) (string, error) {
 	}
 	defer photosResp.Body.Close()
 
-	photosData, err := ioutil.ReadAll(photosResp.Body)
+	photosData, err := io.ReadAll(photosResp.Body)
 	if err != nil {
 		return "", fmt.Errorf("error reading photos response: %w", err)
 	}
@@ -77,7 +77,7 @@ func GetUserProfilePhoto(telegramToken string, userID int64) (string, error) {
 	}
 	defer fileResp.Body.Close()
 
-	fileData, err := ioutil.ReadAll(fileResp.Body)
+	fileData, err := io.ReadAll(fileResp.Body)
 	if err != nil {
 		return "", fmt.Errorf("error reading file response: %w", err)
 	}
