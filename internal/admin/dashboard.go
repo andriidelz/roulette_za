@@ -1,12 +1,21 @@
 package admin
 
 import (
+	"fmt"
 	"net/http"
 	"roulette/internal/models"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+// Глобальная переменная для хранения времени запуска сервера
+var serverStartTime time.Time
+
+// Инициализируем время запуска при импорте пакета
+func init() {
+	serverStartTime = time.Now().UTC()
+}
 
 func (a *AdminPanel) dashboard(c *gin.Context) {
 	// Отримуємо загальну статистику
@@ -19,24 +28,47 @@ func (a *AdminPanel) dashboard(c *gin.Context) {
 		return
 	}
 
-	// Получаем количество новых пользователей за сегодня
-	newUsersToday := 0 // Заглушка, нужно реализовать в репозитории
+	// Получаем текущее время в различных форматах
+	now := time.Now().UTC() // Текущее время в UTC
+	currentDateTime := now.Format("2006-01-02 15:04:05")
+	currentDate := now.Format("2006-01-02")
+	currentTime := now.Format("15:04:05")
 
-	// Расчет роста пользователей (в процентах)
-	var userGrowthRate float64 = 0.0 // или любое другое начальное значение
+	// Форматируем время для отображения в JavaScript
+	// JavaScript использует миллисекунды, поэтому умножаем на 1000
+	jsTimestamp := now.Unix() * 1000
+
+	// Получаем информацию о дне недели, месяце и т.д.
+	weekday := now.Weekday().String()
+	month := now.Month().String()
+	day := now.Day()
+	year := now.Year()
+
+	// Расчет времени работы сервера
+	uptime := now.Sub(serverStartTime)
+
+	// Форматируем время работы в удобном для человека виде
+	days := int(uptime.Hours() / 24)
+	hours := int(uptime.Hours()) % 24
+	minutes := int(uptime.Minutes()) % 60
+	seconds := int(uptime.Seconds()) % 60
+
+	var uptimeFormatted string
+	if days > 0 {
+		uptimeFormatted = fmt.Sprintf("%d дн. %d ч. %d мин. %d сек.", days, hours, minutes, seconds)
+	} else if hours > 0 {
+		uptimeFormatted = fmt.Sprintf("%d ч. %d мин. %d сек.", hours, minutes, seconds)
+	} else if minutes > 0 {
+		uptimeFormatted = fmt.Sprintf("%d мин. %d сек.", minutes, seconds)
+	} else {
+		uptimeFormatted = fmt.Sprintf("%d сек.", seconds)
+	}
+
+	// Также сохраняем время запуска в удобном формате
+	serverStartFormatted := serverStartTime.Format("2006-01-02 15:04:05 MST")
 
 	// Рік і тиждень для рейтингу
-	year, week := time.Now().ISOWeek()
-
-	// Получаем информацию о количестве активных игроков
-	activePlayers := 0 // Заглушка, нужно реализовать в репозитории
-
-	// Расчет дней до окончания текущей недели
-	today := time.Now()
-	daysUntilSunday := 7 - int(today.Weekday())
-	if daysUntilSunday == 7 {
-		daysUntilSunday = 0
-	}
+	_, week := now.ISOWeek()
 
 	// Отримуємо призовий фонд
 	prizeFund, err := a.repo.GetPrizeFund(year, week)
@@ -53,63 +85,27 @@ func (a *AdminPanel) dashboard(c *gin.Context) {
 		_ = a.repo.UpdatePrizeFund(prizeFund) // Ігноруємо помилку, якщо вона виникне
 	}
 
-	// Данные о выплатах
-	pendingWithdrawalsCount := 0    // Заглушка, нужно реализовать в репозитории
-	pendingWithdrawalsAmount := 0.0 // Заглушка, нужно реализовать в репозитории
-
-	// Данные о ставках
-	redBetsPercentage := 33.0   // Заглушка, нужно реализовать в репозитории
-	blackBetsPercentage := 33.0 // Заглушка, нужно реализовать в репозитории
-	zeroBetsPercentage := 34.0  // Заглушка, нужно реализовать в репозитории
-
-	// Топ игроков (заглушка)
-	topPlayers := []gin.H{
-		{"ID": 1, "Username": "player1", "FirstName": "John", "LastName": "Doe", "Points": 1200, "BetsCount": 45},
-		{"ID": 2, "Username": "player2", "FirstName": "Jane", "LastName": "Smith", "Points": 980, "BetsCount": 38},
-		{"ID": 3, "Username": "", "FirstName": "Mike", "LastName": "Johnson", "Points": 870, "BetsCount": 32},
-		{"ID": 4, "Username": "winner4", "FirstName": "Alex", "LastName": "Brown", "Points": 760, "BetsCount": 28},
-		{"ID": 5, "Username": "lucky5", "FirstName": "Sam", "LastName": "Wilson", "Points": 650, "BetsCount": 25},
-	}
-
-	// Системная информация
-	launchDate := "2025-01-15"
-	uptime := "42 дней 8 часов"
-	scheduledTasksCount := 3
-
-	// Последние действия (заглушка)
-	recentActions := []gin.H{
-		{"Timestamp": "15:30:45", "Type": "registration", "Action": "Регистрация", "UserID": 123, "Username": "newuser", "Details": "Новый пользователь"},
-		{"Timestamp": "15:25:12", "Type": "bet", "Action": "Ставка", "UserID": 115, "Username": "player1", "Details": "100 очков на красное"},
-		{"Timestamp": "15:20:33", "Type": "withdrawal", "Action": "Вывод", "UserID": 87, "Username": "winner", "Details": "250$ запрошено"},
-		{"Timestamp": "14:55:18", "Type": "login", "Action": "Вход", "UserID": 92, "Username": "regular", "Details": "Успешный вход"},
-		{"Timestamp": "14:48:02", "Type": "bet", "Action": "Ставка", "UserID": 103, "Username": "gambler", "Details": "50 очков на черное"},
-	}
-
-	// Поточна дата
-	currentDateTime := time.Now().Format("2006-01-02 15:04:05")
-
 	c.HTML(http.StatusOK, "dashboard", gin.H{
-		"title":                    "Admin-panel - Головна",
-		"userCount":                userCount,
-		"newUsersToday":            newUsersToday,
-		"userGrowthRate":           userGrowthRate,
-		"year":                     year,
-		"week":                     week,
-		"activePlayers":            activePlayers,
-		"daysLeft":                 daysUntilSunday,
-		"prizeFund":                prizeFund,
-		"prizePlacesCount":         prizeFund.TopCount,
-		"pendingWithdrawalsCount":  pendingWithdrawalsCount,
-		"pendingWithdrawalsAmount": pendingWithdrawalsAmount,
-		"redBetsPercentage":        redBetsPercentage,
-		"blackBetsPercentage":      blackBetsPercentage,
-		"zeroBetsPercentage":       zeroBetsPercentage,
-		"topPlayers":               topPlayers,
-		"launchDate":               launchDate,
-		"uptime":                   uptime,
-		"scheduledTasksCount":      scheduledTasksCount,
-		"recentActions":            recentActions,
-		"activeTab":                "dashboard",
-		"currentDateTime":          currentDateTime,
+		"title":     "Admin-panel - Головна",
+		"userCount": userCount,
+		"year":      year,
+		"week":      week,
+		"prizeFund": prizeFund,
+		"activeTab": "dashboard",
+
+		// Информация о времени
+		"currentDateTime": currentDateTime,
+		"currentDate":     currentDate,
+		"currentTime":     currentTime,
+		"jsTimestamp":     jsTimestamp,
+		"weekday":         weekday,
+		"month":           month,
+		"day":             day,
+		"utcYear":         year,
+
+		// Информация о времени работы сервера
+		"uptime":          uptimeFormatted,
+		"uptimeSeconds":   int(uptime.Seconds()),
+		"serverStartTime": serverStartFormatted,
 	})
 }
