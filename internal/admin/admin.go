@@ -64,6 +64,12 @@ func (a *AdminPanel) Start() error {
 func (a *AdminPanel) setupRoutes() {
 
 	a.router.SetFuncMap(template.FuncMap{
+		"abs": func(x float64) float64 {
+			if x < 0 {
+				return -x
+			}
+			return x
+		},
 		"add": func(a, b int) int {
 			return a + b
 		},
