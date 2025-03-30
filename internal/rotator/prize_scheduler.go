@@ -22,6 +22,7 @@ func NewPrizeScheduler(service service.Service) *PrizeScheduler {
 	return &PrizeScheduler{
 		service:   service,
 		stopChan:  make(chan struct{}),
+		lastRun:   time.Now().UTC().Add(-24 * time.Hour), // Инициализируем на 24 часа назад
 		isRunning: false,
 	}
 }
