@@ -254,7 +254,7 @@ func (b *Bot) handleContactCommand(message *telego.Message) {
 func (b *Bot) sendSubscriptionRequest(chatID int64, language string) {
 	// Формируем ссылку на канал в правильном формате
 	channelButton := telego.InlineKeyboardButton{
-		Text: "Перейти в канал",
+		Text: b.service.GetText("go_to_channel", language),
 		URL:  "https://t.me/" + strings.TrimPrefix(ReserveChannelID, "@"),
 	}
 
