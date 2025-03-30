@@ -98,6 +98,9 @@ func (a *AdminPanel) setupRoutes() {
 	// Статические файлы
 	a.router.Static("/static", "./web/static")
 
+	// Настраиваем публичные маршруты
+	a.setupPublicRoutes()
+
 	// Авторизация
 	auth := a.router.Group("/")
 	auth.Use(a.ipFilterMiddleware())
@@ -149,7 +152,7 @@ func (a *AdminPanel) setupRoutes() {
 
 		admin.GET("/hashes", a.hashesPage)
 
-		// API ендпоинты
+		// API эндпоинты для админ-панели (защищенный доступ)
 		api := a.router.Group("/admin/api")
 		api.Use(a.ipFilterMiddleware(), a.authRequired())
 		{

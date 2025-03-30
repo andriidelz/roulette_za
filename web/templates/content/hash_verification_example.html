@@ -1,0 +1,440 @@
+{{define "hash_verification_example"}}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Пример проверки хеша | Roulette Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #f8f9fa;
+        }
+        
+        .main-container {
+            flex: 1;
+            padding: 2rem 0;
+        }
+        
+        .code-block {
+            background-color: #212529;
+            color: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+        
+        .code-block pre {
+            margin-bottom: 0;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            border-radius: 4px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .copy-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .verification-card {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .verification-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .verification-card .card-header {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .verification-steps {
+            counter-reset: step-counter;
+            margin-bottom: 2rem;
+        }
+        
+        .verification-step {
+            position: relative;
+            padding-left: 3rem;
+            margin-bottom: 1.5rem;
+            counter-increment: step-counter;
+        }
+        
+        .verification-step:before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 2.5rem;
+            height: 2.5rem;
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 767.98px) {
+            .verification-step {
+                padding-left: 2.5rem;
+            }
+            
+            .verification-step:before {
+                width: 2rem;
+                height: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Шапка сайта -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">Roulette Bot</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/verify">
+                            <i class="bi bi-shield-check"></i> Проверка результатов
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/faq">
+                            <i class="bi bi-question-circle"></i> FAQ
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/example">
+                            <i class="bi bi-code-slash"></i> Пример проверки
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основное содержимое -->
+    <div class="main-container">
+        <div class="container">
+            <h1 class="mb-4">Пример проверки хеша SHA-256</h1>
+            <p class="lead mb-5">На этой странице вы можете увидеть пример реализации алгоритма проверки хеша SHA-256 с использованием JavaScript. Вы можете использовать этот код для самостоятельной проверки результатов нашей рулетки.</p>
+            
+            <div class="row">
+                <div class="col-lg-7 mb-4">
+                    <div class="card verification-card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-code-slash"></i> Код для проверки хеша</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="code-block">
+                                <button class="copy-btn" id="copy-code-btn">Копировать</button>
+<pre><code>// Функция для проверки хеша SHA-256
+async function verifyHash(number, salt, originalHash) {
+    try {
+        // Формируем строку в формате "число:соль"
+        const data = `${number}:${salt}`;
+        
+        // Кодируем строку в массив байтов
+        const encoder = new TextEncoder();
+        const dataBuffer = encoder.encode(data);
+        
+        // Вычисляем SHA-256 хеш
+        const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+        
+        // Преобразуем ArrayBuffer в строку hex
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const computedHash = hashArray.map(b => 
+            b.toString(16).padStart(2, '0')
+        ).join('');
+        
+        // Проверяем, совпадает ли вычисленный хеш с оригинальным
+        const isValid = computedHash === originalHash;
+        
+        return {
+            isValid,
+            computedHash,
+            originalHash,
+            number,
+            salt,
+            input: data
+        };
+    } catch (error) {
+        console.error('Ошибка при проверке хеша:', error);
+        return {
+            isValid: false,
+            error: error.message
+        };
+    }
+}</code></pre>
+                            </div>
+                            
+                            <h6 class="mb-3">Как использовать этот код:</h6>
+                            <ol>
+                                <li>Скопируйте код функции <code>verifyHash</code></li>
+                                <li>Добавьте его в свой JavaScript-проект</li>
+                                <li>Вызовите функцию с параметрами: число, соль и оригинальный хеш</li>
+                                <li>Функция вернет объект с результатом проверки и дополнительной информацией</li>
+                            </ol>
+                            
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Обратите внимание:</strong> Этот код использует Web Crypto API, который доступен в большинстве современных браузеров.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-5">
+                    <div class="card verification-card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-shield-check"></i> Попробуйте сами</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="verification-form">
+                                <div class="mb-3">
+                                    <label for="number-input" class="form-label">Число (0-36):</label>
+                                    <input type="number" class="form-control" id="number-input" min="0" max="36" value="5" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="salt-input" class="form-label">Соль (HEX):</label>
+                                    <input type="text" class="form-control" id="salt-input" value="a1b2c3d4e5f6" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="hash-input" class="form-label">Оригинальный хеш:</label>
+                                    <input type="text" class="form-control" id="hash-input" value="" placeholder="Будет вычислен автоматически">
+                                    <div class="form-text">Оставьте пустым для автоматического вычисления и сравнения.</div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-check-circle"></i> Проверить
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="card verification-card d-none" id="result-card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-info-circle"></i> Результат проверки</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="verification-result" class="alert alert-info">
+                                <i class="bi bi-hourglass-split me-2"></i> Ожидание проверки...
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Входные данные:</label>
+                                <div class="code-block p-2" id="input-data">-</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Вычисленный хеш:</label>
+                                <div class="code-block p-2" id="computed-hash">-</div>
+                            </div>
+                            
+                            <div class="mb-3" id="original-hash-block">
+                                <label class="form-label">Оригинальный хеш:</label>
+                                <div class="code-block p-2" id="original-hash">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-5">
+                <h2 class="mb-4">Как работает проверка хеша?</h2>
+                
+                <div class="verification-steps">
+                    <div class="verification-step">
+                        <h5>Генерация данных</h5>
+                        <p>Система создает строку в формате "<strong>число:соль</strong>" (например, "5:a1b2c3d4e5f6"). Здесь число — это результат раунда рулетки (от 0 до 36), а соль — случайная строка символов.</p>
+                    </div>
+                    
+                    <div class="verification-step">
+                        <h5>Вычисление хеша</h5>
+                        <p>Эта строка преобразуется в массив байтов, к которому применяется алгоритм SHA-256. Результатом является 64-символьная строка в шестнадцатеричном формате.</p>
+                    </div>
+                    
+                    <div class="verification-step">
+                        <h5>Публикация и проверка</h5>
+                        <p>Перед началом раунда публикуется только хеш. После завершения раунда раскрываются число и соль. Вы можете самостоятельно вычислить хеш и убедиться, что он соответствует опубликованному.</p>
+                    </div>
+                </div>
+                
+                <div class="alert alert-primary">
+                    <h5><i class="bi bi-lightbulb me-2"></i>Почему это гарантирует честность?</h5>
+                    <p class="mb-0">Поскольку хеш публикуется <strong>до</strong> начала приема ставок, а результат и соль раскрываются <strong>после</strong> окончания раунда, система не может изменить результат после того, как игроки сделали свои ставки. Криптографический алгоритм SHA-256 гарантирует, что невозможно найти другую пару "число:соль", которая дала бы такой же хеш.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подвал сайта -->
+    <footer class="bg-dark text-white py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6 mb-4 mb-md-0">
+                    <h5>О Roulette Bot</h5>
+                    <p class="text-muted">Телеграм-бот для социального казино на основе упрощенного принципа игры в рулетку с системой проверки честности.</p>
+                </div>
+                <div class="col-md-6">
+                    <h5>Быстрые ссылки</h5>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <ul class="list-unstyled">
+                                <li><a href="https://t.me/your_roulette_bot" class="text-white text-decoration-none" target="_blank"><i class="bi bi-telegram"></i> Telegram Бот</a></li>
+                                <li><a href="/verify" class="text-white text-decoration-none"><i class="bi bi-shield-check"></i> Проверка результатов</a></li>
+                            </ul>
+                        </div>
+                        <div class="col-sm-6">
+                            <ul class="list-unstyled">
+                                <li><a href="/faq" class="text-white text-decoration-none"><i class="bi bi-question-circle"></i> FAQ</a></li>
+                                <li><a href="/example" class="text-white text-decoration-none"><i class="bi bi-code-slash"></i> Пример проверки</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <hr class="my-3">
+            <div class="text-center">
+                <p class="mb-0">&copy; 2025 Roulette Bot. Все права защищены.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Функция для проверки хеша SHA-256
+        async function verifyHash(number, salt, originalHash) {
+            try {
+                // Формируем строку в формате "число:соль"
+                const data = `${number}:${salt}`;
+                
+                // Кодируем строку в массив байтов
+                const encoder = new TextEncoder();
+                const dataBuffer = encoder.encode(data);
+                
+                // Вычисляем SHA-256 хеш
+                const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+                
+                // Преобразуем ArrayBuffer в строку hex
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const computedHash = hashArray.map(b => 
+                    b.toString(16).padStart(2, '0')
+                ).join('');
+                
+                // Проверяем, совпадает ли вычисленный хеш с оригинальным
+                const isValid = !originalHash || computedHash === originalHash;
+                
+                return {
+                    isValid,
+                    computedHash,
+                    originalHash: originalHash || computedHash,
+                    number,
+                    salt,
+                    input: data
+                };
+            } catch (error) {
+                console.error('Ошибка при проверке хеша:', error);
+                return {
+                    isValid: false,
+                    error: error.message
+                };
+            }
+        }
+        
+        // Обработка формы проверки
+        document.getElementById('verification-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Получаем значения из формы
+            const number = parseInt(document.getElementById('number-input').value);
+            const salt = document.getElementById('salt-input').value;
+            const originalHash = document.getElementById('hash-input').value.trim();
+            
+            // Показываем карточку с результатом
+            document.getElementById('result-card').classList.remove('d-none');
+            
+            // Обновляем блок результата
+            const resultBlock = document.getElementById('verification-result');
+            resultBlock.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Проверка...';
+            resultBlock.className = 'alert alert-info';
+            
+            // Проверяем хеш
+            const result = await verifyHash(number, salt, originalHash);
+            
+            // Обновляем данные в интерфейсе
+            document.getElementById('input-data').textContent = result.input;
+            document.getElementById('computed-hash').textContent = result.computedHash;
+            
+            if (originalHash) {
+                document.getElementById('original-hash').textContent = result.originalHash;
+                document.getElementById('original-hash-block').classList.remove('d-none');
+            } else {
+                document.getElementById('original-hash-block').classList.add('d-none');
+            }
+            
+            // Обновляем блок результата в зависимости от результата проверки
+            if (result.error) {
+                resultBlock.innerHTML = `<i class="bi bi-exclamation-triangle me-2"></i> Ошибка: ${result.error}`;
+                resultBlock.className = 'alert alert-danger';
+            } else if (!originalHash) {
+                resultBlock.innerHTML = '<i class="bi bi-info-circle me-2"></i> Хеш успешно вычислен! Скопируйте его для использования в проверке.';
+                resultBlock.className = 'alert alert-success';
+                
+                // Заполняем поле с оригинальным хешем
+                document.getElementById('hash-input').value = result.computedHash;
+            } else if (result.isValid) {
+                resultBlock.innerHTML = '<i class="bi bi-check-circle me-2"></i> Хеш подтвержден! Данные подлинны.';
+                resultBlock.className = 'alert alert-success';
+            } else {
+                resultBlock.innerHTML = '<i class="bi bi-x-circle me-2"></i> Хеш не совпадает! Данные могли быть изменены.';
+                resultBlock.className = 'alert alert-danger';
+            }
+        });
+        
+        // Функциональность кнопки копирования кода
+        document.getElementById('copy-code-btn').addEventListener('click', function() {
+            const codeText = document.querySelector('.code-block pre code').textContent;
+            navigator.clipboard.writeText(codeText)
+                .then(() => {
+                    this.textContent = 'Скопировано!';
+                    setTimeout(() => {
+                        this.textContent = 'Копировать';
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Ошибка при копировании: ', err);
+                    this.textContent = 'Ошибка';
+                    setTimeout(() => {
+                        this.textContent = 'Копировать';
+                    }, 2000);
+                });
+        });
+    </script>
+</body>
+</html>
+{{end}}
