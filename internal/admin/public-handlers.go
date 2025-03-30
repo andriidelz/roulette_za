@@ -186,7 +186,7 @@ func (a *AdminPanel) publicFaqPage(c *gin.Context) {
 
 // hashVerificationExample отображает страницу с примером проверки хеша
 func (a *AdminPanel) hashVerificationExample(c *gin.Context) {
-	c.HTML(http.StatusOK, "hash_verification_example", gin.H{
+	c.HTML(http.StatusOK, "public_hash_verification_example", gin.H{
 		"title": "Пример проверки хеша | Roulette Bot",
 	})
 }
