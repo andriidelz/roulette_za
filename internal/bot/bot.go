@@ -5,15 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"roulette/internal/data"
 	"roulette/internal/models"
 	"roulette/internal/service"
-	"roulette/internal/utils"
 
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
@@ -43,15 +40,12 @@ const (
 	CommandFAQ      = "faq"
 	CommandSettings = "settings"
 
-	CallbackBetRed   = "bet_red"
-	CallbackBetBlack = "bet_black"
-	CallbackBetZero  = "bet_zero"
-	CallbackBack     = "back"
-
 	CallbackReserveSubscription = "reservsubs"
+	CallbackBetRed              = "bet_red"
+	CallbackBetBlack            = "bet_black"
+	CallbackBetZero             = "bet_zero"
+	CallbackBack                = "back"
 
-	// Используйте имя канала без символа @
-	// Например: "your_channel_name"
 	ReserveChannelID = "@socialroulette_dev" // https://t.me/socialroulette_dev
 )
 
@@ -258,7 +252,11 @@ func (b *Bot) handleContactCommand(message *telego.Message) {
 
 // sendSubscriptionRequest отправляет запрос на подписку на резервный канал
 func (b *Bot) sendSubscriptionRequest(chatID int64, language string) {
-	subscriptionText := b.service.GetText("startmessage2", language)
+	// Формируем ссылку на канал в правильном формате
+	channelButton := telego.InlineKeyboardButton{
+		Text: "Перейти в канал",
+		URL:  "https://t.me/" + strings.TrimPrefix(ReserveChannelID, "@"),
+	}
 
 	// Создаем inline клавиатуру с кнопкой подтверждения
 	subscribeButton := telego.InlineKeyboardButton{
@@ -266,23 +264,14 @@ func (b *Bot) sendSubscriptionRequest(chatID int64, language string) {
 		CallbackData: CallbackReserveSubscription,
 	}
 
-	// Формируем ссылку на канал в правильном формате
-	channelUsername := strings.TrimPrefix(ReserveChannelID, "@")
-	channelButton := telego.InlineKeyboardButton{
-		Text: "Перейти в канал",
-		URL:  "https://t.me/" + channelUsername,
-	}
-
-	inlineKeyboard := &telego.InlineKeyboardMarkup{
-		InlineKeyboard: [][]telego.InlineKeyboardButton{
-			{channelButton},
-			{subscribeButton},
-		},
-	}
-
 	b.SendMessage(chatID, MessageOptions{
-		Text:           subscriptionText,
-		InlineKeyboard: inlineKeyboard,
+		Text: b.service.GetText("startmessage2", language),
+		InlineKeyboard: &telego.InlineKeyboardMarkup{
+			InlineKeyboard: [][]telego.InlineKeyboardButton{
+				{channelButton},
+				{subscribeButton},
+			},
+		},
 	})
 }
 
@@ -434,13 +423,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 
 				// Отправляем сообщение об успешном обновлении
 				successText := b.service.GetText("name_saved", user.LanguageCode)
-				backBtn := &telego.InlineKeyboardMarkup{
-					InlineKeyboard: [][]telego.InlineKeyboardButton{
-						{
-							{Text: b.service.GetText("btn_back", user.LanguageCode), CallbackData: CallbackSettingsBack},
-						},
-					},
-				}
+				backBtn := b.createBackBtnKeyboard(user.LanguageCode)
 
 				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
 					Text:           successText,
@@ -470,13 +453,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 
 				// Отправляем сообщение об успешном обновлении
 				successText := b.service.GetText("lastname_saved", user.LanguageCode)
-				backBtn := &telego.InlineKeyboardMarkup{
-					InlineKeyboard: [][]telego.InlineKeyboardButton{
-						{
-							{Text: b.service.GetText("btn_back", user.LanguageCode), CallbackData: CallbackSettingsBack},
-						},
-					},
-				}
+				backBtn := b.createBackBtnKeyboard(user.LanguageCode)
 
 				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
 					Text:           successText,
@@ -499,13 +476,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 					invalidWalletText := b.service.GetText("invalid_wallet_format", user.LanguageCode)
 
 					// Создаем клавиатуру с кнопкой назад
-					backBtn := &telego.InlineKeyboardMarkup{
-						InlineKeyboard: [][]telego.InlineKeyboardButton{
-							{
-								{Text: b.service.GetText("btn_back", user.LanguageCode), CallbackData: CallbackSettingsBack},
-							},
-						},
-					}
+					backBtn := b.createBackBtnKeyboard(user.LanguageCode)
 
 					// Отправляем сообщение об ошибке
 					b.SendMessage(message.Chat.ID, MessageOptions{
@@ -530,13 +501,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 
 				// Отправляем сообщение об успешном обновлении
 				successText := b.service.GetText("wallet_saved", user.LanguageCode)
-				backBtn := &telego.InlineKeyboardMarkup{
-					InlineKeyboard: [][]telego.InlineKeyboardButton{
-						{
-							{Text: b.service.GetText("btn_back", user.LanguageCode), CallbackData: CallbackSettingsBack},
-						},
-					},
-				}
+				backBtn := b.createBackBtnKeyboard(user.LanguageCode)
 
 				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
 					Text:           successText,
@@ -845,13 +810,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 				// Показываем подтверждение сохранения и кнопку назад
 				successText := b.service.GetText("country_saved", language)
 
-				backBtn := &telego.InlineKeyboardMarkup{
-					InlineKeyboard: [][]telego.InlineKeyboardButton{
-						{
-							{Text: b.service.GetText("btn_back", language), CallbackData: CallbackSettingsBack},
-						},
-					},
-				}
+				backBtn := b.createBackBtnKeyboard(language)
 
 				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
 					Text:           successText,
@@ -902,13 +861,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 				// Устанавливаем состояние ожидания имени
 				b.stateManager.SetState(user.ID, StateInputName, query.Message.MessageID)
 
-				backBtn := &telego.InlineKeyboardMarkup{
-					InlineKeyboard: [][]telego.InlineKeyboardButton{
-						{
-							{Text: "◀️ Back", CallbackData: CallbackSettingsBack},
-						},
-					},
-				}
+				backBtn := b.createBackBtnKeyboard(language)
 
 				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
 					Text:           nameText,
@@ -925,13 +878,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 				// Устанавливаем состояние ожидания фамилии
 				b.stateManager.SetState(user.ID, StateInputLName, query.Message.MessageID)
 
-				backBtn := &telego.InlineKeyboardMarkup{
-					InlineKeyboard: [][]telego.InlineKeyboardButton{
-						{
-							{Text: "◀️ Back", CallbackData: CallbackSettingsBack},
-						},
-					},
-				}
+				backBtn := b.createBackBtnKeyboard(language)
 
 				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
 					Text:           lastNameText,
@@ -948,13 +895,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 				// Устанавливаем состояние ожидания адреса кошелька
 				b.stateManager.SetState(user.ID, StateInputWallet, query.Message.MessageID)
 
-				backBtn := &telego.InlineKeyboardMarkup{
-					InlineKeyboard: [][]telego.InlineKeyboardButton{
-						{
-							{Text: b.service.GetText("btn_back", language), CallbackData: CallbackSettingsBack},
-						},
-					},
-				}
+				backBtn := b.createBackBtnKeyboard(language)
 
 				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
 					Text:           walletText,
@@ -1021,13 +962,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Обновляем сообщение подтверждением изменения языка
 		if query.Message != nil {
 			// Создаем кнопку назад с новым языком
-			backBtn := &telego.InlineKeyboardMarkup{
-				InlineKeyboard: [][]telego.InlineKeyboardButton{
-					{
-						{Text: b.service.GetText("btn_back", langCode), CallbackData: CallbackSettingsBack},
-					},
-				},
-			}
+			backBtn := b.createBackBtnKeyboard(langCode)
 
 			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
 				Text:           successText,
@@ -1074,7 +1009,6 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	case CallbackBack:
 		b.handleBackToMainMenu(query)
 	case "view_rating":
-		// Обработка показа рейтинга
 		b.handleRatingCommand(query.Message)
 		b.answerCallbackQuery(query.ID, "", false)
 	case CallbackRequestWithdraw:
@@ -1082,7 +1016,6 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	case CallbackProcessWithdraw:
 		b.handleProcessWithdrawCallback(query)
 	case "stop_game":
-		// Обработка остановки игры
 		b.gameHandler.HandleStopGameButton(user.ID)
 		b.answerCallbackQuery(query.ID, "", false)
 		b.handleHelpCommand(query.Message)
@@ -1122,18 +1055,7 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 	welcomeText := b.service.GetText("startmessage1", language)
 
 	// Создаем inline клавиатуру для первого сообщения
-	inlineKeyboard := &telego.InlineKeyboardMarkup{
-		InlineKeyboard: [][]telego.InlineKeyboardButton{
-			{
-				{Text: b.service.GetText("btn_rules", language), CallbackData: "rules"},
-				{Text: b.service.GetText("btn_awards", language), CallbackData: "awards"},
-			},
-			{
-				{Text: b.service.GetText("btn_payments", language), CallbackData: "payments"},
-				{Text: b.service.GetText("btn_fairplay", language), CallbackData: "fairplay"},
-			},
-		},
-	}
+	inlineKeyboard := b.createStartInlineKeyboard(language)
 
 	// Отправляем первое приветственное сообщение с inline клавиатурой
 	b.SendMessage(message.Chat.ID, MessageOptions{
@@ -1168,71 +1090,6 @@ func (b *Bot) sendMainMenu(chatID int64, language string) {
 	})
 }
 
-// createMainReplyKeyboard создает основную reply клавиатуру
-func (b *Bot) createMainReplyKeyboard(language string) *telego.ReplyKeyboardMarkup {
-
-	// Получаем локализированные тексты для кнопок
-	btnPlayText := b.service.GetText("btn_play", language)
-	btnStatisticsText := b.service.GetText("btn_statistics", language)
-	btnRatingText := b.service.GetText("btn_rating", language)
-	btnAccountText := b.service.GetText("btn_account", language)
-	btnFAQText := b.service.GetText("btn_faq", language)
-
-	return &telego.ReplyKeyboardMarkup{
-		Keyboard: [][]telego.KeyboardButton{
-			{
-				{Text: btnPlayText},
-				{Text: btnStatisticsText},
-			},
-			{
-				{Text: btnRatingText},
-				{Text: btnAccountText},
-			},
-			{
-				{Text: btnFAQText},
-			},
-		},
-		ResizeKeyboard:  true,
-		OneTimeKeyboard: false,
-		Selective:       false,
-	}
-}
-
-// createCountriesKeyboard создает клавиатуру с флагами стран и постраничной навигацией
-// page - номер страницы (начиная с 1)
-func (b *Bot) createCountriesKeyboard(page int) *telego.InlineKeyboardMarkup {
-	// Создаем массив кнопок для постраничной навигации
-	// Сортировка - сначала избранные страны, затем остальные по коду
-	sort.Slice(data.Countries, func(i, j int) bool {
-		if data.Countries[i].Favorite && !data.Countries[j].Favorite {
-			return true
-		}
-		if !data.Countries[i].Favorite && data.Countries[j].Favorite {
-			return false
-		}
-		return data.Countries[i].Code < data.Countries[j].Code
-	})
-
-	// Создаем массив кнопок для постраничной навигации
-	var buttons []utils.PaginatedKeyboardButton
-	for _, country := range data.Countries {
-		buttonText := fmt.Sprintf("%s %s", country.Emoji, country.Code)
-		buttonData := fmt.Sprintf("country:%s", country.Code)
-
-		buttons = append(buttons, utils.PaginatedKeyboardButton{
-			Text:         buttonText,
-			CallbackData: buttonData,
-		})
-	}
-
-	// Параметры пагинации
-	const rowSize = 5   // Кнопок в строке
-	const pageSize = 50 // Кнопок на странице
-
-	// Создаем пагинированную клавиатуру с префиксом "country" для навигации
-	return utils.CreatePaginatedKeyboard(buttons, page, rowSize, pageSize, "country")
-}
-
 // handleBackToStartMenu обработка callback для возврата к стартовому меню
 func (b *Bot) handleBackToStartMenu(query *telego.CallbackQuery) {
 	user := query.From
@@ -1248,18 +1105,7 @@ func (b *Bot) handleBackToStartMenu(query *telego.CallbackQuery) {
 	welcomeText := b.service.GetText("startmessage1", language)
 
 	// Создаем inline клавиатуру для стартового сообщения
-	inlineKeyboard := &telego.InlineKeyboardMarkup{
-		InlineKeyboard: [][]telego.InlineKeyboardButton{
-			{
-				{Text: b.service.GetText("btn_rules", language), CallbackData: "rules"},
-				{Text: b.service.GetText("btn_awards", language), CallbackData: "awards"},
-			},
-			{
-				{Text: b.service.GetText("btn_payments", language), CallbackData: "payments"},
-				{Text: b.service.GetText("btn_fairplay", language), CallbackData: "fairplay"},
-			},
-		},
-	}
+	inlineKeyboard := b.createStartInlineKeyboard(language)
 
 	// Обновляем сообщение
 	if query.Message != nil {
@@ -1278,9 +1124,15 @@ func (b *Bot) handleBackToStartMenu(query *telego.CallbackQuery) {
 
 // updateOrSendMessage обновляет существующее сообщение или отправляет новое
 func (b *Bot) updateOrSendMessage(query *telego.CallbackQuery, text string) {
+	user := query.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
 	// Создаем кнопку "Назад"
 	backButton := telego.InlineKeyboardButton{
-		Text:         "◀️ Назад",
+		Text:         b.service.GetText("btn_back", language),
 		CallbackData: "back_to_start",
 	}
 	keyboard := &telego.InlineKeyboardMarkup{
@@ -1474,34 +1326,6 @@ func (b *Bot) showStatisticsForPeriod(message *telego.Message, period string) {
 }
 
 // Допоміжні методи
-
-// createStatsKeyboard создает клавиатуру для выбора периода статистики
-func (b *Bot) createStatsKeyboard(language string) *telego.ReplyKeyboardMarkup {
-	// Получаем локализованные тексты для кнопок
-	btnDayStatText := b.service.GetText("daystat", language)
-	btnWeekStatText := b.service.GetText("weekstat", language)
-	btnMonthStatText := b.service.GetText("monthstat", language)
-	btnAllStatText := b.service.GetText("allstat", language)
-	btnExitStatText := b.service.GetText("exitstat", language)
-
-	return &telego.ReplyKeyboardMarkup{
-		Keyboard: [][]telego.KeyboardButton{
-			{
-				{Text: btnDayStatText},
-				{Text: btnWeekStatText},
-			},
-			{
-				{Text: btnMonthStatText},
-				{Text: btnAllStatText},
-			},
-			{
-				{Text: btnExitStatText},
-			},
-		},
-		ResizeKeyboard:  true,
-		OneTimeKeyboard: false,
-	}
-}
 
 // Відповідь на callback-запит
 func (b *Bot) answerCallbackQuery(queryID string, text string, showAlert bool) {
