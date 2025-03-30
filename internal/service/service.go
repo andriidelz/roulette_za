@@ -314,19 +314,20 @@ func (s *ServiceImpl) GetRoundResult(hashEntryID uint) (models.BetOption, error)
 		return "", err
 	}
 
-	// Определяем результат по числу
-	if round.Number == 0 {
-		return models.Zero, nil
-	}
+	// Используем utils.GetColorForNumber для определения цвета
+	color := utils.GetColorForNumber(round.Number)
 
-	// Определяем красное или черное
-	redNumbers := []int64{1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
-	for _, n := range redNumbers {
-		if round.Number == n {
-			return models.Red, nil
-		}
+	// Преобразуем строку в models.BetOption
+	switch color {
+	case "red":
+		return models.Red, nil
+	case "black":
+		return models.Black, nil
+	case "zero (green)":
+		return models.Zero, nil
+	default:
+		return "", fmt.Errorf("unknown color: %s", color)
 	}
-	return models.Black, nil
 }
 
 // ProcessAndGetBets обрабатывает все ставки и возвращает список обработанных ставок

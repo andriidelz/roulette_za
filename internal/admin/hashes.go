@@ -12,47 +12,36 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Сторінка хешів
+// Страница хешей
 func (a *AdminPanel) hashesPage(c *gin.Context) {
-	// Отримуємо параметри пагінації
+	// Получаем параметры пагинации
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
 		page = 1
 	}
 	perPage := 10
 
-	// Отримуємо хеші з пагінацією
+	// Получаем хеши с пагинацией
 	entries, totalPages, err := a.service.GetHashEntries(page, perPage)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Помилка",
+			"title": "Ошибка",
 			"error": err.Error(),
 		})
 		return
 	}
 
-	// Підготовлюємо дані для шаблону
+	// Подготавливаем данные для шаблона
 	hashEntries := make([]gin.H, 0, len(entries))
 	for _, entry := range entries {
-		colorStr := "black"
-		if entry.Number == 0 {
+		// Используем utils.GetColorForNumber для определения цвета
+		colorStr := utils.GetColorForNumber(entry.Number)
+		// Преобразуем "zero (green)" в просто "zero" для совместимости
+		if colorStr == "zero (green)" {
 			colorStr = "zero"
-		} else {
-			// Визначаємо колір для числа (червоне або чорне)
-			redNumbers := []int64{1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
-			isRed := false
-			for _, n := range redNumbers {
-				if entry.Number == n {
-					isRed = true
-					break
-				}
-			}
-			if isRed {
-				colorStr = "red"
-			}
 		}
 
-		// Конвертуємо ID в Base62 формат
+		// Конвертируем ID в Base62 формат
 		base62ID := utils.ToBase62(uint(entry.ID))
 
 		hashEntries = append(hashEntries, gin.H{
@@ -66,15 +55,15 @@ func (a *AdminPanel) hashesPage(c *gin.Context) {
 		})
 	}
 
-	// Підготовлюємо масив номерів сторінок для пагінації
+	// Подготавливаем массив номеров страниц для пагинации
 	var pagination []int
 	if totalPages <= 7 {
-		// Якщо загальна кількість сторінок не більше 7, показуємо всі
+		// Если общее количество страниц не больше 7, показываем все
 		for i := 1; i <= totalPages; i++ {
 			pagination = append(pagination, i)
 		}
 	} else {
-		// Інакше показуємо поточну сторінку, 2 попередніх, 2 наступних, першу та останню
+		// Иначе показываем текущую страницу, 2 предыдущих, 2 следующих, первую и последнюю
 		pagination = []int{1}
 
 		start := page - 2
@@ -88,7 +77,7 @@ func (a *AdminPanel) hashesPage(c *gin.Context) {
 		}
 
 		if start > 2 {
-			pagination = append(pagination, -1) // Вставляємо "..."
+			pagination = append(pagination, -1) // Вставляем "..."
 		}
 
 		for i := start; i <= end; i++ {
@@ -96,7 +85,7 @@ func (a *AdminPanel) hashesPage(c *gin.Context) {
 		}
 
 		if end < totalPages-1 {
-			pagination = append(pagination, -1) // Вставляємо "..."
+			pagination = append(pagination, -1) // Вставляем "..."
 		}
 
 		pagination = append(pagination, totalPages)
@@ -112,44 +101,33 @@ func (a *AdminPanel) hashesPage(c *gin.Context) {
 	})
 }
 
-// API ендпоінт для отримання списку хешів
+// API эндпоинт для получения списка хешей
 func (a *AdminPanel) getHashesAPI(c *gin.Context) {
-	// Отримуємо параметри пагінації
+	// Получаем параметры пагинации
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
 		page = 1
 	}
 	perPage := 10
 
-	// Отримуємо хеші з пагінацією
+	// Получаем хеши с пагинацией
 	entries, totalPages, err := a.service.GetHashEntries(page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Підготовлюємо дані для відповіді
+	// Подготавливаем данные для ответа
 	hashEntries := make([]gin.H, 0, len(entries))
 	for _, entry := range entries {
-		colorStr := "black"
-		if entry.Number == 0 {
+		// Используем utils.GetColorForNumber для определения цвета
+		colorStr := utils.GetColorForNumber(entry.Number)
+		// Преобразуем "zero (green)" в просто "zero" для совместимости
+		if colorStr == "zero (green)" {
 			colorStr = "zero"
-		} else {
-			// Визначаємо колір для числа (червоне або чорне)
-			redNumbers := []int64{1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
-			isRed := false
-			for _, n := range redNumbers {
-				if entry.Number == n {
-					isRed = true
-					break
-				}
-			}
-			if isRed {
-				colorStr = "red"
-			}
 		}
 
-		// Конвертуємо ID в Base62 формат
+		// Конвертируем ID в Base62 формат
 		base62ID := utils.ToBase62(uint(entry.ID))
 
 		hashEntries = append(hashEntries, gin.H{
@@ -170,23 +148,23 @@ func (a *AdminPanel) getHashesAPI(c *gin.Context) {
 	})
 }
 
-// API ендпоінт для отримання деталей конкретного хешу
+// API эндпоинт для получения деталей конкретного хеша
 func (a *AdminPanel) getHashDetailsAPI(c *gin.Context) {
-	// Отримуємо ID хешу з URL
+	// Получаем ID хеша из URL
 	hashID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірний ID хешу"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID хеша"})
 		return
 	}
 
-	// Отримуємо хеш з бази даних
-	entries, _, err := a.service.GetHashEntries(1, 100) // Тимчасове рішення, поки не буде методу GetHashByID
+	// Получаем хеш из базы данных
+	entries, _, err := a.service.GetHashEntries(1, 100) // Временное решение, пока не будет метода GetHashByID
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Шукаємо потрібний хеш
+	// Ищем нужный хеш
 	var targetEntry *models.HashEntry
 	for _, entry := range entries {
 		if entry.ID == uint(hashID) {
@@ -196,33 +174,21 @@ func (a *AdminPanel) getHashDetailsAPI(c *gin.Context) {
 	}
 
 	if targetEntry == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Хеш не знайдено"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Хеш не найден"})
 		return
 	}
 
-	// Визначаємо колір
-	colorStr := "black"
-	if targetEntry.Number == 0 {
+	// Используем utils.GetColorForNumber для определения цвета
+	colorStr := utils.GetColorForNumber(targetEntry.Number)
+	// Преобразуем "zero (green)" в просто "zero" для совместимости
+	if colorStr == "zero (green)" {
 		colorStr = "zero"
-	} else {
-		// Визначаємо колір для числа (червоне або чорне)
-		redNumbers := []int64{1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
-		isRed := false
-		for _, n := range redNumbers {
-			if targetEntry.Number == n {
-				isRed = true
-				break
-			}
-		}
-		if isRed {
-			colorStr = "red"
-		}
 	}
 
-	// Конвертуємо ID в Base62 формат
+	// Конвертируем ID в Base62 формат
 	base62ID := utils.ToBase62(uint(targetEntry.ID))
 
-	// Повертаємо дані
+	// Возвращаем данные
 	c.JSON(http.StatusOK, gin.H{
 		"ID":        targetEntry.ID,
 		"Base62ID":  base62ID,
@@ -234,31 +200,31 @@ func (a *AdminPanel) getHashDetailsAPI(c *gin.Context) {
 	})
 }
 
-// API ендпоінт для перевірки хешу
+// API эндпоинт для проверки хеша
 func (a *AdminPanel) verifyHashAPI(c *gin.Context) {
-	// Структура для отримання даних з запиту
+	// Структура для получения данных из запроса
 	var verifyRequest struct {
 		Number       int64  `json:"number"`
 		Salt         string `json:"salt"`
 		OriginalHash string `json:"originalHash"`
 	}
 
-	// Парсимо тіло запиту
+	// Парсим тело запроса
 	if err := c.ShouldBindJSON(&verifyRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірний формат запиту"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
 		return
 	}
 
-	// Перевіряємо хеш
+	// Проверяем хеш
 	data := fmt.Sprintf("%d:%s", verifyRequest.Number, verifyRequest.Salt)
 	hash := sha256.New()
 	hash.Write([]byte(data))
 	computedHash := hex.EncodeToString(hash.Sum(nil))
 
-	// Перевіряємо валідність
+	// Проверяем валидность
 	valid := computedHash == verifyRequest.OriginalHash
 
-	// Повертаємо результат
+	// Возвращаем результат
 	c.JSON(http.StatusOK, gin.H{
 		"valid":        valid,
 		"originalHash": verifyRequest.OriginalHash,
