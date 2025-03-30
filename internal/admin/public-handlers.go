@@ -16,6 +16,7 @@ func (a *AdminPanel) setupPublicRoutes() {
 	// Публичные страницы (не требуют авторизации)
 	public := a.router.Group("/")
 	{
+		public.GET("/", a.publicHomePage)
 		public.GET("/verify", a.publicVerifyPage)
 		public.GET("/faq", a.publicFaqPage)
 		public.GET("/example", a.hashVerificationExample)
@@ -123,6 +124,57 @@ func (a *AdminPanel) publicVerifyPage(c *gin.Context) {
 		"pagination":  pagination,
 		"highlightID": highlightID,
 	})
+}
+
+// publicHomePage отображает публичную главную страницу
+func (a *AdminPanel) publicHomePage(c *gin.Context) {
+	// Получаем статистику для отображения на главной странице
+	stats := gin.H{
+		"players": "10,000+",
+		"bets":    "1,500,000+",
+		"prizes":  "25,000+",
+	}
+
+	// Пытаемся получить реальную статистику из БД
+	totalStats, err := a.repo.GetTotalStats()
+	if err == nil {
+		// Если удалось получить статистику из БД, используем ее
+		userCount, _ := a.repo.GetUserCount()
+
+		// Форматируем значения для более приятного отображения
+		players := formatNumberWithSuffix(int(userCount))
+		bets := formatNumberWithSuffix(int(totalStats["totalBets"]))
+
+		// Рассчитываем количество призов (примерно)
+		prizesCount := int(totalStats["totalPoints"] / 100)
+		prizes := formatNumberWithSuffix(prizesCount)
+
+		stats = gin.H{
+			"players": players,
+			"bets":    bets,
+			"prizes":  prizes,
+		}
+	}
+
+	c.HTML(http.StatusOK, "public_home", gin.H{
+		"title": "Roulette Bot | Социальное казино в Telegram",
+		"stats": stats,
+	})
+}
+
+// formatNumberWithSuffix форматирует число с суффиксом k, M, B для больших чисел
+func formatNumberWithSuffix(n int) string {
+	if n < 1000 {
+		return strconv.Itoa(n)
+	} else if n < 1000000 {
+		k := float64(n) / 1000.0
+		return fmt.Sprintf("%.1f%s", k, "k+")
+	} else if n < 1000000000 {
+		m := float64(n) / 1000000.0
+		return fmt.Sprintf("%.1f%s", m, "M+")
+	}
+	b := float64(n) / 1000000000.0
+	return fmt.Sprintf("%.1f%s", b, "B+")
 }
 
 // publicFaqPage отображает публичную страницу с часто задаваемыми вопросами

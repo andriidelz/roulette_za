@@ -1,0 +1,647 @@
+{{define "public_home"}}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Roulette Bot | Социальное казино в Telegram</title>
+    <meta name="description" content="Roulette Bot - Telegram-бот для игры в социальную рулетку с еженедельными рейтингами и прозрачной системой проверки честности.">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --dark-color: #212529;
+            --light-color: #f8f9fa;
+            --success-color: #198754;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+        }
+        
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        .navbar-brand img {
+            height: 30px;
+            margin-right: 8px;
+        }
+        
+        .hero-section {
+            background: linear-gradient(135deg, var(--dark-color) 0%, #343a40 100%);
+            color: white;
+            padding: 6rem 0;
+            position: relative;
+        }
+        
+        .hero-section::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="%23ffffff20" stroke-width="0.5" fill="none"/></svg>');
+            background-size: 300px 300px;
+            opacity: 0.1;
+        }
+        
+        .feature-card {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            height: 100%;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        
+        .feature-card .card-header {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+        
+        .how-it-works {
+            position: relative;
+            padding: 5rem 0;
+            background-color: var(--light-color);
+        }
+        
+        .step-card {
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background-color: white;
+            position: relative;
+            z-index: 1;
+            height: 100%;
+        }
+        
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .step-connection {
+            position: absolute;
+            height: 2px;
+            background-color: var(--primary-color);
+            top: 100px;
+            left: 45px;
+            right: 45px;
+            z-index: 0;
+        }
+        
+        @media (max-width: 767.98px) {
+            .step-connection {
+                display: none;
+            }
+            
+            .step-card {
+                margin-bottom: 1.5rem;
+            }
+            
+            .hero-section {
+                padding: 4rem 0;
+            }
+        }
+        
+        .cta-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #0b5ed7 100%);
+            color: white;
+            padding: 5rem 0;
+            position: relative;
+        }
+        
+        .cta-section::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="%23ffffff20" stroke-width="1" fill="none"/></svg>');
+            background-size: 200px 200px;
+            opacity: 0.2;
+        }
+        
+        .btn-light-outline {
+            color: white;
+            border-color: white;
+        }
+        
+        .btn-light-outline:hover {
+            background-color: white;
+            color: var(--primary-color);
+        }
+        
+        .stats-item {
+            text-align: center;
+            padding: 1.5rem;
+        }
+        
+        .stats-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+        }
+        
+        .stats-label {
+            font-size: 1rem;
+            color: var(--secondary-color);
+        }
+        
+        .testimonial-card {
+            position: relative;
+            margin-top: 3rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .testimonial-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: var(--light-color);
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--secondary-color);
+            overflow: hidden;
+        }
+        
+        .testimonial-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .testimonial-content {
+            padding-top: 3rem;
+            text-align: center;
+        }
+        
+        .color-indicator {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        
+        .color-red {
+            background-color: var(--danger-color);
+        }
+        
+        .color-black {
+            background-color: var(--dark-color);
+        }
+        
+        .color-green {
+            background-color: var(--success-color);
+        }
+        
+        .roulette-demo {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 0 auto;
+        }
+        
+        .roulette-wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(
+                var(--danger-color) 0deg 10deg,
+                var(--dark-color) 10deg 20deg,
+                var(--danger-color) 20deg 30deg,
+                var(--dark-color) 30deg 40deg,
+                var(--danger-color) 40deg 50deg,
+                var(--dark-color) 50deg 60deg,
+                var(--danger-color) 60deg 70deg,
+                var(--dark-color) 70deg 80deg,
+                var(--danger-color) 80deg 90deg,
+                var(--dark-color) 90deg 100deg,
+                var(--danger-color) 100deg 110deg,
+                var(--dark-color) 110deg 120deg,
+                var(--danger-color) 120deg 130deg,
+                var(--dark-color) 130deg 140deg,
+                var(--danger-color) 140deg 150deg,
+                var(--dark-color) 150deg 160deg,
+                var(--danger-color) 160deg 170deg,
+                var(--dark-color) 170deg 180deg,
+                var(--danger-color) 180deg 190deg,
+                var(--dark-color) 190deg 200deg,
+                var(--danger-color) 200deg 210deg,
+                var(--dark-color) 210deg 220deg,
+                var(--danger-color) 220deg 230deg,
+                var(--dark-color) 230deg 240deg,
+                var(--danger-color) 240deg 250deg,
+                var(--dark-color) 250deg 260deg,
+                var(--danger-color) 260deg 270deg,
+                var(--dark-color) 270deg 280deg,
+                var(--danger-color) 280deg 290deg,
+                var(--dark-color) 290deg 300deg,
+                var(--danger-color) 300deg 310deg,
+                var(--dark-color) 310deg 320deg,
+                var(--danger-color) 320deg 330deg,
+                var(--dark-color) 330deg 340deg,
+                var(--danger-color) 340deg 350deg,
+                var(--dark-color) 350deg 360deg
+            );
+            border: 10px solid var(--dark-color);
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .roulette-center {
+            width: 30%;
+            height: 30%;
+            border-radius: 50%;
+            background-color: var(--dark-color);
+            border: 5px solid #6c757d;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            z-index: 2;
+        }
+        
+        .roulette-marker {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 20px solid white;
+            z-index: 3;
+        }
+        
+        @media (max-width: 575.98px) {
+            .roulette-demo {
+                width: 250px;
+                height: 250px;
+            }
+            
+            .stats-value {
+                font-size: 2rem;
+            }
+        }
+        
+        .faq-section {
+            background-color: var(--light-color);
+            padding: 5rem 0;
+        }
+        
+        .accordion-button:not(.collapsed) {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .accordion-button:focus {
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <!-- Шапка сайта -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold">Что говорят наши игроки</h2>
+                <p class="text-muted">Отзывы реальных пользователей Roulette Bot</p>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card testimonial-card">
+                        <div class="testimonial-avatar">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <div class="card-body testimonial-content">
+                            <h5 class="mb-2">Алексей</h5>
+                            <p class="text-muted mb-3">Игрок с января 2025</p>
+                            <p>"Отличный бот! Мне особенно нравится система проверки честности — всегда можно убедиться, что результаты не подтасованы. Уже дважды попадал в топ-10 и выводил выигрыши без проблем."</p>
+                            <div class="mt-3">
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-4">
+                    <div class="card testimonial-card">
+                        <div class="testimonial-avatar">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <div class="card-body testimonial-content">
+                            <h5 class="mb-2">Мария</h5>
+                            <p class="text-muted mb-3">Игрок с февраля 2025</p>
+                            <p>"Интуитивно понятный интерфейс и быстрые раунды делают игру очень увлекательной. Еженедельные рейтинги добавляют азарта и мотивируют играть регулярно. Рекомендую!"</p>
+                            <div class="mt-3">
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-half text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-4">
+                    <div class="card testimonial-card">
+                        <div class="testimonial-avatar">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <div class="card-body testimonial-content">
+                            <h5 class="mb-2">Дмитрий</h5>
+                            <p class="text-muted mb-3">Игрок с декабря 2024</p>
+                            <p>"Играю с самого запуска. Всё честно и прозрачно. Однажды выпало 5 красных подряд, но благодаря системе проверки я убедился, что это чистая случайность. Техподдержка всегда отвечает быстро."</p>
+                            <div class="mt-3">
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq-section">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold">Часто задаваемые вопросы</h2>
+                <p class="text-muted">Ответы на наиболее популярные вопросы</p>
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <div class="accordion" id="faqAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                    Как начать играть в Roulette Bot?
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Начать играть очень просто. Просто найдите @your_roulette_bot в Telegram или перейдите по <a href="https://t.me/your_roulette_bot" target="_blank">ссылке</a>, нажмите кнопку «Начать» и следуйте инструкциям. Для начала игры используйте команду /play.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingTwo">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                    Сколько стоит играть в Roulette Bot?
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Roulette Bot — это социальное казино, поэтому участие в игре абсолютно бесплатное. Вы не рискуете реальными деньгами. В игре используется виртуальная валюта и баллы для определения позиций в рейтинге.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingThree">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                    Как работает система проверки честности?
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Перед началом раунда система генерирует случайное число и криптографическую соль, затем вычисляет хеш SHA-256. Хеш публикуется до начала раунда, а число и соль раскрываются после его завершения. Каждый может проверить, что хеш соответствует раскрытым данным, и результат не был изменен после начала раунда.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingFour">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+                                    Как распределяются призы в еженедельном рейтинге?
+                                </button>
+                            </h2>
+                            <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Призовой фонд распределяется среди топ-100 игроков еженедельного рейтинга пропорционально количеству баллов. Чем больше баллов вы набрали, тем больше часть призового фонда получите. Призы автоматически зачисляются на баланс после окончания недели.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingFive">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive">
+                                    Как вывести выигрыш?
+                                </button>
+                            </h2>
+                            <div id="collapseFive" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Для вывода выигрыша используйте команду /account или соответствующую кнопку в меню бота, затем выберите опцию "Вывод средств". Минимальная сумма для вывода — 10 единиц. После отправки запроса он будет обработан администрацией в течение 24 часов.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <a href="/faq" class="btn btn-primary">
+                            <i class="bi bi-question-circle me-2"></i> Все вопросы и ответы
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA секция -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto text-center">
+                    <h2 class="display-5 fw-bold mb-4">Готовы начать игру?</h2>
+                    <p class="lead mb-4">Присоединяйтесь к тысячам игроков Roulette Bot прямо сейчас и испытайте свою удачу!</p>
+                    <div class="d-flex flex-wrap justify-content-center gap-3">
+                        <a href="https://t.me/your_roulette_bot" class="btn btn-light btn-lg" target="_blank">
+                            <i class="bi bi-telegram me-2"></i> Открыть бот
+                        </a>
+                        <a href="/verify" class="btn btn-light-outline btn-lg">
+                            <i class="bi bi-shield-check me-2"></i> Проверить честность
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Подвал сайта -->
+    <footer class="bg-dark text-white py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 mb-4 mb-md-0">
+                    <h5>О Roulette Bot</h5>
+                    <p class="text-muted">Телеграм-бот для социального казино на основе упрощенного принципа игры в рулетку с системой проверки честности.</p>
+                </div>
+                <div class="col-md-2 col-6 mb-4 mb-md-0">
+                    <h5>Ссылки</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="/" class="text-white text-decoration-none">Главная</a></li>
+                        <li class="mb-2"><a href="/verify" class="text-white text-decoration-none">Проверка результатов</a></li>
+                        <li class="mb-2"><a href="/faq" class="text-white text-decoration-none">FAQ</a></li>
+                        <li><a href="/example" class="text-white text-decoration-none">Пример проверки</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3 col-6 mb-4 mb-md-0">
+                    <h5>Играть</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="https://t.me/your_roulette_bot" class="text-white text-decoration-none" target="_blank">Telegram Бот</a></li>
+                        <li class="mb-2"><a href="#" class="text-white text-decoration-none">Пригласить друга</a></li>
+                        <li><a href="#" class="text-white text-decoration-none">Наши правила</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>Контакты</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="mailto:support@roulettebot.com" class="text-white text-decoration-none"><i class="bi bi-envelope me-2"></i>support@roulettebot.com</a></li>
+                        <li><a href="https://t.me/roulette_support" class="text-white text-decoration-none" target="_blank"><i class="bi bi-headset me-2"></i>Поддержка</a></li>
+                    </ul>
+                    <div class="mt-3">
+                        <a href="#" class="text-white me-3 fs-5"><i class="bi bi-telegram"></i></a>
+                        <a href="#" class="text-white me-3 fs-5"><i class="bi bi-twitter-x"></i></a>
+                        <a href="#" class="text-white me-3 fs-5"><i class="bi bi-instagram"></i></a>
+                    </div>
+                </div>
+            </div>
+            <hr class="my-3">
+            <div class="row align-items-center">
+                <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+                    <p class="mb-0">&copy; 2025 Roulette Bot. Все права защищены.</p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <small class="text-muted">Разработано <a href="https://traff.tools" class="text-white" target="_blank">TRAFF.TOOLS</a></small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Анимация вращения рулетки
+        document.addEventListener('DOMContentLoaded', function() {
+            const rouletteWheel = document.querySelector('.roulette-wheel');
+            let rotation = 0;
+            let spinning = false;
+            let animationId;
+            
+            function spinWheel() {
+                if (spinning) return;
+                
+                spinning = true;
+                let speed = 10;
+                const maxSpeed = 30;
+                const spinTime = 3000; // Время вращения в мс
+                let startTime = null;
+                
+                function animate(timestamp) {
+                    if (!startTime) startTime = timestamp;
+                    const elapsedTime = timestamp - startTime;
+                    
+                    // Увеличиваем скорость в начале, затем замедляем
+                    if (elapsedTime < spinTime * 0.3) {
+                        speed = Math.min(maxSpeed, speed + 0.5);
+                    } else if (elapsedTime > spinTime * 0.5) {
+                        speed = Math.max(0.5, speed - 0.1);
+                    }
+                    
+                    rotation = (rotation + speed) % 360;
+                    rouletteWheel.style.transform = `rotate(${rotation}deg)`;
+                    
+                    if (elapsedTime < spinTime) {
+                        animationId = requestAnimationFrame(animate);
+                    } else {
+                        spinning = false;
+                    }
+                }
+                
+                animationId = requestAnimationFrame(animate);
+            }
+            
+            // Запускаем вращение при загрузке страницы и при клике на рулетку
+            setTimeout(spinWheel, 1000);
+            
+            rouletteWheel.addEventListener('click', spinWheel);
+            
+            // Плавный скролл к секциям при клике на ссылки
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    
+                    if (targetElement) {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 70,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+{{end}}
