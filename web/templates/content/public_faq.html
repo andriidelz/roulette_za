@@ -1,523 +1,118 @@
 {{define "public_faq"}}
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Часто задаваемые вопросы | Roulette Bot</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <style>
-        body {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background-color: #f8f9fa;
-        }
-        
-        .navbar-brand img {
-            height: 30px;
-            margin-right: 8px;
-        }
-        
-        .main-container {
-            flex: 1;
-            padding: 2rem 0;
-        }
-        
-        .hero-section {
-            background-color: #212529;
-            color: white;
-            padding: 3rem 0;
-            margin-bottom: 2rem;
-        }
-        
-        .faq-card {
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-            margin-bottom: 1rem;
-        }
-        
-        .faq-card:hover {
-            transform: translateY(-3px);
-        }
-        
-        .faq-card .card-header {
-            background-color: #0d6efd;
-            color: white;
-            font-weight: bold;
-            padding: 1rem;
-        }
-        
-        .faq-section {
-            margin-bottom: 3rem;
-        }
-        
-        .code-block {
-            background-color: #f1f1f1;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-        
-        .code-block pre {
-            margin-bottom: 0;
-        }
-        
-        @media (max-width: 767.98px) {
-            .hero-section {
-                padding: 2rem 0;
-            }
-            
-            .btn {
-                padding-top: 0.5rem;
-                padding-bottom: 0.5rem;
-                font-size: 0.875rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <!-- Шапка сайта -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="/static/img/logo.png" alt="Roulette Logo" onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22100%22%20height%3D%22100%22%20viewBox%3D%220%200%20100%20100%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2245%22%20fill%3D%22%23dc3545%22%2F%3E%3Ctext%20x%3D%2250%22%20y%3D%2257%22%20font-family%3D%22Arial%22%20font-size%3D%2220%22%20text-anchor%3D%22middle%22%20fill%3D%22white%22%3ER%3C%2Ftext%3E%3C%2Fsvg%3E'">
-                Roulette Bot
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="https://t.me/your_roulette_bot" target="_blank">
-                            <i class="bi bi-telegram"></i> Открыть бот
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/verify">
-                            <i class="bi bi-shield-check"></i> Проверка результатов
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/faq">
-                            <i class="bi bi-question-circle"></i> FAQ
-                        </a>
-                    </li>
-                </ul>
+{{template "public_base" .}}
+{{end}}
+
+{{define "public_faq_content"}}
+<!-- Баннер с краткой информацией -->
+<div class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8 mx-auto text-center">
+                <h1>Часто задаваемые вопросы</h1>
+                <p class="lead">Ответы на популярные вопросы о боте Roulette и системе проверки честности.</p>
+                <a href="/hashes" class="btn btn-primary">
+                    <i class="bi bi-shield-check"></i> Проверить результаты
+                </a>
             </div>
         </div>
-    </nav>
+    </div>
+</div>
 
-    <!-- Баннер с краткой информацией -->
-    <div class="hero-section">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-8 mx-auto text-center">
-                    <h1>Часто задаваемые вопросы</h1>
-                    <p class="lead">Ответы на популярные вопросы о боте Roulette и системе проверки честности.</p>
-                    <a href="/verify" class="btn btn-primary">
-                        <i class="bi bi-shield-check"></i> Проверить результаты
-                    </a>
+<!-- Основное содержимое -->
+<div class="main-container">
+    <div class="container">
+        <!-- Навигация по разделам FAQ -->
+        <ul class="nav nav-pills mb-4 justify-content-center">
+            <li class="nav-item">
+                <a class="nav-link active" href="#general">Общие вопросы</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#gameplay">Игровой процесс</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#verification">Проверка честности</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#ratings">Рейтинги и призы</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#withdrawals">Вывод средств</a>
+            </li>
+        </ul>
+
+        <!-- Раздел: Общие вопросы -->
+        <div id="general" class="faq-section">
+            <h2 class="mb-4">Общие вопросы</h2>
+            
+            <div class="faq-card card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Что такое Roulette Bot?</h5>
+                </div>
+                <div class="card-body">
+                    <p>Roulette Bot - это Telegram-бот, который позволяет пользователям играть в упрощенную версию рулетки. В нашей рулетке есть возможность делать ставки на красное, черное или зеро (0).</p>
+                    <p>Основные особенности Roulette Bot:</p>
+                    <ul>
+                        <li>Упрощенная игра в рулетку с ставками на красное, черное или зеро</li>
+                        <li>Еженедельный рейтинг игроков с призовым фондом</li>
+                        <li>Супер-рейтинг на основе позиций в еженедельных рейтингах</li>
+                        <li>Поддержка нескольких языков (украинский, английский и русский)</li>
+                        <li>Прозрачная система проверки честности результатов</li>
+                        <li>Возможность вывода выигрышей</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="faq-card card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Как начать играть в Roulette Bot?</h5>
+                </div>
+                <div class="card-body">
+                    <p>Начать играть очень просто:</p>
+                    <ol>
+                        <li>Перейдите по ссылке <a href="https://t.me/socialroulette_bot" target="_blank">https://t.me/socialroulette_bot</a> или найдите бот @socialroulette_bot в Telegram</li>
+                        <li>Нажмите кнопку "Старт" или отправьте команду /start</li>
+                        <li>Следуйте инструкциям бота для начала игры</li>
+                        <li>Используйте команду /play для размещения ставок</li>
+                    </ol>
+                    <p>Бот предоставит подробные инструкции и поможет вам разобраться в игровом процессе.</p>
+                </div>
+            </div>
+            
+            <div class="faq-card card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Какие языки поддерживает бот?</h5>
+                </div>
+                <div class="card-body">
+                    <p>Roulette Bot поддерживает следующие языки:</p>
+                    <ul>
+                        <li>Русский</li>
+                        <li>Украинский</li>
+                        <li>Английский</li>
+                    </ul>
+                    <p>Вы можете изменить язык в любой момент, используя команду /settings или соответствующую кнопку в меню бота.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Дополнительные вопросы -->
+        <div class="faq-section">
+            <h2 class="mb-4">Дополнительные вопросы</h2>
+            
+            <div class="faq-card card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> У меня возникла проблема или вопрос, не указанный здесь. Что делать?</h5>
+                </div>
+                <div class="card-body">
+                    <p>Если у вас возникли вопросы, которые не освещены в FAQ, или вы столкнулись с проблемой, вы можете связаться с нашей службой поддержки:</p>
+                    <ul>
+                        <li>Используйте команду /contact в боте и опишите свою проблему</li>
+                        <li>Напишите в нашу службу поддержки в Telegram: <a href="https://t.me/roulette_support" target="_blank">@roulette_support</a></li>
+                        <li>Отправьте email на адрес: <a href="mailto:support@roulette.myapps.vip">support@roulette.myapps.vip</a></li>
+                    </ul>
+                    <p>Мы постараемся ответить на ваш запрос в течение 24 часов. Ваше мнение очень важно для нас, и мы постоянно работаем над улучшением нашего сервиса.</p>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Основное содержимое -->
-    <div class="main-container">
-        <div class="container">
-            <!-- Навигация по разделам FAQ -->
-            <ul class="nav nav-pills mb-4 justify-content-center">
-                <li class="nav-item">
-                    <a class="nav-link active" href="#general">Общие вопросы</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#gameplay">Игровой процесс</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#verification">Проверка честности</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#ratings">Рейтинги и призы</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#withdrawals">Вывод средств</a>
-                </li>
-            </ul>
-
-            <!-- Раздел: Общие вопросы -->
-            <div id="general" class="faq-section">
-                <h2 class="mb-4">Общие вопросы</h2>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Что такое Roulette Bot?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Roulette Bot - это Telegram-бот, который позволяет пользователям играть в упрощенную версию рулетки. В нашей рулетке есть возможность делать ставки на красное, черное или зеро (0).</p>
-                        <p>Основные особенности Roulette Bot:</p>
-                        <ul>
-                            <li>Упрощенная игра в рулетку с ставками на красное, черное или зеро</li>
-                            <li>Еженедельный рейтинг игроков с призовым фондом</li>
-                            <li>Супер-рейтинг на основе позиций в еженедельных рейтингах</li>
-                            <li>Поддержка нескольких языков (украинский, английский и русский)</li>
-                            <li>Прозрачная система проверки честности результатов</li>
-                            <li>Возможность вывода выигрышей</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Как начать играть в Roulette Bot?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Начать играть очень просто:</p>
-                        <ol>
-                            <li>Перейдите по ссылке <a href="https://t.me/your_roulette_bot" target="_blank">https://t.me/your_roulette_bot</a> или найдите бот @your_roulette_bot в Telegram</li>
-                            <li>Нажмите кнопку "Старт" или отправьте команду /start</li>
-                            <li>Следуйте инструкциям бота для начала игры</li>
-                            <li>Используйте команду /play для размещения ставок</li>
-                        </ol>
-                        <p>Бот предоставит подробные инструкции и поможет вам разобраться в игровом процессе.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Какие языки поддерживает бот?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Roulette Bot поддерживает следующие языки:</p>
-                        <ul>
-                            <li>Русский</li>
-                            <li>Украинский</li>
-                            <li>Английский</li>
-                        </ul>
-                        <p>Вы можете изменить язык в любой момент, используя команду /settings или соответствующую кнопку в меню бота.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Раздел: Игровой процесс -->
-            <div id="gameplay" class="faq-section">
-                <h2 class="mb-4">Игровой процесс</h2>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Как делать ставки?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Для размещения ставки:</p>
-                        <ol>
-                            <li>Используйте команду /play или соответствующую кнопку в меню</li>
-                            <li>Выберите цвет: красный, черный или зеро (0)</li>
-                            <li>Дождитесь результата раунда</li>
-                        </ol>
-                        <p>Обратите внимание, что ставки на зеро (0) доступны только после определенного количества обычных ставок. Это сделано для поддержания баланса в игре.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Сколько ставок я могу сделать за день?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>У игроков есть дневной лимит на количество ставок. По умолчанию он составляет 2880 ставок в день (в среднем 2 ставки в минуту).</p>
-                        <p>Для ставок на зеро (0) существует отдельный порог – вы должны сделать не менее 100 обычных ставок в день, прежде чем сможете ставить на зеро. Это сделано для балансировки игрового процесса.</p>
-                        <p>Вы можете проверить свой оставшийся лимит ставок, используя команду /statistics или соответствующую кнопку в меню бота.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Как распределяются баллы за выигрыши?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Баллы начисляются за каждую выигрышную ставку и используются для определения вашей позиции в рейтинге:</p>
-                        <ul>
-                            <li><strong>Ставка на красное или черное:</strong> 1 балл за выигрыш</li>
-                            <li><strong>Ставка на зеро:</strong> 10 баллов за выигрыш</li>
-                        </ul>
-                        <p>Ставка на зеро имеет меньшую вероятность выигрыша (1/37), но приносит больше баллов, что делает её рискованной, но потенциально более выгодной стратегией.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Как часто обновляются результаты?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Новый раунд рулетки начинается каждые 30 секунд. Это значит, что:</p>
-                        <ul>
-                            <li>Вы можете сделать ставку в любой момент во время текущего раунда</li>
-                            <li>Результаты объявляются каждые 30 секунд</li>
-                            <li>Вы получаете уведомление о результате сразу после окончания раунда</li>
-                            <li>После объявления результата сразу начинается новый раунд</li>
-                        </ul>
-                        <p>Это обеспечивает динамичный игровой процесс и достаточно времени для принятия решения о ставке.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Раздел: Проверка честности -->
-            <div id="verification" class="faq-section">
-                <h2 class="mb-4">Проверка честности</h2>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Как работает система проверки честности?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Мы используем технологию предварительного хеширования для обеспечения прозрачности и честности результатов:</p>
-                        <ol>
-                            <li><strong>Генерация результата:</strong> Перед началом раунда система генерирует случайное число от 0 до 36 и уникальную криптографическую соль</li>
-                            <li><strong>Хеширование:</strong> Число и соль комбинируются и хешируются с использованием алгоритма SHA-256</li>
-                            <li><strong>Публикация хеша:</strong> Полученный хеш публикуется до начала приема ставок</li>
-                            <li><strong>Прием ставок:</strong> Игроки делают свои ставки</li>
-                            <li><strong>Раскрытие результата:</strong> После окончания раунда система раскрывает использованное число и соль</li>
-                            <li><strong>Верификация:</strong> Каждый может проверить, что хеш соответствует раскрытым данным</li>
-                        </ol>
-                        <p>Эта система гарантирует, что результат не может быть изменен после начала раунда, и каждый может проверить его подлинность.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Как самостоятельно проверить результат?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Вы можете проверить любой результат несколькими способами:</p>
-                        <ol>
-                            <li><strong>Используя нашу страницу проверки:</strong> Перейдите на <a href="/verify">страницу проверки</a> и введите номер, соль и хеш, которые вы хотите проверить</li>
-                            <li><strong>Онлайн-калькуляторы SHA-256:</strong> Используйте любой онлайн-калькулятор SHA-256 и введите строку в формате "число:соль" без пробелов</li>
-                            <li><strong>Командная строка:</strong> На Linux/Mac вы можете использовать команду: <code>echo -n "5:a1b2c3d4e5f6" | sha256sum</code></li>
-                            <li><strong>Программный код:</strong> Используйте любой язык программирования с библиотекой для вычисления SHA-256 хешей</li>
-                        </ol>
-                        
-                        <div class="code-block">
-<pre><code>// Пример на JavaScript
-function verifyHash(number, salt, originalHash) {
-    const data = `${number}:${salt}`;
-    const encoder = new TextEncoder();
-    const dataBuffer = encoder.encode(data);
-    
-    // Вычисляем SHA-256 хеш
-    return crypto.subtle.digest('SHA-256', dataBuffer)
-        .then(hashBuffer => {
-            // Преобразуем ArrayBuffer в строку hex
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const computedHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            
-            // Сравниваем с оригинальным хешем
-            return {
-                isValid: computedHash === originalHash,
-                computedHash: computedHash
-            };
-        });
-}</code></pre>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Что такое "соль" и зачем она нужна?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Соль — это случайная строка символов, которая добавляется к числу перед вычислением хеша. Она выполняет несколько важных функций:</p>
-                        <ul>
-                            <li><strong>Предотвращение предсказуемости:</strong> Без соли злоумышленник мог бы заранее вычислить хеши для всех возможных чисел (от 0 до 36) и узнать результат по опубликованному хешу</li>
-                            <li><strong>Увеличение энтропии:</strong> Соль делает хеш уникальным даже для одинаковых чисел в разных раундах</li>
-                            <li><strong>Повышение криптографической стойкости:</strong> Соль защищает от атак перебором и радужных таблиц</li>
-                        </ul>
-                        <p>Благодаря соли каждый раунд имеет уникальный хеш, и никто не может предсказать результат до окончания раунда.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Раздел: Рейтинги и призы -->
-            <div id="ratings" class="faq-section">
-                <h2 class="mb-4">Рейтинги и призы</h2>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Как работает еженедельный рейтинг?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Еженедельный рейтинг работает следующим образом:</p>
-                        <ul>
-                            <li>Рейтинг формируется на основе баллов, полученных за выигрышные ставки в течение недели</li>
-                            <li>Неделя начинается в понедельник в 00:00 UTC и заканчивается в воскресенье в 23:59 UTC</li>
-                            <li>Игроки с наибольшим количеством баллов занимают более высокие позиции</li>
-                            <li>При равном количестве баллов более высокую позицию занимает игрок с лучшей эффективностью (отношение баллов к количеству ставок)</li>
-                            <li>Топ-100 игроков еженедельного рейтинга получают призы из призового фонда</li>
-                        </ul>
-                        <p>Вы можете проверить свою позицию в рейтинге и количество баллов с помощью команды /rating или соответствующей кнопки в меню бота.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Как распределяется призовой фонд?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Призовой фонд распределяется между топ-100 игроками еженедельного рейтинга пропорционально количеству полученных баллов:</p>
-                        <ol>
-                            <li>Каждую неделю формируется призовой фонд (по умолчанию — 1000 единиц)</li>
-                            <li>Подсчитывается общее количество баллов у игроков в топ-100</li>
-                            <li>Каждый игрок получает часть призового фонда пропорционально своему вкладу в общую сумму баллов</li>
-                            <li>Призы автоматически зачисляются на баланс после окончания недели (обычно в понедельник)</li>
-                        </ol>
-                        <p>Например, если у вас 10% от общего количества баллов в топ-100, вы получите 10% от призового фонда (100 единиц при фонде в 1000).</p>
-                    </div>
-                </div>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Что такое супер-рейтинг?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Супер-рейтинг — это долгосрочный рейтинг, который формируется на основе позиций в еженедельных рейтингах:</p>
-                        <ul>
-                            <li>Игроки получают баллы за вхождение в топ-100 еженедельного рейтинга</li>
-                            <li>Чем выше позиция в еженедельном рейтинге, тем больше баллов начисляется в супер-рейтинг</li>
-                            <li>Супер-рейтинг формируется за более длительные периоды (квартал или полугодие)</li>
-                            <li>По итогам периода лучшие игроки супер-рейтинга получают особые призы и награды</li>
-                        </ul>
-                        <p>Супер-рейтинг поощряет регулярное участие и стабильно высокие результаты на протяжении длительного времени.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Раздел: Вывод средств -->
-            <div id="withdrawals" class="faq-section">
-                <h2 class="mb-4">Вывод средств</h2>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Как вывести выигрыш?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Для вывода выигрыша выполните следующие действия:</p>
-                        <ol>
-                            <li>Используйте команду /account или соответствующую кнопку в меню бота</li>
-                            <li>Выберите опцию "Вывод средств"</li>
-                            <li>Укажите сумму для вывода (минимальная сумма — 10 единиц)</li>
-                            <li>Укажите адрес кошелька для получения средств</li>
-                            <li>Подтвердите запрос на вывод</li>
-                        </ol>
-                        <p>После отправки запроса он будет обработан администрацией в течение 24 часов. Вы получите уведомление о статусе вашего запроса.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Какова минимальная сумма для вывода?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Минимальная сумма для вывода составляет 10 единиц. Это ограничение установлено для оптимизации процесса обработки выводов и минимизации комиссий за транзакции.</p>
-                        <p>Если на вашем балансе меньше 10 единиц, вы можете продолжить игру и накопить необходимую сумму для вывода.</p>
-                    </div>
-                </div>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Как долго обрабатывается запрос на вывод?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Обработка запросов на вывод происходит следующим образом:</p>
-                        <ul>
-                            <li>Стандартное время обработки составляет до 24 часов</li>
-                            <li>В выходные и праздничные дни обработка может занять больше времени</li>
-                            <li>После одобрения запроса средства отправляются на указанный кошелек</li>
-                            <li>Вы получите уведомление о каждом изменении статуса вашего запроса</li>
-                        </ul>
-                        <p>Вы можете проверить статус своих запросов на вывод с помощью команды /account и выбора опции "История выводов".</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Дополнительные вопросы -->
-            <div class="faq-section">
-                <h2 class="mb-4">Дополнительные вопросы</h2>
-                
-                <div class="faq-card card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> У меня возникла проблема или вопрос, не указанный здесь. Что делать?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Если у вас возникли вопросы, которые не освещены в FAQ, или вы столкнулись с проблемой, вы можете связаться с нашей службой поддержки:</p>
-                        <ul>
-                            <li>Используйте команду /help в боте и опишите свою проблему</li>
-                            <li>Напишите в нашу службу поддержки в Telegram: <a href="https://t.me/roulette_support" target="_blank">@roulette_support</a></li>
-                            <li>Отправьте email на адрес: <a href="mailto:support@roulettebot.com">support@roulettebot.com</a></li>
-                        </ul>
-                        <p>Мы постараемся ответить на ваш запрос в течение 24 часов. Ваше мнение очень важно для нас, и мы постоянно работаем над улучшением нашего сервиса.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Подвал сайта -->
-    <footer class="bg-dark text-white py-4">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6 mb-4 mb-md-0">
-                    <h5>О Roulette Bot</h5>
-                    <p class="text-muted">Телеграм-бот для социального казино на основе упрощенного принципа игры в рулетку с системой проверки честности.</p>
-                </div>
-                <div class="col-md-3 mb-4 mb-md-0">
-                    <h5>Ссылки</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="https://t.me/your_roulette_bot" class="text-white text-decoration-none" target="_blank"><i class="bi bi-telegram"></i> Telegram Бот</a></li>
-                        <li><a href="/verify" class="text-white text-decoration-none"><i class="bi bi-shield-check"></i> Проверка результатов</a></li>
-                        <li><a href="/faq" class="text-white text-decoration-none"><i class="bi bi-question-circle"></i> FAQ</a></li>
-                    </ul>
-                </div>
-                <div class="col-md-3">
-                    <h5>Контакты</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="mailto:support@roulettebot.com" class="text-white text-decoration-none"><i class="bi bi-envelope"></i> support@roulettebot.com</a></li>
-                        <li><a href="https://t.me/roulette_support" class="text-white text-decoration-none" target="_blank"><i class="bi bi-headset"></i> Поддержка</a></li>
-                    </ul>
-                </div>
-            </div>
-            <hr class="my-3">
-            <div class="text-center">
-                <p class="mb-0">&copy; 2025 Roulette Bot. Все права защищены.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script>
-        // Скролл к разделам FAQ при клике на ссылки навигации
-        $('.nav-link').on('click', function(e) {
-            e.preventDefault();
-            
-            // Удаляем активный класс у всех ссылок и добавляем к текущей
-            $('.nav-link').removeClass('active');
-            $(this).addClass('active');
-            
-            // Получаем ID целевого раздела
-            const targetId = $(this).attr('href');
-            const targetSection = $(targetId);
-            
-            // Скроллим к разделу с анимацией
-            if (targetSection.length) {
-                $('html, body').animate({
-                    scrollTop: targetSection.offset().top - 70
-                }, 800);
-            }
-        });
-    </script>
-</body>
-</html>
+</div>
 {{end}}

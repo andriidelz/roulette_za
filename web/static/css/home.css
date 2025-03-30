@@ -1,0 +1,304 @@
+/* Стили для главной страницы */
+
+/* Улучшенная версия заголовка главной страницы */
+.hero-section.hero-home {
+    padding: 6rem 0;
+    background: linear-gradient(135deg, var(--dark-color) 0%, #343a40 100%);
+}
+
+.hero-home .hero-content {
+    z-index: 1;
+    position: relative;
+}
+
+.hero-home .hero-description {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Секция с фичами */
+.feature-card {
+    height: 100%;
+}
+
+.feature-card .card-header {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.feature-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+/* Секция с шагами */
+.how-it-works {
+    position: relative;
+    padding: 5rem 0;
+    background-color: var(--light-color);
+}
+
+.step-card {
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    background-color: white;
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.step-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.step-connection {
+    position: absolute;
+    height: 2px;
+    background-color: var(--primary-color);
+    top: 100px;
+    left: 45px;
+    right: 45px;
+    z-index: 0;
+}
+
+/* Секция с призывом к действию (CTA) */
+.cta-section {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0b5ed7 100%);
+    color: white;
+    padding: 5rem 0;
+    position: relative;
+}
+
+.cta-section::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="%23ffffff20" stroke-width="1" fill="none"/></svg>');
+    background-size: 200px 200px;
+    opacity: 0.2;
+}
+
+.btn-light-outline {
+    color: white;
+    border-color: white;
+}
+
+.btn-light-outline:hover {
+    background-color: white;
+    color: var(--primary-color);
+}
+
+/* Статистика */
+.stats-item {
+    text-align: center;
+    padding: 1.5rem;
+    transition: transform 0.3s;
+}
+
+.stats-item:hover {
+    transform: translateY(-5px);
+}
+
+.stats-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+}
+
+.stats-label {
+    font-size: 1rem;
+    color: var(--secondary-color);
+}
+
+/* Отзывы */
+.testimonial-card {
+    position: relative;
+    margin-top: 3rem;
+    margin-bottom: 1.5rem;
+}
+
+.testimonial-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: var(--light-color);
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: var(--secondary-color);
+    overflow: hidden;
+}
+
+.testimonial-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.testimonial-content {
+    padding-top: 3rem;
+    text-align: center;
+}
+
+/* Рулетка */
+.roulette-demo {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 0 auto;
+}
+
+.roulette-wheel {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(
+        var(--danger-color) 0deg 10deg,
+        var(--dark-color) 10deg 20deg,
+        var(--danger-color) 20deg 30deg,
+        var(--dark-color) 30deg 40deg,
+        var(--danger-color) 40deg 50deg,
+        var(--dark-color) 50deg 60deg,
+        var(--danger-color) 60deg 70deg,
+        var(--dark-color) 70deg 80deg,
+        var(--danger-color) 80deg 90deg,
+        var(--dark-color) 90deg 100deg,
+        var(--danger-color) 100deg 110deg,
+        var(--dark-color) 110deg 120deg,
+        var(--danger-color) 120deg 130deg,
+        var(--dark-color) 130deg 140deg,
+        var(--danger-color) 140deg 150deg,
+        var(--dark-color) 150deg 160deg,
+        var(--danger-color) 160deg 170deg,
+        var(--dark-color) 170deg 180deg,
+        var(--danger-color) 180deg 190deg,
+        var(--dark-color) 190deg 200deg,
+        var(--danger-color) 200deg 210deg,
+        var(--dark-color) 210deg 220deg,
+        var(--danger-color) 220deg 230deg,
+        var(--dark-color) 230deg 240deg,
+        var(--danger-color) 240deg 250deg,
+        var(--dark-color) 250deg 260deg,
+        var(--danger-color) 260deg 270deg,
+        var(--dark-color) 270deg 280deg,
+        var(--danger-color) 280deg 290deg,
+        var(--dark-color) 290deg 300deg,
+        var(--danger-color) 300deg 310deg,
+        var(--dark-color) 310deg 320deg,
+        var(--danger-color) 320deg 330deg,
+        var(--dark-color) 330deg 340deg,
+        var(--danger-color) 340deg 350deg,
+        var(--dark-color) 350deg 360deg
+    );
+    border: 10px solid var(--dark-color);
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.roulette-center {
+    width: 30%;
+    height: 30%;
+    border-radius: 50%;
+    background-color: var(--dark-color);
+    border: 5px solid #6c757d;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    z-index: 2;
+}
+
+.roulette-marker {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    border-top: 20px solid white;
+    z-index: 3;
+}
+
+/* FAQ секция */
+.faq-section {
+    background-color: var(--light-color);
+    padding: 5rem 0;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.accordion-button:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Адаптивный дизайн */
+@media (max-width: 991.98px) {
+    .step-connection {
+        display: none;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .hero-section.hero-home {
+        padding: 4rem 0;
+    }
+    
+    .step-card {
+        margin-bottom: 1.5rem;
+    }
+    
+    .stats-value {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .roulette-demo {
+        width: 250px;
+        height: 250px;
+    }
+}

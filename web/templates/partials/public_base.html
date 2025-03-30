@@ -1,0 +1,20 @@
+{{define "public_base"}}
+    {{template "public_header" .}}
+    {{template "public_navbar" .}}
+    
+    {{if eq .activeTab "home"}}
+        {{template "public_home_content" .}}
+    {{else if eq .activeTab "faq"}}
+        {{template "public_faq_content" .}}
+    {{else if eq .activeTab "hashes"}}
+        {{template "public_hashes_content" .}}
+    {{else if eq .activeTab "example"}}
+        {{template "public_example_content" .}}
+    {{else}}
+        <!-- Дефолтное содержимое, если страница не определена -->
+        <div class="container">
+            <h1>Страница не найдена</h1>
+        </div>
+    {{end}}
+    {{template "public_footer" .}}
+{{end}}

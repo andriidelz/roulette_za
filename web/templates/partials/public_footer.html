@@ -1,0 +1,64 @@
+{{define "public_footer"}}
+<!-- Подвал сайта -->
+<footer class="bg-dark text-white py-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4 mb-4 mb-md-0">
+                <h5>О Roulette Bot</h5>
+                <p class="text-muted">Телеграм-бот для социального казино на основе упрощенного принципа игры в рулетку с системой проверки честности.</p>
+            </div>
+            <div class="col-md-2 col-6 mb-4 mb-md-0">
+                <h5>Ссылки</h5>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><a href="/" class="text-white text-decoration-none">Главная</a></li>
+                    <li class="mb-2"><a href="/hashes" class="text-white text-decoration-none">Результаты</a></li>
+                    <li class="mb-2"><a href="/faq" class="text-white text-decoration-none">FAQ</a></li>
+                    <li><a href="/example" class="text-white text-decoration-none">Пример проверки</a></li>
+                </ul>
+            </div>
+            <div class="col-md-3 col-6 mb-4 mb-md-0">
+                <h5>Играть</h5>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><a href="https://t.me/socialroulette_bot" class="text-white text-decoration-none" target="_blank">Telegram Бот</a></li>
+                    <li class="mb-2"><a href="#" class="text-white text-decoration-none">Пригласить друга</a></li>
+                    <li><a href="#" class="text-white text-decoration-none">Наши правила</a></li>
+                </ul>
+            </div>
+            <div class="col-md-3">
+                <h5>Контакты</h5>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><a href="mailto:support@roulette.myapps.vip" class="text-white text-decoration-none"><i class="bi bi-envelope me-2"></i>support@roulette.myapps.vip</a></li>
+                    <li><a href="https://t.me/roulette_support" class="text-white text-decoration-none" target="_blank"><i class="bi bi-headset me-2"></i>Поддержка</a></li>
+                </ul>
+                <div class="mt-3">
+                    <a href="https://t.me/socialroulette_dev" target="_blank" class="text-white me-3 fs-5"><i class="bi bi-telegram"></i></a>
+                    <a href="#" class="text-white me-3 fs-5"><i class="bi bi-twitter-x"></i></a>
+                    <a href="#" class="text-white me-3 fs-5"><i class="bi bi-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+        <hr class="my-3">
+        <div class="row align-items-center">
+            <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+                <p class="mb-0">&copy; 2025 Roulette Bot. Все права защищены.</p>
+            </div>
+            <div class="col-md-6 text-center text-md-end">
+                <small class="text-muted">Разработано <a href="https://traff.tools" class="text-white" target="_blank">TRAFF.TOOLS</a></small>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- Подключение JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="/static/js/common.js"></script>
+
+<!-- Дополнительные скрипты -->
+{{if .jsFiles}}{{range .jsFiles}}
+<script src="/static/js/{{.}}"></script>
+{{end}}{{end}}
+
+</body>
+</html>
+{{end}}

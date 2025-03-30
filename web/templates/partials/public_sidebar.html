@@ -1,0 +1,23 @@
+{{define "public_sidebar"}}
+<!-- Боковая панель -->
+<div class="sidebar">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-star"></i> Быстрые ссылки</h5>
+        </div>
+        <div class="card-body">
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item"><a href="/" class="text-decoration-none"><i class="bi bi-house me-2"></i>Главная</a></li>
+                <li class="list-group-item"><a href="/hashes" class="text-decoration-none"><i class="bi bi-shield-check me-2"></i>Результаты</a></li>
+                <li class="list-group-item"><a href="/faq" class="text-decoration-none"><i class="bi bi-question-circle me-2"></i>FAQ</a></li>
+                <li class="list-group-item"><a href="/example" class="text-decoration-none"><i class="bi bi-code-slash me-2"></i>Пример проверки</a></li>
+                <li class="list-group-item"><a href="https://t.me/socialroulette_bot" class="text-decoration-none" target="_blank"><i class="bi bi-telegram me-2"></i>Открыть бот</a></li>
+            </ul>
+        </div>
+    </div>
+    
+    {{if .SidebarContent}}
+    {{.SidebarContent}}
+    {{end}}
+</div>
+{{end}}

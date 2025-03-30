@@ -1,0 +1,125 @@
+/* Стили для страницы проверки результатов */
+
+/* Таблица результатов */
+.hash-label {
+    display: inline-block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hash-label-full {
+    max-width: 100%;
+    word-break: break-all;
+}
+
+.roulette-table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Карточка верификации */
+.verification-card {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.3s;
+}
+
+.verification-card:hover {
+    transform: translateY(-5px);
+}
+
+.verification-card .card-header {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: bold;
+}
+
+/* Шаги верификации */
+.verification-steps {
+    counter-reset: step-counter;
+    margin-bottom: 2rem;
+}
+
+.verification-step {
+    position: relative;
+    padding-left: 3rem;
+    margin-bottom: 1.5rem;
+    counter-increment: step-counter;
+}
+
+.verification-step:before {
+    content: counter(step-counter);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+/* Кнопка копирования */
+.copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.copy-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Темный код-блок */
+.code-block-dark {
+    background-color: var(--dark-color);
+    color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.code-block-dark pre {
+    margin-bottom: 0;
+    color: #f8f9fa;
+}
+
+/* Адаптивный дизайн */
+@media (max-width: 767.98px) {
+    .verification-step {
+        padding-left: 2.5rem;
+    }
+    
+    .verification-step:before {
+        width: 2rem;
+        height: 2rem;
+    }
+    
+    .hash-label {
+        max-width: 120px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .hash-label {
+        max-width: 80px;
+    }
+}

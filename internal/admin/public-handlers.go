@@ -16,18 +16,18 @@ func (a *AdminPanel) setupPublicRoutes() {
 	// Публичные страницы (не требуют авторизации)
 	public := a.router.Group("/")
 	{
-		public.GET("/", a.publicHomePage)
-		public.GET("/verify", a.publicVerifyPage)
-		public.GET("/faq", a.publicFaqPage)
-		public.GET("/example", a.hashVerificationExample)
+		public.GET("/", a.publicHome)
+		public.GET("/hashes", a.publicHashes)
+		public.GET("/faq", a.publicFAQ)
+		public.GET("/example", a.publicExample)
 
 		// API для проверки хешей (публичный доступ)
 		public.POST("/api/verify-hash", a.publicVerifyHashAPI)
 	}
 }
 
-// publicVerifyPage отображает публичную страницу проверки результатов
-func (a *AdminPanel) publicVerifyPage(c *gin.Context) {
+// publicHashes отображает публичную страницу проверки результатов
+func (a *AdminPanel) publicHashes(c *gin.Context) {
 	// Получаем параметры пагинации
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
@@ -118,76 +118,56 @@ func (a *AdminPanel) publicVerifyPage(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "public_hashes", gin.H{
 		"title":       "Проверка результатов | Roulette Bot",
+		"activeTab":   "hashes",
 		"entries":     hashEntries,
 		"currentPage": page,
 		"totalPages":  totalPages,
 		"pagination":  pagination,
 		"highlightID": highlightID,
+		"cssFiles": []string{
+			"home.css",
+		},
+		"jsFiles": []string{
+			"verification.js",
+		},
 	})
 }
 
-// publicHomePage отображает публичную главную страницу
-func (a *AdminPanel) publicHomePage(c *gin.Context) {
-	// Получаем статистику для отображения на главной странице
-	stats := gin.H{
-		"players": "10,000+",
-		"bets":    "1,500,000+",
-		"prizes":  "25,000+",
-	}
-
-	// Пытаемся получить реальную статистику из БД
-	totalStats, err := a.repo.GetTotalStats()
-	if err == nil {
-		// Если удалось получить статистику из БД, используем ее
-		userCount, _ := a.repo.GetUserCount()
-
-		// Форматируем значения для более приятного отображения
-		players := formatNumberWithSuffix(int(userCount))
-		bets := formatNumberWithSuffix(int(totalStats["totalBets"]))
-
-		// Рассчитываем количество призов (примерно)
-		prizesCount := int(totalStats["totalPoints"] / 100)
-		prizes := formatNumberWithSuffix(prizesCount)
-
-		stats = gin.H{
-			"players": players,
-			"bets":    bets,
-			"prizes":  prizes,
-		}
-	}
-
+// publicHome отображает публичную главную страницу
+func (a *AdminPanel) publicHome(c *gin.Context) {
 	c.HTML(http.StatusOK, "public_home", gin.H{
-		"title": "Roulette Bot | Социальное казино в Telegram",
-		"stats": stats,
+		"title":     "Roulette Bot | Социальное казино в Telegram",
+		"activeTab": "home",
+		"cssFiles": []string{
+			"home.css",
+		},
+		"jsFiles": []string{
+			"roulette.js",
+		},
 	})
 }
 
-// formatNumberWithSuffix форматирует число с суффиксом k, M, B для больших чисел
-func formatNumberWithSuffix(n int) string {
-	if n < 1000 {
-		return strconv.Itoa(n)
-	} else if n < 1000000 {
-		k := float64(n) / 1000.0
-		return fmt.Sprintf("%.1f%s", k, "k+")
-	} else if n < 1000000000 {
-		m := float64(n) / 1000000.0
-		return fmt.Sprintf("%.1f%s", m, "M+")
-	}
-	b := float64(n) / 1000000000.0
-	return fmt.Sprintf("%.1f%s", b, "B+")
-}
-
-// publicFaqPage отображает публичную страницу с часто задаваемыми вопросами
-func (a *AdminPanel) publicFaqPage(c *gin.Context) {
+// publicFAQ отображает публичную страницу с часто задаваемыми вопросами
+func (a *AdminPanel) publicFAQ(c *gin.Context) {
 	c.HTML(http.StatusOK, "public_faq", gin.H{
-		"title": "FAQ | Roulette Bot",
+		"title":     "FAQ | Roulette Bot",
+		"activeTab": "faq",
+		"cssFiles": []string{
+			"faq.css",
+		},
+		"jsFiles": []string{},
 	})
 }
 
-// hashVerificationExample отображает страницу с примером проверки хеша
-func (a *AdminPanel) hashVerificationExample(c *gin.Context) {
-	c.HTML(http.StatusOK, "public_hash_verification_example", gin.H{
-		"title": "Пример проверки хеша | Roulette Bot",
+// publicExample отображает страницу с примером проверки хеша
+func (a *AdminPanel) publicExample(c *gin.Context) {
+	c.HTML(http.StatusOK, "public_example", gin.H{
+		"title":     "Пример проверки хеша | Roulette Bot",
+		"activeTab": "example",
+		"cssFiles":  []string{},
+		"jsFiles": []string{
+			"example.js",
+		},
 	})
 }
 
