@@ -517,7 +517,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	// Создаем кнопку для проверки раунда в системе
 	checkSystemText := h.service.GetText("systemcheck", language)
 	roundIDBase62 := utils.ToBase62(uint(roundID))
-	checkSystemURL := fmt.Sprintf("%s/hashes/?hash=%s", webPage, roundIDBase62)
+	checkSystemURL := fmt.Sprintf("%s/hashes/?id=%s", webPage, roundIDBase62)
 
 	checkSystemKeyboard := &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
@@ -785,7 +785,7 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	inlineKeyboard := &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
-				{Text: rulesButtonText, URL: webPage + "/rules/"},
+				{Text: rulesButtonText, URL: webPage + "/faq#gameplay"},
 			},
 		},
 	}
