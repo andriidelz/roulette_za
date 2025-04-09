@@ -47,6 +47,16 @@ const (
 	CallbackBack                = "back"
 
 	ReserveChannelID = "@socialroulette_dev" // https://t.me/socialroulette_dev
+
+	StickerNoBids    = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
+	StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
+	StickerLose      = "CAACAgUAAxkBAAEORL5n9lEOq_kczbL1CGpgN5-UhhhgqQAC3BIAAtGwqVdlepoFId2tMzYE" // lose
+	StickerBlackRes1 = "CAACAgUAAxkBAAEORMBn9lEUB8KMRJ8nduCQ-y32y5ns4AACNBUAArIsqVfUvoMXgG8VvzYE" // blackresult (вариант 1)
+	StickerBlackRes2 = "CAACAgUAAxkBAAEORMJn9lEXC6ByJRCY4_8Mu5vQQP-1zgACOxYAAnWOqVesBnNzFycGfDYE" // blackresult (вариант 2)
+	StickerRedRes1   = "CAACAgUAAxkBAAEORMhn9lEfopgbb8y7qi__V8deZr0MpAACYBcAAs4bqVeFX-l3HDBIFjYE" // redresult (вариант 1)
+	StickerRedRes2   = "CAACAgUAAxkBAAEORMpn9lEiRobEQnz4qg6GFSmfZQmjbwACiRgAAhuTqVdgysjb-Y-sLTYE" // redresult (вариант 2)
+	StickerZeroRes1  = "CAACAgUAAxkBAAEORMRn9lEar58eDwvent8Lp3TvMRvF5AACtxEAAlRRsFdySRXPzXyVqzYE" // zeroresult (вариант 1)
+	StickerZeroRes2  = "CAACAgUAAxkBAAEORMZn9lEd12gNsWFFxGXLAZoeJbSEsgACCxYAAmDwqVdsE7WC-rayWDYE" // zeroresult (вариант 2)
 )
 
 // NewBot создает новый экземпляр бота
@@ -382,7 +392,10 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 		return
 	}
 
-	// Если ставка успешно сделана, отправляем сообщение о принятии ставки
+	// Если ставка успешно сделана, сначала отправляем стикер "Ставки больше не принимаются"
+	b.SendSticker(userID, StickerNoBids)
+
+	// Затем отправляем сообщение о принятии ставки
 	nomorebidsText := b.service.GetText("nomorebids", language)
 	b.SendMessage(userID, MessageOptions{
 		Text:          nomorebidsText,
@@ -1573,4 +1586,21 @@ func (b *Bot) getReplyMarkup(options MessageOptions) telego.ReplyMarkup {
 	}
 
 	return nil
+}
+
+// SendSticker отправляет стикер
+func (b *Bot) SendSticker(chatID int64, stickerFileID string) error {
+	_, err := b.bot.SendSticker(&telego.SendStickerParams{
+		ChatID:  telego.ChatID{ID: chatID},
+		Sticker: tu.FileFromID(stickerFileID),
+	})
+	return err
+}
+
+// Случайный выбор стикера из двух вариантов
+func getRandomSticker(sticker1, sticker2 string) string {
+	if time.Now().UnixNano()%2 == 0 {
+		return sticker1
+	}
+	return sticker2
 }

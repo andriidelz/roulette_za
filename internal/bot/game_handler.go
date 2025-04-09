@@ -489,7 +489,20 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	won := bet.Won
 	points := bet.Points
 
-	// 1. Отправляем сообщение о результате (цвет)
+	// 1. Отправляем стикер с результатом (цвет)
+	var resultSticker string
+	switch result {
+	case models.Red:
+		resultSticker = getRandomSticker(StickerRedRes1, StickerRedRes2)
+	case models.Black:
+		resultSticker = getRandomSticker(StickerBlackRes1, StickerBlackRes2)
+	case models.Zero:
+		resultSticker = getRandomSticker(StickerZeroRes1, StickerZeroRes2)
+	}
+	// Отправляем стикер результата
+	h.bot.SendSticker(userID, resultSticker)
+
+	// Отправляем текстовое сообщение о результате
 	var resultLangKey string
 	switch result {
 	case models.Red:
@@ -504,7 +517,16 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		Text: resultText,
 	})
 
-	// 2. Отправляем сообщение о выигрыше/проигрыше
+	// 2. Отправляем стикер выигрыша/проигрыша
+	if won {
+		// Отправляем стикер выигрыша
+		h.bot.SendSticker(userID, StickerWin)
+	} else {
+		// Отправляем стикер проигрыша
+		h.bot.SendSticker(userID, StickerLose)
+	}
+
+	// Отправляем сообщение о выигрыше/проигрыше
 	var winLoseText string
 	if won {
 		winMessageTemplate := h.service.GetText("winmessage", language)
