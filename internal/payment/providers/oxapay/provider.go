@@ -2,6 +2,7 @@ package oxapay
 
 import (
 	"fmt"
+	"os"
 	"roulette/internal/payment"
 	oxapayclient "roulette/pkg/oxapay"
 	"strconv"
@@ -54,6 +55,7 @@ func (p *Provider) CreateWithdrawal(userID uint, amount float64, currency string
 		CallbackURL: p.callbackURL,
 		Description: fmt.Sprintf("Withdrawal for user %d", userID),
 		UserID:      strconv.FormatUint(uint64(userID), 10), // Преобразуем ID пользователя в строку
+		IsSandbox:   getEnvBool("OXAPAY_USE_SANDBOX", false),
 	}
 
 	// Отправляем запрос через клиент OxaPay
@@ -77,6 +79,7 @@ func (p *Provider) CreateWithdrawal(userID uint, amount float64, currency string
 		Description:     payoutRequest.Description,
 		ProviderName:    "oxapay",
 		ProviderData:    payout, // Сохраняем оригинальный ответ от провайдера
+		IsSandbox:       getEnvBool("OXAPAY_USE_SANDBOX", false),
 		CreatedAt:       payout.CreatedAt,
 		UpdatedAt:       payout.UpdatedAt,
 	}, nil
@@ -115,4 +118,14 @@ func mapStatus(oxaStatus string) payment.WithdrawalStatus {
 	default:
 		return payment.StatusPending
 	}
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	if value, exists := os.LookupEnv(key); exists {
+		boolValue, err := strconv.ParseBool(value)
+		if err == nil {
+			return boolValue
+		}
+	}
+	return defaultValue
 }

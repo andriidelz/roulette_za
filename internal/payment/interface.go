@@ -38,6 +38,7 @@ type Withdrawal struct {
 	Description     string
 	ProviderName    string
 	ProviderData    interface{} // Provider-specific data
+	IsSandbox       bool
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
