@@ -1,6 +1,9 @@
 package repository
 
-import "roulette/internal/models"
+import (
+	"fmt"
+	"roulette/internal/models"
+)
 
 // Реалізація методів для виведення коштів
 
@@ -46,4 +49,18 @@ func (r *PostgresRepository) GetUserWithdrawals(userID uint, limit int) ([]model
 	}
 
 	return withdrawals, nil
+}
+
+// GetWithdrawalByProviderID получает запись о выводе средств по идентификатору провайдера
+func (r *PostgresRepository) GetWithdrawalByProviderID(providerName, providerID string) (*models.Withdrawal, error) {
+	var withdrawal models.Withdrawal
+	if err := r.db.Where("provider_name = ? AND provider_id = ?", providerName, providerID).First(&withdrawal).Error; err != nil {
+		return nil, fmt.Errorf("failed to find withdrawal: %w", err)
+	}
+	return &withdrawal, nil
+}
+
+// UpdateWithdrawal обновляет всю запись о выводе средств
+func (r *PostgresRepository) UpdateWithdrawal(withdrawal *models.Withdrawal) error {
+	return r.db.Save(withdrawal).Error
 }

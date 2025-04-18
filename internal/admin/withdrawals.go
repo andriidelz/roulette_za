@@ -2,6 +2,7 @@ package admin
 
 import (
 	"net/http"
+	"roulette/internal/service"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -35,8 +36,11 @@ func (a *AdminPanel) withdrawalApprove(c *gin.Context) {
 		return
 	}
 
-	// Підтверджуємо запит
-	if err := a.repo.UpdateWithdrawalStatus(uint(withdrawalID), "approved"); err != nil {
+	// Получаем платежный сервис
+	paymentService := c.MustGet("paymentService").(*service.PaymentService)
+
+	// Обрабатываем запрос на вывод через платежный сервис
+	if err := paymentService.ApproveWithdrawal(uint(withdrawalID)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -85,6 +85,8 @@ type Repository interface {
 	CreateWithdrawal(withdrawal *models.Withdrawal) error
 	GetPendingWithdrawals() ([]models.Withdrawal, error)
 	UpdateWithdrawalStatus(id uint, status string) error
+	GetWithdrawalByProviderID(providerName, providerID string) (*models.Withdrawal, error)
+	UpdateWithdrawal(withdrawal *models.Withdrawal) error
 
 	// Админ-функции
 	GetUsers(page, perPage int) ([]models.User, int64, error)

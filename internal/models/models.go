@@ -163,4 +163,8 @@ type Withdrawal struct {
 	Wallet    string `gorm:"size:255"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	ProviderName    string `gorm:"size:50;index"`
+	ProviderID      string `gorm:"size:255;index"`
+	TransactionHash string `gorm:"size:255"`
 }

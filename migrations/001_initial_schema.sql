@@ -145,12 +145,28 @@ CREATE TABLE IF NOT EXISTS withdrawals (
     amount FLOAT NOT NULL,
     status VARCHAR(20) NOT NULL,
     wallet VARCHAR(255),
+    provider_name VARCHAR(50) DEFAULT 'oxapay',
+    provider_id VARCHAR(255),
+    transaction_hash VARCHAR(255),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_withdrawals_user_id ON withdrawals (user_id);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals (status);
+CREATE INDEX IF NOT EXISTS idx_provider_name ON withdrawals (provider_name);
+CREATE INDEX IF NOT EXISTS idx_provider_id ON withdrawals (provider_id);
+
+-- Создаем таблицу для отслеживания обновлений статуса выплат (для аудита)
+CREATE TABLE IF NOT EXISTS withdrawal_status_logs (
+    id SERIAL PRIMARY KEY,
+    withdrawal_id BIGINT UNSIGNED NOT NULL REFERENCES withdrawals(id),
+    old_status VARCHAR(50),
+    new_status VARCHAR(50) NOT NULL,
+    provider_name VARCHAR(50) NOT NULL,
+    transaction_hash VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Базовые настройки
 INSERT INTO settings (key, value, default_value, description) VALUES

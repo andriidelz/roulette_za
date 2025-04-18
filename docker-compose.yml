@@ -25,11 +25,12 @@ services:
     environment:
       SCRIPT_NAME: /pgadmin
       PGADMIN_PORT: 80
-      PGADMIN_DEFAULT_EMAIL: postgres@domain.com
+      PGADMIN_DEFAULT_EMAIL: postgres@postgres.com
       PGADMIN_DEFAULT_PASSWORD: postgres
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      PGADMIN_CONFIG_STORAGE_DIR: /var/lib/pgadmin/storage
     volumes:
       - ./shared-data/pgadmin:/var/lib/pgadmin
       - "./pgadmin4.config.json:/pgadmin4/servers.json"
@@ -67,6 +68,11 @@ services:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/roulette?sslmode=disable
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      # Переменные окружения для OxaPay
+      - DEFAULT_PAYMENT_PROVIDER=${DEFAULT_PAYMENT_PROVIDER:-oxapay}
+      - OXAPAY_API_KEY=${OXAPAY_API_KEY}
+      - OXAPAY_WEBHOOK_KEY=${OXAPAY_WEBHOOK_KEY}
+      - OXAPAY_CALLBACK_URL=${OXAPAY_CALLBACK_URL}
     depends_on:
       postgres:
         condition: service_healthy
@@ -103,6 +109,11 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
       - SESSION_SECRET=${SESSION_SECRET:-super_secret_key}
       - DISABLE_IP_FILTERS=true
+      # Переменные окружения для OxaPay
+      - DEFAULT_PAYMENT_PROVIDER=${DEFAULT_PAYMENT_PROVIDER:-oxapay}
+      - OXAPAY_API_KEY=${OXAPAY_API_KEY}
+      - OXAPAY_WEBHOOK_KEY=${OXAPAY_WEBHOOK_KEY}
+      - OXAPAY_CALLBACK_URL=${OXAPAY_CALLBACK_URL}
     ports:
       - "8080:8080"
     depends_on:
