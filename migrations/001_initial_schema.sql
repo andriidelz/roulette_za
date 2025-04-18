@@ -160,7 +160,7 @@ CREATE INDEX IF NOT EXISTS idx_provider_id ON withdrawals (provider_id);
 -- Создаем таблицу для отслеживания обновлений статуса выплат (для аудита)
 CREATE TABLE IF NOT EXISTS withdrawal_status_logs (
     id SERIAL PRIMARY KEY,
-    withdrawal_id BIGINT UNSIGNED NOT NULL REFERENCES withdrawals(id),
+    withdrawal_id BIGINT NOT NULL REFERENCES withdrawals(id),
     old_status VARCHAR(50),
     new_status VARCHAR(50) NOT NULL,
     provider_name VARCHAR(50) NOT NULL,

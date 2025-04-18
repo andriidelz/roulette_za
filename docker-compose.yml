@@ -30,7 +30,7 @@ services:
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
-      PGADMIN_CONFIG_STORAGE_DIR: /var/lib/pgadmin/storage
+      # PGADMIN_CONFIG_STORAGE_DIR: /var/lib/pgadmin/storage
     volumes:
       - ./shared-data/pgadmin:/var/lib/pgadmin
       - "./pgadmin4.config.json:/pgadmin4/servers.json"
@@ -120,4 +120,3 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
-    
