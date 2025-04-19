@@ -11,9 +11,6 @@ type Provider interface {
 
 	// GetWithdrawalStatus returns the current status of a withdrawal
 	GetWithdrawalStatus(withdrawalID string) (WithdrawalStatus, error)
-
-	// SetupWebhooks configures the webhook endpoints for the provider
-	SetupWebhooks() error
 }
 
 // WithdrawalStatus represents possible status values for a withdrawal

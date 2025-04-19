@@ -32,8 +32,6 @@ func main() {
     // Создание конфигурации OxaPay
     config := oxapay.Config{
         APIKey:      "your-api-key",
-        WebhookKey:  "your-webhook-key",
-        CallbackURL: "https://your-domain.com/webhooks/oxapay",
         DB:          db,
     }
     
@@ -45,16 +43,12 @@ func main() {
         log.Fatalf("Failed to initialize OxaPay tables: %v", err)
     }
     
-    // Настройка вебхуков
-    client.SetupWebhookHandler(router, "/webhooks/oxapay")
-    
     // Пример создания выплаты
     payout, err := client.CreatePayout(oxapay.PayoutRequest{
         Currency:    "USDT",
         Amount:      100.0,
         Address:     "TRX-wallet-address",
         Network:     "TRC20",
-        CallbackURL: "https://your-domain.com/webhooks/oxapay",
         Description: "Withdrawal for user 123",
         UserID:      "123",
     })
@@ -116,7 +110,6 @@ payout, err := client.CreatePayout(oxapay.PayoutRequest{
     Amount:      0.05,
     Address:     "wallet-address",
     Network:     "Bitcoin Network", // опционально, для мультисетевых валют
-    CallbackURL: "https://your-domain.com/webhooks/oxapay",
     Description: "Withdrawal",
     Memo:        "Optional memo", // опционально, для сетей с поддержкой мемо (TON и др.)
 })
@@ -160,10 +153,6 @@ payouts, meta, err := client.GetPayoutHistory(params)
 - `confirmed` - Транзакция успешно оплачена
 - `canceled` - Запрос на выплату был отменен
 - `rejected` - Запрос был отклонен по каким-либо причинам
-
-## Безопасность
-
-Для обеспечения безопасности вебхуков используется проверка подписи (HMAC-SHA256). Убедитесь, что вы указали правильный WebhookKey в конфигурации.
 
 ## Требования
 

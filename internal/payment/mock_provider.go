@@ -34,8 +34,3 @@ func (p *MockProvider) CreateWithdrawal(userID uint, amount float64, currency st
 func (p *MockProvider) GetWithdrawalStatus(withdrawalID string) (WithdrawalStatus, error) {
 	return StatusProcessing, nil
 }
-
-// SetupWebhooks имитирует настройку вебхуков
-func (p *MockProvider) SetupWebhooks() error {
-	return nil
-}

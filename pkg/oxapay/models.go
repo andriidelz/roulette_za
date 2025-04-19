@@ -10,7 +10,6 @@ type Payout struct {
 	Currency         string  `json:"currency"`
 	Amount           float64 `json:"amount"`
 	Address          string  `json:"address"`
-	CallbackURL      string  `json:"callbackUrl,omitempty"`
 	Description      string  `json:"description,omitempty"`
 	UserID           string  `json:"userId,omitempty" gorm:"index"`
 	Status           string  `json:"status" gorm:"index"`
@@ -29,7 +28,6 @@ type PayoutRequest struct {
 	Currency    string  `json:"currency"`
 	Amount      float64 `json:"amount"`
 	Address     string  `json:"address"`
-	CallbackURL string  `json:"callback_url,omitempty"`
 	Description string  `json:"description,omitempty"`
 	UserID      string  `json:"user_id,omitempty"`
 	Network     string  `json:"network,omitempty"`

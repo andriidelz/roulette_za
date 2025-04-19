@@ -7,7 +7,6 @@ import (
 
 	oxapayclient "roulette/pkg/oxapay"
 
-	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
@@ -20,59 +19,63 @@ type PaymentConfig struct {
 
 // OxaPayConfig содержит конфигурацию для OxaPay
 type OxaPayConfig struct {
-	APIKey      string
-	WebhookKey  string
-	CallbackURL string
+	APIKey string
 }
 
 // InitPaymentProviders инициализирует провайдеры платежей
-func InitPaymentProviders(db *gorm.DB, router *gin.Engine) (*payment.Factory, error) {
+func InitPaymentProviders(db *gorm.DB) (*payment.Factory, string, error) {
 	paymentConfig := getPaymentConfig()
 
 	// Создаем фабрику провайдеров
 	factory := payment.NewFactory()
 
-	// Инициализируем OxaPay
+	// Инициализируем мок-провайдер по умолчанию
+	mockProvider := payment.NewMockProvider()
+	factory.RegisterProvider("mock", mockProvider)
+
+	defaultProvider := paymentConfig.DefaultProvider
+
+	// Если defaultProvider не указан, используем "mock"
+	if defaultProvider == "" {
+		defaultProvider = "mock"
+	}
+
+	// Инициализируем OxaPay только если есть API ключ
 	if paymentConfig.OxaPay.APIKey != "" {
 		oxaClient := oxapayclient.NewClient(oxapayclient.Config{
-			APIKey:      paymentConfig.OxaPay.APIKey,
-			WebhookKey:  paymentConfig.OxaPay.WebhookKey,
-			CallbackURL: paymentConfig.OxaPay.CallbackURL,
-			DB:          db,
+			APIKey: paymentConfig.OxaPay.APIKey,
+			DB:     db,
 		})
 
 		// Инициализируем таблицы для OxaPay
 		if err := oxaClient.InitializeTables(); err != nil {
-			return nil, fmt.Errorf("failed to initialize OxaPay tables: %w", err)
+			return nil, defaultProvider, fmt.Errorf("failed to initialize OxaPay tables: %w", err)
 		}
-
-		// Настраиваем вебхуки для OxaPay
-		oxaClient.SetupWebhookHandler(router, "/webhooks/payment/oxapay")
 
 		// Создаем и регистрируем провайдер OxaPay
 		oxaProvider := oxapay.NewProvider(
 			paymentConfig.OxaPay.APIKey,
-			paymentConfig.OxaPay.WebhookKey,
-			paymentConfig.OxaPay.CallbackURL,
 			db,
 		)
 
 		factory.RegisterProvider("oxapay", oxaProvider)
+
+		// Если defaultProvider не установлен или установлен в "oxapay",
+		// и OxaPay успешно инициализирован - используем его по умолчанию
+		if defaultProvider == "mock" || defaultProvider == "oxapay" {
+			defaultProvider = "oxapay"
+		}
 	}
 
-	// Здесь можно инициализировать другие провайдеры
-
-	return factory, nil
+	return factory, defaultProvider, nil
 }
 
 // getPaymentConfig получает конфигурацию платежных систем из переменных окружения
 func getPaymentConfig() PaymentConfig {
 	return PaymentConfig{
-		DefaultProvider: getEnv("DEFAULT_PAYMENT_PROVIDER", "oxapay"),
+		DefaultProvider: getEnv("DEFAULT_PAYMENT_PROVIDER", ""),
 		OxaPay: OxaPayConfig{
-			APIKey:      getEnv("OXAPAY_API_KEY", ""),
-			WebhookKey:  getEnv("OXAPAY_WEBHOOK_KEY", ""),
-			CallbackURL: getEnv("OXAPAY_CALLBACK_URL", ""),
+			APIKey: getEnv("OXAPAY_API_KEY", ""),
 		},
 	}
 }

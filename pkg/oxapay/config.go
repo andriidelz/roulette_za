@@ -11,8 +11,6 @@ const (
 
 // Config holds the OxaPay configuration
 type Config struct {
-	APIKey      string
-	WebhookKey  string
-	CallbackURL string
-	DB          *gorm.DB
+	APIKey string
+	DB     *gorm.DB
 }

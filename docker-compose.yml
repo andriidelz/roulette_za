@@ -71,8 +71,6 @@ services:
       # Переменные окружения для OxaPay
       - DEFAULT_PAYMENT_PROVIDER=${DEFAULT_PAYMENT_PROVIDER:-mock}
       - OXAPAY_API_KEY=${OXAPAY_API_KEY}
-      - OXAPAY_WEBHOOK_KEY=${OXAPAY_WEBHOOK_KEY}
-      - OXAPAY_CALLBACK_URL=${OXAPAY_CALLBACK_URL}
     depends_on:
       postgres:
         condition: service_healthy
@@ -112,8 +110,6 @@ services:
       # Переменные окружения для OxaPay
       - DEFAULT_PAYMENT_PROVIDER=${DEFAULT_PAYMENT_PROVIDER:-mock}
       - OXAPAY_API_KEY=${OXAPAY_API_KEY}
-      - OXAPAY_WEBHOOK_KEY=${OXAPAY_WEBHOOK_KEY}
-      - OXAPAY_CALLBACK_URL=${OXAPAY_CALLBACK_URL}
     ports:
       - "8080:8080"
     depends_on:

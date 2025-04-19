@@ -2,7 +2,6 @@ package payment
 
 import (
 	"fmt"
-	"log"
 )
 
 // Factory creates payment providers
@@ -31,22 +30,21 @@ func (f *Factory) GetProvider(name string) (Provider, error) {
 	return provider, nil
 }
 
-// GetDefaultProvider returns the default payment provider
-func (f *Factory) GetDefaultProvider() (Provider, error) {
-	// Пытаемся получить oxapay
-	provider, err := f.GetProvider("oxapay")
-	if err == nil {
-		log.Printf("[Factory] Using oxapay as default provider")
+// GetDefaultProvider returns the default payment provider based on the provided name
+// If that provider is not available, returns the first available provider
+func (f *Factory) GetDefaultProvider(defaultName string) (Provider, error) {
+	// Пытаемся получить провайдер по имени из конфигурации
+	if defaultName != "" {
+		provider, err := f.GetProvider(defaultName)
+		if err == nil {
+			return provider, nil
+		}
+	}
+
+	// Если не нашли или произошла ошибка, ищем первый доступный
+	for _, provider := range f.providers {
 		return provider, nil
 	}
 
-	// Если oxapay не доступен, ищем первый доступный провайдер
-	log.Printf("[Factory] Oxapay not available, looking for any provider")
-	for name, provider := range f.providers {
-		log.Printf("[Factory] Found provider: %s", name)
-		return provider, nil
-	}
-
-	// Если нет ни одного провайдера
 	return nil, fmt.Errorf("no payment providers registered")
 }

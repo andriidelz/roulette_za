@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 	"roulette/internal/models"
 	"roulette/internal/payment"
 	"roulette/internal/repository"
@@ -86,10 +85,15 @@ func (s *PaymentService) GetWithdrawalStatus(withdrawalID uint) (string, error) 
 		return "", fmt.Errorf("error getting withdrawal: %w", err)
 	}
 
+	// If we don't have provider information, just return current status
+	if withdrawal.ProviderName == "" || withdrawal.ProviderID == "" {
+		return withdrawal.Status, nil
+	}
+
 	// Get provider
 	provider, err := s.paymentProviders.GetProvider(withdrawal.ProviderName)
 	if err != nil {
-		return "", fmt.Errorf("error getting payment provider: %w", err)
+		return withdrawal.Status, fmt.Errorf("error getting payment provider: %w", err)
 	}
 
 	// Check status with provider
@@ -132,124 +136,85 @@ func (s *PaymentService) ProcessWebhookUpdate(providerName string, withdrawalID 
 	return nil
 }
 
-// ApproveWithdrawal метод сервиса для одобрения вывода средств
+// ApproveWithdrawal approves a withdrawal request and initiates the actual withdrawal
 func (s *PaymentService) ApproveWithdrawal(withdrawalID uint) error {
-	log.Printf("[PaymentService] Approving withdrawal ID: %d", withdrawalID)
-	log.Printf("[PaymentService] Default provider name: %s", s.defaultProvider)
-
-	// Получаем запрос на вывод средств
+	// Get the withdrawal request
 	withdrawal, err := s.repo.GetWithdrawalByID(withdrawalID)
 	if err != nil {
-		log.Printf("[PaymentService] Error getting withdrawal %d: %v", withdrawalID, err)
-		return err
+		return fmt.Errorf("error getting withdrawal: %w", err)
 	}
 
-	// Если запрос уже обработан, возвращаем ошибку
+	// Check if already processed
 	if withdrawal.Status != "pending" {
-		log.Printf("[PaymentService] Withdrawal %d is not in pending status: %s", withdrawalID, withdrawal.Status)
 		return fmt.Errorf("withdrawal is not in pending status: %s", withdrawal.Status)
 	}
 
-	log.Printf("[PaymentService] Before getting provider, defaultProvider = %s", s.defaultProvider)
-
-	// ПОПРОБУЕМ ОБА СПОСОБА ПОЛУЧЕНИЯ ПРОВАЙДЕРА ДЛЯ ОТЛАДКИ
-
-	// 1. Получаем провайдер напрямую по имени
-	providerByName, errByName := s.paymentProviders.GetProvider("oxapay")
-	if errByName != nil {
-		log.Printf("[PaymentService] Error getting oxapay provider directly: %v", errByName)
-	} else {
-		log.Printf("[PaymentService] Successfully got oxapay provider: %T", providerByName)
+	// Get payment provider
+	provider, err := s.paymentProviders.GetProvider(s.defaultProvider)
+	if err != nil {
+		// Try getting the default provider
+		provider, err = s.paymentProviders.GetDefaultProvider(s.defaultProvider)
+		if err != nil {
+			return fmt.Errorf("failed to get any payment provider: %w", err)
+		}
 	}
 
-	// 2. Получаем дефолтный провайдер
-	providerDefault, errDefault := s.paymentProviders.GetDefaultProvider()
-	if errDefault != nil {
-		log.Printf("[PaymentService] Error getting default provider: %v", errDefault)
-	} else {
-		log.Printf("[PaymentService] Successfully got default provider: %T", providerDefault)
-	}
-
-	// 3. Получаем mock провайдер для сравнения
-	providerMock, errMock := s.paymentProviders.GetProvider("mock")
-	if errMock != nil {
-		log.Printf("[PaymentService] Error getting mock provider: %v", errMock)
-	} else {
-		log.Printf("[PaymentService] Successfully got mock provider: %T", providerMock)
-	}
-
-	// Выбираем провайдер для использования (первый успешный)
-	var provider payment.Provider
-	var providerName string
-
-	if errByName == nil {
-		provider = providerByName
-		providerName = "oxapay"
-		log.Printf("[PaymentService] Using oxapay provider")
-	} else if errDefault == nil {
-		provider = providerDefault
-		providerName = s.defaultProvider
-		log.Printf("[PaymentService] Using default provider: %s", providerName)
-	} else if errMock == nil {
-		provider = providerMock
-		providerName = "mock"
-		log.Printf("[PaymentService] Using mock provider as fallback")
-	} else {
-		log.Printf("[PaymentService] All provider getters failed, cannot proceed")
-		return fmt.Errorf("failed to get any payment provider")
-	}
-
-	// Создаем запрос на вывод через выбранный провайдер
-	log.Printf("[PaymentService] Creating withdrawal using provider: %s", providerName)
-
+	// Create withdrawal request through the provider
 	result, err := provider.CreateWithdrawal(
 		withdrawal.UserID,
 		withdrawal.Amount,
-		"USDT", // Валюта должна быть настраиваемой
+		"USDT", // Currency should be configurable
 		withdrawal.Wallet,
 	)
-
 	if err != nil {
-		log.Printf("[PaymentService] Error creating withdrawal: %v", err)
-		return err
+		return fmt.Errorf("error creating withdrawal: %w", err)
 	}
 
-	// Проверяем, что возвращено из провайдера
-	if result == nil {
-		log.Printf("[PaymentService] Provider returned nil result")
-		return fmt.Errorf("provider returned nil result")
-	}
-
-	log.Printf("[PaymentService] Provider result details: ID=%s, Status=%s, ProviderName=%s",
-		result.ID, result.Status, result.ProviderName)
-
-	// Обновляем запрос на вывод
-	oldStatus := withdrawal.Status
-	oldProviderName := withdrawal.ProviderName
-
+	// Update withdrawal details
 	withdrawal.Status = string(result.Status)
-
-	// ВАЖНО: Возможно проблема именно здесь - проверяем ProviderName и устанавливаем явно
-	if result.ProviderName == "" {
-		log.Printf("[PaymentService] Provider returned empty ProviderName, using %s", providerName)
-		withdrawal.ProviderName = providerName
-	} else {
-		withdrawal.ProviderName = result.ProviderName
-		log.Printf("[PaymentService] Using ProviderName from result: %s", result.ProviderName)
-	}
-
+	withdrawal.ProviderName = s.defaultProvider
 	withdrawal.ProviderID = result.ID
 	withdrawal.TransactionHash = result.TransactionHash
+	withdrawal.UpdatedAt = time.Now()
 
-	log.Printf("[PaymentService] Updating withdrawal from Status=%s to Status=%s, from ProviderName=%s to ProviderName=%s",
-		oldStatus, withdrawal.Status, oldProviderName, withdrawal.ProviderName)
-
-	// Сохраняем изменения
+	// Save changes
 	if err := s.repo.UpdateWithdrawal(withdrawal); err != nil {
-		log.Printf("[PaymentService] Error updating withdrawal: %v", err)
-		return err
+		return fmt.Errorf("error updating withdrawal: %w", err)
 	}
 
-	log.Printf("[PaymentService] Withdrawal %d approved successfully", withdrawalID)
+	return nil
+}
+
+// CheckPendingWithdrawals periodically checks status of pending withdrawals via API
+func (s *PaymentService) CheckPendingWithdrawals() error {
+	withdrawals, err := s.repo.GetPendingWithdrawals()
+	if err != nil {
+		return fmt.Errorf("error getting pending withdrawals: %w", err)
+	}
+
+	for _, withdrawal := range withdrawals {
+		// Skip if no provider info
+		if withdrawal.ProviderName == "" || withdrawal.ProviderID == "" {
+			continue
+		}
+
+		provider, err := s.paymentProviders.GetProvider(withdrawal.ProviderName)
+		if err != nil {
+			continue // Skip this one and move to next
+		}
+
+		status, err := provider.GetWithdrawalStatus(withdrawal.ProviderID)
+		if err != nil {
+			continue // Skip this one and move to next
+		}
+
+		// Update if status changed
+		if string(status) != withdrawal.Status {
+			withdrawal.Status = string(status)
+			withdrawal.UpdatedAt = time.Now()
+			s.repo.UpdateWithdrawal(&withdrawal)
+		}
+	}
+
 	return nil
 }

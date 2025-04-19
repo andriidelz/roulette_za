@@ -2,8 +2,6 @@ package oxapay
 
 import (
 	"fmt"
-	"net/url"
-	"os"
 	"roulette/internal/payment"
 	oxapayclient "roulette/pkg/oxapay"
 	"strconv"
@@ -13,12 +11,11 @@ import (
 
 // Provider implements the payment.Provider interface for OxaPay
 type Provider struct {
-	client      *oxapayclient.Client
-	callbackURL string
+	client *oxapayclient.Client
 }
 
 // NewProvider creates a new OxaPay provider
-func NewProvider(apiKey, webhookKey, callbackURL string, db interface{}) *Provider {
+func NewProvider(apiKey string, db interface{}) *Provider {
 	// Проверяем, что db имеет нужный тип
 	var gormDB *gorm.DB
 	var ok bool
@@ -31,18 +28,15 @@ func NewProvider(apiKey, webhookKey, callbackURL string, db interface{}) *Provid
 
 	// Создаем конфигурацию клиента OxaPay
 	config := oxapayclient.Config{
-		APIKey:      apiKey,
-		WebhookKey:  webhookKey,
-		CallbackURL: callbackURL,
-		DB:          gormDB,
+		APIKey: apiKey,
+		DB:     gormDB,
 	}
 
 	// Создаем клиент OxaPay
 	client := oxapayclient.NewClient(config)
 
 	return &Provider{
-		client:      client,
-		callbackURL: callbackURL,
+		client: client,
 	}
 }
 
@@ -57,7 +51,6 @@ func (p *Provider) CreateWithdrawal(userID uint, amount float64, currency string
 		Amount:      amount,
 		Address:     address,
 		Network:     network,
-		CallbackURL: p.callbackURL,
 		Description: fmt.Sprintf("Withdrawal for user %d", userID),
 		UserID:      strconv.FormatUint(uint64(userID), 10),
 	}
@@ -121,33 +114,6 @@ func (p *Provider) GetWithdrawalStatus(withdrawalID string) (payment.WithdrawalS
 	return mapStatus(payout.Status), nil
 }
 
-// SetupWebhooks implements payment.Provider
-func (p *Provider) SetupWebhooks() error {
-	// OxaPay webhooks настраиваются при создании клиента и через конфигурацию HTTP маршрутов
-	if p.client != nil && p.callbackURL != "" {
-		// Извлекаем путь из URL-а колбэка
-		callbackPath := extractPathFromURL(p.callbackURL)
-
-		if callbackPath != "" {
-			p.client.SetupWebhookHandler(nil, callbackPath)
-			return nil
-		}
-
-		// Если не удалось извлечь путь, используем путь по умолчанию
-		p.client.SetupWebhookHandler(nil, "/webhooks/payment/oxapay")
-	}
-	return nil
-}
-
-// extractPathFromURL извлекает путь из URL
-func extractPathFromURL(urlStr string) string {
-	parsedURL, err := url.Parse(urlStr)
-	if err != nil {
-		return ""
-	}
-	return parsedURL.Path
-}
-
 // mapStatus converts OxaPay status to internal WithdrawalStatus
 func mapStatus(oxaStatus string) payment.WithdrawalStatus {
 	switch oxaStatus {
@@ -162,14 +128,4 @@ func mapStatus(oxaStatus string) payment.WithdrawalStatus {
 	default:
 		return payment.StatusPending
 	}
-}
-
-func getEnvBool(key string, defaultValue bool) bool {
-	if value, exists := os.LookupEnv(key); exists {
-		boolValue, err := strconv.ParseBool(value)
-		if err == nil {
-			return boolValue
-		}
-	}
-	return defaultValue
 }

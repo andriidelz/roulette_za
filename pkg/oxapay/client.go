@@ -2,16 +2,12 @@ package oxapay
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha512"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
@@ -22,20 +18,16 @@ const (
 
 // Client представляет клиент для взаимодействия с API OxaPay
 type Client struct {
-	apiKey      string
-	webhookKey  string
-	callbackURL string
-	httpClient  *http.Client
-	db          *gorm.DB
-	baseURL     string // URL API
+	apiKey     string
+	httpClient *http.Client
+	db         *gorm.DB
+	baseURL    string // URL API
 }
 
 // NewClient создает новый клиент OxaPay
 func NewClient(config Config) *Client {
 	return &Client{
-		apiKey:      config.APIKey,
-		webhookKey:  config.WebhookKey,
-		callbackURL: config.CallbackURL,
+		apiKey: config.APIKey,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -48,10 +40,9 @@ func NewClient(config Config) *Client {
 func (c *Client) CreatePayout(request PayoutRequest) (*Payout, error) {
 	// Преобразуем запрос в формат API
 	apiRequest := map[string]interface{}{
-		"address":      request.Address,
-		"currency":     request.Currency,
-		"amount":       request.Amount,
-		"callback_url": request.CallbackURL,
+		"address":  request.Address,
+		"currency": request.Currency,
+		"amount":   request.Amount,
 	}
 
 	// Добавляем опциональные поля
@@ -127,7 +118,6 @@ func (c *Client) CreatePayout(request PayoutRequest) (*Payout, error) {
 		Currency:    request.Currency,
 		Amount:      request.Amount,
 		Address:     request.Address,
-		CallbackURL: request.CallbackURL,
 		Description: request.Description,
 		UserID:      request.UserID,
 		Status:      response.Data.Status,
@@ -233,110 +223,6 @@ func (c *Client) GetPayout(id string) (*Payout, error) {
 	return payout, nil
 }
 
-// GetPayoutHistory получает историю выплат с возможностью фильтрации
-func (c *Client) GetPayoutHistory(params map[string]string) ([]Payout, *PaginationMeta, error) {
-	// Формируем URL с параметрами запроса
-	url := fmt.Sprintf("%s/v1/payout", c.baseURL)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating request: %w", err)
-	}
-
-	// Добавляем параметры запроса
-	q := req.URL.Query()
-	for key, value := range params {
-		q.Add(key, value)
-	}
-	req.URL.RawQuery = q.Encode()
-
-	// Добавляем заголовки
-	req.Header.Set("payout_api_key", c.apiKey)
-
-	// Отправляем запрос
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error sending request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Читаем ответ
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error reading response body: %w", err)
-	}
-
-	// Проверяем код ответа
-	if resp.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("error getting payout history, status code: %d, body: %s", resp.StatusCode, string(body))
-	}
-
-	// Анализируем ответ
-	var response struct {
-		Data struct {
-			List []struct {
-				TrackID     string  `json:"track_id"`
-				Address     string  `json:"address"`
-				Currency    string  `json:"currency"`
-				Network     string  `json:"network"`
-				Amount      float64 `json:"amount"`
-				Fee         float64 `json:"fee"`
-				Status      string  `json:"status"`
-				TxHash      string  `json:"tx_hash"`
-				Description string  `json:"description"`
-				Internal    bool    `json:"internal"`
-				Memo        string  `json:"memo"`
-				Date        int64   `json:"date"`
-			} `json:"list"`
-			Meta struct {
-				Page     int `json:"page"`
-				LastPage int `json:"last_page"`
-				Total    int `json:"total"`
-			} `json:"meta"`
-		} `json:"data"`
-		Message string      `json:"message"`
-		Error   interface{} `json:"error"`
-		Status  int         `json:"status"`
-		Version string      `json:"version"`
-	}
-
-	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, nil, fmt.Errorf("error unmarshaling response: %w", err)
-	}
-
-	if response.Status != http.StatusOK {
-		return nil, nil, fmt.Errorf("error from OxaPay: %s", response.Message)
-	}
-
-	// Преобразуем ответ API в список объектов Payout
-	payouts := make([]Payout, len(response.Data.List))
-	for i, item := range response.Data.List {
-		payouts[i] = Payout{
-			ID:              item.TrackID,
-			Currency:        item.Currency,
-			Amount:          item.Amount,
-			Address:         item.Address,
-			Description:     item.Description,
-			Status:          item.Status,
-			TransactionHash: item.TxHash,
-			Network:         item.Network,
-			Fee:             item.Fee,
-			Memo:            item.Memo,
-			Internal:        item.Internal,
-			CreatedAt:       time.Unix(item.Date, 0),
-			UpdatedAt:       time.Now(),
-		}
-	}
-
-	// Создаем информацию о пагинации
-	meta := &PaginationMeta{
-		Page:     response.Data.Meta.Page,
-		LastPage: response.Data.Meta.LastPage,
-		Total:    response.Data.Meta.Total,
-	}
-
-	return payouts, meta, nil
-}
-
 // InitializeTables создает необходимые таблицы в базе данных
 func (c *Client) InitializeTables() error {
 	if c.db == nil {
@@ -344,27 +230,9 @@ func (c *Client) InitializeTables() error {
 	}
 
 	// Миграция таблиц
-	if err := c.db.AutoMigrate(&Payout{}, &WebhookEvent{}); err != nil {
+	if err := c.db.AutoMigrate(&Payout{}); err != nil {
 		return fmt.Errorf("failed to migrate database tables: %w", err)
 	}
 
 	return nil
-}
-
-// SetupWebhookHandler настраивает обработчик вебхуков для Gin
-func (c *Client) SetupWebhookHandler(router *gin.Engine, path string) {
-	router.POST(path, func(ctx *gin.Context) {
-		c.handleWebhook(ctx)
-	})
-}
-
-// VerifyWebhookSignature проверяет подпись вебхука
-func (c *Client) VerifyWebhookSignature(payload []byte, signature string) bool {
-	// Создаем HMAC SHA-512 подпись
-	mac := hmac.New(sha512.New, []byte(c.webhookKey))
-	mac.Write(payload)
-	expectedSignature := hex.EncodeToString(mac.Sum(nil))
-
-	// Сравниваем с полученной подписью
-	return signature == expectedSignature
 }
