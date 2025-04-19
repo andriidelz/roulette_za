@@ -6,21 +6,20 @@ import (
 
 // Payout represents a payout request to OxaPay
 type Payout struct {
-	ID               string  `json:"id" gorm:"primaryKey"`
-	Currency         string  `json:"currency"`
-	Amount           float64 `json:"amount"`
-	Address          string  `json:"address"`
-	Description      string  `json:"description,omitempty"`
-	UserID           string  `json:"userId,omitempty" gorm:"index"`
-	Status           string  `json:"status" gorm:"index"`
-	TransactionHash  string  `json:"transactionHash,omitempty"`
-	Network          string  `json:"network,omitempty"`
-	Fee              float64 `json:"fee,omitempty"`
-	Memo             string  `json:"memo,omitempty"`
-	Internal         bool    `json:"internal,omitempty"`
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	LastWebhookEvent *WebhookEvent `gorm:"-"`
+	ID              string  `json:"id" gorm:"primaryKey"`
+	Currency        string  `json:"currency"`
+	Amount          float64 `json:"amount"`
+	Address         string  `json:"address"`
+	Description     string  `json:"description,omitempty"`
+	UserID          string  `json:"userId,omitempty" gorm:"index"`
+	Status          string  `json:"status" gorm:"index"`
+	TransactionHash string  `json:"transactionHash,omitempty"`
+	Network         string  `json:"network,omitempty"`
+	Fee             float64 `json:"fee,omitempty"`
+	Memo            string  `json:"memo,omitempty"`
+	Internal        bool    `json:"internal,omitempty"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 // PayoutRequest represents the request to OxaPay API
@@ -44,23 +43,6 @@ type PayoutResponse struct {
 	Error   interface{} `json:"error"`
 	Status  int         `json:"status"`
 	Version string      `json:"version"`
-}
-
-// WebhookEvent represents an OxaPay webhook event
-type WebhookEvent struct {
-	ID              uint      `gorm:"primaryKey" json:"-"`
-	PayoutID        string    `json:"id" gorm:"index"`
-	Status          string    `json:"status"`
-	Transaction     string    `json:"transaction"`
-	Address         string    `json:"address"`
-	Amount          float64   `json:"amount"`
-	AmountFormatted string    `json:"amountFormatted"`
-	Currency        string    `json:"currency"`
-	Description     string    `json:"description"`
-	CreatedAt       time.Time `json:"createdAt"`
-	ReceivedAt      time.Time `gorm:"autoCreateTime"`
-	RawPayload      string    `gorm:"type:text"`
-	Verified        bool      `gorm:"default:false"`
 }
 
 // PaginationMeta represents pagination metadata for list responses

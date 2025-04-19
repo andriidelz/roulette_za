@@ -67,10 +67,11 @@ func main() {
 		}
 	}()
 
-	// Запускаем фоновую проверку статусов выплат (каждые 5 минут)
-	ticker := time.NewTicker(5 * time.Minute)
+	// Запускаем фоновую проверку статусов выплат (каждые 3 минуты)
+	ticker := time.NewTicker(3 * time.Minute)
 	go func() {
 		for range ticker.C {
+			log.Println("Starting scheduled check of pending withdrawals...")
 			if err := paymentSvc.CheckPendingWithdrawals(); err != nil {
 				log.Printf("Error checking pending withdrawals: %v", err)
 			}
