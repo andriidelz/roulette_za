@@ -2,6 +2,7 @@ package oxapay
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"roulette/internal/payment"
 	oxapayclient "roulette/pkg/oxapay"
@@ -47,15 +48,18 @@ func NewProvider(apiKey, webhookKey, callbackURL string, db interface{}) *Provid
 
 // CreateWithdrawal implements payment.Provider
 func (p *Provider) CreateWithdrawal(userID uint, amount float64, currency string, address string) (*payment.Withdrawal, error) {
+	// Определяем сеть на основе валюты
+	network := p.getNetworkForCurrency(currency)
+
 	// Создаем запрос на вывод средств через OxaPay
 	payoutRequest := oxapayclient.PayoutRequest{
 		Currency:    currency,
 		Amount:      amount,
 		Address:     address,
+		Network:     network,
 		CallbackURL: p.callbackURL,
 		Description: fmt.Sprintf("Withdrawal for user %d", userID),
-		UserID:      strconv.FormatUint(uint64(userID), 10), // Преобразуем ID пользователя в строку
-		IsSandbox:   getEnvBool("OXAPAY_USE_SANDBOX", false),
+		UserID:      strconv.FormatUint(uint64(userID), 10),
 	}
 
 	// Отправляем запрос через клиент OxaPay
@@ -79,10 +83,30 @@ func (p *Provider) CreateWithdrawal(userID uint, amount float64, currency string
 		Description:     payoutRequest.Description,
 		ProviderName:    "oxapay",
 		ProviderData:    payout, // Сохраняем оригинальный ответ от провайдера
-		IsSandbox:       getEnvBool("OXAPAY_USE_SANDBOX", false),
 		CreatedAt:       payout.CreatedAt,
 		UpdatedAt:       payout.UpdatedAt,
 	}, nil
+}
+
+// Вспомогательный метод для определения сети на основе валюты
+func (p *Provider) getNetworkForCurrency(currency string) string {
+	// Здесь можно определить правила для различных валют
+	// Можно загрузить эти правила из конфигурации или базы данных
+	networkMap := map[string]string{
+		"USDT": "TRC20", // По умолчанию используем TRC20 для USDT
+		"USDC": "ERC20", // По умолчанию используем ERC20 для USDC
+		"BTC":  "Bitcoin Network",
+		"ETH":  "Ethereum Network",
+		"TRX":  "TRON Network",
+		// Добавьте другие валюты и их сети
+	}
+
+	if network, exists := networkMap[currency]; exists {
+		return network
+	}
+
+	// Возвращаем пустую строку для валют, которым не требуется указание сети
+	return ""
 }
 
 // GetWithdrawalStatus implements payment.Provider
@@ -100,8 +124,28 @@ func (p *Provider) GetWithdrawalStatus(withdrawalID string) (payment.WithdrawalS
 // SetupWebhooks implements payment.Provider
 func (p *Provider) SetupWebhooks() error {
 	// OxaPay webhooks настраиваются при создании клиента и через конфигурацию HTTP маршрутов
-	// Этот метод может быть пустым или содержать дополнительную логику настройки вебхуков
+	if p.client != nil && p.callbackURL != "" {
+		// Извлекаем путь из URL-а колбэка
+		callbackPath := extractPathFromURL(p.callbackURL)
+
+		if callbackPath != "" {
+			p.client.SetupWebhookHandler(nil, callbackPath)
+			return nil
+		}
+
+		// Если не удалось извлечь путь, используем путь по умолчанию
+		p.client.SetupWebhookHandler(nil, "/webhooks/payment/oxapay")
+	}
 	return nil
+}
+
+// extractPathFromURL извлекает путь из URL
+func extractPathFromURL(urlStr string) string {
+	parsedURL, err := url.Parse(urlStr)
+	if err != nil {
+		return ""
+	}
+	return parsedURL.Path
 }
 
 // mapStatus converts OxaPay status to internal WithdrawalStatus
