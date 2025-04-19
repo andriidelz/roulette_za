@@ -242,12 +242,18 @@
   
   {{block "additionalScripts_withdrawals" .}}
   <script>
+  // Создаем уникальный токен для предотвращения повторной отправки
+  var actionTokens = {};
+  
   $(document).ready(function() {
       // Инициализация тултипов Bootstrap
       var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
       var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
       });
+      
+      // Очищаем все ранее установленные обработчики
+      $('.approve-withdrawal, .reject-withdrawal').off();
       
       // Функция для копирования текста в буфер обмена
       $('.copy-text-btn').click(function() {
@@ -272,60 +278,126 @@
           });
       });
       
+      // Создаем уникальные токены для каждой кнопки действия
+      $('.approve-withdrawal, .reject-withdrawal').each(function() {
+          var id = $(this).data('id');
+          var action = $(this).hasClass('approve-withdrawal') ? 'approve' : 'reject';
+          var key = action + '-' + id;
+          actionTokens[key] = Math.random().toString(36).substring(2, 15);
+      });
+      
       // Обработчик подтверждения вывода
-      $('.approve-withdrawal').click(function() {
+      $('.approve-withdrawal').click(function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
           var withdrawalId = $(this).data('id');
           var btn = $(this);
+          var tokenKey = 'approve-' + withdrawalId;
+          
+          // console.log('Клик по кнопке подтверждения ID:', withdrawalId);
+          
+          // Проверяем, существует ли токен (если нет, значит действие уже выполняется)
+          if (!actionTokens[tokenKey]) {
+              console.log('Токен отсутствует, запрос уже в процессе обработки');
+              return false;
+          }
           
           if (confirm('Вы уверены, что хотите подтвердить этот вывод? Это действие невозможно отменить.')) {
+              // Сохраняем токен и удаляем его из списка
+              var token = actionTokens[tokenKey];
+              delete actionTokens[tokenKey];
+              
               // Блокируем кнопку и показываем индикатор загрузки
               btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Обработка...');
               
-              $.post('/admin/withdrawal/' + withdrawalId + '/approve', function(data) {
-                  if (data.success) {
-                      window.location.reload();
-                  } else {
-                      alert('Ошибка: ' + data.error);
-                      // Возвращаем кнопку в исходное состояние
+              // Используем AJAX вместо $.post для дополнительных настроек
+              $.ajax({
+                  url: '/admin/withdrawal/' + withdrawalId + '/approve',
+                  type: 'POST',
+                  headers: {
+                      'X-Action-Token': token,  // Добавляем токен в заголовок
+                      'X-Requested-With': 'XMLHttpRequest'
+                  },
+                  cache: false,
+                  success: function(data) {
+                      if (data.success) {
+                          window.location.reload();
+                      } else {
+                          alert('Ошибка: ' + data.error);
+                          // Восстанавливаем токен и возвращаем кнопку в исходное состояние
+                          actionTokens[tokenKey] = token;
+                          btn.prop('disabled', false).html('<i class="bi bi-check-circle me-1"></i>Подтвердить');
+                      }
+                  },
+                  error: function(xhr) {
+                      console.error('Ошибка запроса:', xhr.responseText);
+                      alert('Произошла ошибка при обработке запроса. Проверьте консоль для деталей.');
+                      // Восстанавливаем токен и возвращаем кнопку в исходное состояние
+                      actionTokens[tokenKey] = token;
                       btn.prop('disabled', false).html('<i class="bi bi-check-circle me-1"></i>Подтвердить');
                   }
-              }).fail(function(xhr) {
-                  alert('Произошла ошибка при обработке запроса. Проверьте консоль для деталей.');
-                  console.error('Ошибка запроса:', xhr.responseText);
-                  // Возвращаем кнопку в исходное состояние
-                  btn.prop('disabled', false).html('<i class="bi bi-check-circle me-1"></i>Подтвердить');
               });
           }
       });
       
       // Обработчик отклонения вывода
-      $('.reject-withdrawal').click(function() {
+      $('.reject-withdrawal').click(function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
           var withdrawalId = $(this).data('id');
           var btn = $(this);
+          var tokenKey = 'reject-' + withdrawalId;
+          
+          // console.log('Клик по кнопке отклонения ID:', withdrawalId);
+          
+          // Проверяем, существует ли токен (если нет, значит действие уже выполняется)
+          if (!actionTokens[tokenKey]) {
+              console.log('Токен отсутствует, запрос уже в процессе обработки');
+              return false;
+          }
           
           if (confirm('Вы уверены, что хотите отклонить этот вывод? Средства будут возвращены на баланс пользователя.')) {
+              // Сохраняем токен и удаляем его из списка
+              var token = actionTokens[tokenKey];
+              delete actionTokens[tokenKey];
+              
               // Блокируем кнопку и показываем индикатор загрузки
               btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Обработка...');
               
-              $.post('/admin/withdrawal/' + withdrawalId + '/reject', function(data) {
-                  if (data.success) {
-                      window.location.reload();
-                  } else {
-                      alert('Ошибка: ' + data.error);
-                      // Возвращаем кнопку в исходное состояние
+              // Используем AJAX вместо $.post для дополнительных настроек
+              $.ajax({
+                  url: '/admin/withdrawal/' + withdrawalId + '/reject',
+                  type: 'POST',
+                  headers: {
+                      'X-Action-Token': token,  // Добавляем токен в заголовок
+                      'X-Requested-With': 'XMLHttpRequest'
+                  },
+                  cache: false,
+                  success: function(data) {
+                      if (data.success) {
+                          window.location.reload();
+                      } else {
+                          alert('Ошибка: ' + data.error);
+                          // Восстанавливаем токен и возвращаем кнопку в исходное состояние
+                          actionTokens[tokenKey] = token;
+                          btn.prop('disabled', false).html('<i class="bi bi-x-circle me-1"></i>Отклонить');
+                      }
+                  },
+                  error: function(xhr) {
+                      console.error('Ошибка запроса:', xhr.responseText);
+                      alert('Произошла ошибка при обработке запроса. Проверьте консоль для деталей.');
+                      // Восстанавливаем токен и возвращаем кнопку в исходное состояние
+                      actionTokens[tokenKey] = token;
                       btn.prop('disabled', false).html('<i class="bi bi-x-circle me-1"></i>Отклонить');
                   }
-              }).fail(function(xhr) {
-                  alert('Произошла ошибка при обработке запроса. Проверьте консоль для деталей.');
-                  console.error('Ошибка запроса:', xhr.responseText);
-                  // Возвращаем кнопку в исходное состояние
-                  btn.prop('disabled', false).html('<i class="bi bi-x-circle me-1"></i>Отклонить');
               });
           }
       });
       
       // Обработчик клика на кнопку информации для отображения модального окна с деталями
-      $(document).on('click', '[data-bs-toggle="tooltip"][title="Показать детали"]', function() {
+      $('[data-bs-toggle="tooltip"][title="Показать детали"]').click(function() {
           var row = $(this).closest('tr');
           
           // Получаем данные из строки таблицы

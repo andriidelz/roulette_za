@@ -16,10 +16,11 @@ import (
 
 // Админ-панель
 type AdminPanel struct {
-	router   *gin.Engine
-	service  service.Service
-	repo     repository.Repository
-	settings *Settings
+	router         *gin.Engine
+	service        service.Service
+	repo           repository.Repository
+	settings       *Settings
+	paymentService *service.PaymentService
 }
 
 // Настройки админ-панели
@@ -33,8 +34,7 @@ type Settings struct {
 }
 
 // Создание новой админ-панели
-func NewAdminPanel(service service.Service, repo repository.Repository, settings *Settings) *AdminPanel {
-
+func NewAdminPanel(service service.Service, repo repository.Repository, settings *Settings, paymentService *service.PaymentService) *AdminPanel {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
@@ -44,10 +44,11 @@ func NewAdminPanel(service service.Service, repo repository.Repository, settings
 
 	// Создаем админ-панель
 	admin := &AdminPanel{
-		router:   router,
-		service:  service,
-		repo:     repo,
-		settings: settings,
+		router:         router,
+		service:        service,
+		repo:           repo,
+		settings:       settings,
+		paymentService: paymentService,
 	}
 
 	admin.setupRoutes()
@@ -112,7 +113,7 @@ func (a *AdminPanel) setupRoutes() {
 
 	// Защищенные роуты
 	admin := a.router.Group("/admin")
-	admin.Use(a.ipFilterMiddleware(), a.authRequired())
+	admin.Use(a.ipFilterMiddleware(), a.authRequired(), a.addPaymentServiceToContext())
 	{
 		admin.GET("/", a.dashboard)
 
@@ -203,6 +204,14 @@ func (a *AdminPanel) authRequired() gin.HandlerFunc {
 			return
 		}
 
+		c.Next()
+	}
+}
+
+// Добавления paymentService в контекст
+func (a *AdminPanel) addPaymentServiceToContext() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set("paymentService", a.paymentService)
 		c.Next()
 	}
 }
