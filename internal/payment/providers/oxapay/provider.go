@@ -139,20 +139,32 @@ func (p *Provider) SetupWebhooks() error {
 }
 
 // mapStatus converts OxaPay status to internal WithdrawalStatus
+// https://docs.oxapay.com/api-reference/payout/payout-status-table
 func mapStatus(oxaStatus string) payment.WithdrawalStatus {
 	log.Printf("[OxaPayProvider] Mapping status: %s", oxaStatus)
 
 	switch oxaStatus {
-	case "pending":
-		return payment.StatusPending
 	case "processing":
+		// Запрос отправлен и обрабатывается
 		return payment.StatusProcessing
-	case "completed", "confirmed", "success":
+	case "pending":
+		// Запрос обработан и находится в очереди на оплату
+		// Важно: это НЕ то же самое, что "pending" в нашей системе (ожидание подтверждения)
+		return payment.StatusProcessing
+	case "confirming":
+		// Транзакция создана и ожидает подтверждения в блокчейне
+		return payment.StatusProcessing
+	case "confirmed":
+		// Транзакция успешно оплачена
 		return payment.StatusCompleted
-	case "failed", "error", "rejected":
+	case "canceled":
+		// Запрос на выплату был отменен
+		return payment.StatusFailed
+	case "rejected":
+		// Запрос был отклонен по каким-либо причинам
 		return payment.StatusFailed
 	default:
-		log.Printf("[OxaPayProvider] Unknown status: %s, mapping to pending", oxaStatus)
-		return payment.StatusPending
+		log.Printf("[OxaPayProvider] Unknown status: %s, mapping to processing", oxaStatus)
+		return payment.StatusProcessing
 	}
 }
