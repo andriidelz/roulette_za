@@ -15,7 +15,7 @@ const (
 	CallbackProcessWithdraw = "process_withdraw"
 )
 
-// Константа с минимальной суммой для вывода, которую можно заменить на получение из настроек
+// Константа с минимальной суммой для вывода, которую далее заменяем на получение из настроек
 const MinWithdrawalAmount = 10.0
 
 // handleAccountCommand обрабатывает команду "Аккаунт" из главного меню
@@ -235,6 +235,23 @@ func (b *Bot) handleRequestWithdrawCallback(query *telego.CallbackQuery) {
 	// Отвечаем на callback, чтобы убрать индикатор загрузки
 	b.answerCallbackQuery(query.ID, "", false)
 
+	user := query.From
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		// Регистрация пользователя, если он не найден
+		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+		if err != nil {
+			log.Printf("Error registering user: %v", err)
+			return
+		}
+	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
 	// Переводим пользователя в раздел вывода
 	if query.Message != nil {
 		b.handleWithdrawCommand(&telego.Message{
@@ -244,7 +261,7 @@ func (b *Bot) handleRequestWithdrawCallback(query *telego.CallbackQuery) {
 				FirstName:    query.From.FirstName,
 				LastName:     query.From.LastName,
 				Username:     query.From.Username,
-				LanguageCode: query.From.LanguageCode,
+				LanguageCode: language,
 			},
 			Chat: query.Message.Chat,
 		})
@@ -254,13 +271,6 @@ func (b *Bot) handleRequestWithdrawCallback(query *telego.CallbackQuery) {
 // handleProcessWithdrawCallback обрабатывает нажатие на кнопку "Запросить вывод" в разделе вывода
 func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 	user := query.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
-
-	// Отвечаем на callback, чтобы убрать индикатор загрузки
-	b.answerCallbackQuery(query.ID, "", false)
 
 	// Получаем информацию о пользователе
 	dbUser, err := b.service.GetUser(user.ID)
@@ -268,6 +278,15 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 		log.Printf("Error getting user for withdrawal: %v", err)
 		return
 	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Отвечаем на callback, чтобы убрать индикатор загрузки
+	b.answerCallbackQuery(query.ID, "", false)
 
 	// Проверяем наличие адреса кошелька
 	if dbUser.WalletAddress == "" {
@@ -300,6 +319,17 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 
 	// Проверяем, что сумма больше минимальной
 	minWithdrawal := MinWithdrawalAmount
+
+	// Получаем настройку минимального вывода (если есть)
+	settings, err := b.service.GetSettings()
+	if err == nil {
+		if minWithdrawalStr, exists := settings["minimum_withdrawal"]; exists && minWithdrawalStr != "" {
+			// Пытаемся преобразовать значение
+			if val, err := strconv.ParseFloat(minWithdrawalStr, 64); err == nil {
+				minWithdrawal = val
+			}
+		}
+	}
 
 	if dbUser.Balance < minWithdrawal {
 		// Если сумма недостаточна, сообщаем об этом
