@@ -216,8 +216,31 @@ func (s *PaymentService) ApproveWithdrawal(withdrawalID uint) error {
 		log.Printf("[PaymentService] Successfully got alternative provider")
 	}
 
-	// Create withdrawal request through the provider
-	log.Printf("[PaymentService] Creating withdrawal via provider for user %d, amount %.2f",
+	// Вычитаем комиссию 1$ из суммы вывода
+	const feeAmount = 1.0 // Комиссия $1
+	originalAmount := withdrawal.Amount
+
+	// Проверяем, чтобы сумма после вычета комиссии была положительной
+	if withdrawal.Amount <= feeAmount {
+		log.Printf("[PaymentService] Withdrawal amount %.2f is too small to deduct fee %.2f",
+			withdrawal.Amount, feeAmount)
+		return fmt.Errorf("withdrawal amount %.2f is too small to deduct fee %.2f",
+			withdrawal.Amount, feeAmount)
+	}
+
+	// Вычитаем комиссию
+	withdrawal.Amount -= feeAmount
+	log.Printf("[PaymentService] Deducting fee %.2f from withdrawal amount: %.2f -> %.2f",
+		feeAmount, originalAmount, withdrawal.Amount)
+
+	// Сохраняем обновленную сумму с вычтенной комиссией
+	if err := s.repo.UpdateWithdrawal(withdrawal); err != nil {
+		log.Printf("[PaymentService] Error updating withdrawal amount: %v", err)
+		return fmt.Errorf("error updating withdrawal amount: %w", err)
+	}
+
+	// Создаем запрос на вывод средств через провайдера
+	log.Printf("[PaymentService] Creating withdrawal via provider for user %d, amount %.2f (after fee)",
 		withdrawal.UserID, withdrawal.Amount)
 	result, err := provider.CreateWithdrawal(
 		withdrawal.UserID,
@@ -227,6 +250,13 @@ func (s *PaymentService) ApproveWithdrawal(withdrawalID uint) error {
 	)
 	if err != nil {
 		log.Printf("[PaymentService] Error creating withdrawal via provider: %v", err)
+
+		// В случае ошибки возвращаем исходную сумму
+		withdrawal.Amount = originalAmount
+		if updateErr := s.repo.UpdateWithdrawal(withdrawal); updateErr != nil {
+			log.Printf("[PaymentService] Error restoring original amount: %v", updateErr)
+		}
+
 		return fmt.Errorf("error creating withdrawal: %w", err)
 	}
 
@@ -245,7 +275,8 @@ func (s *PaymentService) ApproveWithdrawal(withdrawalID uint) error {
 		return fmt.Errorf("error updating withdrawal: %w", err)
 	}
 
-	log.Printf("[PaymentService] Withdrawal %d approved and updated successfully", withdrawalID)
+	log.Printf("[PaymentService] Withdrawal %d approved and updated successfully with amount %.2f (fee deducted)",
+		withdrawalID, withdrawal.Amount)
 	return nil
 }
 
