@@ -120,22 +120,32 @@ func (s *PaymentService) GetWithdrawalStatus(withdrawalID uint) (string, error) 
 
 	// Check status with provider
 	log.Printf("[PaymentService] Checking status with provider for external ID=%s", withdrawal.ProviderID)
-	status, err := provider.GetWithdrawalStatus(withdrawal.ProviderID)
+	status, txHash, err := provider.GetWithdrawalStatus(withdrawal.ProviderID)
 	if err != nil {
 		log.Printf("[PaymentService] Error getting withdrawal status from provider: %v", err)
 		return withdrawal.Status, fmt.Errorf("error getting withdrawal status: %w", err)
 	}
 
-	// Update status if changed
-	if string(status) != withdrawal.Status {
-		log.Printf("[PaymentService] Status changed for withdrawal %d: %s -> %s",
-			withdrawalID, withdrawal.Status, status)
+	// Update status and tx_hash if changed
+	statusChanged := string(status) != withdrawal.Status
+	txHashChanged := txHash != "" && txHash != withdrawal.TransactionHash
+
+	if statusChanged || txHashChanged {
+		log.Printf("[PaymentService] Updating withdrawal %d: status %s->%s, tx_hash %s->%s",
+			withdrawalID, withdrawal.Status, status, withdrawal.TransactionHash, txHash)
+
+		// Обновляем поля
 		withdrawal.Status = string(status)
 		withdrawal.UpdatedAt = time.Now()
 
-		if err := s.repo.UpdateWithdrawalStatus(withdrawalID, withdrawal.Status); err != nil {
-			log.Printf("[PaymentService] Error updating withdrawal status in database: %v", err)
-			return string(status), fmt.Errorf("error updating withdrawal status: %w", err)
+		// Обновляем transaction_hash только если он не пустой
+		if txHash != "" {
+			withdrawal.TransactionHash = txHash
+		}
+
+		if err := s.repo.UpdateWithdrawal(withdrawal); err != nil {
+			log.Printf("[PaymentService] Error updating withdrawal: %v", err)
+			return string(status), fmt.Errorf("error updating withdrawal: %w", err)
 		}
 	}
 
@@ -268,19 +278,29 @@ func (s *PaymentService) CheckPendingWithdrawals() error {
 			continue // Skip this one and move to next
 		}
 
-		status, err := provider.GetWithdrawalStatus(withdrawal.ProviderID)
+		status, txHash, err := provider.GetWithdrawalStatus(withdrawal.ProviderID)
 		if err != nil {
 			log.Printf("[PaymentService] Error getting status from provider: %v", err)
 			continue // Skip this one and move to next
 		}
 
-		// Update if status changed
-		if string(status) != withdrawal.Status {
-			log.Printf("[PaymentService] Status changed for withdrawal %d: %s -> %s",
-				withdrawal.ID, withdrawal.Status, status)
+		log.Printf("[PaymentService] Got status=%s, tx_hash=%s for withdrawal %d",
+			status, txHash, withdrawal.ID)
+
+		// Проверяем, изменился ли статус или появился transaction_hash
+		statusChanged := string(status) != withdrawal.Status
+		txHashChanged := txHash != "" && txHash != withdrawal.TransactionHash
+
+		if statusChanged || txHashChanged {
+			log.Printf("[PaymentService] Updating withdrawal %d: status %s->%s, tx_hash %s->%s",
+				withdrawal.ID, withdrawal.Status, status, withdrawal.TransactionHash, txHash)
 
 			withdrawal.Status = string(status)
 			withdrawal.UpdatedAt = time.Now()
+
+			if txHash != "" {
+				withdrawal.TransactionHash = txHash
+			}
 
 			if err := s.repo.UpdateWithdrawal(&withdrawal); err != nil {
 				log.Printf("[PaymentService] Error updating withdrawal: %v", err)
@@ -289,12 +309,12 @@ func (s *PaymentService) CheckPendingWithdrawals() error {
 
 			updatedCount++
 		} else {
-			log.Printf("[PaymentService] No status change for withdrawal %d: status=%s",
-				withdrawal.ID, withdrawal.Status)
+			log.Printf("[PaymentService] No changes for withdrawal %d: status=%s, tx_hash=%s",
+				withdrawal.ID, withdrawal.Status, withdrawal.TransactionHash)
 		}
 	}
 
-	log.Printf("[PaymentService] Completed checking withdrawals. Updated %d of %d processing withdrawals",
+	log.Printf("[PaymentService] Completed checking withdrawals. Updated %d of %d withdrawals",
 		updatedCount, len(withdrawals))
 
 	return nil

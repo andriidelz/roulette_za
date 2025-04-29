@@ -115,20 +115,21 @@ func (p *Provider) getNetworkForCurrency(currency string) string {
 }
 
 // GetWithdrawalStatus implements payment.Provider
-func (p *Provider) GetWithdrawalStatus(withdrawalID string) (payment.WithdrawalStatus, error) {
+func (p *Provider) GetWithdrawalStatus(withdrawalID string) (payment.WithdrawalStatus, string, error) {
 	log.Printf("[OxaPayProvider] Getting withdrawal status for ID: %s", withdrawalID)
 
 	// Получаем информацию о выводе средств из OxaPay
 	payout, err := p.client.GetPayout(withdrawalID)
 	if err != nil {
 		log.Printf("[OxaPayProvider] Failed to get withdrawal status: %v", err)
-		return payment.StatusFailed, fmt.Errorf("failed to get withdrawal status: %w", err)
+		return payment.StatusFailed, "", fmt.Errorf("failed to get withdrawal status: %w", err)
 	}
 
-	log.Printf("[OxaPayProvider] Got status: %s for withdrawal: %s", payout.Status, withdrawalID)
+	log.Printf("[OxaPayProvider] Got status: %s, tx_hash: %s for withdrawal: %s",
+		payout.Status, payout.TransactionHash, withdrawalID)
 
-	// Преобразуем статус OxaPay в наш внутренний статус
-	return mapStatus(payout.Status), nil
+	// Преобразуем статус OxaPay в наш внутренний статус и возвращаем также transaction_hash
+	return mapStatus(payout.Status), payout.TransactionHash, nil
 }
 
 // SetupWebhooks implements payment.Provider

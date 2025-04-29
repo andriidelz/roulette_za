@@ -9,8 +9,8 @@ type Provider interface {
 	// CreateWithdrawal creates a withdrawal request
 	CreateWithdrawal(userID uint, amount float64, currency string, address string) (*Withdrawal, error)
 
-	// GetWithdrawalStatus returns the current status of a withdrawal
-	GetWithdrawalStatus(withdrawalID string) (WithdrawalStatus, error)
+	// GetWithdrawalStatus returns the current status of a withdrawal and transaction hash
+	GetWithdrawalStatus(withdrawalID string) (WithdrawalStatus, string, error)
 }
 
 // WithdrawalStatus represents possible status values for a withdrawal

@@ -31,6 +31,6 @@ func (p *MockProvider) CreateWithdrawal(userID uint, amount float64, currency st
 }
 
 // GetWithdrawalStatus имитирует получение статуса вывода
-func (p *MockProvider) GetWithdrawalStatus(withdrawalID string) (WithdrawalStatus, error) {
-	return StatusProcessing, nil
+func (p *MockProvider) GetWithdrawalStatus(withdrawalID string) (WithdrawalStatus, string, error) {
+	return StatusProcessing, "mock-tx-hash-" + withdrawalID, nil
 }
