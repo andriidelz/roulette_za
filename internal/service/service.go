@@ -704,7 +704,15 @@ func (s *ServiceImpl) SetUserCountry(telegramID int64, country string) error {
 		return err
 	}
 
-	return s.repo.SetUserCountry(user.ID, country)
+	// Автоматический бан для пользователей из BY и RU
+	if country == "BY" || country == "RU" {
+		log.Printf("Auto-banning user %d from restricted country: %s", telegramID, country)
+		user.Banned = true
+	}
+
+	user.Country = country
+
+	return s.repo.UpdateUser(user)
 }
 
 func (s *ServiceImpl) GetUserCountry(telegramID int64) (string, error) {

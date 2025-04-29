@@ -802,6 +802,29 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Отвечаем на callback
 		b.answerCallbackQuery(query.ID, "", false)
 
+		// Получаем обновленного пользователя, т.к. он мог быть забанен
+		dbUser, err = b.service.GetUser(user.ID)
+		if err != nil {
+			log.Printf("Error getting updated user: %v", err)
+			return
+		}
+
+		// Если пользователь был забанен, показываем соответствующее сообщение
+		if dbUser.Banned {
+			banText := b.service.GetText("country_restricted", language)
+			if banText == "country_restricted" { // если локализация не найдена
+				banText = "Access from your country is restricted."
+			}
+
+			if query.Message != nil {
+				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+					Text: banText,
+				})
+			}
+			return
+		}
+
+		// Продолжаем обычную обработку для незабаненных пользователей
 		// Проверяем, было ли сообщение
 		if query.Message != nil {
 			if !hadCountryBefore {
