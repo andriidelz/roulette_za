@@ -241,15 +241,15 @@ func (s *PaymentService) ApproveWithdrawal(withdrawalID uint) error {
 
 // CheckPendingWithdrawals periodically checks status of pending withdrawals via API
 func (s *PaymentService) CheckPendingWithdrawals() error {
-	log.Printf("[PaymentService] Starting periodic check of pending withdrawals")
+	log.Printf("[PaymentService] Starting periodic check of processing withdrawals")
 
-	withdrawals, err := s.repo.GetPendingWithdrawals()
+	withdrawals, err := s.repo.GetProcessingWithdrawals()
 	if err != nil {
-		log.Printf("[PaymentService] Error getting pending withdrawals: %v", err)
-		return fmt.Errorf("error getting pending withdrawals: %w", err)
+		log.Printf("[PaymentService] Error getting processing withdrawals: %v", err)
+		return fmt.Errorf("error getting processing withdrawals: %w", err)
 	}
 
-	log.Printf("[PaymentService] Found %d pending withdrawals to check", len(withdrawals))
+	log.Printf("[PaymentService] Found %d processing withdrawals to check", len(withdrawals))
 
 	updatedCount := 0
 	for _, withdrawal := range withdrawals {
@@ -294,7 +294,7 @@ func (s *PaymentService) CheckPendingWithdrawals() error {
 		}
 	}
 
-	log.Printf("[PaymentService] Completed checking withdrawals. Updated %d of %d pending withdrawals",
+	log.Printf("[PaymentService] Completed checking withdrawals. Updated %d of %d processing withdrawals",
 		updatedCount, len(withdrawals))
 
 	return nil

@@ -9,8 +9,18 @@ import (
 
 // Список запитів на виведення коштів
 func (a *AdminPanel) withdrawalsList(c *gin.Context) {
-	// Отримуємо список запитів на виведення коштів
-	withdrawals, err := a.repo.GetPendingWithdrawals()
+	// Получаем список запросов на вывод со статусом "pending"
+	pendingWithdrawals, err := a.repo.GetPendingWithdrawals()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title": "Error",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// Получаем историю выводов (все кроме pending)
+	historyWithdrawals, err := a.repo.GetWithdrawalsHistory(50) // Ограничиваем 50 последними записями
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
@@ -20,9 +30,10 @@ func (a *AdminPanel) withdrawalsList(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "withdrawals", gin.H{
-		"title":       "Admin-panel - Withdrawals",
-		"withdrawals": withdrawals,
-		"activeTab":   "withdrawals",
+		"title":              "Admin-panel - Withdrawals",
+		"withdrawals":        pendingWithdrawals,
+		"historyWithdrawals": historyWithdrawals, // Добавляем в контекст историю выводов
+		"activeTab":          "withdrawals",
 	})
 }
 

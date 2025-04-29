@@ -84,6 +84,8 @@ type Repository interface {
 	// Вывод средств
 	CreateWithdrawal(withdrawal *models.Withdrawal) error
 	GetPendingWithdrawals() ([]models.Withdrawal, error)
+	GetProcessingWithdrawals() ([]models.Withdrawal, error)
+	GetWithdrawalsHistory(limit int) ([]models.Withdrawal, error)
 	UpdateWithdrawalStatus(id uint, status string) error
 	GetWithdrawalByProviderID(providerName, providerID string) (*models.Withdrawal, error)
 	UpdateWithdrawal(withdrawal *models.Withdrawal) error

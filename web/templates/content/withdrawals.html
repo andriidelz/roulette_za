@@ -133,48 +133,122 @@
           </div>
       </div>
 
+      
       <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center">
               <h5 class="mb-0">История выводов</h5>
               <div class="d-flex">
-                <select class="form-select form-select-sm me-2" id="historyStatusFilter">
-                  <option value="">Все статусы</option>
-                  <option value="completed">Завершенные</option>
-                  <option value="rejected">Отклоненные</option>
-                  <option value="failed">Ошибки</option>
-                </select>
-                <button class="btn btn-sm btn-primary refresh-history">
-                  <i class="bi bi-arrow-clockwise me-1"></i>Обновить
-                </button>
+                  <select class="form-select form-select-sm me-2" id="historyStatusFilter">
+                      <option value="">Все статусы</option>
+                      <option value="completed">Завершенные</option>
+                      <option value="rejected">Отклоненные</option>
+                      <option value="failed">Ошибки</option>
+                      <option value="processing">В обработке</option>
+                  </select>
+                  <button class="btn btn-sm btn-primary refresh-history">
+                      <i class="bi bi-arrow-clockwise me-1"></i>Обновить
+                  </button>
               </div>
           </div>
           <div class="card-body">
               <div class="table-responsive">
-                <table class="table table-hover card-view-on-mobile" id="withdrawalHistoryTable">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Пользователь</th>
-                      <th>Сумма</th>
-                      <th>Кошелек</th>
-                      <th>Дата</th>
-                      <th>Статус</th>
-                      <th>Транзакция</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td colspan="7" class="text-center">
-                        <div class="alert alert-info mb-0">
-                          <i class="bi bi-info-circle me-2"></i>Загрузите историю выводов, нажав кнопку "Обновить"
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                  <table class="table table-hover card-view-on-mobile" id="withdrawalHistoryTable">
+                      <thead>
+                          <tr>
+                              <th>ID</th>
+                              <th>Пользователь</th>
+                              <th>Сумма</th>
+                              <th>Кошелек</th>
+                              <th>Дата</th>
+                              <th>Статус</th>
+                              <th>Провайдер</th>
+                              <th>Транзакция</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          {{ if .historyWithdrawals }}
+                              {{ range .historyWithdrawals }}
+                              <tr class="withdrawal-history-item" data-status="{{ .Status }}">
+                                  <td>{{ .ID }}</td>
+                                  <td>
+                                      {{ if .User.Username }}
+                                          <a href="/admin/user/{{.UserID}}" target="_blank">
+                                              @{{ .User.Username }}
+                                          </a>
+                                      {{ else }}
+                                          <a href="/admin/user/{{.UserID}}" target="_blank">
+                                              {{ .User.FirstName }} {{ .User.LastName }}
+                                          </a>
+                                      {{ end }}
+                                      <small class="d-block text-muted">ID: {{ .User.TelegramID }}</small>
+                                  </td>
+                                  <td class="fw-bold">${{ .Amount }}</td>
+                                  <td>
+                                      <div class="d-flex align-items-center">
+                                      <div class="hash-label">{{ .Wallet }}</div>
+                                      <button class="btn btn-sm btn-link p-0 ms-1 copy-text-btn" 
+                                          data-clipboard-text="{{ .Wallet }}" title="Копировать адрес">
+                                          <i class="bi bi-clipboard"></i>
+                                      </button>
+                                      </div>
+                                  </td>
+                                  <td>{{ formatDate .CreatedAt }}</td>
+                                  <td>
+                                      {{ if eq .Status "processing" }}
+                                      <span class="badge bg-primary">Обработка</span>
+                                      {{ else if eq .Status "completed" }}
+                                      <span class="badge bg-success">Завершен</span>
+                                      {{ else if eq .Status "approved" }}
+                                      <span class="badge bg-success">Подтвержден</span>
+                                      {{ else if eq .Status "rejected" }}
+                                      <span class="badge bg-danger">Отклонен</span>
+                                      {{ else if eq .Status "failed" }}
+                                      <span class="badge bg-danger">Ошибка</span>
+                                      {{ else }}
+                                      <span class="badge bg-secondary">{{ .Status }}</span>
+                                      {{ end }}
+                                  </td>
+                                  <td>
+                                      {{ if .ProviderName }}
+                                      <span class="badge bg-info">{{ .ProviderName }}</span>
+                                      {{ else }}
+                                      <span class="text-muted">Не указан</span>
+                                      {{ end }}
+                                  </td>
+                                  <td>
+                                      {{ if .TransactionHash }}
+                                      <div class="d-flex align-items-center">
+                                          <div class="hash-label">{{ .TransactionHash }}</div>
+                                          <button class="btn btn-sm btn-link p-0 ms-1 copy-text-btn" 
+                                              data-clipboard-text="{{ .TransactionHash }}" title="Копировать хеш">
+                                              <i class="bi bi-clipboard"></i>
+                                          </button>
+                                      </div>
+                                      {{ if eq .ProviderName "oxapay" }}
+                                      <a href="https://tronscan.org/#/transaction/{{ .TransactionHash }}" target="_blank" 
+                                          class="btn btn-sm btn-link p-0">
+                                          <i class="bi bi-box-arrow-up-right"></i> Tronscan
+                                      </a>
+                                      {{ end }}
+                                      {{ else }}
+                                      <span class="text-muted">Нет данных</span>
+                                      {{ end }}
+                                  </td>
+                              </tr>
+                              {{ end }}
+                          {{ else }}
+                              <tr>
+                                  <td colspan="8" class="text-center">
+                                      <div class="alert alert-info mb-0">
+                                          <i class="bi bi-info-circle me-2"></i>Нет данных для отображения
+                                      </div>
+                                  </td>
+                              </tr>
+                          {{ end }}
+                      </tbody>
+                  </table>
               </div>
           </div>
-      </div>
       </div>
     </main>
   </div>
@@ -447,91 +521,52 @@
       
       // Обработчик обновления истории выводов
       $('.refresh-history').click(function() {
-          // Добавляем класс для анимации вращения
-          $(this).addClass('spinning');
+          // Добавляем анимацию вращения иконки
+          const icon = $(this).find('i');
+          icon.addClass('spinning');
           
-          // Здесь должен быть AJAX-запрос для получения истории выводов
-          // Так как в текущей реализации нет отдельного API-эндпоинта для истории,
-          // просто имитируем загрузку и показываем тестовые данные
-          
-          setTimeout(function() {
-              // Удаляем класс анимации
-              $('.refresh-history').removeClass('spinning');
-              
-              // Пример данных истории выводов
-              var historyData = [
-                  {
-                      id: 1, 
-                      user: "@user123", 
-                      amount: "$100.00", 
-                      wallet: "TXn123...abc", 
-                      date: "01.04.2025 12:34", 
-                      status: "completed",
-                      statusText: "Завершен",
-                      statusClass: "bg-success",
-                      transaction: "9a8b7c6d5e4f3g2h1i"
-                  },
-                  {
-                      id: 2, 
-                      user: "@john_doe", 
-                      amount: "$50.00", 
-                      wallet: "TYm456...def", 
-                      date: "31.03.2025 09:12", 
-                      status: "rejected",
-                      statusText: "Отклонен",
-                      statusClass: "bg-danger",
-                      transaction: ""
-                  }
-              ];
-              
-              // Фильтруем историю по выбранному статусу
-              var selectedStatus = $('#historyStatusFilter').val();
-              if (selectedStatus) {
-                  historyData = historyData.filter(function(item) {
-                      return item.status === selectedStatus;
-                  });
-              }
-              
-              // Очищаем таблицу и добавляем новые данные
-              var historyTable = $('#withdrawalHistoryTable tbody');
-              historyTable.empty();
-              
-              if (historyData.length === 0) {
-                  historyTable.html('<tr><td colspan="7" class="text-center"><div class="alert alert-info mb-0"><i class="bi bi-info-circle me-2"></i>Нет данных для отображения</div></td></tr>');
-              } else {
-                  // Добавляем строки в таблицу
-                  historyData.forEach(function(item) {
-                      var row = '<tr>' +
-                          '<td>' + item.id + '</td>' +
-                          '<td>' + item.user + '</td>' +
-                          '<td class="fw-bold">' + item.amount + '</td>' +
-                          '<td><div class="hash-label">' + item.wallet + '</div></td>' +
-                          '<td>' + item.date + '</td>' +
-                          '<td><span class="badge ' + item.statusClass + '">' + item.statusText + '</span></td>' +
-                          '<td>';
-                          
-                      if (item.transaction) {
-                          row += '<div class="hash-label">' + item.transaction + '</div>' +
-                                 '<a href="https://tronscan.org/#/transaction/' + item.transaction + '" target="_blank" ' +
-                                 'class="btn btn-sm btn-link p-0">' +
-                                 '<i class="bi bi-box-arrow-up-right"></i> Tronscan</a>';
-                      } else {
-                          row += '<span class="text-muted">Нет данных</span>';
-                      }
-                      
-                      row += '</td></tr>';
-                      
-                      historyTable.append(row);
-                  });
-              }
-          }, 1000); // Имитация задержки загрузки
+          // Перезагружаем страницу для получения актуальных данных
+          window.location.reload();
       });
       
-      // Обработчик изменения фильтра статусов
+      // Обработчик изменения фильтра статусов историй выводов
       $('#historyStatusFilter').change(function() {
-          // Эмулируем клик по кнопке обновления
-          $('.refresh-history').click();
+          const selectedStatus = $(this).val();
+          
+          if (selectedStatus) {
+              // Фильтруем строки таблицы истории
+              $('.withdrawal-history-item').each(function() {
+                  const rowStatus = $(this).data('status');
+                  if (rowStatus === selectedStatus) {
+                      $(this).show();
+                  } else {
+                      $(this).hide();
+                  }
+              });
+          } else {
+              // Если выбраны "Все статусы", показываем все строки
+              $('.withdrawal-history-item').show();
+          }
+          
+          // Проверяем, отображаются ли какие-либо строки
+          const visibleRows = $('.withdrawal-history-item:visible').length;
+          
+          if (visibleRows === 0) {
+              // Если нет отображаемых строк, показываем сообщение
+              if ($('#no-history-data').length === 0) {
+                  $('#withdrawalHistoryTable tbody').append(
+                      '<tr id="no-history-data"><td colspan="8" class="text-center">' +
+                      '<div class="alert alert-info mb-0">' +
+                      '<i class="bi bi-info-circle me-2"></i>Нет данных для выбранного статуса' +
+                      '</div></td></tr>'
+                  );
+              }
+          } else {
+              // Если есть отображаемые строки, удаляем сообщение
+              $('#no-history-data').remove();
+          }
       });
+
   });
   </script>
   {{end}}

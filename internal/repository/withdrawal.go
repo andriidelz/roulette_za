@@ -21,6 +21,34 @@ func (r *PostgresRepository) GetPendingWithdrawals() ([]models.Withdrawal, error
 	return withdrawals, nil
 }
 
+// GetProcessingWithdrawals получает выводы со статусом "processing"
+func (r *PostgresRepository) GetProcessingWithdrawals() ([]models.Withdrawal, error) {
+	var withdrawals []models.Withdrawal
+	if err := r.db.Where("status = ?", "processing").
+		Preload("User").
+		Find(&withdrawals).Error; err != nil {
+		return nil, err
+	}
+	return withdrawals, nil
+}
+
+// GetWithdrawalsHistory получает историю выводов (все, кроме статуса "pending")
+func (r *PostgresRepository) GetWithdrawalsHistory(limit int) ([]models.Withdrawal, error) {
+	var withdrawals []models.Withdrawal
+	query := r.db.Where("status != ?", "pending").
+		Preload("User").
+		Order("created_at DESC")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Find(&withdrawals).Error; err != nil {
+		return nil, err
+	}
+	return withdrawals, nil
+}
+
 func (r *PostgresRepository) UpdateWithdrawalStatus(id uint, status string) error {
 	return r.db.Model(&models.Withdrawal{}).Where("id = ?", id).
 		Update("status", status).Error
