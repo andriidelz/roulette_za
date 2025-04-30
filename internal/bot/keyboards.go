@@ -60,6 +60,15 @@ func (b *Bot) createCountriesKeyboard(page int) *telego.InlineKeyboardMarkup {
 	// 2. Затем остальные страны по коду (в алфавитном порядке)
 	// 3. RU и BY всегда в конце списка
 	sort.Slice(data.Countries, func(i, j int) bool {
+
+		// Специальная обработка для Украины - она всегда в начале списка
+		if data.Countries[i].Code == "UA" {
+			return true // i идет после j
+		}
+		if data.Countries[j].Code == "UA" {
+			return false // i идет перед j
+		}
+
 		// Специальная обработка для России и Беларуси - они всегда в конце списка
 		if data.Countries[i].Code == "RU" || data.Countries[i].Code == "BY" {
 			return false // i идет после j
