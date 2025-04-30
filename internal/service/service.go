@@ -80,6 +80,26 @@ type Service interface {
 	CreateWithdrawal(withdrawal *models.Withdrawal) error
 
 	GetCurrentYearWeek() (int, int)
+
+	// Методы для работы с уведомлениями
+	GetNotificationTemplates(templateType string, page, perPage int) ([]models.NotificationTemplate, int64, error)
+	GetNotificationTemplateByID(id uint) (*models.NotificationTemplate, error)
+	CreateNotificationTemplate(template *models.NotificationTemplate) error
+	UpdateNotificationTemplate(template *models.NotificationTemplate) error
+	DeleteNotificationTemplate(id uint) error
+	GetTemplateWithLocalizations(templateID uint) (*models.NotificationTemplateWithLocalizations, error)
+
+	GetNotificationTasks(status string, page, perPage int) ([]models.NotificationTask, int64, error)
+	GetEnhancedNotificationTask(id uint) (*models.EnhancedNotificationTask, error)
+	CreateNotificationTask(templateID uint, targetType string, targetParams models.NotificationTargetParams, scheduledAt *time.Time) (*models.NotificationTask, error)
+	CancelNotificationTask(id uint) error
+	SendNotifications(taskID uint) error
+
+	GetNotificationTasksStats(period string) (*models.NotificationStatistics, error)
+	GetCountriesWithUserCounts() ([]models.CountryOption, error)
+
+	// Вспомогательный метод для доступа к репозиторию
+	GetRepo() repository.Repository
 }
 
 type ServiceImpl struct {
@@ -749,4 +769,8 @@ func (s *ServiceImpl) CreateWithdrawal(withdrawal *models.Withdrawal) error {
 
 func (s *ServiceImpl) GetCurrentYearWeek() (int, int) {
 	return time.Now().ISOWeek()
+}
+
+func (s *ServiceImpl) GetRepo() repository.Repository {
+	return s.repo
 }

@@ -163,6 +163,24 @@ func (a *AdminPanel) localizationAdd(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
+// Обработчик для получения локализаций по ключу
+func (a *AdminPanel) getLocalizationsByKey(c *gin.Context) {
+	// Получаем ключ из параметров запроса
+	key := c.Param("key")
+
+	// Получаем локализации для всех языков
+	en, _ := a.repo.GetLocalization(key, "en")
+	ru, _ := a.repo.GetLocalization(key, "ru")
+	uk, _ := a.repo.GetLocalization(key, "uk")
+
+	// Формируем ответ
+	c.JSON(http.StatusOK, gin.H{
+		"en": en,
+		"ru": ru,
+		"uk": uk,
+	})
+}
+
 // Получить все локализации для указанного языка
 func (a *AdminPanel) getLocalizationsForLanguage(language string) ([]LocalizationView, error) {
 	localizations, err := a.repo.GetAllLocalizationsForLanguage(language)
