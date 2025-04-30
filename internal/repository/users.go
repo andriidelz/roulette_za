@@ -70,8 +70,14 @@ func (r *PostgresRepository) GetUserByID(id uint) (*models.User, error) {
 
 // Реализация методов для работы со страной пользователя
 func (r *PostgresRepository) SetUserCountry(userID uint, country string) error {
-	return r.db.Model(&models.User{}).Where("id = ?", userID).
-		Update("country", country).Error
+	user, err := r.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	user.Country = country
+
+	return r.UpdateUser(user)
 }
 
 func (r *PostgresRepository) GetUserCountry(userID uint) (string, error) {
