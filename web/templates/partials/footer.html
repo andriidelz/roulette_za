@@ -179,6 +179,8 @@ document.addEventListener('DOMContentLoaded', initResponsiveUI);
   {{template "additionalScripts_users" .}}
 {{else if eq .activeTab "withdrawals"}}
   {{template "additionalScripts_withdrawals" .}}
+{{else if eq .activeTab "notifications"}}
+  {{template "additionalScripts_notifications" .}}
 {{end}}
 
 </html>

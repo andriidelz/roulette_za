@@ -1,0 +1,55 @@
+{{define "notifications"}}
+  {{template "header" .}}
+  {{template "navbar" .}}
+  <div class="d-flex">
+    {{template "sidebar" .}}
+    <main class="main-content flex-grow-1 notifications-page">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-12">
+            <h1 class="mb-4">Уведомления</h1>
+          </div>
+        </div>
+
+        <!-- Вкладки для навигации в разделе уведомлений -->
+        <ul class="nav nav-tabs mb-4">
+          <li class="nav-item">
+            <a class="nav-link {{if eq .title "Автоматические уведомления"}}active{{end}}" href="/admin/notifications/automatic">
+              <i class="bi bi-clock-history me-1"></i> Автоматические
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {{if eq .title "Ручные уведомления"}}active{{end}}" href="/admin/notifications/manual">
+              <i class="bi bi-hand-index-thumb me-1"></i> Ручные
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {{if eq .title "Статистика уведомлений"}}active{{end}}" href="/admin/notifications/statistics">
+              <i class="bi bi-graph-up me-1"></i> Статистика
+            </a>
+          </li>
+        </ul>
+
+        <!-- Содержимое страницы в зависимости от выбранного раздела -->
+        {{if eq .activeSubTab "manual"}}
+          {{template "notifications_manual" .}}
+        {{else if eq .activeSubTab "automatic"}}
+          {{template "notifications_automatic" .}}
+        {{else if eq .activeSubTab "statistics"}}
+          {{template "notifications_statistics" .}}
+        {{end}}
+
+        <!-- Модальные окна -->
+        {{template "notifications_modals" .}}
+      </div>
+    </main>
+  </div>
+  
+  {{template "footer" .}}
+
+  {{template "additionalScripts_notifications" .}}
+{{end}}
+
+{{define "additionalScripts_notifications"}}
+<script src="/static/js/notifications.js"></script>
+{{end}}

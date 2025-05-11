@@ -115,6 +115,27 @@ type Repository interface {
 
 	GetCurrentYearWeek() (int, int) // Возвращает текущий год и неделю
 
+	// Уведомления
+	CreateNotificationRecipientsBatch(recipients []models.NotificationRecipient) error
+	CreateNotificationTask(task *models.NotificationTask) error
+	CreateNotificationTemplate(template *models.NotificationTemplate) error
+	DeleteNotificationTask(id uint) error
+	DeleteNotificationTemplate(id uint) error
+	GetActivityFiltersWithUserCounts() ([]models.ActivityFilterOption, error)
+	GetCountriesWithUserCounts() ([]models.CountryOption, error)
+	GetNotificationRecipients(taskID uint, status string, page, pageSize int) ([]models.NotificationRecipient, int64, error)
+	GetNotificationTaskByID(id uint) (*models.NotificationTask, error)
+	GetNotificationTasks(status string, page, pageSize int) ([]models.NotificationTask, int64, error)
+	GetNotificationTasksStats(period string) (*models.NotificationStatistics, error)
+	GetNotificationTemplateByID(id uint) (*models.NotificationTemplate, error)
+	GetNotificationTemplates(templateType string, page, pageSize int) ([]models.NotificationTemplate, int64, error)
+	GetTemplateWithLocalizations(templateID uint) (*models.NotificationTemplateWithLocalizations, error)
+	GetUsersForNotificationTask(task *models.NotificationTask) ([]models.User, error)
+	UpdateNotificationRecipient(recipient *models.NotificationRecipient) error
+	UpdateNotificationTask(task *models.NotificationTask) error
+	UpdateNotificationTemplate(template *models.NotificationTemplate) error
+	UpdateTaskProgress(taskID uint, sentCount, deliveredCount, readCount int) error
+
 	// Закрытие соединения
 	Close() error
 }
