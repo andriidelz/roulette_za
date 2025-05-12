@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log"
+	"roulette/internal/data"
 	"roulette/internal/models"
 	"sort"
 	"strconv"
@@ -120,6 +121,12 @@ func (s *ServiceImpl) FormatRatingForDisplay(ratings []models.WeeklyRating, curr
 	for _, rating := range ratings {
 		var displayName string
 
+		// Получаем эмодзи флага страны
+		var countryFlag string
+		if country := data.GetCountryByCode(rating.User.Country); country != nil {
+			countryFlag = country.Emoji
+		}
+
 		// Проверяем, является ли запись текущим пользователем
 		if rating.User.TelegramID == currentUserID {
 			// Для текущего пользователя используем nickname или другое доступное имя
@@ -137,6 +144,11 @@ func (s *ServiceImpl) FormatRatingForDisplay(ratings []models.WeeklyRating, curr
 				displayName = fmt.Sprintf("Игрок %d", rating.Position)
 			}
 
+			// Добавляем флаг страны к имени пользователя, если он есть
+			if countryFlag != "" {
+				displayName = countryFlag + " " + displayName
+			}
+
 			// Добавляем звездочки для выделения текущего пользователя
 			displayName = "*" + displayName + "*"
 		} else {
@@ -146,6 +158,11 @@ func (s *ServiceImpl) FormatRatingForDisplay(ratings []models.WeeklyRating, curr
 			} else {
 				// Для пользователей без никнейма используем анонимное имя
 				displayName = fmt.Sprintf("Игрок %d", rating.Position)
+			}
+
+			// Добавляем флаг страны к имени пользователя, если он есть
+			if countryFlag != "" {
+				displayName = countryFlag + " " + displayName
 			}
 		}
 
@@ -195,6 +212,12 @@ func (s *ServiceImpl) FormatPlayerLine(rating models.WeeklyRating, position int,
 	// Проверяем, является ли игрок текущим пользователем
 	isCurrentUser := rating.User.TelegramID == currentUserID
 
+	// Получаем эмодзи флага страны используя существующую функцию из пакета data
+	var countryFlag string
+	if country := data.GetCountryByCode(rating.User.Country); country != nil {
+		countryFlag = country.Emoji
+	}
+
 	// Выбираем соответствующий шаблон в зависимости от типа игрока и наличия эффективности
 	var templateKey string
 	var args []interface{}
@@ -214,6 +237,11 @@ func (s *ServiceImpl) FormatPlayerLine(rating models.WeeklyRating, position int,
 		displayName = fmt.Sprintf("Player%d", rating.User.TelegramID)
 	}
 
+	// Добавляем флаг страны к имени пользователя, если он есть
+	if countryFlag != "" {
+		displayName = countryFlag + " " + displayName
+	}
+
 	if isCurrentUser {
 		// Для текущего пользователя
 		if rating.Bets > 0 {
@@ -227,10 +255,10 @@ func (s *ServiceImpl) FormatPlayerLine(rating models.WeeklyRating, position int,
 		// Для остальных игроков
 		if rating.Bets > 0 {
 			templateKey = "player_points_efficiency"
-			args = []interface{}{position, rating.Points, rating.Efficiency * 100}
+			args = []interface{}{position, displayName, rating.Points, rating.Efficiency * 100}
 		} else {
 			templateKey = "player_points"
-			args = []interface{}{position, rating.Points}
+			args = []interface{}{position, displayName, rating.Points}
 		}
 	}
 
