@@ -30,6 +30,68 @@ func (b *Bot) handleRatingCommand(message *telego.Message) {
 	})
 }
 
+func (b *Bot) handleRatingCallbackQuery(query *telego.CallbackQuery) {
+	user := query.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Получаем текущий недельный рейтинг (топ 100)
+	ratings, err := b.service.GetWeeklyTopRating(100)
+	if err != nil {
+		log.Printf("Error getting weekly rating: %v", err)
+		if query.Message != nil {
+			b.SendMessage(query.Message.Chat.ID, MessageOptions{
+				Text: b.service.GetText("rating_error", language),
+			})
+		}
+		return
+	}
+
+	var templateKey string
+	var resultText string
+
+	// Если рейтинг пуст
+	if len(ratings) == 0 {
+		templateKey = "weekly_rating_empty"
+		resultText = b.service.GetText(templateKey, language)
+	} else {
+		// Форматируем список рейтинга
+		formattedList := b.service.FormatRatingList(ratings, user.ID, language)
+
+		// Ограничиваем количество отображаемых игроков
+		maxDisplayCount := 100
+		if len(ratings) > maxDisplayCount {
+			// Ограничиваем список
+			truncatedRatings := ratings
+			if len(truncatedRatings) > maxDisplayCount {
+				truncatedRatings = truncatedRatings[:maxDisplayCount]
+			}
+			formattedList = b.service.FormatRatingList(truncatedRatings, user.ID, language)
+
+			templateKey = "weekly_rating_top"
+			resultText = fmt.Sprintf(
+				b.service.GetText(templateKey, language),
+				maxDisplayCount,
+				formattedList,
+			)
+		} else {
+			templateKey = "weekly_rating_all"
+			resultText = fmt.Sprintf(
+				b.service.GetText(templateKey, language),
+				formattedList,
+			)
+		}
+	}
+
+	if query.Message != nil {
+		b.SendMessage(query.Message.Chat.ID, MessageOptions{
+			Text: resultText,
+		})
+	}
+}
+
 // handleWeeklyRating обрабатывает запрос на просмотр недельного рейтинга
 func (b *Bot) handleWeeklyRating(message *telego.Message) {
 	user := message.From

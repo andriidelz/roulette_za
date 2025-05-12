@@ -1188,7 +1188,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	case CallbackBack:
 		b.handleBackToMainMenu(query)
 	case "view_rating":
-		b.handleRatingCommand(query.Message)
+		b.handleRatingCallbackQuery(query)
 		b.answerCallbackQuery(query.ID, "", false)
 	case CallbackRequestWithdraw:
 		b.handleRequestWithdrawCallback(query)
