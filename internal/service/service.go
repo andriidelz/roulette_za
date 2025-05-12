@@ -70,7 +70,6 @@ type Service interface {
 	GetLatestHashEntry() (*models.HashEntry, error)
 
 	// Методы для работы со страной пользователя
-	SetUserCountry(telegramID int64, country string) error
 	GetUserCountry(telegramID int64) (string, error)
 
 	UpdateUserLanguage(telegramID int64, languageCode string) error
@@ -716,24 +715,6 @@ func (s *ServiceImpl) GetLatestHashEntry() (*models.HashEntry, error) {
 	}
 
 	return &entries[0], nil
-}
-
-// Реализация методов для работы со страной пользователя
-func (s *ServiceImpl) SetUserCountry(telegramID int64, country string) error {
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return err
-	}
-
-	// Автоматический бан для пользователей из BY и RU
-	if country == "BY" || country == "RU" {
-		log.Printf("Auto-banning user %d from restricted country: %s", telegramID, country)
-		user.Banned = true
-	}
-
-	user.Country = country
-
-	return s.repo.UpdateUser(user)
 }
 
 func (s *ServiceImpl) GetUserCountry(telegramID int64) (string, error) {

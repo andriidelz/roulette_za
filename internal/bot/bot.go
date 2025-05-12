@@ -899,7 +899,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Извлекаем код страны
 		countryCode := strings.TrimPrefix(callbackData, "country:")
 
-		// Получаем пользователя для проверки существующей страны
+		// Получаем пользователя
 		dbUser, err := b.service.GetUser(user.ID)
 		if err != nil {
 			log.Printf("Error getting user: %v", err)
@@ -910,40 +910,47 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Проверяем, была ли у пользователя установлена страна ранее
 		hadCountryBefore := dbUser.Country != ""
 
-		// Сохраняем выбранную страну
-		if err := b.service.SetUserCountry(user.ID, countryCode); err != nil {
-			log.Printf("Error saving user country: %v", err)
-			b.answerCallbackQuery(query.ID, "Error saving country", true)
-			return
-		}
-
 		// Отвечаем на callback
 		b.answerCallbackQuery(query.ID, "", false)
 
-		// Получаем обновленного пользователя, т.к. он мог быть забанен
-		dbUser, err = b.service.GetUser(user.ID)
-		if err != nil {
-			log.Printf("Error getting updated user: %v", err)
-			return
-		}
-
-		// Если пользователь был забанен, показываем соответствующее сообщение
-		if dbUser.Banned {
-			banText := b.service.GetText("country_restricted", language)
-			if banText == "country_restricted" { // если локализация не найдена
-				banText = "Access from your country is restricted."
+		// Проверяем, является ли выбранная страна заблокированной (RU или BY)
+		if countryCode == "RU" || countryCode == "BY" {
+			// Получаем локализованный текст сообщения о блокировке
+			banText := b.service.GetText("stopcountry", language)
+			if banText == "stopcountry" { // если локализация не найдена
+				banText = "Сервис не доступен для жителей россии или белларуси" // Запасной вариант
 			}
 
+			// Отправляем сообщение о недоступности сервиса
 			if query.Message != nil {
 				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
 					Text: banText,
+				})
+			}
+
+			// Сохраняем выбранную страну и устанавливаем флаг бана
+			dbUser.Country = countryCode
+			dbUser.Banned = true
+			if err := b.service.UpdateUser(dbUser); err != nil {
+				log.Printf("Error updating user: %v", err)
+			}
+
+			return
+		}
+
+		// Для других стран - просто сохраняем выбор
+		dbUser.Country = countryCode
+		if err := b.service.UpdateUser(dbUser); err != nil {
+			log.Printf("Error updating user country: %v", err)
+			if query.Message != nil {
+				b.SendMessage(query.Message.Chat.ID, MessageOptions{
+					Text: "Произошла ошибка при сохранении страны. Пожалуйста, попробуйте еще раз.",
 				})
 			}
 			return
 		}
 
 		// Продолжаем обычную обработку для незабаненных пользователей
-		// Проверяем, было ли сообщение
 		if query.Message != nil {
 			if !hadCountryBefore {
 				// Если страны не было установлено ранее:
@@ -957,8 +964,14 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 					log.Printf("Error deleting country selection message: %v", err)
 				}
 
-				// Отправляем запрос на подтверждение/изменение никнейма
-				b.handleNicknamePrompt(query.Message.Chat.ID, user.ID, language)
+				// Переходим к следующему шагу регистрации (выбор никнейма или проверка подписки)
+				if b.handleNicknamePrompt != nil {
+					// Если у вас есть функция для выбора никнейма
+					b.handleNicknamePrompt(query.Message.Chat.ID, user.ID, language)
+				} else {
+					// Иначе сразу переходим к проверке подписки
+					b.sendSubscriptionRequest(query.Message.Chat.ID, language)
+				}
 				return
 			} else {
 				// Если страна была установлена ранее:
