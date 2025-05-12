@@ -502,7 +502,9 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	// Отправляем стикер результата
 	h.bot.SendSticker(userID, resultSticker)
 
-	// Отправляем текстовое сообщение о результате
+	// 2. Собираем части объединенного сообщения
+
+	// Часть 1: Сообщение о результате
 	var resultLangKey string
 	switch result {
 	case models.Red:
@@ -513,48 +515,22 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		resultLangKey = "zeroresult"
 	}
 	resultText := h.service.GetText(resultLangKey, language)
-	h.bot.SendMessage(userID, MessageOptions{
-		Text: resultText,
-	})
 
-	// 2. Отправляем стикер выигрыша/проигрыша
+	// Часть 2: Сообщение о выигрыше/проигрыше
+	var winLoseText string
 	if won {
 		// Отправляем стикер выигрыша
 		h.bot.SendSticker(userID, StickerWin)
-	} else {
-		// Отправляем стикер проигрыша
-		h.bot.SendSticker(userID, StickerLose)
-	}
-
-	// Отправляем сообщение о выигрыше/проигрыше
-	var winLoseText string
-	if won {
 		winMessageTemplate := h.service.GetText("winmessage", language)
 		winLoseText = fmt.Sprintf(winMessageTemplate, points)
 	} else {
+		// Отправляем стикер проигрыша
+		h.bot.SendSticker(userID, StickerLose)
 		loseMsgText := h.service.GetText("losemessage", language)
 		winLoseText = loseMsgText
 	}
 
-	// Создаем кнопку для проверки раунда в системе
-	checkSystemText := h.service.GetText("systemcheck", language)
-	roundIDBase62 := utils.ToBase62(uint(roundID))
-	checkSystemURL := fmt.Sprintf("%s/hashes/?id=%s", webPage, roundIDBase62)
-
-	checkSystemKeyboard := &telego.InlineKeyboardMarkup{
-		InlineKeyboard: [][]telego.InlineKeyboardButton{
-			{
-				{Text: fmt.Sprintf(checkSystemText, roundIDBase62), URL: checkSystemURL},
-			},
-		},
-	}
-
-	h.bot.SendMessage(userID, MessageOptions{
-		Text:           winLoseText,
-		InlineKeyboard: checkSystemKeyboard,
-	})
-
-	// 3. Отправляем сообщение о рейтинге
+	// Часть 3: Сообщение о рейтинге
 	// Получаем текущий рейтинг пользователя
 	position, err := h.service.GetUserPosition(userID)
 	if err != nil {
@@ -572,140 +548,111 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	// Получаем информацию о призовом фонде
 	year, week := time.Now().ISOWeek()
 
+	// Переменные для текста рейтинга
+	var ratingText string
+	var prizeFundAmount float64 = 1000.0 // По умолчанию
+	var userShare float64 = 0.0
+	var topCount int = 100 // По умолчанию
+
 	// Получаем призовой фонд через репозиторий
 	prizeFund, err := h.service.GetPrizeFund(year, week)
-	if err != nil {
-		log.Printf("Error getting prize fund: %v", err)
-		// Значения по умолчанию
-		prizeFundAmount := 1000.0
-		userShare := 0.0
+	if err == nil {
+		// Получаем данные о призовом фонде из БД
+		prizeFundAmount = prizeFund.Amount
+		topCount = prizeFund.TopCount
 
+		if position > 0 && position <= topCount {
+			// Расчет доли пользователя
+			userShare = prizeFundAmount / float64(topCount) * (float64(topCount-position+1) / float64(topCount))
+		}
+	} else {
+		log.Printf("Error getting prize fund: %v", err)
+
+		// Если не удалось получить данные о призовом фонде, используем значения по умолчанию
 		if position > 0 && position <= 100 {
 			// Упрощенный расчет доли пользователя
 			userShare = prizeFundAmount / 100.0 * (float64(100-position+1) / 100.0)
 		}
-
-		// Формируем сообщение о рейтинге
-		ratingTemplate := h.service.GetText("bidrating", language)
-		ratingText := fmt.Sprintf(ratingTemplate, stats["totalPoints"], position, userShare, prizeFundAmount)
-
-		// Создаем кнопку для просмотра рейтинга
-		viewRatingText := h.service.GetText("viewrating", language)
-
-		ratingKeyboard := &telego.InlineKeyboardMarkup{
-			InlineKeyboard: [][]telego.InlineKeyboardButton{
-				{
-					{Text: viewRatingText, CallbackData: "view_rating"},
-				},
-			},
-		}
-
-		h.bot.SendMessage(userID, MessageOptions{
-			Text:           ratingText,
-			InlineKeyboard: ratingKeyboard,
-		})
-	} else {
-		// Получаем данные о призовом фонде из БД
-		prizeFundAmount := prizeFund.Amount
-		topCount := prizeFund.TopCount
-		userShare := 0.0
-
-		if position > 0 && position <= topCount {
-			// Упрощенный расчет доли пользователя
-			userShare = prizeFundAmount / float64(topCount) * (float64(topCount-position+1) / float64(topCount))
-		}
-
-		// Формируем сообщение о рейтинге
-		ratingTemplate := h.service.GetText("bidrating", language)
-		ratingText := fmt.Sprintf(ratingTemplate, stats["totalPoints"], position, userShare, prizeFundAmount)
-
-		// Создаем кнопку для просмотра рейтинга
-		viewRatingText := h.service.GetText("viewrating", language)
-
-		ratingKeyboard := &telego.InlineKeyboardMarkup{
-			InlineKeyboard: [][]telego.InlineKeyboardButton{
-				{
-					{Text: viewRatingText, CallbackData: "view_rating"},
-				},
-			},
-		}
-
-		h.bot.SendMessage(userID, MessageOptions{
-			Text:           ratingText,
-			InlineKeyboard: ratingKeyboard,
-		})
 	}
 
-	// 4. Проверяем баланс ставок и отправляем соответствующее сообщение
+	// Формируем сообщение о рейтинге
+	ratingTemplate := h.service.GetText("bidrating", language)
+	ratingText = fmt.Sprintf(ratingTemplate, stats["totalPoints"], position, userShare, prizeFundAmount)
+
+	// Часть 4: Проверяем баланс ставок
 	betsBalance, err := h.service.GetUserRemainingBets(userID)
 	if err != nil {
 		log.Printf("Error getting user remaining bets: %v", err)
 		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 	}
 
+	var betsBalanceText string
+	var additionalMessage string
+
 	if betsBalance <= 0 {
 		// Недостаточно ставок
-		betsBalanceLowText := h.service.GetText("betsbalancelow", language)
-
-		topUpBalanceText := h.service.GetText("topupbalance", language)
-
-		// Неактивная кнопка для пополнения
-		betsBalanceLowKeyboard := &telego.InlineKeyboardMarkup{
-			InlineKeyboard: [][]telego.InlineKeyboardButton{
-				{
-					{Text: topUpBalanceText, CallbackData: "noop"}, // Неактивная кнопка
-				},
-			},
-		}
-
-		h.bot.SendMessage(userID, MessageOptions{
-			Text:           betsBalanceLowText,
-			InlineKeyboard: betsBalanceLowKeyboard,
-		})
-
-		// Отправляем дополнительное сообщение при недостаточном балансе
-		nextBidLowText := h.service.GetText("nextbidlow", language)
-
-		stopGameText := h.service.GetText("stopgame", language)
-
-		nextBidLowKeyboard := &telego.InlineKeyboardMarkup{
-			InlineKeyboard: [][]telego.InlineKeyboardButton{
-				{
-					{Text: topUpBalanceText, CallbackData: "noop"}, // Неактивная кнопка
-					{Text: stopGameText, CallbackData: "stop_game"},
-				},
-			},
-		}
-
-		h.bot.SendMessage(userID, MessageOptions{
-			Text:           nextBidLowText,
-			InlineKeyboard: nextBidLowKeyboard,
-		})
-
+		betsBalanceText = h.service.GetText("betsbalancelow", language)
+		additionalMessage = h.service.GetText("nextbidlow", language)
 	} else {
 		// Достаточно ставок
-		betsBalanceOkTemplate := h.service.GetText("betsbalanceok", language)
-		betsBalanceOkText := fmt.Sprintf(betsBalanceOkTemplate, betsBalance)
-
-		topUpBalanceText := h.service.GetText("topupbalance", language)
-
-		// Неактивная кнопка для пополнения
-		betsBalanceOkKeyboard := &telego.InlineKeyboardMarkup{
-			InlineKeyboard: [][]telego.InlineKeyboardButton{
-				{
-					{Text: topUpBalanceText, CallbackData: "noop"}, // Неактивная кнопка
-				},
-			},
-		}
-
-		h.bot.SendMessage(userID, MessageOptions{
-			Text:           betsBalanceOkText,
-			InlineKeyboard: betsBalanceOkKeyboard,
-		})
-
-		// В случае достаточного баланса возвращаем детальную клавиатуру для следующего раунда
-		return nil // Сообщение о новом раунде будет отправлено в другом методе
+		betsBalanceTemplate := h.service.GetText("betsbalanceok", language)
+		betsBalanceText = fmt.Sprintf(betsBalanceTemplate, betsBalance)
 	}
+
+	// 3. Объединяем все части сообщения с разделителями
+	combinedMessage := resultText + "\n\n" + winLoseText + "\n\n" + ratingText + "\n\n" + betsBalanceText
+
+	// Если есть дополнительное сообщение для недостаточного баланса, добавляем его
+	if additionalMessage != "" {
+		combinedMessage += "\n\n" + additionalMessage
+	}
+
+	// Создаем кнопку для проверки раунда в системе
+	checkSystemText := h.service.GetText("systemcheck", language)
+	roundIDBase62 := utils.ToBase62(uint(roundID))
+	checkSystemURL := fmt.Sprintf("%s/hashes/?id=%s", webPage, roundIDBase62)
+
+	// Создаем кнопки
+	var inlineButtons [][]telego.InlineKeyboardButton
+
+	// Добавляем кнопку для проверки в системе
+	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
+		{Text: fmt.Sprintf(checkSystemText, roundIDBase62), URL: checkSystemURL},
+	})
+
+	// Добавляем кнопку для просмотра рейтинга
+	viewRatingText := h.service.GetText("viewrating", language)
+	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
+		{Text: viewRatingText, CallbackData: "view_rating"},
+	})
+
+	// Если баланс ставок недостаточен, добавляем соответствующие кнопки
+	if betsBalance <= 0 {
+		topUpBalanceText := h.service.GetText("topupbalance", language)
+		stopGameText := h.service.GetText("stopgame", language)
+
+		inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
+			{Text: topUpBalanceText, CallbackData: "noop"},
+			{Text: stopGameText, CallbackData: "stop_game"},
+		})
+	} else {
+		// Если баланс достаточен, добавляем только кнопку пополнения
+		topUpBalanceText := h.service.GetText("topupbalance", language)
+		inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
+			{Text: topUpBalanceText, CallbackData: "noop"},
+		})
+	}
+
+	// Создаем inline клавиатуру с кнопками
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: inlineButtons,
+	}
+
+	// Отправляем объединенное сообщение с клавиатурой
+	h.bot.SendMessage(userID, MessageOptions{
+		Text:           combinedMessage,
+		InlineKeyboard: inlineKeyboard,
+	})
 
 	return nil
 }
