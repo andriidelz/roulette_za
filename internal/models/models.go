@@ -28,6 +28,7 @@ type User struct {
 	AvatarURL     string  `gorm:"size:512"`
 	Balance       float64 `gorm:"default:0"`
 	Banned        bool    `gorm:"default:false"`
+	AgeVerified   *bool   `gorm:"default:null"` // Указатель на bool для возможности хранения NULL значения
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }

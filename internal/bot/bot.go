@@ -40,6 +40,8 @@ const (
 	CommandFAQ      = "faq"
 	CommandSettings = "settings"
 
+	CallbackAgeVerifiedYes      = "age_verified_yes"
+	CallbackAgeVerifiedNo       = "age_verified_no"
 	CallbackReserveSubscription = "reservsubs"
 	CallbackBetRed              = "bet_red"
 	CallbackBetBlack            = "bet_black"
@@ -1016,6 +1018,9 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 	// Обработка других callback data
 	switch callbackData {
+	case CallbackAgeVerifiedYes, CallbackAgeVerifiedNo:
+		b.handleAgeVerificationCallback(query)
+		return
 	case CallbackReserveSubscription:
 		b.handleReserveSubscriptionCheck(query)
 		return
@@ -1099,9 +1104,15 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 		InlineKeyboard: inlineKeyboard,
 	})
 
-	// Для нового пользователя всегда показываем выбор страны
-	// Для существующего - только если страна не установлена
-	if isNewUser || dbUser.Country == "" {
+	// Для нового пользователя или с неподтвержденным возрастом проверяем возраст
+	if isNewUser || dbUser.AgeVerified == nil {
+		// Отправляем запрос на подтверждение возраста
+		b.sendAgeVerificationRequest(message.Chat.ID, language)
+		return
+	}
+
+	// Если возраст подтвержден, но не установлена страна
+	if *dbUser.AgeVerified && (isNewUser || dbUser.Country == "") {
 		// Отправляем запрос на выбор страны
 		countryText := b.service.GetText("countrymes", language)
 
@@ -1113,7 +1124,7 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 			InlineKeyboard: countriesKeyboard,
 		})
 	} else {
-		// Если у пользователя уже выбрана страна, отправляем главное меню
+		// Если у пользователя уже выбрана страна и возраст подтвержден, отправляем главное меню
 		b.sendMainMenu(message.Chat.ID, language)
 	}
 }
@@ -1124,6 +1135,100 @@ func (b *Bot) sendMainMenu(chatID int64, language string) {
 		Text:          b.service.GetText("main_menu", language),
 		ReplyKeyboard: b.createMainReplyKeyboard(language),
 	})
+}
+
+// sendAgeVerificationRequest отправляет запрос на подтверждение возраста
+func (b *Bot) sendAgeVerificationRequest(chatID int64, language string) {
+	// Получаем локализированный текст запроса возраста
+	ageVerificationText := b.service.GetText("agemes", language)
+
+	// Получаем локализированные тексты для кнопок
+	yesText := b.service.GetText("yes18", language)
+	noText := b.service.GetText("no18", language)
+
+	// Создаем inline клавиатуру с кнопками Да/Нет
+	ageVerificationKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				{Text: yesText, CallbackData: CallbackAgeVerifiedYes},
+				{Text: noText, CallbackData: CallbackAgeVerifiedNo},
+			},
+		},
+	}
+
+	// Отправляем сообщение с запросом на подтверждение возраста
+	b.SendMessage(chatID, MessageOptions{
+		Text:           ageVerificationText,
+		InlineKeyboard: ageVerificationKeyboard,
+	})
+}
+
+// handleAgeVerificationCallback обрабатывает ответ пользователя на запрос возраста
+func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
+	user := query.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Отвечаем на callback, чтобы убрать индикатор загрузки
+	b.answerCallbackQuery(query.ID, "", false)
+
+	var isAdult bool
+	if query.Data == CallbackAgeVerifiedYes {
+		isAdult = true
+	} else {
+		isAdult = false
+	}
+
+	// Получаем пользователя из базы данных
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user: %v", err)
+		return
+	}
+
+	// Обновляем статус подтверждения возраста
+	dbUser.AgeVerified = &isAdult
+	err = b.service.UpdateUser(dbUser)
+	if err != nil {
+		log.Printf("Error updating user age verification: %v", err)
+		return
+	}
+
+	if !isAdult {
+		// Если пользователь младше 18 лет, баним его
+		stopAgeText := b.service.GetText("stopage", language)
+
+		// Обновляем статус бана
+		dbUser.Banned = true
+		err = b.service.UpdateUser(dbUser)
+		if err != nil {
+			log.Printf("Error banning underage user: %v", err)
+		}
+
+		// Сообщаем пользователю, что сервис недоступен
+		if query.Message != nil {
+			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				Text: stopAgeText,
+			})
+		}
+		return
+	}
+
+	// Если пользователь подтвердил, что старше 18 лет, отправляем запрос на выбор страны
+	if query.Message != nil {
+		countryText := b.service.GetText("countrymes", language)
+
+		// Создаем клавиатуру со странами - начинаем с первой страницы (1)
+		countriesKeyboard := b.createCountriesKeyboard(1)
+
+		// Обновляем сообщение с запросом на выбор страны
+		b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+			Text:           countryText,
+			InlineKeyboard: countriesKeyboard,
+		})
+	}
 }
 
 // handleBackToStartMenu обработка callback для возврата к стартовому меню
