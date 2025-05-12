@@ -607,39 +607,33 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		combinedMessage += "\n\n" + additionalMessage
 	}
 
-	// Создаем кнопку для проверки раунда в системе
+	// Создаем кнопки
+	var inlineButtons [][]telego.InlineKeyboardButton
+
+	// Добавляем первый ряд с двумя кнопками: проверка раунда и просмотр рейтинга
 	checkSystemText := h.service.GetText("systemcheck", language)
 	roundIDBase62 := utils.ToBase62(uint(roundID))
 	checkSystemURL := fmt.Sprintf("%s/hashes/?id=%s", webPage, roundIDBase62)
 
-	// Создаем кнопки
-	var inlineButtons [][]telego.InlineKeyboardButton
+	viewRatingText := h.service.GetText("viewrating", language)
 
-	// Добавляем кнопку для проверки в системе
+	// Верхний ряд из 2 кнопок
 	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
 		{Text: fmt.Sprintf(checkSystemText, roundIDBase62), URL: checkSystemURL},
-	})
-
-	// Добавляем кнопку для просмотра рейтинга
-	viewRatingText := h.service.GetText("viewrating", language)
-	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
 		{Text: viewRatingText, CallbackData: "view_rating"},
 	})
 
-	// Если баланс ставок недостаточен, добавляем соответствующие кнопки
-	if betsBalance <= 0 {
-		topUpBalanceText := h.service.GetText("topupbalance", language)
-		stopGameText := h.service.GetText("stopgame", language)
+	// Второй ряд только с кнопкой пополнения баланса
+	topUpBalanceText := h.service.GetText("topupbalance", language)
+	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
+		{Text: topUpBalanceText, CallbackData: "noop"},
+	})
 
+	// Если баланс ставок недостаточен, добавляем кнопку остановки игры в третий ряд
+	if betsBalance <= 0 {
+		stopGameText := h.service.GetText("stopgame", language)
 		inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
-			{Text: topUpBalanceText, CallbackData: "noop"},
 			{Text: stopGameText, CallbackData: "stop_game"},
-		})
-	} else {
-		// Если баланс достаточен, добавляем только кнопку пополнения
-		topUpBalanceText := h.service.GetText("topupbalance", language)
-		inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
-			{Text: topUpBalanceText, CallbackData: "noop"},
 		})
 	}
 
