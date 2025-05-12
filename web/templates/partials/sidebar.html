@@ -23,6 +23,11 @@
             </a>
         </li>
         <li class="nav-item">
+            <a class="nav-link {{if eq .activeTab "notifications"}}active{{end}}" href="/admin/notifications">
+                <i class="bi bi-bell"></i> Уведомления
+            </a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "withdrawals"}}active{{end}}" href="/admin/withdrawals">
                 <i class="bi bi-cash-coin"></i> Выплаты
             </a>
@@ -84,6 +89,11 @@
             <li class="nav-item">
                 <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
                     <i class="bi bi-trophy me-2"></i> Рейтинг
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "notifications"}}active{{end}}" href="/admin/notifications">
+                    <i class="bi bi-bell me-2"></i> Уведомления
                 </a>
             </li>
             <li class="nav-item">

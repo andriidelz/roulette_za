@@ -102,6 +102,9 @@ func (a *AdminPanel) setupRoutes() {
 	// Настраиваем публичные маршруты
 	a.setupPublicRoutes()
 
+	// Настройка роутов уведомлений
+	a.setupNotificationsRoutes()
+
 	// Авторизация
 	auth := a.router.Group("/")
 	auth.Use(a.ipFilterMiddleware())
@@ -160,6 +163,7 @@ func (a *AdminPanel) setupRoutes() {
 			api.GET("/hashes", a.getHashesAPI)
 			api.GET("/hashes/:id", a.getHashDetailsAPI)
 			api.POST("/verify-hash", a.verifyHashAPI)
+			api.GET("/localizations/:key", a.getLocalizationsByKey)
 		}
 	}
 }
