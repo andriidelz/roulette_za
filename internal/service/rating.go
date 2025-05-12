@@ -122,8 +122,10 @@ func (s *ServiceImpl) FormatRatingForDisplay(ratings []models.WeeklyRating, curr
 
 		// Проверяем, является ли запись текущим пользователем
 		if rating.User.TelegramID == currentUserID {
-			// Для текущего пользователя используем его реальное имя
-			if rating.User.Username != "" {
+			// Для текущего пользователя используем nickname или другое доступное имя
+			if rating.User.Nickname != "" {
+				displayName = rating.User.Nickname
+			} else if rating.User.Username != "" {
 				displayName = "@" + rating.User.Username
 			} else if rating.User.FirstName != "" {
 				if rating.User.LastName != "" {
@@ -138,8 +140,13 @@ func (s *ServiceImpl) FormatRatingForDisplay(ratings []models.WeeklyRating, curr
 			// Добавляем звездочки для выделения текущего пользователя
 			displayName = "*" + displayName + "*"
 		} else {
-			// Для остальных пользователей используем анонимное имя
-			displayName = fmt.Sprintf("Игрок %d", rating.Position)
+			// Для остальных пользователей используем nickname или анонимное имя
+			if rating.User.Nickname != "" {
+				displayName = rating.User.Nickname
+			} else {
+				// Для пользователей без никнейма используем анонимное имя
+				displayName = fmt.Sprintf("Игрок %d", rating.Position)
+			}
 		}
 
 		// Форматируем запись
@@ -192,40 +199,29 @@ func (s *ServiceImpl) FormatPlayerLine(rating models.WeeklyRating, position int,
 	var templateKey string
 	var args []interface{}
 
+	// Используем nickname вместо username для отображения, если он задан
+	var displayName string
+	if rating.User.Nickname != "" {
+		displayName = rating.User.Nickname
+	} else if rating.User.Username != "" {
+		displayName = "@" + rating.User.Username
+	} else if rating.User.FirstName != "" {
+		displayName = rating.User.FirstName
+		if rating.User.LastName != "" {
+			displayName += " " + rating.User.LastName
+		}
+	} else {
+		displayName = fmt.Sprintf("Player%d", rating.User.TelegramID)
+	}
+
 	if isCurrentUser {
 		// Для текущего пользователя
-		if rating.User.Username != "" {
-			// Если есть имя пользователя
-			if rating.Bets > 0 {
-				templateKey = "username_points_efficiency"
-				args = []interface{}{"@" + rating.User.Username, rating.Points, rating.Efficiency * 100}
-			} else {
-				templateKey = "username_points"
-				args = []interface{}{"@" + rating.User.Username, rating.Points}
-			}
-		} else if rating.User.FirstName != "" {
-			// Если есть имя
-			displayName := rating.User.FirstName
-			if rating.User.LastName != "" {
-				displayName += " " + rating.User.LastName
-			}
-
-			if rating.Bets > 0 {
-				templateKey = "username_points_efficiency"
-				args = []interface{}{displayName, rating.Points, rating.Efficiency * 100}
-			} else {
-				templateKey = "username_points"
-				args = []interface{}{displayName, rating.Points}
-			}
+		if rating.Bets > 0 {
+			templateKey = "username_points_efficiency"
+			args = []interface{}{displayName, rating.Points, rating.Efficiency * 100}
 		} else {
-			// Если нет имени, используем "Вы"
-			if rating.Bets > 0 {
-				templateKey = "you_points_efficiency"
-				args = []interface{}{rating.Points, rating.Efficiency * 100}
-			} else {
-				templateKey = "you_points"
-				args = []interface{}{rating.Points}
-			}
+			templateKey = "username_points"
+			args = []interface{}{displayName, rating.Points}
 		}
 	} else {
 		// Для остальных игроков

@@ -20,6 +20,7 @@ type User struct {
 	ID            uint    `gorm:"primaryKey"`
 	TelegramID    int64   `gorm:"uniqueIndex"`
 	Username      string  `gorm:"size:255"`
+	Nickname      string  `gorm:"size:50"`
 	FirstName     string  `gorm:"size:255"`
 	LastName      string  `gorm:"size:255"`
 	LanguageCode  string  `gorm:"size:10"`

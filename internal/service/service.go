@@ -176,6 +176,7 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 	user := &models.User{
 		TelegramID:   telegramID,
 		Username:     username,
+		Nickname:     "", // Пустой никнейм для новых пользователей
 		FirstName:    firstName,
 		LastName:     lastName,
 		LanguageCode: languageCode,

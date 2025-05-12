@@ -42,6 +42,8 @@ const (
 
 	CallbackAgeVerifiedYes      = "age_verified_yes"
 	CallbackAgeVerifiedNo       = "age_verified_no"
+	CallbackChangeNameYes       = "name_changeyes"
+	CallbackChangeNameNo        = "name_changeno"
 	CallbackReserveSubscription = "reservsubs"
 	CallbackBetRed              = "bet_red"
 	CallbackBetBlack            = "bet_black"
@@ -166,6 +168,57 @@ func (b *Bot) handleUpdate(update telego.Update) {
 	if update.CallbackQuery != nil {
 		b.handleCallbackQuery(update.CallbackQuery)
 		return
+	}
+}
+
+// handleNicknamePrompt отправляет запрос на подтверждение/изменение никнейма
+func (b *Bot) handleNicknamePrompt(chatID int64, userID int64, language string) {
+	// Получаем пользователя
+	user, err := b.service.GetUser(userID)
+	if err != nil {
+		log.Printf("Error getting user for nickname prompt: %v", err)
+		return
+	}
+
+	// Определяем предварительный никнейм
+	var profileName string
+	if user.Nickname != "" {
+		// Если никнейм уже задан, используем его
+		profileName = user.Nickname
+	} else if user.Username != "" {
+		profileName = user.Username
+	} else if user.FirstName != "" && len(user.FirstName) > 1 {
+		profileName = user.FirstName
+	} else {
+		profileName = fmt.Sprintf("Player%d", user.TelegramID)
+	}
+
+	// Получаем локализованный текст сообщения
+	namePromptText := b.service.GetText("name_mes", language)
+	// Заменяем placeholder profile_name на настоящее имя
+	namePromptText = strings.Replace(namePromptText, "{profile_name}", profileName, -1)
+
+	// Создаем inline-клавиатуру для выбора
+	yesText := b.service.GetText("name_changeyes", language)
+	noText := b.service.GetText("name_changeno", language)
+
+	nicknameKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				{Text: yesText, CallbackData: CallbackChangeNameYes},
+				{Text: noText, CallbackData: CallbackChangeNameNo},
+			},
+		},
+	}
+
+	// Отправляем сообщение с вопросом
+	_, err = b.SendMessage(chatID, MessageOptions{
+		Text:           namePromptText,
+		InlineKeyboard: nicknameKeyboard,
+	})
+
+	if err != nil {
+		log.Printf("Error sending nickname prompt: %v", err)
 	}
 }
 
@@ -420,6 +473,69 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	state, messageID, exists := b.stateManager.GetState(user.ID)
 	if exists && state != StateNone {
 		switch state {
+		case StateInputNickname:
+			// Обработка ввода никнейма
+			if len(message.Text) > 0 {
+				// Получаем язык пользователя
+				language := user.LanguageCode
+				if language == "" {
+					language = "en"
+				}
+
+				// Проверяем валидность никнейма (только латинские буквы и цифры)
+				nickname := strings.TrimSpace(message.Text)
+				isValid := true
+
+				// Проверяем, что никнейм состоит только из разрешенных символов
+				for _, r := range nickname {
+					if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+						isValid = false
+						break
+					}
+				}
+
+				if !isValid || len(nickname) < 3 || len(nickname) > 20 {
+					// Никнейм невалиден, отправляем сообщение об ошибке
+					invalidNicknameText := b.service.GetText("invalid_nickname", language)
+					b.SendMessage(message.Chat.ID, MessageOptions{
+						Text: invalidNicknameText,
+					})
+					return
+				}
+
+				// Обновляем никнейм пользователя
+				dbUser, err := b.service.GetUser(user.ID)
+				if err != nil {
+					log.Printf("Error getting user: %v", err)
+					b.stateManager.ClearState(user.ID)
+					return
+				}
+
+				// Сохраняем никнейм в отдельное поле Nickname
+				dbUser.Nickname = nickname
+				if err := b.service.UpdateUser(dbUser); err != nil {
+					log.Printf("Error updating user nickname: %v", err)
+				}
+
+				// Отправляем сообщение об успешном обновлении
+				successText := b.service.GetText("name_changesave", language)
+				b.SendMessage(message.Chat.ID, MessageOptions{
+					Text: successText,
+				})
+
+				// Очищаем состояние
+				b.stateManager.ClearState(user.ID)
+
+				// Продолжаем процесс регистрации
+				go func() {
+					// Небольшая задержка для чтения сообщения
+					time.Sleep(2 * time.Second)
+					// Отправляем запрос на подписку
+					b.sendSubscriptionRequest(message.Chat.ID, language)
+				}()
+
+				return
+			}
 		case StateInputName:
 			// Обработка ввода имени
 			if len(message.Text) > 0 {
@@ -841,7 +957,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 					log.Printf("Error deleting country selection message: %v", err)
 				}
 
-				b.sendSubscriptionRequest(query.Message.Chat.ID, language)
+				// Отправляем запрос на подтверждение/изменение никнейма
+				b.handleNicknamePrompt(query.Message.Chat.ID, user.ID, language)
 				return
 			} else {
 				// Если страна была установлена ранее:
@@ -1020,6 +1137,14 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	switch callbackData {
 	case CallbackAgeVerifiedYes, CallbackAgeVerifiedNo:
 		b.handleAgeVerificationCallback(query)
+		return
+	case CallbackChangeNameYes:
+		// Обработка согласия на изменение никнейма
+		b.handleChangeNameYes(query)
+		return
+	case CallbackChangeNameNo:
+		// Обработка отказа от изменения никнейма
+		b.handleChangeNameNo(query)
 		return
 	case CallbackReserveSubscription:
 		b.handleReserveSubscriptionCheck(query)
@@ -1228,6 +1353,87 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 			Text:           countryText,
 			InlineKeyboard: countriesKeyboard,
 		})
+	}
+}
+
+// handleChangeNameYes обрабатывает согласие на изменение никнейма
+func (b *Bot) handleChangeNameYes(query *telego.CallbackQuery) {
+	user := query.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Отвечаем на callback
+	b.answerCallbackQuery(query.ID, "", false)
+
+	// Получаем локализованный текст для ввода нового никнейма
+	nameChangeOkText := b.service.GetText("name_changeok", language)
+
+	// Обновляем сообщение
+	if query.Message != nil {
+		// Устанавливаем состояние ожидания никнейма
+		b.stateManager.SetState(user.ID, StateInputNickname, query.Message.MessageID)
+
+		// Обновляем сообщение с инструкцией для ввода никнейма
+		b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+			Text: nameChangeOkText,
+		})
+	}
+}
+
+// handleChangeNameNo обрабатывает отказ от изменения никнейма
+func (b *Bot) handleChangeNameNo(query *telego.CallbackQuery) {
+	user := query.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Отвечаем на callback
+	b.answerCallbackQuery(query.ID, "", false)
+
+	// Получаем пользователя
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user: %v", err)
+		return
+	}
+
+	// Сохраняем текущий никнейм (если он не был установлен ранее)
+	if dbUser.Nickname == "" {
+		var profileName string
+		if dbUser.Username != "" {
+			profileName = dbUser.Username
+		} else if dbUser.FirstName != "" && len(dbUser.FirstName) > 1 {
+			profileName = dbUser.FirstName
+		} else {
+			profileName = fmt.Sprintf("Player%d", dbUser.TelegramID)
+		}
+
+		// Сохраняем никнейм
+		dbUser.Nickname = profileName
+		if err := b.service.UpdateUser(dbUser); err != nil {
+			log.Printf("Error updating user nickname: %v", err)
+		}
+	}
+
+	// Получаем локализованный текст для подтверждения сохранения текущего никнейма
+	nameChangeNoText := b.service.GetText("name_changeno_msg", language)
+
+	// Обновляем сообщение
+	if query.Message != nil {
+		b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+			Text: nameChangeNoText,
+		})
+
+		// Продолжаем процесс регистрации
+		go func() {
+			// Небольшая задержка для чтения сообщения
+			time.Sleep(2 * time.Second)
+			// Отправляем запрос на подписку
+			b.sendSubscriptionRequest(query.Message.Chat.ID, language)
+		}()
 	}
 }
 
