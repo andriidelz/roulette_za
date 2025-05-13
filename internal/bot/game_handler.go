@@ -166,26 +166,23 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 
 	roundIDBase62 := utils.ToBase62(uint(round.ID))
 
-	// Запускаем таймеры для уведомлений
+	// Запускаем таймер для одного уведомления - 5 секунд до конца раунда
 	go func() {
-		// Вычисляем время до уведомлений
+		// Вычисляем время до уведомления
 		createdAt := round.CreatedAt
-		fifteenSecondsMark := createdAt.Add(15 * time.Second)
-		fiveSecondsMark := createdAt.Add(25 * time.Second)
+		// roundDuration := 15 * time.Second // Раунд длится 15 секунд
 
-		// Вычисляем время до уведомлений
-		timeToFifteen := time.Until(fifteenSecondsMark)
-		timeToFive := time.Until(fiveSecondsMark)
+		// Отправляем уведомление за 5 секунд до конца раунда (на 10-й секунде)
+		fiveSecondsMark := createdAt.Add(10 * time.Second)
 
-		// Отправляем уведомление за 15 секунд если еще не прошло это время
-		if timeToFifteen > 0 {
-			time.Sleep(timeToFifteen)
-			h.notifyTimeRemaining(round, 15)
-		}
+		// Вычисляем время до уведомления
+		timeToFiveSeconds := time.Until(fiveSecondsMark)
 
-		// Отправляем уведомление за 5 секунд если еще не прошло это время
-		if timeToFive > 0 {
-			time.Sleep(timeToFive - timeToFifteen)
+		// Отправляем уведомление за 5 секунд до конца раунда
+		if timeToFiveSeconds > 0 {
+			time.Sleep(timeToFiveSeconds)
+			// Отправляем только одно уведомление - о 5 секундах до конца раунда
+			log.Printf("Sending 5 seconds remaining notification for round #%d", round.ID)
 			h.notifyTimeRemaining(round, 5)
 		}
 	}()
@@ -204,7 +201,7 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 
 		// Вычисляем оставшееся время до конца раунда
 		elapsedTime := time.Since(round.CreatedAt)
-		roundDuration := 30 * time.Second // Продолжительность раунда
+		roundDuration := 15 * time.Second // 15-секундный раунд
 		remainingSeconds := int((roundDuration - elapsedTime).Seconds())
 
 		if remainingSeconds < 0 {
@@ -489,7 +486,20 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	won := bet.Won
 	points := bet.Points
 
-	// 1. Отправляем стикер с результатом (цвет)
+	// Задержка для соблюдения правильного таймирования сообщений
+	// Разница между завершением раунда и первым стикером (результат)
+	// должна составлять примерно 2 секунды (17 секунда раунда)
+	// Мы можем рассчитать это относительно времени RevealedAt
+	if round.RevealedAt != nil {
+		// Время отправки первого стикера - 2 секунды после завершения раунда
+		firstMessageTime := round.RevealedAt.Add(2 * time.Second)
+		sleepDuration := time.Until(firstMessageTime)
+		if sleepDuration > 0 {
+			time.Sleep(sleepDuration)
+		}
+	}
+
+	// 1. Отправляем стикер с результатом (цвет) на 17 секунде
 	var resultSticker string
 	switch result {
 	case models.Red:
@@ -502,9 +512,10 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	// Отправляем стикер результата
 	h.bot.SendSticker(userID, resultSticker)
 
-	// 2. Собираем части объединенного сообщения
+	// 2. Отправляем сообщение о результате на 18 секунде (через 1 секунду)
+	time.Sleep(1 * time.Second)
 
-	// Часть 1: Сообщение о результате
+	// Определяем текст результата
 	var resultLangKey string
 	switch result {
 	case models.Red:
@@ -516,21 +527,36 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	}
 	resultText := h.service.GetText(resultLangKey, language)
 
-	// Часть 2: Сообщение о выигрыше/проигрыше
-	var winLoseText string
+	// Отправляем текст результата
+	h.bot.SendMessage(userID, MessageOptions{
+		Text: resultText,
+	})
+
+	// 3. Отправляем стикер выигрыша/проигрыша на 19 секунде (через 1 секунду)
+	time.Sleep(1 * time.Second)
+
 	if won {
 		// Отправляем стикер выигрыша
 		h.bot.SendSticker(userID, StickerWin)
-		winMessageTemplate := h.service.GetText("winmessage", language)
-		winLoseText = fmt.Sprintf(winMessageTemplate, points)
 	} else {
 		// Отправляем стикер проигрыша
 		h.bot.SendSticker(userID, StickerLose)
+	}
+
+	// 4. Отправляем полное сообщение о выигрыше/проигрыше на 20 секунде (через 1 секунду)
+	time.Sleep(1 * time.Second)
+
+	// Формируем сообщение о выигрыше/проигрыше
+	var winLoseText string
+	if won {
+		winMessageTemplate := h.service.GetText("winmessage", language)
+		winLoseText = fmt.Sprintf(winMessageTemplate, points)
+	} else {
 		loseMsgText := h.service.GetText("losemessage", language)
 		winLoseText = loseMsgText
 	}
 
-	// Часть 3: Сообщение о рейтинге
+	// Формируем часть о рейтинге
 	// Получаем текущий рейтинг пользователя
 	position, err := h.service.GetUserPosition(userID)
 	if err != nil {
@@ -579,7 +605,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	ratingTemplate := h.service.GetText("bidrating", language)
 	ratingText = fmt.Sprintf(ratingTemplate, stats["totalPoints"], position, userShare, prizeFundAmount)
 
-	// Часть 4: Проверяем баланс ставок
+	// Часть проверки баланса ставок
 	betsBalance, err := h.service.GetUserRemainingBets(userID)
 	if err != nil {
 		log.Printf("Error getting user remaining bets: %v", err)
@@ -599,8 +625,8 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		betsBalanceText = fmt.Sprintf(betsBalanceTemplate, betsBalance)
 	}
 
-	// 3. Объединяем все части сообщения с разделителями
-	combinedMessage := resultText + "\n\n" + winLoseText + "\n\n" + ratingText + "\n\n" + betsBalanceText
+	// Объединяем части сообщения
+	combinedMessage := winLoseText + "\n\n" + ratingText + "\n\n" + betsBalanceText
 
 	// Если есть дополнительное сообщение для недостаточного баланса, добавляем его
 	if additionalMessage != "" {
@@ -623,11 +649,12 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		{Text: viewRatingText, CallbackData: "view_rating"},
 	})
 
+	// TODO: кнопка временно скрыта
 	// Второй ряд только с кнопкой пополнения баланса
-	topUpBalanceText := h.service.GetText("topupbalance", language)
-	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
-		{Text: topUpBalanceText, CallbackData: "noop"},
-	})
+	// topUpBalanceText := h.service.GetText("topupbalance", language)
+	// inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
+	// 	{Text: topUpBalanceText, CallbackData: "noop"},
+	// })
 
 	// Если баланс ставок недостаточен, добавляем кнопку остановки игры в третий ряд
 	if betsBalance <= 0 {
@@ -721,6 +748,12 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 		return fmt.Errorf("error making bet: %w", err)
 	}
 
+	// Получаем язык пользователя
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
 	// Регистрируем пользователя как ожидающего результата и сохраняем его ставку
 	h.mutex.Lock()
 	h.waitingPlayers[userID] = true
@@ -728,6 +761,19 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	h.mutex.Unlock()
 
 	log.Printf("Bet created successfully for user %d in round %d (waitingPlayers count: %d)", userID, currentRound.ID, len(h.waitingPlayers))
+
+	// Сразу отправляем стикер "Ставки больше не принимаются"
+	h.bot.SendSticker(userID, StickerNoBids)
+
+	// После короткой паузы отправляем сообщение о принятии ставки
+	go func() {
+		time.Sleep(1000 * time.Millisecond)
+		nomorebidsText := h.service.GetText("nomorebids", language)
+		h.bot.SendMessage(userID, MessageOptions{
+			Text:          nomorebidsText,
+			ReplyKeyboard: h.createDetailedBetKeyboard(language, userID, betsRemaining),
+		})
+	}()
 
 	return nil
 }
@@ -793,7 +839,7 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 
 	// Вычисляем оставшееся время до конца раунда
 	elapsedTime := time.Since(currentRound.CreatedAt)
-	roundDuration := 30 * time.Second // Продолжительность раунда
+	roundDuration := 15 * time.Second // Изменено с 30 на 15 секунд
 	remainingTime := roundDuration - elapsedTime
 
 	// Если осталось меньше 0 секунд, ждем следующий раунд

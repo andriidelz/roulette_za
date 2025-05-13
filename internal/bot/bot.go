@@ -446,16 +446,6 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 		})
 		return
 	}
-
-	// Если ставка успешно сделана, сначала отправляем стикер "Ставки больше не принимаются"
-	b.SendSticker(userID, StickerNoBids)
-
-	// Затем отправляем сообщение о принятии ставки
-	nomorebidsText := b.service.GetText("nomorebids", language)
-	b.SendMessage(userID, MessageOptions{
-		Text:          nomorebidsText,
-		ReplyKeyboard: b.gameHandler.createDetailedBetKeyboard(language, userID, betsBalance),
-	})
 }
 
 // handleMessage обрабатывает сообщения

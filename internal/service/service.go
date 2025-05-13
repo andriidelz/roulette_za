@@ -323,8 +323,11 @@ func (s *ServiceImpl) CompleteRound(hashEntryID uint) error {
 		return err
 	}
 
-	// Помечаем раунд как завершенный
-	return s.repo.CompleteHashEntry(hashEntryID, time.Now())
+	// Получаем текущее время для отметки завершения раунда
+	revealedAt := time.Now()
+
+	// Помечаем раунд как завершенный с указанием времени
+	return s.repo.CompleteHashEntry(hashEntryID, revealedAt)
 }
 
 // GetRoundResult получает результат раунда (цвет)
