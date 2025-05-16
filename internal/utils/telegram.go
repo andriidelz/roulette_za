@@ -7,7 +7,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
+
+	"github.com/mymmrac/telego"
 )
 
 // TelegramUserProfilePhotos структура для хранения ответа от Telegram API на запрос getUserProfilePhotos
@@ -95,4 +99,73 @@ func GetUserProfilePhoto(telegramToken string, userID int64) (string, error) {
 	avatarURL := fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", telegramToken, telegramFile.Result.FilePath)
 
 	return avatarURL, nil
+}
+
+// Шаблон регулярного выражения для кастомных эмодзи в формате {{emoji:UNICODE:ID}}
+var emojiPattern = regexp.MustCompile(`\{\{emoji:(.+?):([0-9]+)\}\}`)
+
+// toUTF16Count преобразует индекс из UTF-8 строки в индекс UTF-16
+func toUTF16Count(s string) int {
+	utf16Count := 0
+	for _, r := range s {
+		if r <= 0xFFFF {
+			utf16Count++
+		} else {
+			// Символы вне BMP (Basic Multilingual Plane) занимают 2 кодовые единицы в UTF-16
+			utf16Count += 2
+		}
+	}
+	return utf16Count
+}
+
+// BuildMessageWithCustomEmojis заменяет плейсхолдеры вида {{emoji:UNICODE:ID}}
+// на Unicode-эмодзи и создаёт массив MessageEntity для кастомных эмодзи Telegram.
+func BuildMessageWithCustomEmojis(textTemplate string) (string, []telego.MessageEntity) {
+	// Если в тексте нет шаблонов, возвращаем исходный текст без изменений
+	if !strings.Contains(textTemplate, "{{emoji:") {
+		return textTemplate, []telego.MessageEntity{}
+	}
+
+	// Ищем все совпадения шаблона
+	matches := emojiPattern.FindAllStringSubmatch(textTemplate, -1)
+	if len(matches) == 0 {
+		return textTemplate, []telego.MessageEntity{}
+	}
+
+	// Результирующий текст и сущности
+	resultText := textTemplate
+	entities := []telego.MessageEntity{}
+
+	// Обрабатываем каждое совпадение, начиная с конца, чтобы не нарушить индексы
+	for i := len(matches) - 1; i >= 0; i-- {
+		fullMatch := matches[i][0]    // {{emoji:UNICODE:ID}}
+		unicodeEmoji := matches[i][1] // UNICODE
+		emojiID := matches[i][2]      // ID
+
+		// Находим позицию шаблона
+		startPos := strings.Index(resultText, fullMatch)
+		if startPos == -1 {
+			continue // Странная ситуация, но лучше проверить
+		}
+
+		// Вычисляем UTF-16 смещение
+		prefixText := resultText[:startPos]
+		utf16Offset := toUTF16Count(prefixText)
+
+		// Заменяем шаблон на Unicode-эмодзи
+		resultText = resultText[:startPos] + unicodeEmoji + resultText[startPos+len(fullMatch):]
+
+		// Добавляем сущность для кастомного эмодзи
+		// Длина в UTF-16 кодовых единицах
+		utf16Length := toUTF16Count(unicodeEmoji)
+
+		entities = append(entities, telego.MessageEntity{
+			Type:          "custom_emoji",
+			Offset:        utf16Offset,
+			Length:        utf16Length,
+			CustomEmojiID: emojiID,
+		})
+	}
+
+	return resultText, entities
 }

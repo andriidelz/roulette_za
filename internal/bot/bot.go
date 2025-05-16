@@ -11,6 +11,7 @@ import (
 
 	"roulette/internal/models"
 	"roulette/internal/service"
+	"roulette/internal/utils"
 
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
@@ -1718,6 +1719,9 @@ type MessageOptions struct {
 	// ParseMode - режим форматирования текста (HTML, Markdown, MarkdownV2)
 	ParseMode string
 
+	// Entities - специальные сущности (эмодзи, форматирование и т.д.)
+	Entities []telego.MessageEntity
+
 	// DisableWebPagePreview - если true, превью ссылок будет отключено
 	DisableWebPagePreview bool
 
@@ -1732,6 +1736,24 @@ func (b *Bot) SendMessage(chatID int64, options MessageOptions) (*telego.Message
 	processedText := strings.ReplaceAll(options.Text, "\\r\\n", "\n")
 	processedText = strings.ReplaceAll(processedText, "\r\n", "\n")
 	options.Text = processedText
+
+	// Проверка на наличие шаблонов эмодзи в тексте
+	if strings.Contains(options.Text, "{{emoji:") {
+		log.Printf("Found emoji template in text: %s", options.Text)
+
+		// Обрабатываем кастомные эмодзи в формате {{emoji:id}}
+		emojiText, emojiEntities := utils.BuildMessageWithCustomEmojis(options.Text)
+		options.Text = emojiText
+
+		// Объединяем существующие сущности с новыми эмодзи-сущностями
+		if len(emojiEntities) > 0 {
+			if len(options.Entities) > 0 {
+				options.Entities = append(options.Entities, emojiEntities...)
+			} else {
+				options.Entities = emojiEntities
+			}
+		}
+	}
 
 	// Если указан путь к фото или FileID
 	if options.PhotoPath != "" || options.PhotoFileID != "" {
@@ -1786,6 +1808,16 @@ func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, e
 		DisableNotification:   options.DisableNotification,
 	}
 
+	// Добавляем сущности, если они есть
+	if len(options.Entities) > 0 {
+		log.Printf("Adding %d entities to message", len(options.Entities))
+		for i, entity := range options.Entities {
+			log.Printf("Entity %d: Type=%s, Offset=%d, Length=%d, CustomEmojiID=%s",
+				i, entity.Type, entity.Offset, entity.Length, entity.CustomEmojiID)
+		}
+		params.Entities = options.Entities
+	}
+
 	// Устанавливаем соответствующую клавиатуру
 	if replyMarkup := b.getReplyMarkup(options); replyMarkup != nil {
 		params.ReplyMarkup = replyMarkup
@@ -1793,6 +1825,7 @@ func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, e
 
 	msg, err := b.bot.SendMessage(params)
 	if err != nil {
+		log.Printf("Error sending message: %v", err)
 		return nil, fmt.Errorf("failed to send message: %w", err)
 	}
 
@@ -1807,6 +1840,11 @@ func (b *Bot) updateText(chatID int64, messageID int, options MessageOptions) (*
 		Text:                  options.Text,
 		ParseMode:             options.ParseMode,
 		DisableWebPagePreview: options.DisableWebPagePreview,
+	}
+
+	// Добавляем сущности, если они есть
+	if len(options.Entities) > 0 {
+		params.Entities = options.Entities
 	}
 
 	// Для обновления можно использовать только инлайн клавиатуру
@@ -1830,6 +1868,11 @@ func (b *Bot) sendPhoto(chatID int64, options MessageOptions) (*telego.Message, 
 		Caption:             options.Text,
 		ParseMode:           options.ParseMode,
 		DisableNotification: options.DisableNotification,
+	}
+
+	// Добавляем сущности для подписи, если они есть
+	if len(options.Entities) > 0 {
+		params.CaptionEntities = options.Entities
 	}
 
 	// Устанавливаем соответствующую клавиатуру
@@ -1880,6 +1923,11 @@ func (b *Bot) updatePhotoByFileID(chatID int64, messageID int, options MessageOp
 		Media:     tu.FileFromID(options.PhotoFileID),
 		Caption:   options.Text,
 		ParseMode: options.ParseMode,
+	}
+
+	// Добавляем сущности для подписи, если они есть
+	if len(options.Entities) > 0 {
+		mediaPhoto.CaptionEntities = options.Entities
 	}
 
 	params := &telego.EditMessageMediaParams{
