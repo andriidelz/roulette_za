@@ -359,4 +359,9 @@ INSERT INTO localizations (key, language, value) VALUES
     ('name_changesave', 'ru', 'Новое игровое имя для рейтинга сохранено.'),
     ('invalid_nickname', 'ru', 'Некорректный никнейм. Никнейм должен содержать только латинские буквы, цифры и знак подчеркивания, а также быть длиной от 3 до 20 символов. Пожалуйста, попробуйте еще раз.'),
     ('stopcountry', 'ru', 'Сервис не доступен для жителей россии или белларуси.');
-    
+
+INSERT INTO localizations (key, language, value) VALUES
+    ('error_retrieving_balance', 'ru', 'Ошибка при получении баланса. Пожалуйста, попробуйте снова.'),
+    ('error_retrieving_data', 'ru', 'Ошибка при получении данных. Пожалуйста, попробуйте снова.'),
+    ('error_while_registering', 'ru', 'Ошибка при регистрации. Пожалуйста, попробуйте снова.'),
+    ('player_nickname_template', 'ru', 'Никнейм%d');

@@ -81,7 +81,7 @@ func (b *Bot) handleBalanceCommand(message *telego.Message) {
 	if err != nil {
 		log.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: "Error retrieving balance. Please try again.",
+			Text: b.service.GetText("error_retrieving_balance", language),
 		})
 		return
 	}
@@ -161,7 +161,7 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 	if err != nil {
 		log.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: "Error retrieving data. Please try again.",
+			Text: b.service.GetText("error_retrieving_data", language),
 		})
 		return
 	}

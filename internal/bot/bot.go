@@ -190,7 +190,7 @@ func (b *Bot) handleNicknamePrompt(chatID int64, userID int64, language string) 
 	} else if user.FirstName != "" && len(user.FirstName) > 1 {
 		profileName = user.FirstName
 	} else {
-		profileName = fmt.Sprintf("Player%d", user.TelegramID)
+		profileName = fmt.Sprintf(b.service.GetText("player_nickname_template", language), user.TelegramID)
 	}
 
 	// Получаем локализованный текст сообщения
@@ -1209,7 +1209,7 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 	if err != nil {
 		log.Printf("Error registering user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: "Error while registering. Please try again.",
+			Text: b.service.GetText("error_while_registering", user.LanguageCode),
 		})
 		return
 	}

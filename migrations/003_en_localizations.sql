@@ -359,4 +359,9 @@ INSERT INTO localizations (key, language, value) VALUES
     ('name_changesave', 'en', 'New game name for rating has been saved.'),
     ('invalid_nickname', 'en', 'Invalid nickname. The nickname should contain only Latin letters, numbers, and underscores, and be 3-20 characters long. Please try again.'),
     ('stopcountry', 'en', 'Service is not available for residents of Russia or Belarus.');
-    
+
+INSERT INTO localizations (key, language, value) VALUES
+    ('error_retrieving_balance', 'en', 'Error retrieving balance. Please try again.'),
+    ('error_retrieving_data', 'en', 'Error retrieving data. Please try again.'),
+    ('error_while_registering', 'en', 'Error while registering. Please try again.'),
+    ('player_nickname_template', 'en', 'Nickname%d');
