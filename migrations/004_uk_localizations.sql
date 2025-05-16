@@ -320,8 +320,8 @@ INSERT INTO localizations (key, language, value) VALUES
 %s
 
 Вам не вистачає %d балів, щоб взяти участь у розподілі щотижневої нагороди.'),
-    ('player_points', 'uk', 'Гравець %d - %d балів'),
-    ('player_points_efficiency', 'uk', 'Гравець %d - %d балів (%.1f%%)'),
+    ('player_points', 'uk', '%d %s - %d балів'),
+    ('player_points_efficiency', 'uk', '%d %s - %d балів (%.1f%%)'),
     ('you_points', 'uk', '*Ви* - %d балів'),
     ('you_points_efficiency', 'uk', '*Ви* - %d балів (%.1f%%)'),
     ('username_points', 'uk', '*%s* - %d балів'),
