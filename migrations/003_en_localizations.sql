@@ -320,8 +320,8 @@ Your position: %d
 %s
 
 You need %d more points to participate in the distribution of the weekly reward.'),
-    ('player_points', 'en', 'Player %d - %d points'),
-    ('player_points_efficiency', 'en', 'Player %d - %d points (%.1f%%)'),
+    ('player_points', 'en', '%d %s - %d points'),
+    ('player_points_efficiency', 'en', '%d %s - %d points (%.1f%%)'),
     ('you_points', 'en', '*You* - %d points'),
     ('you_points_efficiency', 'en', '*You* - %d points (%.1f%%)'),
     ('username_points', 'en', '*%s* - %d points'),
