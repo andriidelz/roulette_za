@@ -341,3 +341,22 @@ You need %d more points to participate in the distribution of the weekly reward.
     ('insufficient_balance', 'en', 'Insufficient amount for withdrawal. Minimum amount: 10 USDT'),
     ('withdrawal_error', 'en', 'Error creating withdrawal request. Please try again later.'),
     ('withdrawal_success', 'en', 'Withdrawal request for %.2f USDT successfully created. Funds will be sent to wallet %s within 24 hours.');
+
+INSERT INTO localizations (key, language, value) VALUES
+    ('agemes', 'en', 'Please confirm that you are over 18 years old'),
+    ('yes18', 'en', 'Yes, I am over 18 years old'),
+    ('no18', 'en', 'No, I am under 18 years old'),
+    ('stopage', 'en', 'Sorry, this service is only available to users over 18 years old.'),
+    ('balance_updated_title', 'en', 'Reward credited to your balance'),
+    ('balance_updated_message', 'en', 'You have received a reward of {amount} to your internal balance!'),
+    ('top_rating_title', 'en', 'Weekly Top Rating'),
+    ('top_rating_message', 'en', 'Congratulations! You are now in the weekly top rating at position {position}!'),
+    ('name_mes', 'en', 'Your name that will be displayed in the general rating is {profile_name} and will be publicly visible to all players. Do you want to change it?'),
+    ('name_changeyes', 'en', 'Yes, I want to change'),
+    ('name_changeno', 'en', 'No, I don''t want to change'),
+    ('name_changeno_msg', 'en', 'Your game name has been fixed'),
+    ('name_changeok', 'en', 'Enter the desired name for public display in the rating. Only Latin alphabet, numbers and underscore are allowed. The name must be 3-20 characters long.'),
+    ('name_changesave', 'en', 'New game name for rating has been saved.'),
+    ('invalid_nickname', 'en', 'Invalid nickname. The nickname should contain only Latin letters, numbers, and underscores, and be 3-20 characters long. Please try again.'),
+    ('stopcountry', 'en', 'Service is not available for residents of Russia or Belarus.');
+    
