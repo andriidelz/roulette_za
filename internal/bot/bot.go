@@ -464,7 +464,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	if exists && state != StateNone {
 		switch state {
 		case StateInputNickname:
-			// Обработка ввода никнейма
+			// Обработка ввода никнейма при регистрации
 			if len(message.Text) > 0 {
 				// Получаем язык пользователя
 				language := user.LanguageCode
@@ -556,10 +556,10 @@ func (b *Bot) handleMessage(message *telego.Message) {
 				return
 			}
 
-		case StateInputLName:
-			// Обработка ввода фамилии
+		case StateInputUpNickname:
+			// Обработка ввода никнейма при обновлении в настройках
 			if len(message.Text) > 0 {
-				// Обновляем фамилию пользователя
+				// Обновляем никнейм пользователя
 				dbUser, err := b.service.GetUser(user.ID)
 				if err != nil {
 					log.Printf("Error getting user: %v", err)
@@ -567,13 +567,35 @@ func (b *Bot) handleMessage(message *telego.Message) {
 					return
 				}
 
-				dbUser.LastName = message.Text
+				// Проверяем валидность никнейма (только латинские буквы и цифры)
+				nickname := strings.TrimSpace(message.Text)
+				isValid := true
+
+				// Проверяем, что никнейм состоит только из разрешенных символов
+				for _, r := range nickname {
+					if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+						isValid = false
+						break
+					}
+				}
+
+				if !isValid || len(nickname) < 3 || len(nickname) > 20 {
+					// Никнейм невалиден, отправляем сообщение об ошибке
+					invalidNicknameText := b.service.GetText("invalid_nickname", user.LanguageCode)
+					b.SendMessage(message.Chat.ID, MessageOptions{
+						Text: invalidNicknameText,
+					})
+					return
+				}
+
+				// Обновляем никнейм пользователя
+				dbUser.Nickname = nickname
 				if err := b.service.UpdateUser(dbUser); err != nil {
-					log.Printf("Error updating user lastname: %v", err)
+					log.Printf("Error updating user nickname: %v", err)
 				}
 
 				// Отправляем сообщение об успешном обновлении
-				successText := b.service.GetText("lastname_saved", user.LanguageCode)
+				successText := b.service.GetText("name_saved", user.LanguageCode)
 				backBtn := b.createBackBtnKeyboard(user.LanguageCode)
 
 				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
@@ -1028,18 +1050,18 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			}
 			return
 
-		case CallbackSettingsLastName:
-			lastNameText := b.service.GetText("settings_lastname", language)
+		case CallbackSettingsNickName:
+			nameText := b.service.GetText("settings_nickname", language)
 
-			// Обновляем сообщение и запрашиваем фамилию
+			// Обновляем сообщение и запрашиваем публичное имя
 			if query.Message != nil {
-				// Устанавливаем состояние ожидания фамилии
-				b.stateManager.SetState(user.ID, StateInputLName, query.Message.MessageID)
+				// Устанавливаем состояние ожидания публичного имени
+				b.stateManager.SetState(user.ID, StateInputUpNickname, query.Message.MessageID)
 
 				backBtn := b.createBackBtnKeyboard(language)
 
 				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
-					Text:           lastNameText,
+					Text:           nameText,
 					InlineKeyboard: backBtn,
 				})
 			}

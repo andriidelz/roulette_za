@@ -19,11 +19,11 @@ type StateManager struct {
 
 // Константы состояний
 const (
-	StateNone          = ""
-	StateInputName     = "input_name"
-	StateInputLName    = "input_lastname"
-	StateInputWallet   = "input_wallet"
-	StateInputNickname = "input_nickname"
+	StateNone            = ""
+	StateInputName       = "input_name"
+	StateInputWallet     = "input_wallet"
+	StateInputNickname   = "input_nickname"        // создание никнейма при регистрации
+	StateInputUpNickname = "input_update_nickname" // обновление никнейма в настройках
 )
 
 // NewStateManager создает новый экземпляр менеджера состояний
