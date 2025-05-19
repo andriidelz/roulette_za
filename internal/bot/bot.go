@@ -595,7 +595,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 				}
 
 				// Отправляем сообщение об успешном обновлении
-				successText := b.service.GetText("name_saved", user.LanguageCode)
+				successText := b.service.GetText("nickname_saved", user.LanguageCode)
 				backBtn := b.createBackBtnKeyboard(user.LanguageCode)
 
 				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
