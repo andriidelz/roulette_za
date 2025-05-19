@@ -460,6 +460,21 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		return
 	}
 
+	// Всегда используем язык из базы данных
+	lang := dbUser.LanguageCode
+	if lang == "" {
+		// Если в базе не указан язык пробуем получить его у юзера
+		if user.LanguageCode != "" {
+			lang = user.LanguageCode
+		} else {
+			lang = "en"
+		}
+	}
+	// Обновляем язык пользователя из API, если он отличается
+	if user.LanguageCode != lang {
+		user.LanguageCode = lang
+	}
+
 	// Проверяем состояние пользователя
 	state, messageID, exists := b.stateManager.GetState(user.ID)
 	if exists && state != StateNone {
@@ -467,11 +482,6 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		case StateInputNickname:
 			// Обработка ввода никнейма при регистрации
 			if len(message.Text) > 0 {
-				// Получаем язык пользователя
-				language := user.LanguageCode
-				if language == "" {
-					language = "en"
-				}
 
 				// Проверяем валидность никнейма (только латинские буквы и цифры)
 				nickname := strings.TrimSpace(message.Text)
@@ -487,7 +497,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 
 				if !isValid || len(nickname) < 3 || len(nickname) > 20 {
 					// Никнейм невалиден, отправляем сообщение об ошибке
-					invalidNicknameText := b.service.GetText("invalid_nickname", language)
+					invalidNicknameText := b.service.GetText("invalid_nickname", user.LanguageCode)
 					b.SendMessage(message.Chat.ID, MessageOptions{
 						Text: invalidNicknameText,
 					})
@@ -509,7 +519,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 				}
 
 				// Отправляем сообщение об успешном обновлении
-				successText := b.service.GetText("name_changesave", language)
+				successText := b.service.GetText("name_changesave", user.LanguageCode)
 				b.SendMessage(message.Chat.ID, MessageOptions{
 					Text: successText,
 				})
@@ -522,7 +532,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 					// Небольшая задержка для чтения сообщения
 					time.Sleep(2 * time.Second)
 					// Отправляем запрос на подписку
-					b.sendSubscriptionRequest(message.Chat.ID, language)
+					b.sendSubscriptionRequest(message.Chat.ID, user.LanguageCode)
 				}()
 
 				return
