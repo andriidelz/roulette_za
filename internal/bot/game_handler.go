@@ -645,7 +645,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 
 	// Верхний ряд из 2 кнопок
 	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
-		{Text: fmt.Sprintf(checkSystemText, roundIDBase62), URL: checkSystemURL},
+		{Text: checkSystemText, URL: checkSystemURL},
 		{Text: viewRatingText, CallbackData: "view_rating"},
 	})
 
