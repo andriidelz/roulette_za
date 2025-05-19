@@ -122,7 +122,7 @@ func (b *Bot) handleWeeklyRating(message *telego.Message) {
 		formattedList := b.service.FormatRatingList(ratings, user.ID, language)
 
 		// Ограничиваем количество отображаемых игроков
-		maxDisplayCount := 20
+		maxDisplayCount := 100
 		if len(ratings) > maxDisplayCount {
 			// Ограничиваем список
 			truncatedRatings := ratings
