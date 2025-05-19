@@ -14,7 +14,7 @@ const (
 	CallbackSettingsLanguage = "settings_language"
 	CallbackSettingsCountry  = "settings_country"
 	CallbackSettingsName     = "settings_name"
-	CallbackSettingsLastName = "settings_lastname"
+	CallbackSettingsNickName = "settings_nickname"
 	CallbackSettingsWallet   = "settings_wallet"
 
 	// Выбор языка
@@ -61,7 +61,7 @@ func (b *Bot) createSettingsKeyboard(language string, userID int64) *telego.Inli
 	btnLanguageText := b.service.GetText("btn_settings_language", language)
 	btnCountryText := b.service.GetText("btn_settings_country", language)
 	btnNameText := b.service.GetText("btn_settings_name", language)
-	btnLastNameText := b.service.GetText("btn_settings_lastname", language)
+	btnNicknameText := b.service.GetText("btn_settings_nickname", language)
 	btnWalletText := b.service.GetText("btn_settings_wallet", language) // Новая локализация
 	btnBackText := b.service.GetText("btn_back_to_main", language)
 
@@ -94,15 +94,15 @@ func (b *Bot) createSettingsKeyboard(language string, userID int64) *telego.Inli
 		}
 	}
 
-	// Для имени и фамилии отображаем текущие значения
+	// Для имени и никнейма отображаем текущие значения
 	firstName := user.FirstName
 	if firstName == "" {
 		firstName = "-"
 	}
 
-	lastName := user.LastName
-	if lastName == "" {
-		lastName = "-"
+	nickname := user.Nickname
+	if nickname == "" {
+		nickname = "-"
 	}
 
 	// Для адреса кошелька отображаем текущее значение или маскированное
@@ -126,7 +126,7 @@ func (b *Bot) createSettingsKeyboard(language string, userID int64) *telego.Inli
 				{Text: fmt.Sprintf("%s: %s", btnNameText, firstName), CallbackData: CallbackSettingsName},
 			},
 			{
-				{Text: fmt.Sprintf("%s: %s", btnLastNameText, lastName), CallbackData: CallbackSettingsLastName},
+				{Text: fmt.Sprintf("%s: %s", btnNicknameText, nickname), CallbackData: CallbackSettingsNickName},
 			},
 			{
 				{Text: fmt.Sprintf("%s: %s", btnWalletText, walletAddress), CallbackData: CallbackSettingsWallet},
@@ -144,7 +144,7 @@ func (b *Bot) createBasicSettingsKeyboard(language string) *telego.InlineKeyboar
 	btnLanguageText := b.service.GetText("btn_settings_language", language)
 	btnCountryText := b.service.GetText("btn_settings_country", language)
 	btnNameText := b.service.GetText("btn_settings_name", language)
-	btnLastNameText := b.service.GetText("btn_settings_lastname", language)
+	btnNicknameText := b.service.GetText("btn_settings_nickname", language)
 	btnWalletText := b.service.GetText("btn_settings_wallet", language) // Новая локализация
 	btnBackText := b.service.GetText("btn_back_to_main", language)
 
@@ -160,7 +160,7 @@ func (b *Bot) createBasicSettingsKeyboard(language string) *telego.InlineKeyboar
 				{Text: btnNameText, CallbackData: CallbackSettingsName},
 			},
 			{
-				{Text: btnLastNameText, CallbackData: CallbackSettingsLastName},
+				{Text: btnNicknameText, CallbackData: CallbackSettingsNickName},
 			},
 			{
 				{Text: btnWalletText, CallbackData: CallbackSettingsWallet},
