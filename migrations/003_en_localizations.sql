@@ -250,6 +250,9 @@ You need %d more points to participate in the distribution of the weekly reward.
     ('usdtchange', 'en', 'Change address'),
     ('no_wallet_address', 'en', 'To withdraw funds, you need to specify a wallet address in your profile settings.'),
     ('go_to_settings', 'en', 'Go to settings'),
+    ('withdrawusdtsumcheck', 'en', 'The address has been successfully confirmed. %.2f USDT is available for withdrawal. The transaction fee - %.2f USDT - will be deducted from the withdrawal amount. Withdraw the entire available balance or enter the amount to withdraw in response, using only numbers, do not exceed the amount on the balance.'),
+    ('withdrawusdtall', 'en', 'All'),
+    ('withdrawusdtamount', 'en', 'Enter the amount'),
     ('insufficient_balance', 'en', 'Insufficient amount for withdrawal. Minimum amount: 10 USDT'),
     ('withdrawal_error', 'en', 'Error creating withdrawal request. Please try again later.'),
     ('withdrawal_success', 'en', 'Withdrawal request for %.2f USDT successfully created. Funds will be sent to wallet %s within 24 hours.');

@@ -13,11 +13,16 @@ import (
 const (
 	CallbackRequestWithdraw = "request_withdraw"
 	CallbackCheckWallet     = "check_wallet"
+	CallbackCheckAmount     = "withdraw_check_amount"
+	CallbackSetAmount       = "withdraw_set_amount"
 	CallbackProcessWithdraw = "process_withdraw"
 )
 
 // Константа с минимальной суммой для вывода, которую далее заменяем на получение из настроек
 const MinWithdrawalAmount = 10.0
+
+// Константа с комиссией
+const FeeAmount = 1.0
 
 // handleAccountCommand обрабатывает команду "Аккаунт" из главного меню
 func (b *Bot) handleAccountCommand(message *telego.Message) {
@@ -321,11 +326,11 @@ func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 	walletTemplate := b.service.GetText("withdrawusdtcheck", language)
 	checkWalletText := fmt.Sprintf(walletTemplate, dbUser.WalletAddress)
 
-	// Создаем кнопку для запроса вывода
+	// Создаем кнопку для подтверждения суммы
 	walletOKButtonText := b.service.GetText("usdtok", language)
 	walletOKButton := telego.InlineKeyboardButton{
 		Text:         walletOKButtonText,
-		CallbackData: CallbackProcessWithdraw,
+		CallbackData: CallbackCheckAmount,
 	}
 
 	// Создаем кнопку для перехода в настройки
@@ -353,7 +358,63 @@ func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 	}
 }
 
-// handleProcessWithdrawCallback обрабатывает нажатие на кнопку "Подтвердить адрес" в разделе вывода
+// handleCheckAmountCallback обрабатывает нажатие на кнопку "Подтвердить адрес" в разделе вывода
+func (b *Bot) handleCheckAmountCallback(query *telego.CallbackQuery) {
+	user := query.From
+
+	// Получаем информацию о пользователе
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user for withdrawal: %v", err)
+		return
+	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Отвечаем на callback, чтобы убрать индикатор загрузки
+	b.answerCallbackQuery(query.ID, "", false)
+
+	// Выводим сообщение с доступной суммой, комиссией и предложением вывести все или часть сумы
+	checkAmountTemplate := b.service.GetText("withdrawusdtsumcheck", language)
+	checkAmountText := fmt.Sprintf(checkAmountTemplate, dbUser.Balance, FeeAmount)
+
+	// Создаем кнопку для запроса вывода всей суммы
+	amountAllButtonText := b.service.GetText("withdrawusdtall", language)
+	amountAllButton := telego.InlineKeyboardButton{
+		Text:         amountAllButtonText,
+		CallbackData: CallbackProcessWithdraw,
+	}
+
+	// Создаем кнопку для указания суммы для вывода
+	amountAmountButtonText := b.service.GetText("withdrawusdtamount", language)
+	amountAmountButton := telego.InlineKeyboardButton{
+		Text:         amountAmountButtonText,
+		CallbackData: CallbackSetAmount,
+	}
+
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				amountAllButton,
+				amountAmountButton, // не работает
+			},
+		},
+	}
+
+	if query.Message != nil {
+		b.SendMessage(query.Message.Chat.ID, MessageOptions{
+			Text:           checkAmountText,
+			InlineKeyboard: inlineKeyboard,
+			ReplyKeyboard:  b.createAccountKeyboard(language),
+		})
+	}
+}
+
+// handleProcessWithdrawCallback обрабатывает нажатие на кнопку "Вывести всю суму" в разделе вывода
 func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 	user := query.From
 

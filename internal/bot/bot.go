@@ -1217,6 +1217,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.handleRequestWithdrawCallback(query)
 	case CallbackCheckWallet:
 		b.handleCheckWalletCallback(query)
+	case CallbackCheckAmount:
+		b.handleCheckAmountCallback(query)
 	case CallbackProcessWithdraw:
 		b.handleProcessWithdrawCallback(query)
 	case "stop_game":
