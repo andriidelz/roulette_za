@@ -12,6 +12,7 @@ import (
 
 const (
 	CallbackRequestWithdraw = "request_withdraw"
+	CallbackCheckWallet     = "check_wallet"
 	CallbackProcessWithdraw = "process_withdraw"
 )
 
@@ -186,11 +187,11 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 		withdrawTemplate := b.service.GetText("withdrawok", language)
 		withdrawText := fmt.Sprintf(withdrawTemplate, dbUser.Balance)
 
-		// Создаем кнопку для запроса вывода
+		// Создаем кнопку для проверки кошелька
 		processButtonText := b.service.GetText("withdrawproc", language)
 		processButton := telego.InlineKeyboardButton{
 			Text:         processButtonText,
-			CallbackData: CallbackProcessWithdraw,
+			CallbackData: CallbackCheckWallet,
 		}
 
 		inlineKeyboard := &telego.InlineKeyboardMarkup{
@@ -268,8 +269,8 @@ func (b *Bot) handleRequestWithdrawCallback(query *telego.CallbackQuery) {
 	}
 }
 
-// handleProcessWithdrawCallback обрабатывает нажатие на кнопку "Запросить вывод" в разделе вывода
-func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
+// handleCheckWalletCallback обрабатывает нажатие на кнопку "Запросить вывод" в разделе вывода
+func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 	user := query.From
 
 	// Получаем информацию о пользователе
@@ -316,6 +317,61 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 		}
 		return
 	}
+
+	walletTemplate := b.service.GetText("withdrawusdtcheck", language)
+	checkWalletText := fmt.Sprintf(walletTemplate, dbUser.WalletAddress)
+
+	// Создаем кнопку для запроса вывода
+	walletOKButtonText := b.service.GetText("usdtok", language)
+	walletOKButton := telego.InlineKeyboardButton{
+		Text:         walletOKButtonText,
+		CallbackData: CallbackProcessWithdraw,
+	}
+
+	// Создаем кнопку для перехода в настройки
+	walletNoButtonText := b.service.GetText("go_to_settings", language)
+	walletNoButton := telego.InlineKeyboardButton{
+		Text:         walletNoButtonText,
+		CallbackData: CallbackSettingsWallet, // Это колбэк для перехода в настройки кошелька
+	}
+
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				walletOKButton,
+				walletNoButton,
+			},
+		},
+	}
+
+	if query.Message != nil {
+		b.SendMessage(query.Message.Chat.ID, MessageOptions{
+			Text:           checkWalletText,
+			InlineKeyboard: inlineKeyboard,
+			ReplyKeyboard:  b.createAccountKeyboard(language),
+		})
+	}
+}
+
+// handleProcessWithdrawCallback обрабатывает нажатие на кнопку "Подтвердить адрес" в разделе вывода
+func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
+	user := query.From
+
+	// Получаем информацию о пользователе
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user for withdrawal: %v", err)
+		return
+	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Отвечаем на callback, чтобы убрать индикатор загрузки
+	b.answerCallbackQuery(query.ID, "", false)
 
 	// Проверяем, что сумма больше минимальной
 	minWithdrawal := MinWithdrawalAmount
