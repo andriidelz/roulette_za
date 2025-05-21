@@ -24,6 +24,7 @@ const (
 	StateInputWallet     = "input_wallet"
 	StateInputNickname   = "input_nickname"        // создание никнейма при регистрации
 	StateInputUpNickname = "input_update_nickname" // обновление никнейма в настройках
+	StateInputWithdraw   = "input_withdraw"        // сумма для вывода
 )
 
 // NewStateManager создает новый экземпляр менеджера состояний

@@ -666,6 +666,11 @@ func (b *Bot) handleMessage(message *telego.Message) {
 				b.stateManager.ClearState(user.ID)
 				return
 			}
+		case StateInputWithdraw:
+			// Обработка ввода суммы для вывода
+			if len(message.Text) > 0 {
+				b.handleInputWithdrawCommand(message)
+			}
 		}
 
 	}
@@ -1219,6 +1224,21 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.handleCheckWalletCallback(query)
 	case CallbackCheckAmount:
 		b.handleCheckAmountCallback(query)
+	case CallbackSetAmount:
+		withdrawText := b.service.GetText("withdrawusdtsumam", language)
+
+		// Посылаем сообщение и запрашиваем сумму для вывода
+		if query.Message != nil {
+			// Устанавливаем состояние ожидания суммы для вывода
+			b.stateManager.SetState(user.ID, StateInputWithdraw, query.Message.MessageID)
+
+			b.SendMessage(query.Message.Chat.ID, MessageOptions{
+				Text:          withdrawText,
+				ReplyKeyboard: b.createAccountKeyboard(language),
+			})
+		}
+		return
+
 	case CallbackProcessWithdraw:
 		b.handleProcessWithdrawCallback(query)
 	case "stop_game":

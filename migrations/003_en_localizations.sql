@@ -253,6 +253,10 @@ You need %d more points to participate in the distribution of the weekly reward.
     ('withdrawusdtsumcheck', 'en', 'The address has been successfully confirmed. %.2f USDT is available for withdrawal. The transaction fee - %.2f USDT - will be deducted from the withdrawal amount. Withdraw the entire available balance or enter the amount to withdraw in response, using only numbers, do not exceed the amount on the balance.'),
     ('withdrawusdtall', 'en', 'All'),
     ('withdrawusdtamount', 'en', 'Enter the amount'),
+    ('withdrawusdtsumam', 'en', 'Write in response the amount to be withdrawn, using only numbers, not exceeding the amount on the balance'),
+    ('withdrawusdtsumerror', 'en', 'The message is incorrect, please use only numbers to enter'),
+    ('withdrawusdtsumstop', 'en', 'If you want to stop the output, you can return to the main menu or select the next action from the bottom menu.'),
+    ('withdrawusdtsumbig', 'en', 'Unfortunately, the amount on your balance available for withdrawal is less. Please reply with the amount for withdrawal, using only numbers that do not exceed the amount on your balance.'),
     ('insufficient_balance', 'en', 'Insufficient amount for withdrawal. Minimum amount: 10 USDT'),
     ('withdrawal_error', 'en', 'Error creating withdrawal request. Please try again later.'),
     ('withdrawal_success', 'en', 'Withdrawal request for %.2f USDT successfully created. Funds will be sent to wallet %s within 24 hours.');

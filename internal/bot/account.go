@@ -5,6 +5,7 @@ import (
 	"log"
 	"roulette/internal/models"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mymmrac/telego"
@@ -234,6 +235,119 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 	}()
 }
 
+// handleInputWithdrawCommand обрабатывает введение сумы на вывод
+func (b *Bot) handleInputWithdrawCommand(message *telego.Message) {
+
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Получаем информацию о пользователе для проверки баланса
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user: %v", err)
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text: b.service.GetText("error_retrieving_data", language),
+		})
+		return
+	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	if dbUser.LanguageCode != "" {
+		language = dbUser.LanguageCode
+	}
+
+	// Проверка валидности суммы
+	amountText := strings.TrimSpace(message.Text)
+
+	withdrawAmount, err := strconv.ParseFloat(amountText, 64)
+	if err != nil {
+		// Неверный формат суммы
+		invalidAmountText := b.service.GetText("withdrawusdtsumerror", language)
+
+		// Отправляем сообщение об ошибке
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text:          invalidAmountText,
+			ReplyKeyboard: b.createAccountKeyboard(language),
+		})
+		return
+	}
+
+	if dbUser.Balance < withdrawAmount {
+		// Если сумма недостаточна, сообщаем об этом
+		insufficientText := b.service.GetText("withdrawusdtsumbig", language)
+
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text:          insufficientText,
+			ReplyKeyboard: b.createAccountKeyboard(language),
+		})
+		return
+	}
+
+	// Проверяем, что сумма больше минимальной
+	minWithdrawal := MinWithdrawalAmount
+
+	// Получаем настройку минимального вывода (если есть)
+	settings, err := b.service.GetSettings()
+	if err == nil {
+		if minWithdrawalStr, exists := settings["minimum_withdrawal"]; exists && minWithdrawalStr != "" {
+			// Пытаемся преобразовать значение
+			if val, err := strconv.ParseFloat(minWithdrawalStr, 64); err == nil {
+				minWithdrawal = val
+			}
+		}
+	}
+
+	if withdrawAmount < minWithdrawal {
+		// Если сумма недостаточна, сообщаем об этом
+		insufficientText := b.service.GetText("insufficient_balance", language)
+
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text:          insufficientText,
+			ReplyKeyboard: b.createAccountKeyboard(language),
+		})
+		return
+	}
+
+	// Создаем запрос на вывод средств
+	withdrawal := &models.Withdrawal{
+		UserID:    dbUser.ID,
+		Amount:    withdrawAmount,
+		Status:    "pending",
+		Wallet:    dbUser.WalletAddress,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := b.service.CreateWithdrawal(withdrawal); err != nil {
+		log.Printf("Error creating withdrawal request: %v", err)
+		errorText := b.service.GetText("withdrawal_error", language)
+
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text:          errorText,
+			ReplyKeyboard: b.createAccountKeyboard(language),
+		})
+		return
+	}
+
+	// Уменьшаем баланс пользователя
+	dbUser.Balance -= withdrawAmount // Уменьшаем баланс на введенную суму
+	if err := b.service.UpdateUser(dbUser); err != nil {
+		log.Printf("Error updating user balance: %v", err)
+	}
+
+	// Отправляем сообщение об успешном создании запроса
+	successTemplate := b.service.GetText("withdrawal_success", language)
+	successText := fmt.Sprintf(successTemplate, withdrawal.Amount, dbUser.WalletAddress)
+
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:          successText,
+		ReplyKeyboard: b.createAccountKeyboard(language),
+	})
+}
+
 // Новые обработчики для колбэков
 
 // handleRequestWithdrawCallback обрабатывает нажатие на кнопку "Заказать вывод" в разделе баланса
@@ -400,7 +514,7 @@ func (b *Bot) handleCheckAmountCallback(query *telego.CallbackQuery) {
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
 				amountAllButton,
-				amountAmountButton, // не работает
+				amountAmountButton,
 			},
 		},
 	}
