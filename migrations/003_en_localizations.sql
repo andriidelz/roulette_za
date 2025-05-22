@@ -245,7 +245,7 @@ You need %d more points to participate in the distribution of the weekly reward.
     ('balancenext', 'en', 'Select the next action with your personal account or return to the main menu'),
     ('withdrawproc', 'en', 'Request withdrawal'),
     ('withdrawlownext', 'en', 'Select the next action with your personal account or return to the main menu'),
-    ('withdrawusdtcheck', 'en', 'The USDT withdrawal address specified in your account is %s. Please check and confirm the address or change it. Sending USDT to an invalid address cannot be undone.'),
+    ('withdrawusdtcheck', 'en', 'The USDT withdrawal address specified in your account is <pre>%s</pre>. Please check and confirm the address or change it. Sending USDT to an invalid address cannot be undone.'),
     ('usdtok', 'en', 'Accept address'),
     ('usdtchange', 'en', 'Change address'),
     ('no_wallet_address', 'en', 'To withdraw funds, you need to specify a wallet address in your profile settings.'),
@@ -259,7 +259,7 @@ You need %d more points to participate in the distribution of the weekly reward.
     ('withdrawusdtsumbig', 'en', 'Unfortunately, the amount on your balance available for withdrawal is less. Please reply with the amount for withdrawal, using only numbers that do not exceed the amount on your balance.'),
     ('insufficient_balance', 'en', 'Insufficient amount for withdrawal. Minimum amount: 10 USDT'),
     ('withdrawal_error', 'en', 'Error creating withdrawal request. Please try again later.'),
-    ('withdrawal_success', 'en', 'Withdrawal request for %.2f USDT successfully created. Funds will be sent to wallet %s within 24 hours.');
+    ('withdrawsumok', 'en', 'Withdrawal request for %.2f USDT successfully created. Funds will be sent to wallet %s within 24 hours.');
 
 INSERT INTO localizations (key, language, value) VALUES
     ('agemes', 'en', 'Please confirm that you are over 18 years old'),

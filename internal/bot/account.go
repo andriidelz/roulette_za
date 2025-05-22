@@ -251,6 +251,7 @@ func (b *Bot) handleInputWithdrawCommand(message *telego.Message) {
 		b.SendMessage(message.Chat.ID, MessageOptions{
 			Text: b.service.GetText("error_retrieving_data", language),
 		})
+		b.stateManager.ClearState(user.ID)
 		return
 	}
 
@@ -272,6 +273,30 @@ func (b *Bot) handleInputWithdrawCommand(message *telego.Message) {
 			Text:          invalidAmountText,
 			ReplyKeyboard: b.createAccountKeyboard(language),
 		})
+
+		// Отправляем сообщение с предложением остановить вывод и вернуться в меню через 1 секунду
+		go func() {
+			time.Sleep(1 * time.Second)
+			withdrawNextText := b.service.GetText("withdrawusdtsumstop", language)
+
+			// Создаем кнопку для возврата в главное меню
+			exitAccText := b.service.GetText("exitacc", language)
+			exitAccButton := telego.InlineKeyboardButton{
+				Text:         exitAccText,
+				CallbackData: CallbackBack,
+			}
+			inlineKeyboard := &telego.InlineKeyboardMarkup{
+				InlineKeyboard: [][]telego.InlineKeyboardButton{
+					{exitAccButton},
+				},
+			}
+
+			b.SendMessage(message.Chat.ID, MessageOptions{
+				Text:           withdrawNextText,
+				InlineKeyboard: inlineKeyboard,
+				ReplyKeyboard:  b.createAccountKeyboard(language),
+			})
+		}()
 		return
 	}
 
@@ -283,6 +308,30 @@ func (b *Bot) handleInputWithdrawCommand(message *telego.Message) {
 			Text:          insufficientText,
 			ReplyKeyboard: b.createAccountKeyboard(language),
 		})
+
+		// Отправляем сообщение с предложением остановить вывод и вернуться в меню через 1 секунду
+		go func() {
+			time.Sleep(1 * time.Second)
+			withdrawNextText := b.service.GetText("withdrawusdtsumstop", language)
+
+			// Создаем кнопку для возврата в главное меню
+			exitAccText := b.service.GetText("exitacc", language)
+			exitAccButton := telego.InlineKeyboardButton{
+				Text:         exitAccText,
+				CallbackData: CallbackBack,
+			}
+			inlineKeyboard := &telego.InlineKeyboardMarkup{
+				InlineKeyboard: [][]telego.InlineKeyboardButton{
+					{exitAccButton},
+				},
+			}
+
+			b.SendMessage(message.Chat.ID, MessageOptions{
+				Text:           withdrawNextText,
+				InlineKeyboard: inlineKeyboard,
+				ReplyKeyboard:  b.createAccountKeyboard(language),
+			})
+		}()
 		return
 	}
 
@@ -321,6 +370,8 @@ func (b *Bot) handleInputWithdrawCommand(message *telego.Message) {
 		UpdatedAt: time.Now(),
 	}
 
+	b.stateManager.ClearState(user.ID)
+
 	if err := b.service.CreateWithdrawal(withdrawal); err != nil {
 		log.Printf("Error creating withdrawal request: %v", err)
 		errorText := b.service.GetText("withdrawal_error", language)
@@ -339,12 +390,25 @@ func (b *Bot) handleInputWithdrawCommand(message *telego.Message) {
 	}
 
 	// Отправляем сообщение об успешном создании запроса
-	successTemplate := b.service.GetText("withdrawal_success", language)
+	successTemplate := b.service.GetText("withdrawsumok", language)
 	successText := fmt.Sprintf(successTemplate, withdrawal.Amount, dbUser.WalletAddress)
 
+	// Создаем кнопку для возврата в главное меню
+	exitAccText := b.service.GetText("exitacc", language)
+	exitAccButton := telego.InlineKeyboardButton{
+		Text:         exitAccText,
+		CallbackData: CallbackBack,
+	}
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{exitAccButton},
+		},
+	}
+
 	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          successText,
-		ReplyKeyboard: b.createAccountKeyboard(language),
+		Text:           successText,
+		InlineKeyboard: inlineKeyboard,
+		ReplyKeyboard:  b.createAccountKeyboard(language),
 	})
 }
 
@@ -465,6 +529,7 @@ func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 
 	if query.Message != nil {
 		b.SendMessage(query.Message.Chat.ID, MessageOptions{
+			ParseMode:      telego.ModeHTML, // Добавляем поддержу верстки HTML
 			Text:           checkWalletText,
 			InlineKeyboard: inlineKeyboard,
 			ReplyKeyboard:  b.createAccountKeyboard(language),
@@ -605,7 +670,7 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 	}
 
 	// Отправляем сообщение об успешном создании запроса
-	successTemplate := b.service.GetText("withdrawal_success", language)
+	successTemplate := b.service.GetText("withdrawsumok", language)
 	successText := fmt.Sprintf(successTemplate, withdrawal.Amount, dbUser.WalletAddress)
 
 	if query.Message != nil {
