@@ -13,10 +13,12 @@ import (
 
 const (
 	CallbackRequestWithdraw = "request_withdraw"
-	CallbackCheckWallet     = "check_wallet"
+	CallbackCheckWallet     = "withdraw_check_wallet"
+	CallbackChangeWallet    = "withdraw_change_wallet"
 	CallbackCheckAmount     = "withdraw_check_amount"
 	CallbackSetAmount       = "withdraw_set_amount"
 	CallbackProcessWithdraw = "process_withdraw"
+	CallbackCancelInput     = "withdraw_cancel_input"
 )
 
 // Константа с минимальной суммой для вывода, которую далее заменяем на получение из настроек
@@ -235,8 +237,8 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 	}()
 }
 
-// handleInputWithdrawCommand обрабатывает введение сумы на вывод
-func (b *Bot) handleInputWithdrawCommand(message *telego.Message) {
+// handleInputWithdrawAmountCommand обрабатывает введение сумы на вывод
+func (b *Bot) handleInputWithdrawAmountCommand(message *telego.Message) {
 
 	user := message.From
 	language := user.LanguageCode
@@ -277,25 +279,7 @@ func (b *Bot) handleInputWithdrawCommand(message *telego.Message) {
 		// Отправляем сообщение с предложением остановить вывод и вернуться в меню через 1 секунду
 		go func() {
 			time.Sleep(1 * time.Second)
-			withdrawNextText := b.service.GetText("withdrawusdtsumstop", language)
-
-			// Создаем кнопку для возврата в главное меню
-			exitAccText := b.service.GetText("exitacc", language)
-			exitAccButton := telego.InlineKeyboardButton{
-				Text:         exitAccText,
-				CallbackData: CallbackBack,
-			}
-			inlineKeyboard := &telego.InlineKeyboardMarkup{
-				InlineKeyboard: [][]telego.InlineKeyboardButton{
-					{exitAccButton},
-				},
-			}
-
-			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text:           withdrawNextText,
-				InlineKeyboard: inlineKeyboard,
-				ReplyKeyboard:  b.createAccountKeyboard(language),
-			})
+			b.sendCancelMessage(message.Chat.ID, language)
 		}()
 		return
 	}
@@ -312,25 +296,7 @@ func (b *Bot) handleInputWithdrawCommand(message *telego.Message) {
 		// Отправляем сообщение с предложением остановить вывод и вернуться в меню через 1 секунду
 		go func() {
 			time.Sleep(1 * time.Second)
-			withdrawNextText := b.service.GetText("withdrawusdtsumstop", language)
-
-			// Создаем кнопку для возврата в главное меню
-			exitAccText := b.service.GetText("exitacc", language)
-			exitAccButton := telego.InlineKeyboardButton{
-				Text:         exitAccText,
-				CallbackData: CallbackBack,
-			}
-			inlineKeyboard := &telego.InlineKeyboardMarkup{
-				InlineKeyboard: [][]telego.InlineKeyboardButton{
-					{exitAccButton},
-				},
-			}
-
-			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text:           withdrawNextText,
-				InlineKeyboard: inlineKeyboard,
-				ReplyKeyboard:  b.createAccountKeyboard(language),
-			})
+			b.sendCancelMessage(message.Chat.ID, language)
 		}()
 		return
 	}
@@ -357,6 +323,12 @@ func (b *Bot) handleInputWithdrawCommand(message *telego.Message) {
 			Text:          insufficientText,
 			ReplyKeyboard: b.createAccountKeyboard(language),
 		})
+
+		// Отправляем сообщение с предложением остановить вывод и вернуться в меню через 1 секунду
+		go func() {
+			time.Sleep(1 * time.Second)
+			b.sendCancelMessage(message.Chat.ID, language)
+		}()
 		return
 	}
 
@@ -397,7 +369,7 @@ func (b *Bot) handleInputWithdrawCommand(message *telego.Message) {
 	exitAccText := b.service.GetText("exitacc", language)
 	exitAccButton := telego.InlineKeyboardButton{
 		Text:         exitAccText,
-		CallbackData: CallbackBack,
+		CallbackData: CallbackSettingsMainMenu,
 	}
 	inlineKeyboard := &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
@@ -410,6 +382,88 @@ func (b *Bot) handleInputWithdrawCommand(message *telego.Message) {
 		InlineKeyboard: inlineKeyboard,
 		ReplyKeyboard:  b.createAccountKeyboard(language),
 	})
+}
+
+// handleInputWithdrawWalletCommand обрабатывает введение кошелька
+func (b *Bot) handleInputWithdrawWalletCommand(message *telego.Message) {
+
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Получаем информацию о пользователе
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user: %v", err)
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text: b.service.GetText("error_retrieving_data", language),
+		})
+		b.stateManager.ClearState(user.ID)
+		return
+	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	if dbUser.LanguageCode != "" {
+		language = dbUser.LanguageCode
+	}
+
+	// Проверка валидности адреса кошелька (базовая проверка)
+	walletAddress := strings.TrimSpace(message.Text)
+
+	// Базовая валидация адреса TRC20
+	if !strings.HasPrefix(walletAddress, "T") || len(walletAddress) < 30 {
+		// Неверный формат кошелька
+		invalidWalletText := b.service.GetText("withdrawusdtchangeerror", language)
+
+		// Отправляем сообщение об ошибке
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text:          invalidWalletText,
+			ReplyKeyboard: b.createAccountKeyboard(language),
+		})
+
+		// Отправляем сообщение с предложением остановить вывод и вернуться в меню через 1 секунду
+		go func() {
+			time.Sleep(1 * time.Second)
+			b.sendCancelMessage(message.Chat.ID, language)
+		}()
+
+		return
+	}
+
+	// Обновляем адрес кошелька пользователя
+	dbUser.WalletAddress = walletAddress
+	if err := b.service.UpdateUser(dbUser); err != nil {
+		log.Printf("Error updating user wallet address: %v", err)
+	}
+
+	// Отправляем сообщение об успешном обновлении
+	successText := b.service.GetText("withdrawusdtchangeok", user.LanguageCode)
+
+	// Создаем кнопку для подтверждения кошелька
+	walletOKButtonText := b.service.GetText("usdtok", language)
+	walletOKButton := telego.InlineKeyboardButton{
+		Text:         walletOKButtonText,
+		CallbackData: CallbackCheckAmount,
+	}
+
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				walletOKButton,
+			},
+		},
+	}
+
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:           successText,
+		InlineKeyboard: inlineKeyboard,
+		ReplyKeyboard:  b.createAccountKeyboard(language),
+	})
+
+	// Очищаем состояние
+	b.stateManager.ClearState(user.ID)
 }
 
 // Новые обработчики для колбэков
@@ -478,16 +532,16 @@ func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 		// и предлагаем заполнить его в настройках
 		noWalletText := b.service.GetText("no_wallet_address", language)
 
-		// Создаем кнопку для перехода в настройки
-		settingsButtonText := b.service.GetText("go_to_settings", language)
-		settingsButton := telego.InlineKeyboardButton{
-			Text:         settingsButtonText,
-			CallbackData: CallbackSettingsWallet, // Это колбэк для перехода в настройки кошелька
+		// Создаем кнопку для указания кошелька
+		walletChangeButtonText := b.service.GetText("usdtchange", language)
+		walletChangeButton := telego.InlineKeyboardButton{
+			Text:         walletChangeButtonText,
+			CallbackData: CallbackChangeWallet,
 		}
 
 		inlineKeyboard := &telego.InlineKeyboardMarkup{
 			InlineKeyboard: [][]telego.InlineKeyboardButton{
-				{settingsButton},
+				{walletChangeButton},
 			},
 		}
 
@@ -504,25 +558,25 @@ func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 	walletTemplate := b.service.GetText("withdrawusdtcheck", language)
 	checkWalletText := fmt.Sprintf(walletTemplate, dbUser.WalletAddress)
 
-	// Создаем кнопку для подтверждения суммы
+	// Создаем кнопку для подтверждения кошелька
 	walletOKButtonText := b.service.GetText("usdtok", language)
 	walletOKButton := telego.InlineKeyboardButton{
 		Text:         walletOKButtonText,
 		CallbackData: CallbackCheckAmount,
 	}
 
-	// Создаем кнопку для перехода в настройки
-	walletNoButtonText := b.service.GetText("go_to_settings", language)
-	walletNoButton := telego.InlineKeyboardButton{
-		Text:         walletNoButtonText,
-		CallbackData: CallbackSettingsWallet, // Это колбэк для перехода в настройки кошелька
+	// Создаем кнопку для изменения кошелька
+	walletChangeButtonText := b.service.GetText("usdtchange", language)
+	walletChangeButton := telego.InlineKeyboardButton{
+		Text:         walletChangeButtonText,
+		CallbackData: CallbackChangeWallet,
 	}
 
 	inlineKeyboard := &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
 				walletOKButton,
-				walletNoButton,
+				walletChangeButton,
 			},
 		},
 	}
@@ -679,4 +733,34 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 			ReplyKeyboard: b.createAccountKeyboard(language),
 		})
 	}
+}
+
+// sendChancelMessage отправляет сообщение с предложением остановить вывод и вернуться в меню
+func (b *Bot) sendCancelMessage(chatID int64, language string) {
+
+	withdrawNextText := b.service.GetText("withdrawusdtsumstop", language)
+
+	// Создаем кнопку для возврата в главное меню
+	exitAccText := b.service.GetText("exitacc", language)
+	exitAccButton := telego.InlineKeyboardButton{
+		Text:         exitAccText,
+		CallbackData: CallbackSettingsMainMenu,
+	}
+	// Создаем кнопку отмены ввода
+	cancelText := b.service.GetText("withdrawcancel", language)
+	cancelButton := telego.InlineKeyboardButton{
+		Text:         cancelText,
+		CallbackData: CallbackCancelInput,
+	}
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{exitAccButton, cancelButton},
+		},
+	}
+
+	b.SendMessage(chatID, MessageOptions{
+		Text:           withdrawNextText,
+		InlineKeyboard: inlineKeyboard,
+		ReplyKeyboard:  b.createAccountKeyboard(language),
+	})
 }
