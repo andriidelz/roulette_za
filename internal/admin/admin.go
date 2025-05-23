@@ -153,6 +153,8 @@ func (a *AdminPanel) setupRoutes() {
 		admin.POST("/localization/:key", a.localizationSave)
 		admin.POST("/localization/:key/delete", a.localizationDelete)
 		admin.POST("/localization/add", a.localizationAdd)
+		admin.GET("/localization/export", a.localizationExport) // Export with ?lang=en/ru/uk or all
+		admin.POST("/localization/import", a.localizationImport)
 
 		admin.GET("/hashes", a.hashesPage)
 
