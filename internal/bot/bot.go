@@ -1874,6 +1874,10 @@ func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions)
 
 // sendText отправляет текстовое сообщение
 func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, error) {
+	if options.ParseMode == "" {
+		options.ParseMode = telego.ModeHTML
+	}
+
 	params := &telego.SendMessageParams{
 		ChatID:                telego.ChatID{ID: chatID},
 		Text:                  options.Text,
@@ -1908,6 +1912,10 @@ func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, e
 
 // updateText обновляет текстовое сообщение
 func (b *Bot) updateText(chatID int64, messageID int, options MessageOptions) (*telego.Message, error) {
+	if options.ParseMode == "" {
+		options.ParseMode = telego.ModeHTML
+	}
+
 	params := &telego.EditMessageTextParams{
 		ChatID:                telego.ChatID{ID: chatID},
 		MessageID:             messageID,
@@ -1936,6 +1944,10 @@ func (b *Bot) updateText(chatID int64, messageID int, options MessageOptions) (*
 
 // sendPhoto отправляет фото с подписью
 func (b *Bot) sendPhoto(chatID int64, options MessageOptions) (*telego.Message, error) {
+	if options.ParseMode == "" {
+		options.ParseMode = telego.ModeHTML
+	}
+
 	// Параметры для отправки
 	params := &telego.SendPhotoParams{
 		ChatID:              telego.ChatID{ID: chatID},
@@ -1991,6 +2003,10 @@ func (b *Bot) sendPhotoFile(chatID int64, photoPath string, params *telego.SendP
 
 // updatePhotoByFileID обновляет фото по FileID
 func (b *Bot) updatePhotoByFileID(chatID int64, messageID int, options MessageOptions) (*telego.Message, error) {
+	if options.ParseMode == "" {
+		options.ParseMode = telego.ModeHTML
+	}
+
 	// Создаем объект InputMediaPhoto с FileID
 	mediaPhoto := &telego.InputMediaPhoto{
 		Type:      "photo",
