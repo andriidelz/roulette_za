@@ -1343,7 +1343,6 @@ function editTemplate(id) {
     
     // Проверяем, что запрос на загрузку данных еще не был отправлен
     if (window.isLoadingTemplate) {
-        console.log('Загрузка шаблона уже выполняется, пропускаем повторный запрос');
         return;
     }
     
@@ -1405,14 +1404,12 @@ function editTemplate(id) {
             
             // Устанавливаем ключи локализации и загружаем значения
             if (data.title_key) {
-                console.log('Установка title_key:', data.title_key);
                 document.getElementById('title-key').value = data.title_key;
                 
                 // Загружаем локализации для заголовка
                 fetch(`/admin/api/localizations/${data.title_key}`)
                     .then(response => response.json())
                     .then(localizations => {
-                        console.log('Полученные локализации заголовка:', localizations);
                         // Заполняем поля локализаций
                         document.getElementById('title-en').value = localizations.en || '';
                         document.getElementById('title-ru').value = localizations.ru || '';
@@ -1424,14 +1421,12 @@ function editTemplate(id) {
             }
             
             if (data.message_key) {
-                console.log('Установка message_key:', data.message_key);
                 document.getElementById('message-key').value = data.message_key;
                 
                 // Загружаем локализации для сообщения
                 fetch(`/admin/api/localizations/${data.message_key}`)
                     .then(response => response.json())
                     .then(localizations => {
-                        console.log('Полученные локализации сообщения:', localizations);
                         // Заполняем поля локализаций
                         document.getElementById('message-en').value = localizations.en || '';
                         document.getElementById('message-ru').value = localizations.ru || '';
@@ -1459,7 +1454,6 @@ function editTemplate(id) {
             document.getElementById('button-settings').style.display = hasButton ? 'block' : 'none';
             
             if (hasButton) {
-                console.log('Установка button_text_key:', buttonTextKey);
                 document.getElementById('button-text-key').value = buttonTextKey;
                 document.getElementById('edit-button-url').value = buttonUrl;
                 document.getElementById('edit-button-callback').value = buttonCallback;
@@ -1469,7 +1463,6 @@ function editTemplate(id) {
                     fetch(`/admin/api/localizations/${buttonTextKey}`)
                         .then(response => response.json())
                         .then(localizations => {
-                            console.log('Полученные локализации кнопки:', localizations);
                             // Заполняем поля локализаций
                             document.getElementById('button-text-en').value = localizations.en || '';
                             document.getElementById('button-text-ru').value = localizations.ru || '';
@@ -1653,6 +1646,41 @@ function initLocalizationKeyHandlers() {
     
     // Обработчик изменения ключа кнопки
     document.getElementById('button-text-key').addEventListener('change', loadButtonLocalizations);
+}
+
+function initLocalizationCheckButtons() {
+    $('.localization-checkbox').on('change', function() {
+        const locale = $(this).data('locale');
+        const isChecked = $(this).is(':checked');
+        
+        if (isChecked) {
+            $(`.locale-fields[data-locale="${locale}"]`).show();
+        } else {
+            $(`.locale-fields[data-locale="${locale}"]`).hide();
+        }
+    });
+    
+    // Добавляем обработчик для чекбокса "Добавить кнопку"
+    $('#has-button').on('change', function() {        
+        if ($(this).is(':checked')) {
+            $('#button-settings').show();
+        } else {
+            $('#button-settings').hide();
+            // Очищаем поля кнопки при отключении
+            $('#button-text-key').val('');
+            $('#button-text-en').val('');
+            $('#button-text-ru').val('');
+            $('#button-text-uk').val('');
+            $('#edit-button-url').val('');
+            $('#edit-button-callback').val('');
+        }
+    });
+    
+    // Инициализация состояния при загрузке
+    $('.localization-checkbox:checked').each(function() {
+        const locale = $(this).data('locale');
+        $(`.locale-fields[data-locale="${locale}"]`).show();
+    });
 }
 
 // Добавим вызов инициализации при загрузке страницы
