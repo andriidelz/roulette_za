@@ -1743,7 +1743,7 @@ func (b *Bot) showStatisticsForPeriod(message *telego.Message, period string) {
 	})
 
 	// Отправляем сообщение с предложением выбрать другой период
-	statisticsNextText := b.service.GetText("statistics next", language)
+	statisticsNextText := b.service.GetText("statistics_next", language)
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          statisticsNextText,
 		ReplyKeyboard: b.createStatsKeyboard(language),
