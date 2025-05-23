@@ -5,6 +5,7 @@ import (
 	"log"
 	"roulette/internal/models"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mymmrac/telego"
@@ -12,11 +13,19 @@ import (
 
 const (
 	CallbackRequestWithdraw = "request_withdraw"
+	CallbackCheckWallet     = "withdraw_check_wallet"
+	CallbackChangeWallet    = "withdraw_change_wallet"
+	CallbackCheckAmount     = "withdraw_check_amount"
+	CallbackSetAmount       = "withdraw_set_amount"
 	CallbackProcessWithdraw = "process_withdraw"
+	CallbackCancelInput     = "withdraw_cancel_input"
 )
 
 // Константа с минимальной суммой для вывода, которую далее заменяем на получение из настроек
 const MinWithdrawalAmount = 10.0
+
+// Константа с комиссией
+const FeeAmount = 1.0
 
 // handleAccountCommand обрабатывает команду "Аккаунт" из главного меню
 func (b *Bot) handleAccountCommand(message *telego.Message) {
@@ -186,11 +195,11 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 		withdrawTemplate := b.service.GetText("withdrawok", language)
 		withdrawText := fmt.Sprintf(withdrawTemplate, dbUser.Balance)
 
-		// Создаем кнопку для запроса вывода
+		// Создаем кнопку для проверки кошелька
 		processButtonText := b.service.GetText("withdrawproc", language)
 		processButton := telego.InlineKeyboardButton{
 			Text:         processButtonText,
-			CallbackData: CallbackProcessWithdraw,
+			CallbackData: CallbackCheckWallet,
 		}
 
 		inlineKeyboard := &telego.InlineKeyboardMarkup{
@@ -226,6 +235,235 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 			ReplyKeyboard: b.createAccountKeyboard(language),
 		})
 	}()
+}
+
+// handleInputWithdrawAmountCommand обрабатывает введение сумы на вывод
+func (b *Bot) handleInputWithdrawAmountCommand(message *telego.Message) {
+
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Получаем информацию о пользователе для проверки баланса
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user: %v", err)
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text: b.service.GetText("error_retrieving_data", language),
+		})
+		b.stateManager.ClearState(user.ID)
+		return
+	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	if dbUser.LanguageCode != "" {
+		language = dbUser.LanguageCode
+	}
+
+	// Проверка валидности суммы
+	amountText := strings.TrimSpace(message.Text)
+
+	withdrawAmount, err := strconv.ParseFloat(amountText, 64)
+	if err != nil {
+		// Неверный формат суммы
+		invalidAmountText := b.service.GetText("withdrawusdtsumerror", language)
+
+		// Отправляем сообщение об ошибке
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text:          invalidAmountText,
+			ReplyKeyboard: b.createAccountKeyboard(language),
+		})
+
+		// Отправляем сообщение с предложением остановить вывод и вернуться в меню через 1 секунду
+		go func() {
+			time.Sleep(1 * time.Second)
+			b.sendCancelMessage(message.Chat.ID, language)
+		}()
+		return
+	}
+
+	if dbUser.Balance < withdrawAmount {
+		// Если сумма недостаточна, сообщаем об этом
+		insufficientText := b.service.GetText("withdrawusdtsumbig", language)
+
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text:          insufficientText,
+			ReplyKeyboard: b.createAccountKeyboard(language),
+		})
+
+		// Отправляем сообщение с предложением остановить вывод и вернуться в меню через 1 секунду
+		go func() {
+			time.Sleep(1 * time.Second)
+			b.sendCancelMessage(message.Chat.ID, language)
+		}()
+		return
+	}
+
+	// Проверяем, что сумма больше минимальной
+	minWithdrawal := MinWithdrawalAmount
+
+	// Получаем настройку минимального вывода (если есть)
+	settings, err := b.service.GetSettings()
+	if err == nil {
+		if minWithdrawalStr, exists := settings["minimum_withdrawal"]; exists && minWithdrawalStr != "" {
+			// Пытаемся преобразовать значение
+			if val, err := strconv.ParseFloat(minWithdrawalStr, 64); err == nil {
+				minWithdrawal = val
+			}
+		}
+	}
+
+	if withdrawAmount < minWithdrawal {
+		// Если сумма недостаточна, сообщаем об этом
+		insufficientText := b.service.GetText("insufficient_balance", language)
+
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text:          insufficientText,
+			ReplyKeyboard: b.createAccountKeyboard(language),
+		})
+
+		// Отправляем сообщение с предложением остановить вывод и вернуться в меню через 1 секунду
+		go func() {
+			time.Sleep(1 * time.Second)
+			b.sendCancelMessage(message.Chat.ID, language)
+		}()
+		return
+	}
+
+	// Создаем запрос на вывод средств
+	withdrawal := &models.Withdrawal{
+		UserID:    dbUser.ID,
+		Amount:    withdrawAmount,
+		Status:    "pending",
+		Wallet:    dbUser.WalletAddress,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	b.stateManager.ClearState(user.ID)
+
+	if err := b.service.CreateWithdrawal(withdrawal); err != nil {
+		log.Printf("Error creating withdrawal request: %v", err)
+		errorText := b.service.GetText("withdrawal_error", language)
+
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text:          errorText,
+			ReplyKeyboard: b.createAccountKeyboard(language),
+		})
+		return
+	}
+
+	// Уменьшаем баланс пользователя
+	dbUser.Balance -= withdrawAmount // Уменьшаем баланс на введенную суму
+	if err := b.service.UpdateUser(dbUser); err != nil {
+		log.Printf("Error updating user balance: %v", err)
+	}
+
+	// Отправляем сообщение об успешном создании запроса
+	successTemplate := b.service.GetText("withdrawsumok", language)
+	successText := fmt.Sprintf(successTemplate, withdrawal.Amount, dbUser.WalletAddress)
+
+	// Создаем кнопку для возврата в главное меню
+	exitAccText := b.service.GetText("exitacc", language)
+	exitAccButton := telego.InlineKeyboardButton{
+		Text:         exitAccText,
+		CallbackData: CallbackSettingsMainMenu,
+	}
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{exitAccButton},
+		},
+	}
+
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:           successText,
+		InlineKeyboard: inlineKeyboard,
+		ReplyKeyboard:  b.createAccountKeyboard(language),
+	})
+}
+
+// handleInputWithdrawWalletCommand обрабатывает введение кошелька
+func (b *Bot) handleInputWithdrawWalletCommand(message *telego.Message) {
+
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Получаем информацию о пользователе
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user: %v", err)
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text: b.service.GetText("error_retrieving_data", language),
+		})
+		b.stateManager.ClearState(user.ID)
+		return
+	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	if dbUser.LanguageCode != "" {
+		language = dbUser.LanguageCode
+	}
+
+	// Проверка валидности адреса кошелька (базовая проверка)
+	walletAddress := strings.TrimSpace(message.Text)
+
+	// Базовая валидация адреса TRC20
+	if !strings.HasPrefix(walletAddress, "T") || len(walletAddress) < 30 {
+		// Неверный формат кошелька
+		invalidWalletText := b.service.GetText("withdrawusdtchangeerror", language)
+
+		// Отправляем сообщение об ошибке
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text:          invalidWalletText,
+			ReplyKeyboard: b.createAccountKeyboard(language),
+		})
+
+		// Отправляем сообщение с предложением остановить вывод и вернуться в меню через 1 секунду
+		go func() {
+			time.Sleep(1 * time.Second)
+			b.sendCancelMessage(message.Chat.ID, language)
+		}()
+
+		return
+	}
+
+	// Обновляем адрес кошелька пользователя
+	dbUser.WalletAddress = walletAddress
+	if err := b.service.UpdateUser(dbUser); err != nil {
+		log.Printf("Error updating user wallet address: %v", err)
+	}
+
+	// Отправляем сообщение об успешном обновлении
+	successText := b.service.GetText("withdrawusdtchangeok", user.LanguageCode)
+
+	// Создаем кнопку для подтверждения кошелька
+	walletOKButtonText := b.service.GetText("usdtok", language)
+	walletOKButton := telego.InlineKeyboardButton{
+		Text:         walletOKButtonText,
+		CallbackData: CallbackCheckAmount,
+	}
+
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				walletOKButton,
+			},
+		},
+	}
+
+	b.SendMessage(message.Chat.ID, MessageOptions{
+		Text:           successText,
+		InlineKeyboard: inlineKeyboard,
+		ReplyKeyboard:  b.createAccountKeyboard(language),
+	})
+
+	// Очищаем состояние
+	b.stateManager.ClearState(user.ID)
 }
 
 // Новые обработчики для колбэков
@@ -268,8 +506,8 @@ func (b *Bot) handleRequestWithdrawCallback(query *telego.CallbackQuery) {
 	}
 }
 
-// handleProcessWithdrawCallback обрабатывает нажатие на кнопку "Запросить вывод" в разделе вывода
-func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
+// handleCheckWalletCallback обрабатывает нажатие на кнопку "Запросить вывод" в разделе вывода
+func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 	user := query.From
 
 	// Получаем информацию о пользователе
@@ -294,16 +532,16 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 		// и предлагаем заполнить его в настройках
 		noWalletText := b.service.GetText("no_wallet_address", language)
 
-		// Создаем кнопку для перехода в настройки
-		settingsButtonText := b.service.GetText("go_to_settings", language)
-		settingsButton := telego.InlineKeyboardButton{
-			Text:         settingsButtonText,
-			CallbackData: CallbackSettingsWallet, // Это колбэк для перехода в настройки кошелька
+		// Создаем кнопку для указания кошелька
+		walletChangeButtonText := b.service.GetText("usdtchange", language)
+		walletChangeButton := telego.InlineKeyboardButton{
+			Text:         walletChangeButtonText,
+			CallbackData: CallbackChangeWallet,
 		}
 
 		inlineKeyboard := &telego.InlineKeyboardMarkup{
 			InlineKeyboard: [][]telego.InlineKeyboardButton{
-				{settingsButton},
+				{walletChangeButton},
 			},
 		}
 
@@ -316,6 +554,118 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 		}
 		return
 	}
+
+	walletTemplate := b.service.GetText("withdrawusdtcheck", language)
+	checkWalletText := fmt.Sprintf(walletTemplate, dbUser.WalletAddress)
+
+	// Создаем кнопку для подтверждения кошелька
+	walletOKButtonText := b.service.GetText("usdtok", language)
+	walletOKButton := telego.InlineKeyboardButton{
+		Text:         walletOKButtonText,
+		CallbackData: CallbackCheckAmount,
+	}
+
+	// Создаем кнопку для изменения кошелька
+	walletChangeButtonText := b.service.GetText("usdtchange", language)
+	walletChangeButton := telego.InlineKeyboardButton{
+		Text:         walletChangeButtonText,
+		CallbackData: CallbackChangeWallet,
+	}
+
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				walletOKButton,
+				walletChangeButton,
+			},
+		},
+	}
+
+	if query.Message != nil {
+		b.SendMessage(query.Message.Chat.ID, MessageOptions{
+			ParseMode:      telego.ModeHTML, // Добавляем поддержу верстки HTML
+			Text:           checkWalletText,
+			InlineKeyboard: inlineKeyboard,
+			ReplyKeyboard:  b.createAccountKeyboard(language),
+		})
+	}
+}
+
+// handleCheckAmountCallback обрабатывает нажатие на кнопку "Подтвердить адрес" в разделе вывода
+func (b *Bot) handleCheckAmountCallback(query *telego.CallbackQuery) {
+	user := query.From
+
+	// Получаем информацию о пользователе
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user for withdrawal: %v", err)
+		return
+	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Отвечаем на callback, чтобы убрать индикатор загрузки
+	b.answerCallbackQuery(query.ID, "", false)
+
+	// Выводим сообщение с доступной суммой, комиссией и предложением вывести все или часть сумы
+	checkAmountTemplate := b.service.GetText("withdrawusdtsumcheck", language)
+	checkAmountText := fmt.Sprintf(checkAmountTemplate, dbUser.Balance, FeeAmount)
+
+	// Создаем кнопку для запроса вывода всей суммы
+	amountAllButtonText := b.service.GetText("withdrawusdtall", language)
+	amountAllButton := telego.InlineKeyboardButton{
+		Text:         amountAllButtonText,
+		CallbackData: CallbackProcessWithdraw,
+	}
+
+	// Создаем кнопку для указания суммы для вывода
+	amountAmountButtonText := b.service.GetText("withdrawusdtamount", language)
+	amountAmountButton := telego.InlineKeyboardButton{
+		Text:         amountAmountButtonText,
+		CallbackData: CallbackSetAmount,
+	}
+
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				amountAllButton,
+				amountAmountButton,
+			},
+		},
+	}
+
+	if query.Message != nil {
+		b.SendMessage(query.Message.Chat.ID, MessageOptions{
+			Text:           checkAmountText,
+			InlineKeyboard: inlineKeyboard,
+			ReplyKeyboard:  b.createAccountKeyboard(language),
+		})
+	}
+}
+
+// handleProcessWithdrawCallback обрабатывает нажатие на кнопку "Вывести всю суму" в разделе вывода
+func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
+	user := query.From
+
+	// Получаем информацию о пользователе
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		log.Printf("Error getting user for withdrawal: %v", err)
+		return
+	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Отвечаем на callback, чтобы убрать индикатор загрузки
+	b.answerCallbackQuery(query.ID, "", false)
 
 	// Проверяем, что сумма больше минимальной
 	minWithdrawal := MinWithdrawalAmount
@@ -374,7 +724,7 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 	}
 
 	// Отправляем сообщение об успешном создании запроса
-	successTemplate := b.service.GetText("withdrawal_success", language)
+	successTemplate := b.service.GetText("withdrawsumok", language)
 	successText := fmt.Sprintf(successTemplate, withdrawal.Amount, dbUser.WalletAddress)
 
 	if query.Message != nil {
@@ -383,4 +733,34 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 			ReplyKeyboard: b.createAccountKeyboard(language),
 		})
 	}
+}
+
+// sendChancelMessage отправляет сообщение с предложением остановить вывод и вернуться в меню
+func (b *Bot) sendCancelMessage(chatID int64, language string) {
+
+	withdrawNextText := b.service.GetText("withdrawusdtsumstop", language)
+
+	// Создаем кнопку для возврата в главное меню
+	exitAccText := b.service.GetText("exitacc", language)
+	exitAccButton := telego.InlineKeyboardButton{
+		Text:         exitAccText,
+		CallbackData: CallbackSettingsMainMenu,
+	}
+	// Создаем кнопку отмены ввода
+	cancelText := b.service.GetText("withdrawcancel", language)
+	cancelButton := telego.InlineKeyboardButton{
+		Text:         cancelText,
+		CallbackData: CallbackCancelInput,
+	}
+	inlineKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{exitAccButton, cancelButton},
+		},
+	}
+
+	b.SendMessage(chatID, MessageOptions{
+		Text:           withdrawNextText,
+		InlineKeyboard: inlineKeyboard,
+		ReplyKeyboard:  b.createAccountKeyboard(language),
+	})
 }

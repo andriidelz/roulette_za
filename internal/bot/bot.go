@@ -634,7 +634,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 				// Базовая валидация адреса TRC20
 				if !strings.HasPrefix(walletAddress, "T") || len(walletAddress) < 30 {
 					// Неверный формат кошелька
-					invalidWalletText := b.service.GetText("invalid_wallet_format", user.LanguageCode)
+					invalidWalletText := b.service.GetText("withdrawusdtchangeerror", user.LanguageCode)
 
 					// Создаем клавиатуру с кнопкой назад
 					backBtn := b.createBackBtnKeyboard(user.LanguageCode)
@@ -661,7 +661,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 				}
 
 				// Отправляем сообщение об успешном обновлении
-				successText := b.service.GetText("wallet_saved", user.LanguageCode)
+				successText := b.service.GetText("withdrawusdtchangeok", user.LanguageCode)
 				backBtn := b.createBackBtnKeyboard(user.LanguageCode)
 
 				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
@@ -671,6 +671,18 @@ func (b *Bot) handleMessage(message *telego.Message) {
 
 				// Очищаем состояние
 				b.stateManager.ClearState(user.ID)
+				return
+			}
+		case StateInputWithdrawAmount:
+			// Обработка ввода суммы для вывода
+			if len(message.Text) > 0 {
+				b.handleInputWithdrawAmountCommand(message)
+				return
+			}
+		case StateInputWithdrawWallet:
+			// Обработка ввода изменения кошелька для вывода
+			if len(message.Text) > 0 {
+				b.handleInputWithdrawWalletCommand(message)
 				return
 			}
 		}
@@ -1066,7 +1078,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			return
 
 		case CallbackSettingsWallet:
-			walletText := b.service.GetText("settings_wallet", language)
+			walletText := b.service.GetText("withdrawusdtchange", language)
 
 			// Обновляем сообщение и запрашиваем адрес кошелька
 			if query.Message != nil {
@@ -1202,6 +1214,49 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.answerCallbackQuery(query.ID, "", false)
 	case CallbackRequestWithdraw:
 		b.handleRequestWithdrawCallback(query)
+	case CallbackCheckWallet:
+		b.handleCheckWalletCallback(query)
+	case CallbackChangeWallet:
+		walletText := b.service.GetText("withdrawusdtchange", language)
+
+		// Обновляем сообщение и запрашиваем адрес кошелька
+		if query.Message != nil {
+			// Устанавливаем состояние ожидания адреса кошелька
+			b.stateManager.SetState(user.ID, StateInputWithdrawWallet, query.Message.MessageID)
+
+			b.SendMessage(query.Message.Chat.ID, MessageOptions{
+				Text:          walletText,
+				ReplyKeyboard: b.createAccountKeyboard(language),
+			})
+		}
+		return
+	case CallbackCancelInput:
+		b.stateManager.ClearState(user.ID)
+
+		// Получаем локализованный текст раздела аккаунта
+		accountStartText := b.service.GetText("accstart", language)
+		b.SendMessage(query.Message.Chat.ID, MessageOptions{
+			Text:          accountStartText,
+			ReplyKeyboard: b.createAccountKeyboard(language),
+		})
+		return
+	case CallbackCheckAmount:
+		b.handleCheckAmountCallback(query)
+	case CallbackSetAmount:
+		withdrawText := b.service.GetText("withdrawusdtsumam", language)
+
+		// Посылаем сообщение и запрашиваем сумму для вывода
+		if query.Message != nil {
+			// Устанавливаем состояние ожидания суммы для вывода
+			b.stateManager.SetState(user.ID, StateInputWithdrawAmount, query.Message.MessageID)
+
+			b.SendMessage(query.Message.Chat.ID, MessageOptions{
+				Text:          withdrawText,
+				ReplyKeyboard: b.createAccountKeyboard(language),
+			})
+		}
+		return
+
 	case CallbackProcessWithdraw:
 		b.handleProcessWithdrawCallback(query)
 	case "stop_game":
