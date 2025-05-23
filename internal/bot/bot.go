@@ -455,24 +455,31 @@ func (b *Bot) handleMessage(message *telego.Message) {
 
 	// Получаем данные пользователя из базы
 	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		// Регистрация пользователя, если он новый
+		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+		if err != nil {
+			log.Printf("Error registering user: %v", err)
+		}
+	}
 	if err == nil && dbUser.Banned {
 		// Если пользователь забанен, молча игнорируем сообщение
 		return
 	}
 
 	// Всегда используем язык из базы данных
-	lang := dbUser.LanguageCode
-	if lang == "" {
+	language := dbUser.LanguageCode
+	if language == "" {
 		// Если в базе не указан язык пробуем получить его у юзера
 		if user.LanguageCode != "" {
-			lang = user.LanguageCode
+			language = user.LanguageCode
 		} else {
-			lang = "en"
+			language = "en"
 		}
 	}
 	// Обновляем язык пользователя из API, если он отличается
-	if user.LanguageCode != lang {
-		user.LanguageCode = lang
+	if user.LanguageCode != language {
+		user.LanguageCode = language
 	}
 
 	// Проверяем состояние пользователя
@@ -680,26 +687,6 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			}
 		}
 
-	}
-
-	// Регистрация пользователя, если он новый
-	dbUser, err = b.service.GetUser(user.ID)
-	if err != nil {
-		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
-		if err != nil {
-			log.Printf("Error registering user: %v", err)
-		}
-	}
-
-	// Всегда используем язык из базы данных
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
-
-	// Обновляем язык пользователя из API, если он отличается от базы данных
-	if user.LanguageCode != "" && user.LanguageCode != dbUser.LanguageCode {
-		user.LanguageCode = dbUser.LanguageCode
 	}
 
 	text := message.Text
