@@ -19,11 +19,13 @@ type StateManager struct {
 
 // Константы состояний
 const (
-	StateNone            = ""
-	StateInputName       = "input_name"
-	StateInputWallet     = "input_wallet"
-	StateInputNickname   = "input_nickname"        // создание никнейма при регистрации
-	StateInputUpNickname = "input_update_nickname" // обновление никнейма в настройках
+	StateNone                = ""
+	StateInputName           = "input_name"
+	StateInputWallet         = "input_wallet"
+	StateInputNickname       = "input_nickname"        // создание никнейма при регистрации
+	StateInputUpNickname     = "input_update_nickname" // обновление никнейма в настройках
+	StateInputWithdrawWallet = "input_withdraw_wallet" // изменение кошелька при выводе
+	StateInputWithdrawAmount = "input_withdraw_amount" // указание суммы для вывода
 )
 
 // NewStateManager создает новый экземпляр менеджера состояний
