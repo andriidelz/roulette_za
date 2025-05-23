@@ -9,9 +9,37 @@
           <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
               <h1>Локализации</h1>
-              <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addKeyModal">
-                <i class="bi bi-plus-circle"></i> Добавить ключ
-              </button>
+              <div class="btn-group">
+                <!-- Export/Import Dropdown -->
+                <div class="btn-group me-2" role="group">
+                  <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-download"></i> Экспорт
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="/admin/localization/export" download>
+                      <i class="bi bi-globe"></i> Все языки
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="/admin/localization/export?lang=uk" download>
+                      <i class="bi bi-flag"></i> Украинский
+                    </a></li>
+                    <li><a class="dropdown-item" href="/admin/localization/export?lang=ru" download>
+                      <i class="bi bi-flag"></i> Русский
+                    </a></li>
+                    <li><a class="dropdown-item" href="/admin/localization/export?lang=en" download>
+                      <i class="bi bi-flag"></i> Английский
+                    </a></li>
+                  </ul>
+                </div>
+                
+                <button type="button" class="btn btn-outline-info me-2" data-bs-toggle="modal" data-bs-target="#importModal">
+                  <i class="bi bi-upload"></i> Импорт
+                </button>
+                
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addKeyModal">
+                  <i class="bi bi-plus-circle"></i> Добавить ключ
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -223,6 +251,61 @@
     </div>
   </div>
 
+  <!-- Модальное окно импорта локализаций -->
+  <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="importModalLabel">Импорт локализаций</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Поддерживаемые форматы:</strong>
+            <ul class="mb-0 mt-2">
+              <li>JSON файлы экспорта одного языка</li>
+              <li>JSON файлы экспорта всех языков</li>
+              <li>Пользовательские JSON файлы с корректной структурой</li>
+            </ul>
+          </div>
+          
+          <form id="import-form" enctype="multipart/form-data">
+            <div class="mb-3">
+              <label for="localization-file" class="form-label">Выберите JSON файл</label>
+              <input type="file" class="form-control" id="localization-file" name="localization_file" accept=".json" required>
+              <div class="form-text">Максимальный размер файла: 10MB</div>
+            </div>
+            
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="replace-existing">
+                <label class="form-check-label" for="replace-existing">
+                  Заменить существующие записи
+                </label>
+                <div class="form-text">Если отключено, существующие записи не будут изменены</div>
+              </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="progress d-none mb-3" id="import-progress">
+              <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+            </div>
+
+            <!-- Import results -->
+            <div id="import-results" class="d-none"></div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="button" class="btn btn-primary" id="start-import">
+            <i class="bi bi-upload"></i> Импортировать
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Модальное окно подтверждения удаления -->
   <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -247,21 +330,18 @@
 
   <script>
     $(document).ready(function() {
-      // Редактирование локализации
+      // Existing code for editing, deleting, and adding localizations
       $('.edit-localization').click(function() {
         const row = $(this).closest('tr');
         const valueCell = row.find('td:nth-child(2)');
         const valueDisplay = valueCell.find('.localization-value');
         const valueEditor = valueCell.find('.localization-editor');
         
-        // Если редактор уже открыт, сохраняем изменения
         if (valueEditor.hasClass('d-none')) {
-          // Открываем редактор
           valueDisplay.addClass('d-none');
           valueEditor.removeClass('d-none');
           $(this).html('<i class="bi bi-check-lg"></i>');
         } else {
-          // Сохраняем изменения
           const key = row.data('key');
           const value = valueEditor.find('textarea').val();
           const language = $(this).closest('.tab-pane').attr('id');
@@ -278,8 +358,6 @@
                 valueDisplay.removeClass('d-none');
                 valueEditor.addClass('d-none');
                 row.find('.edit-localization').html('<i class="bi bi-pencil"></i>');
-                
-                // Показываем уведомление об успешном сохранении
                 showNotification('Локализация успешно сохранена', 'success');
               } else {
                 showNotification('Ошибка при сохранении: ' + response.error, 'danger');
@@ -292,17 +370,15 @@
         }
       });
       
-      // Удаление локализации
+      // Delete localization
       $('.delete-localization').click(function() {
         const key = $(this).closest('tr').data('key');
         $('#delete-key-name').text(key);
         $('#deleteConfirmModal').modal('show');
-        
-        // Сохраняем ключ для последующего удаления
         $('#confirm-delete').data('key', key);
       });
       
-      // Подтверждение удаления
+      // Confirm delete
       $('#confirm-delete').click(function() {
         const key = $(this).data('key');
         
@@ -311,13 +387,8 @@
           type: 'POST',
           success: function(response) {
             if (response.success) {
-              // Удаляем строки с этим ключом из всех таблиц
               $('tr[data-key="' + key + '"]').remove();
-              
-              // Закрываем модальное окно
               $('#deleteConfirmModal').modal('hide');
-              
-              // Показываем уведомление об успешном удалении
               showNotification('Локализация успешно удалена', 'success');
             } else {
               showNotification('Ошибка при удалении: ' + response.error, 'danger');
@@ -329,20 +400,18 @@
         });
       });
       
-      // Добавление новой локализации
+      // Add new localization
       $('#save-new-localization').click(function() {
         const key = $('#localization-key').val();
         const ukValue = $('#uk-value').val();
         const enValue = $('#en-value').val();
         const ruValue = $('#ru-value').val();
         
-        // Валидация
         if (!key || !ukValue || !enValue || !ruValue) {
           showNotification('Все поля должны быть заполнены', 'warning');
           return;
         }
         
-        // Проверка формата ключа
         if (!/^[a-zA-Z0-9_]+$/.test(key)) {
           showNotification('Ключ может содержать только латинские буквы, цифры и нижнее подчеркивание', 'warning');
           return;
@@ -359,18 +428,12 @@
           },
           success: function(response) {
             if (response.success) {
-              // Добавляем новые строки во все таблицы
               addLocalizationRow('uk', key, ukValue);
               addLocalizationRow('en', key, enValue);
               addLocalizationRow('ru', key, ruValue);
               
-              // Очищаем форму
               $('#add-localization-form')[0].reset();
-              
-              // Закрываем модальное окно
               $('#addKeyModal').modal('hide');
-              
-              // Показываем уведомление об успешном добавлении
               showNotification('Локализация успешно добавлена', 'success');
             } else {
               showNotification('Ошибка при добавлении: ' + response.error, 'danger');
@@ -381,8 +444,89 @@
           }
         });
       });
+
+      // Import functionality
+      $('#start-import').click(function() {
+        const fileInput = $('#localization-file')[0];
+        const file = fileInput.files[0];
+        
+        if (!file) {
+          showNotification('Выберите файл для импорта', 'warning');
+          return;
+        }
+        
+        // Check file size (10MB limit)
+        if (file.size > 10 * 1024 * 1024) {
+          showNotification('Файл слишком большой. Максимальный размер: 10MB', 'danger');
+          return;
+        }
+        
+        // Check file extension
+        if (!file.name.toLowerCase().endsWith('.json')) {
+          showNotification('Поддерживаются только JSON файлы', 'danger');
+          return;
+        }
+        
+        const formData = new FormData();
+        formData.append('localization_file', file);
+        
+        // Show progress
+        $('#import-progress').removeClass('d-none');
+        $('#import-results').addClass('d-none');
+        $('#start-import').prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Импортируется...');
+        
+        // Animate progress bar
+        let progress = 0;
+        const progressInterval = setInterval(function() {
+          progress += Math.random() * 15;
+          if (progress > 90) progress = 90;
+          $('#import-progress .progress-bar').css('width', progress + '%');
+        }, 200);
+        
+        $.ajax({
+          url: '/admin/localization/import',
+          type: 'POST',
+          data: formData,
+          processData: false,
+          contentType: false,
+          success: function(response) {
+            clearInterval(progressInterval);
+            $('#import-progress .progress-bar').css('width', '100%');
+            
+            setTimeout(function() {
+              $('#import-progress').addClass('d-none');
+              
+              if (response.success) {
+                displayImportResults(response);
+                showNotification('Импорт успешно завершен!', 'success');
+                
+                // Reload page after 3 seconds to show updated data
+                setTimeout(function() {
+                  location.reload();
+                }, 3000);
+              } else {
+                displayImportError(response);
+              }
+              
+              $('#start-import').prop('disabled', false).html('<i class="bi bi-upload"></i> Импортировать');
+            }, 500);
+          },
+          error: function(xhr) {
+            clearInterval(progressInterval);
+            $('#import-progress').addClass('d-none');
+            $('#start-import').prop('disabled', false).html('<i class="bi bi-upload"></i> Импортировать');
+            
+            let errorMessage = 'Ошибка соединения с сервером';
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+              errorMessage = xhr.responseJSON.error;
+            }
+            
+            displayImportError({error: errorMessage, invalid_keys: xhr.responseJSON?.invalid_keys});
+          }
+        });
+      });
       
-      // Поиск по локализациям
+      // Search functionality
       $('#search-localizations').on('keyup', function() {
         const value = $(this).val().toLowerCase();
         
@@ -394,24 +538,103 @@
         });
       });
       
-      // Функция для добавления строки локализации
+      // Helper functions
+      function displayImportResults(response) {
+        let html = '<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i><strong>Импорт завершен успешно!</strong></div>';
+        
+        if (response.language) {
+          // Single language import
+          html += `
+            <div class="card">
+              <div class="card-body">
+                <h6 class="card-title">Результаты импорта для языка: ${getLanguageName(response.language)}</h6>
+                <ul class="list-unstyled mb-0">
+                  <li><strong>Импортировано новых:</strong> ${response.imported_count}</li>
+                  <li><strong>Обновлено существующих:</strong> ${response.updated_count}</li>
+                  <li><strong>Всего обработано:</strong> ${response.total_count}</li>
+                </ul>
+              </div>
+            </div>
+          `;
+        } else if (response.languages) {
+          // Multiple languages import
+          html += `
+            <div class="card">
+              <div class="card-body">
+                <h6 class="card-title">Результаты импорта</h6>
+                <p><strong>Обработано языков:</strong> ${response.processed_languages}</p>
+                <p><strong>Всего импортировано:</strong> ${response.total_imported}</p>
+                <p><strong>Всего обновлено:</strong> ${response.total_updated}</p>
+                
+                <h6 class="mt-3">Детализация по языкам:</h6>
+          `;
+          
+          for (const [lang, stats] of Object.entries(response.languages)) {
+            html += `
+              <div class="mb-2">
+                <strong>${getLanguageName(lang)}:</strong>
+                импортировано ${stats.imported_count}, обновлено ${stats.updated_count}, всего ${stats.total_count}
+              </div>
+            `;
+          }
+          
+          html += '</div></div>';
+        }
+        
+        $('#import-results').html(html).removeClass('d-none');
+      }
+      
+      function displayImportError(response) {
+        let html = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i><strong>Ошибка импорта:</strong> ${response.error}</div>`;
+        
+        if (response.invalid_keys && response.invalid_keys.length > 0) {
+          html += `
+            <div class="card">
+              <div class="card-body">
+                <h6 class="card-title text-danger">Некорректные ключи:</h6>
+                <ul class="list-unstyled mb-0">
+          `;
+          
+          response.invalid_keys.forEach(key => {
+            html += `<li><code>${key}</code></li>`;
+          });
+          
+          html += `
+                </ul>
+                <div class="form-text mt-2">
+                  Ключи должны содержать только латинские буквы, цифры и знак подчеркивания
+                </div>
+              </div>
+            </div>
+          `;
+        }
+        
+        $('#import-results').html(html).removeClass('d-none');
+        showNotification('Ошибка при импорте: ' + response.error, 'danger');
+      }
+      
+      function getLanguageName(code) {
+        const names = {
+          'uk': 'Украинский',
+          'ru': 'Русский', 
+          'en': 'Английский'
+        };
+        return names[code] || code;
+      }
+      
       function addLocalizationRow(language, key, value) {
-        // Проверяем, существует ли уже такой ключ
         if ($('#' + language + '-table').find('tr[data-key="' + key + '"]').length > 0) {
-          // Обновляем существующую строку
           const row = $('#' + language + '-table').find('tr[data-key="' + key + '"]');
           row.find('.localization-value').text(value);
           row.find('textarea').val(value);
           return;
         }
         
-        // Если в таблице только сообщение "нет записей", удаляем его
         const table = $('#' + language + '-table');
         if (table.find('tbody tr td[colspan="3"]').length > 0) {
           table.find('tbody').empty();
         }
         
-        // Создаем новую строку
         const newRow = `
           <tr data-key="${key}">
             <td>${key}</td>
@@ -434,13 +657,12 @@
           </tr>
         `;
         
-        // Добавляем строку в таблицу
         table.find('tbody').append(newRow);
-        
-        // Привязываем обработчики событий
-        const addedRow = table.find('tr[data-key="' + key + '"]');
-        
-        addedRow.find('.edit-localization').click(function() {
+        bindLocalizationEvents(table.find('tr[data-key="' + key + '"]'));
+      }
+      
+      function bindLocalizationEvents(row) {
+        row.find('.edit-localization').click(function() {
           const row = $(this).closest('tr');
           const valueCell = row.find('td:nth-child(2)');
           const valueDisplay = valueCell.find('.localization-value');
@@ -479,7 +701,7 @@
           }
         });
         
-        addedRow.find('.delete-localization').click(function() {
+        row.find('.delete-localization').click(function() {
           const key = $(this).closest('tr').data('key');
           $('#delete-key-name').text(key);
           $('#deleteConfirmModal').modal('show');
@@ -487,9 +709,7 @@
         });
       }
       
-      // Функция для отображения уведомлений
       function showNotification(message, type) {
-        // Создаем элемент уведомления
         const notification = $(`
           <div class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
@@ -501,19 +721,15 @@
           </div>
         `);
         
-        // Добавляем контейнер для уведомлений, если его еще нет
         if ($('#notification-container').length === 0) {
           $('body').append('<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>');
         }
         
-        // Добавляем уведомление в контейнер
         $('#notification-container').append(notification);
         
-        // Инициализируем и показываем уведомление
         const toast = new bootstrap.Toast(notification);
         toast.show();
         
-        // Удаляем уведомление после скрытия
         notification.on('hidden.bs.toast', function() {
           $(this).remove();
         });
