@@ -1,82 +1,10 @@
 -- Локализации на английском языке
 INSERT INTO localizations (key, language, value) VALUES
-    ('welcome', 'en', 'Welcome to the Roulette Bot! Here you can bet on red, black or zero and compete for a place in the rating.'),
-    
-    ('help', 'en', 'Available commands:
-
-/play - Start the game
-/profile - Your profile
-/stats - Your statistics
-/rating - Weekly rating
-/superrating - Super rating
-/balance - Your balance
-/withdraw - Withdraw funds
-/faq - Frequently asked questions'),
-    
-    ('game_instructions', 'en', 'Choose your bet: red, black or zero.
-
-Each correct guess gives 1 point. Zero gives 10 points, but you can bet on it only after 100 bets per day.'),
-    
-    ('profile_template', 'en', 'Profile: %s
-Balance: %.2f
-Total bets: %d
-Won bets: %d
-Efficiency: %.2f%%
-Total points: %d'),
-    
-    ('stats_template', 'en', 'Statistics:
-
-Daily:
-Bets: %d
-Points: %d
-
-Weekly:
-Bets: %d
-Points: %d
-
-Monthly:
-Bets: %d
-Points: %d
-
-Total:
-Bets: %d
-Points: %d'),
-    
-    ('rating_header', 'en', 'Weekly rating (top 10):
-
-'),
-    ('super_rating_header', 'en', 'Super rating (top 10):
-
-'),
-    
-    ('balance_template', 'en', 'Your balance: %.2f'),
     ('balanceaccok', 'en', 'Your balance is %.2f USDT. The amount is sufficient for withdrawal. You can make a withdrawal in the Withdraw menu item.'),
     ('balanceacclow', 'en', 'Your balance is %.2f USDT. The amount is insufficient for withdrawal. Play more to enter the top players of the week and distribute the prize fund!'),
     
-    ('withdraw_instructions', 'en', 'To withdraw funds, specify the amount and details. Minimum amount for withdrawal: 10.'),
     ('withdrawok', 'en', 'Your balance is %.2f USDT. You can make a withdrawal by continuing.'),
     ('withdrawlow', 'en', 'Your balance is %.2f USDT. The amount is insufficient for withdrawal. Play more to enter the top players of the week and distribute the prize fund!'),
-    
-    ('faq', 'en', 'Frequently asked questions:
-
-1. How are points awarded?
-For each correct color guess, 1 point is awarded. For guessing zero - 10 points.
-
-2. How to get into the rating?
-Just play and earn points. The top 100 players of the week get into the rating.
-
-3. How is the prize fund distributed?
-The prize fund is distributed in proportion to the number of points among the top 100 players of the week.'),
-    
-    ('win', 'en', 'You guessed it! Bet: %s. Points earned: %d
-
-Choose your next bet:'),
-    ('win_zero', 'en', 'You guessed ZERO! Points earned: %d
-
-Choose your next bet:'),
-    ('lose', 'en', 'You did not guess. Your bet: %s. Result: %s
-
-Choose your next bet:'),
     
     ('zero_limit', 'en', 'You cannot bet on Zero yet, which can bring 10 points to the rating. You need to make %d more bets today. Until then, if Zero comes up, it counts as a loss for you'),
     
@@ -101,7 +29,6 @@ Make your choice'),
     ('bet_already_made', 'en', 'You have already made a bet in this round. Please wait for the result.'),
     
     ('btn_play', 'en', '🎮 Play'),
-    ('btn_profile', 'en', '👤 Profile'),
     ('btn_stats', 'en', '📊 Statistics'),
     ('btn_rating', 'en', '🏆 Rating'),
     ('btn_balance', 'en', '💰 Balance'),
@@ -111,21 +38,6 @@ Make your choice'),
     ('btn_bet_zero', 'en', '🟢 Zero'),
     ('btn_bet_zero_locked', 'en', '🔒 Zero'),
     ('btn_back', 'en', '◀️ Back'),
-    
-    ('round_info', 'en', 'Round #%s
-
-Hash: %s'),
-    ('verification_info', 'en', 'Result verification:
-
-Round #%s
-Number: %d
-Salt: %s
-Hash: %s'),
-    ('new_round', 'en', 'New round #%s started
-
-Hash: %s
-
-Make your bet:'),
     
     ('startmessage1', 'en', 'Welcome to Sprut Red&Black bot
 
@@ -174,15 +86,15 @@ To verify:
 Here you can change your profile settings:'),
     ('btn_settings_language', 'en', '🌐 Language'),
     ('btn_settings_country', 'en', '🌍 Country'),
+    ('btn_settings_nickname', 'en', '👤 Nickname'),
     ('btn_settings_name', 'en', '👤 First Name'),
-    ('btn_settings_lastname', 'en', '👥 Last Name'),
     ('btn_back_to_main', 'en', '◀️ Back to Main Menu'),
     ('settings_language', 'en', 'Select your language:'),
+    ('settings_nickname', 'en', 'Enter your nickname:'),
     ('settings_name', 'en', 'Enter your first name:'),
-    ('settings_lastname', 'en', 'Enter your last name:'),
     ('language_saved', 'en', 'Language successfully updated! ✅'),
     ('name_saved', 'en', 'First name successfully updated! ✅'),
-    ('lastname_saved', 'en', 'Last name successfully updated! ✅'),
+    ('nickname_saved', 'en', 'Nickname successfully updated! ✅'),
     ('btn_settings_wallet', 'en', '💰 USDT Wallet Address'),
     ('settings_wallet', 'en', 'Enter your USDT wallet address (TRC20):'),
     ('wallet_saved', 'en', 'Wallet address successfully updated! ✅'),
@@ -207,7 +119,7 @@ Here you can change your profile settings:'),
     ('betsbalanceok', 'en', 'You have %d more bets available today.'),
     ('round_info_countdown', 'en', E'Round #%s\nHash: %s\n\n%d seconds left until the next bet determination.\n\nMake your choice'),
     ('waiting_for_round', 'en', 'Waiting for a new round to start. Please wait...'),
-    ('systemcheck', 'en', E'Check round #%s in the system'),
+    ('systemcheck', 'en', E'Check round in the system'),
     ('viewrating', 'en', E'View rating'),
     ('topupbalance', 'en', E'Refill attempts balance'),
     ('stopgame', 'en', E'Stop game'),
@@ -284,7 +196,6 @@ Select a rating type to view'),
 Note: we anonymize player names and only show the number of rating points to demonstrate how many rating points are currently needed to participate in the distribution of the reward.'),
     ('personalratm', 'en', 'Your place in the overall ranking'),
     ('ratingnext', 'en', 'Select another rating type to display or return to the main menu'),
-    ('rating_title', 'en', 'Player Ranking'),
     ('weekly_rating_empty', 'en', 'Current anonymized ranking of players who will share the reward for the current week
 Note: we anonymize player names and only show the number of rating points to demonstrate how many rating points are currently needed to participate in the distribution of the reward.
 
@@ -322,8 +233,6 @@ Your position: %d
 You need %d more points to participate in the distribution of the weekly reward.'),
     ('player_points', 'en', '%d %s - %d points'),
     ('player_points_efficiency', 'en', '%d %s - %d points (%.1f%%)'),
-    ('you_points', 'en', '*You* - %d points'),
-    ('you_points_efficiency', 'en', '*You* - %d points (%.1f%%)'),
     ('username_points', 'en', '*%s* - %d points'),
     ('username_points_efficiency', 'en', '*%s* - %d points (%.1f%%)'),
     ('accstart', 'en', 'In this section you can manage your personal account'),
@@ -365,3 +274,6 @@ INSERT INTO localizations (key, language, value) VALUES
     ('error_retrieving_data', 'en', 'Error retrieving data. Please try again.'),
     ('error_while_registering', 'en', 'Error while registering. Please try again.'),
     ('player_nickname_template', 'en', 'Nickname%d');
+
+INSERT INTO localizations (key, language, value) VALUES
+    ('rating_error', 'en', 'Error retrieving rating data. Please try again later.');

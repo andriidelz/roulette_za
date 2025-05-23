@@ -11,6 +11,7 @@ import (
 
 	"roulette/internal/models"
 	"roulette/internal/service"
+	"roulette/internal/utils"
 
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
@@ -459,18 +460,28 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		return
 	}
 
+	// Всегда используем язык из базы данных
+	lang := dbUser.LanguageCode
+	if lang == "" {
+		// Если в базе не указан язык пробуем получить его у юзера
+		if user.LanguageCode != "" {
+			lang = user.LanguageCode
+		} else {
+			lang = "en"
+		}
+	}
+	// Обновляем язык пользователя из API, если он отличается
+	if user.LanguageCode != lang {
+		user.LanguageCode = lang
+	}
+
 	// Проверяем состояние пользователя
 	state, messageID, exists := b.stateManager.GetState(user.ID)
 	if exists && state != StateNone {
 		switch state {
 		case StateInputNickname:
-			// Обработка ввода никнейма
+			// Обработка ввода никнейма при регистрации
 			if len(message.Text) > 0 {
-				// Получаем язык пользователя
-				language := user.LanguageCode
-				if language == "" {
-					language = "en"
-				}
 
 				// Проверяем валидность никнейма (только латинские буквы и цифры)
 				nickname := strings.TrimSpace(message.Text)
@@ -486,7 +497,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 
 				if !isValid || len(nickname) < 3 || len(nickname) > 20 {
 					// Никнейм невалиден, отправляем сообщение об ошибке
-					invalidNicknameText := b.service.GetText("invalid_nickname", language)
+					invalidNicknameText := b.service.GetText("invalid_nickname", user.LanguageCode)
 					b.SendMessage(message.Chat.ID, MessageOptions{
 						Text: invalidNicknameText,
 					})
@@ -508,7 +519,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 				}
 
 				// Отправляем сообщение об успешном обновлении
-				successText := b.service.GetText("name_changesave", language)
+				successText := b.service.GetText("name_changesave", user.LanguageCode)
 				b.SendMessage(message.Chat.ID, MessageOptions{
 					Text: successText,
 				})
@@ -521,7 +532,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 					// Небольшая задержка для чтения сообщения
 					time.Sleep(2 * time.Second)
 					// Отправляем запрос на подписку
-					b.sendSubscriptionRequest(message.Chat.ID, language)
+					b.sendSubscriptionRequest(message.Chat.ID, user.LanguageCode)
 				}()
 
 				return
@@ -556,10 +567,10 @@ func (b *Bot) handleMessage(message *telego.Message) {
 				return
 			}
 
-		case StateInputLName:
-			// Обработка ввода фамилии
+		case StateInputUpNickname:
+			// Обработка ввода никнейма при обновлении в настройках
 			if len(message.Text) > 0 {
-				// Обновляем фамилию пользователя
+				// Обновляем никнейм пользователя
 				dbUser, err := b.service.GetUser(user.ID)
 				if err != nil {
 					log.Printf("Error getting user: %v", err)
@@ -567,13 +578,35 @@ func (b *Bot) handleMessage(message *telego.Message) {
 					return
 				}
 
-				dbUser.LastName = message.Text
+				// Проверяем валидность никнейма (только латинские буквы и цифры)
+				nickname := strings.TrimSpace(message.Text)
+				isValid := true
+
+				// Проверяем, что никнейм состоит только из разрешенных символов
+				for _, r := range nickname {
+					if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+						isValid = false
+						break
+					}
+				}
+
+				if !isValid || len(nickname) < 3 || len(nickname) > 20 {
+					// Никнейм невалиден, отправляем сообщение об ошибке
+					invalidNicknameText := b.service.GetText("invalid_nickname", user.LanguageCode)
+					b.SendMessage(message.Chat.ID, MessageOptions{
+						Text: invalidNicknameText,
+					})
+					return
+				}
+
+				// Обновляем никнейм пользователя
+				dbUser.Nickname = nickname
 				if err := b.service.UpdateUser(dbUser); err != nil {
-					log.Printf("Error updating user lastname: %v", err)
+					log.Printf("Error updating user nickname: %v", err)
 				}
 
 				// Отправляем сообщение об успешном обновлении
-				successText := b.service.GetText("lastname_saved", user.LanguageCode)
+				successText := b.service.GetText("nickname_saved", user.LanguageCode)
 				backBtn := b.createBackBtnKeyboard(user.LanguageCode)
 
 				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
@@ -1028,18 +1061,18 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			}
 			return
 
-		case CallbackSettingsLastName:
-			lastNameText := b.service.GetText("settings_lastname", language)
+		case CallbackSettingsNickName:
+			nameText := b.service.GetText("settings_nickname", language)
 
-			// Обновляем сообщение и запрашиваем фамилию
+			// Обновляем сообщение и запрашиваем публичное имя
 			if query.Message != nil {
-				// Устанавливаем состояние ожидания фамилии
-				b.stateManager.SetState(user.ID, StateInputLName, query.Message.MessageID)
+				// Устанавливаем состояние ожидания публичного имени
+				b.stateManager.SetState(user.ID, StateInputUpNickname, query.Message.MessageID)
 
 				backBtn := b.createBackBtnKeyboard(language)
 
 				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
-					Text:           lastNameText,
+					Text:           nameText,
 					InlineKeyboard: backBtn,
 				})
 			}
@@ -1718,6 +1751,9 @@ type MessageOptions struct {
 	// ParseMode - режим форматирования текста (HTML, Markdown, MarkdownV2)
 	ParseMode string
 
+	// Entities - специальные сущности (эмодзи, форматирование и т.д.)
+	Entities []telego.MessageEntity
+
 	// DisableWebPagePreview - если true, превью ссылок будет отключено
 	DisableWebPagePreview bool
 
@@ -1732,6 +1768,24 @@ func (b *Bot) SendMessage(chatID int64, options MessageOptions) (*telego.Message
 	processedText := strings.ReplaceAll(options.Text, "\\r\\n", "\n")
 	processedText = strings.ReplaceAll(processedText, "\r\n", "\n")
 	options.Text = processedText
+
+	// Проверка на наличие шаблонов эмодзи в тексте
+	if strings.Contains(options.Text, "{{emoji:") {
+		log.Printf("Found emoji template in text: %s", options.Text)
+
+		// Обрабатываем кастомные эмодзи в формате {{emoji:id}}
+		emojiText, emojiEntities := utils.BuildMessageWithCustomEmojis(options.Text)
+		options.Text = emojiText
+
+		// Объединяем существующие сущности с новыми эмодзи-сущностями
+		if len(emojiEntities) > 0 {
+			if len(options.Entities) > 0 {
+				options.Entities = append(options.Entities, emojiEntities...)
+			} else {
+				options.Entities = emojiEntities
+			}
+		}
+	}
 
 	// Если указан путь к фото или FileID
 	if options.PhotoPath != "" || options.PhotoFileID != "" {
@@ -1786,6 +1840,16 @@ func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, e
 		DisableNotification:   options.DisableNotification,
 	}
 
+	// Добавляем сущности, если они есть
+	if len(options.Entities) > 0 {
+		log.Printf("Adding %d entities to message", len(options.Entities))
+		for i, entity := range options.Entities {
+			log.Printf("Entity %d: Type=%s, Offset=%d, Length=%d, CustomEmojiID=%s",
+				i, entity.Type, entity.Offset, entity.Length, entity.CustomEmojiID)
+		}
+		params.Entities = options.Entities
+	}
+
 	// Устанавливаем соответствующую клавиатуру
 	if replyMarkup := b.getReplyMarkup(options); replyMarkup != nil {
 		params.ReplyMarkup = replyMarkup
@@ -1793,6 +1857,7 @@ func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, e
 
 	msg, err := b.bot.SendMessage(params)
 	if err != nil {
+		log.Printf("Error sending message: %v", err)
 		return nil, fmt.Errorf("failed to send message: %w", err)
 	}
 
@@ -1807,6 +1872,11 @@ func (b *Bot) updateText(chatID int64, messageID int, options MessageOptions) (*
 		Text:                  options.Text,
 		ParseMode:             options.ParseMode,
 		DisableWebPagePreview: options.DisableWebPagePreview,
+	}
+
+	// Добавляем сущности, если они есть
+	if len(options.Entities) > 0 {
+		params.Entities = options.Entities
 	}
 
 	// Для обновления можно использовать только инлайн клавиатуру
@@ -1830,6 +1900,11 @@ func (b *Bot) sendPhoto(chatID int64, options MessageOptions) (*telego.Message, 
 		Caption:             options.Text,
 		ParseMode:           options.ParseMode,
 		DisableNotification: options.DisableNotification,
+	}
+
+	// Добавляем сущности для подписи, если они есть
+	if len(options.Entities) > 0 {
+		params.CaptionEntities = options.Entities
 	}
 
 	// Устанавливаем соответствующую клавиатуру
@@ -1880,6 +1955,11 @@ func (b *Bot) updatePhotoByFileID(chatID int64, messageID int, options MessageOp
 		Media:     tu.FileFromID(options.PhotoFileID),
 		Caption:   options.Text,
 		ParseMode: options.ParseMode,
+	}
+
+	// Добавляем сущности для подписи, если они есть
+	if len(options.Entities) > 0 {
+		mediaPhoto.CaptionEntities = options.Entities
 	}
 
 	params := &telego.EditMessageMediaParams{
