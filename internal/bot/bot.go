@@ -456,8 +456,19 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	// Получаем данные пользователя из базы
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		// Регистрация пользователя, если он новый
-		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+		// Если пользователь новый выполняется его предварительная регистрация,
+		// независимо от того какую команду он выполнил
+		// handleStartCommand только для обновления незаполненных полей
+
+		// Получаем источник
+		userSource := ""
+		if strings.Contains(message.Text, " ") {
+			commandArgs := strings.Split(message.Text, " ")
+			if len(commandArgs) > 1 {
+				userSource = strings.TrimSpace(commandArgs[1]) // Получаем источник
+			}
+		}
+		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, userSource, user.LanguageCode)
 		if err != nil {
 			log.Printf("Error registering user: %v", err)
 		}
@@ -870,7 +881,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
 		// Регистрация пользователя, если он не найден
-		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
 		if err != nil {
 			log.Printf("Error registering user: %v", err)
 			return
@@ -1272,6 +1283,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 // Обработчики команд
 
 // handleStartCommand обрабатывает команду /start
+// сама регистрация пользователя выполняется в начале функции handleMessage
+// в этой функции только дозаполнение полей
 func (b *Bot) handleStartCommand(message *telego.Message) {
 	user := message.From
 
@@ -1279,8 +1292,19 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 	_, err := b.service.GetUser(user.ID)
 	isNewUser := err != nil // Флаг нового пользователя
 
+	// Получаем источник
+	userSource := ""
+	if isNewUser {
+		if strings.Contains(message.Text, " ") {
+			commandArgs := strings.Split(message.Text, " ")
+			if len(commandArgs) > 1 {
+				userSource = strings.TrimSpace(commandArgs[1]) // Получаем источник
+			}
+		}
+	}
+
 	// Регистрируем пользователя или обновляем информацию
-	dbUser, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+	dbUser, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, userSource, user.LanguageCode)
 	if err != nil {
 		log.Printf("Error registering user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{

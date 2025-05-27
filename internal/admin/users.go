@@ -405,3 +405,33 @@ func (a *AdminPanel) userUnban(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
+
+// Установка реферальной ссылки
+func (a *AdminPanel) userRef(c *gin.Context) {
+	// Отримуємо ID користувача
+	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірний ID користувача"})
+		return
+	}
+
+	// Отримуємо інформацію про користувача
+	user, err := a.repo.GetUserByID(uint(userID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if user.RefKey != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Используется ключ: " + user.RefKey})
+		return
+	}
+
+	user.RefKey = fmt.Sprint(user.ID)
+	if err := a.repo.UpdateUser(user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
