@@ -125,6 +125,7 @@ func (a *AdminPanel) setupRoutes() {
 		admin.GET("/user/:id", a.userDetails)
 		admin.POST("/user/:id/ban", a.userBan)
 		admin.POST("/user/:id/unban", a.userUnban)
+		admin.POST("/user/:id/ref", a.userRef)
 		admin.POST("/user/:id/update", a.updateUserProfile)
 		admin.POST("/user/:id/balance", a.updateUserBalance)
 

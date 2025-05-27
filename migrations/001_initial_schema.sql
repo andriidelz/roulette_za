@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(255),
     first_name VARCHAR(255),
     last_name VARCHAR(255),
+    source VARCHAR(10),
+    ref_key VARCHAR(10),
     language_code VARCHAR(10),
     country VARCHAR(2),  -- ISO 3166-1 alpha-2 код страны
     wallet_address VARCHAR(255), -- Адрес кошелька USDT
