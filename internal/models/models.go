@@ -23,6 +23,8 @@ type User struct {
 	Nickname      string  `gorm:"size:50"`
 	FirstName     string  `gorm:"size:255"`
 	LastName      string  `gorm:"size:255"`
+	Source        string  `gorm:"size:10"` // источник по реферальной ссылке
+	RefKey        string  `gorm:"size:10"` // источник по реферальной ссылке
 	LanguageCode  string  `gorm:"size:10"`
 	Country       string  `gorm:"size:2"` // ISO 3166-1 alpha-2 код страны
 	WalletAddress string  `gorm:"size:255"`

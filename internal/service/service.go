@@ -15,7 +15,7 @@ import (
 // Service інтерфейс для бізнес-логіки
 type Service interface {
 	// Пользователи
-	RegisterUser(telegramID int64, username, firstName, lastName, languageCode string) (*models.User, error)
+	RegisterUser(telegramID int64, username, firstName, lastName, source, languageCode string) (*models.User, error)
 	GetUser(telegramID int64) (*models.User, error)
 	GetUserStats(telegramID int64) (map[string]int, error)
 	GetDetailedUserStats(telegramID int64, period string) (map[string]int, error)
@@ -116,7 +116,7 @@ func NewService(repo repository.Repository, telegramToken string) Service {
 
 // Реалізація методів для користувачів
 
-func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastName, languageCode string) (*models.User, error) {
+func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastName, source, languageCode string) (*models.User, error) {
 	// Проверяем, существует ли пользователь
 	existingUser, err := s.repo.GetUserByTelegramID(telegramID)
 	if err == nil {
@@ -144,6 +144,12 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 		// Не перезаписываем язык, если он уже установлен
 		if existingUser.LanguageCode == "" && languageCode != "" {
 			existingUser.LanguageCode = languageCode
+			updateNeeded = true
+		}
+
+		// Не перезаписываем источник, если он уже установлен
+		if existingUser.Source == "" && source != "" {
+			existingUser.Source = source
 			updateNeeded = true
 		}
 
@@ -178,6 +184,8 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 		Nickname:     "", // Пустой никнейм для новых пользователей
 		FirstName:    firstName,
 		LastName:     lastName,
+		Source:       source,
+		RefKey:       "", // Пустая реферальная ссылка для новых пользователей
 		LanguageCode: languageCode,
 		AvatarURL:    avatarURL,
 		CreatedAt:    time.Now(),

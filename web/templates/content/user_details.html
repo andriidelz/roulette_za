@@ -97,7 +97,23 @@
                       <span class="text-muted">Не указана</span>
                     {{ end }}
                   </dd>
+
+                  <dt class="col-sm-5">Реферальная ссылка:</dt>
+                  <dd class="col-sm-7">
+                    {{ if .user.RefKey }}
+                    https://t.me/socialroulette_bot?start={{ .user.RefKey }}
+                    <button class="btn btn-sm btn-link p-0 ms-1 copy-referral-btn" 
+                      data-clipboard-text="https://t.me/socialroulette_bot?start={{ .user.RefKey }}" title="Копировать ссылку">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                    {{ else }}
+                    <button class="btn btn-info ref-user-btn" data-id="{{ .user.ID }}">Сгенерировать</button>
+                    {{ end }}
+                  </dd>
                   
+                  <dt class="col-sm-5">Источник:</dt>
+                  <dd class="col-sm-7">{{ .user.Source }}</dd>
+
                   <dt class="col-sm-5">Регистрация:</dt>
                   <dd class="col-sm-7">{{ .user.CreatedAt.Format "02.01.2006 15:04" }}</dd>
                   
@@ -609,6 +625,18 @@
       }
     });
 
+    // Генерация реферальной ссылки
+    $('.ref-user-btn').click(function() {
+      var userId = $(this).data('id');
+        $.post('/admin/user/' + userId + '/ref', function(data) {
+          if (data.success) {
+            window.location.reload();
+          } else {
+            alert('Ошибка: ' + data.error);
+          }
+        });
+    });
+
     // Открытие модального окна редактирования профиля
     $('.edit-profile-btn').click(function() {
       $('#editProfileModal').modal('show');
@@ -680,6 +708,18 @@
       }.bind(this));
     });
 
+    // Копирование реферальной ссылки
+    $('.copy-referral-btn').click(function() {
+      var address = $(this).data('clipboard-text');
+      navigator.clipboard.writeText(address).then(function() {
+        $(this).attr('title', 'Скопировано!');
+        $(this).tooltip('show');
+        setTimeout(function() {
+          $(this).attr('title', 'Копировать адрес');
+        }.bind(this), 2000);
+      }.bind(this));
+    });
+    
     // Инициализация tooltip
     $('[data-toggle="tooltip"]').tooltip();
 
