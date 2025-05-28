@@ -100,6 +100,11 @@ func (b *Bot) handleWeeklyRating(message *telego.Message) {
 		language = "en"
 	}
 
+	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
+	if dbUser, err := b.service.GetUser(user.ID); err == nil {
+		b.service.GetRepo().UpdateWeeklyRatingForUser(dbUser.ID)
+	}
+
 	// Получаем текущий недельный рейтинг (топ 100)
 	ratings, err := b.service.GetWeeklyTopRating(100)
 	if err != nil {

@@ -556,6 +556,12 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		winLoseText = loseMsgText
 	}
 
+	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
+	// Обновляем позиции всех пользователей перед получением позиции
+	if err := h.service.RefreshAllRatings(); err != nil {
+		log.Printf("Error refreshing ratings before getting position: %v", err)
+	}
+
 	// Формируем часть о рейтинге
 	// Получаем текущий рейтинг пользователя
 	position, err := h.service.GetUserPosition(userID)
