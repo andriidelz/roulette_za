@@ -530,21 +530,18 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			b.handleContactCommand(message)
 			return
 		case CommandPlay:
-			// ДОБАВЛЯЕМ ПРОВЕРКУ: Для игры требуется завершенная регистрация
 			if !b.requireCompleteRegistration(message, dbUser) {
 				return
 			}
 			b.gameHandler.HandlePlayCommand(message)
 			return
 		case CommandStats:
-			// ДОБАВЛЯЕМ ПРОВЕРКУ: Для статистики требуется завершенная регистрация
 			if !b.requireCompleteRegistration(message, dbUser) {
 				return
 			}
 			b.handleStatsCommand(message)
 			return
 		case CommandRating:
-			// ДОБАВЛЯЕМ ПРОВЕРКУ: Для рейтинга требуется завершенная регистрация
 			if !b.requireCompleteRegistration(message, dbUser) {
 				return
 			}
@@ -555,7 +552,6 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			b.handleFAQCommand(message)
 			return
 		case CommandSettings:
-			// ДОБАВЛЯЕМ ПРОВЕРКУ: Для настроек требуется завершенная регистрация
 			if !b.requireCompleteRegistration(message, dbUser) {
 				return
 			}
