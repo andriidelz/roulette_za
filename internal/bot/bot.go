@@ -460,6 +460,17 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 func (b *Bot) handleMessage(message *telego.Message) {
 	user := message.From
 
+	// Режим эмуляции
+	originalUserID := user.ID
+	if emulatedID, ok := emulatedUsers[originalUserID]; ok {
+		if !strings.HasPrefix(message.Text, "/"+CommandStopEmulateID) {
+			user.ID = emulatedID
+			defer func() {
+				user.ID = originalUserID
+			}()
+		}
+	}
+
 	// Получаем данные пользователя из базы
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
@@ -519,21 +530,18 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			b.handleContactCommand(message)
 			return
 		case CommandPlay:
-			// ДОБАВЛЯЕМ ПРОВЕРКУ: Для игры требуется завершенная регистрация
 			if !b.requireCompleteRegistration(message, dbUser) {
 				return
 			}
 			b.gameHandler.HandlePlayCommand(message)
 			return
 		case CommandStats:
-			// ДОБАВЛЯЕМ ПРОВЕРКУ: Для статистики требуется завершенная регистрация
 			if !b.requireCompleteRegistration(message, dbUser) {
 				return
 			}
 			b.handleStatsCommand(message)
 			return
 		case CommandRating:
-			// ДОБАВЛЯЕМ ПРОВЕРКУ: Для рейтинга требуется завершенная регистрация
 			if !b.requireCompleteRegistration(message, dbUser) {
 				return
 			}
@@ -544,12 +552,21 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			b.handleFAQCommand(message)
 			return
 		case CommandSettings:
-			// ДОБАВЛЯЕМ ПРОВЕРКУ: Для настроек требуется завершенная регистрация
 			if !b.requireCompleteRegistration(message, dbUser) {
 				return
 			}
 			b.handleSettingsCommand(message)
 			return
+		case CommandMyID:
+			b.handleMyIDCommand(message)
+			return
+		case CommandEmulateID: //  /emulateid 123456789
+			b.handleEmulateIDCommand(message)
+			return
+		case CommandStopEmulateID:
+			b.handleStopEmulateIDCommand(message)
+			return
+
 		default:
 			// Неизвестная команда
 			b.handleUnknownCommand(message)
@@ -763,6 +780,15 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			log.Printf("Error registering user: %v", err)
 			return
 		}
+	}
+
+	// Режим эмуляции
+	if emulatedID, ok := emulatedUsers[user.ID]; ok {
+		originalID := user.ID
+		user.ID = emulatedID
+		defer func() {
+			user.ID = originalID
+		}()
 	}
 
 	// Всегда используем язык из базы данных, т.к. он может быть обновлен
