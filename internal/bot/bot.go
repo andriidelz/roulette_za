@@ -460,6 +460,17 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 func (b *Bot) handleMessage(message *telego.Message) {
 	user := message.From
 
+	// Режим эмуляции
+	originalUserID := user.ID
+	if emulatedID, ok := emulatedUsers[originalUserID]; ok {
+		if !strings.HasPrefix(message.Text, "/"+CommandStopEmulateID) {
+			user.ID = emulatedID
+			defer func() {
+				user.ID = originalUserID
+			}()
+		}
+	}
+
 	// Получаем данные пользователя из базы
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
@@ -550,6 +561,16 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			}
 			b.handleSettingsCommand(message)
 			return
+		case CommandMyID:
+			b.handleMyIDCommand(message)
+			return
+		case CommandEmulateID: //  /emulateid 123456789
+			b.handleEmulateIDCommand(message)
+			return
+		case CommandStopEmulateID:
+			b.handleStopEmulateIDCommand(message)
+			return
+
 		default:
 			// Неизвестная команда
 			b.handleUnknownCommand(message)
@@ -763,6 +784,15 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			log.Printf("Error registering user: %v", err)
 			return
 		}
+	}
+
+	// Режим эмуляции
+	if emulatedID, ok := emulatedUsers[user.ID]; ok {
+		originalID := user.ID
+		user.ID = emulatedID
+		defer func() {
+			user.ID = originalID
+		}()
 	}
 
 	// Всегда используем язык из базы данных, т.к. он может быть обновлен
