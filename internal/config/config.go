@@ -13,7 +13,8 @@ type Config struct {
 	DatabaseURL string
 
 	// Телеграм
-	TelegramToken string
+	TelegramToken            string
+	TelegramReserveChannelID string
 
 	// Адмін-панель
 	AdminPort        string
@@ -40,7 +41,8 @@ func NewConfig() *Config {
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/roulette?sslmode=disable"),
 
 		// Телеграм
-		TelegramToken: getEnv("TELEGRAM_TOKEN", ""),
+		TelegramToken:            getEnv("TELEGRAM_TOKEN", ""),
+		TelegramReserveChannelID: getEnv("TELEGRAM_RESERVE_CHANNEL_ID", ""),
 
 		// Адмін-панель
 		AdminPort:        getEnv("ADMIN_PORT", "8080"),

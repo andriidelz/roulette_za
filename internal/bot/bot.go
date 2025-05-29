@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"roulette/internal/config"
 	"roulette/internal/models"
 	"roulette/internal/service"
 	"roulette/internal/utils"
@@ -51,8 +52,6 @@ const (
 	CallbackBetZero             = "bet_zero"
 	CallbackBack                = "back"
 
-	ReserveChannelID = "@socialroulette_dev" // https://t.me/socialroulette_dev
-
 	StickerNoBids    = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
 	StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
 	StickerLose      = "CAACAgUAAxkBAAEORL5n9lEOq_kczbL1CGpgN5-UhhhgqQAC3BIAAtGwqVdlepoFId2tMzYE" // lose
@@ -63,6 +62,14 @@ const (
 	StickerZeroRes1  = "CAACAgUAAxkBAAEORMRn9lEar58eDwvent8Lp3TvMRvF5AACtxEAAlRRsFdySRXPzXyVqzYE" // zeroresult (вариант 1)
 	StickerZeroRes2  = "CAACAgUAAxkBAAEORMZn9lEd12gNsWFFxGXLAZoeJbSEsgACCxYAAmDwqVdsE7WC-rayWDYE" // zeroresult (вариант 2)
 )
+
+var ReserveChannelID = "@socialroulette_dev" // https://t.me/socialroulette_dev
+
+func init() {
+	// Инициализируем конфигурацию
+	cfg := config.NewConfig()
+	ReserveChannelID = cfg.TelegramReserveChannelID
+}
 
 // NewBot создает новый экземпляр бота
 func NewBot(token string, service service.Service, rabbitmqURL string) (*Bot, error) {

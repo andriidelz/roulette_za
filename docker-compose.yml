@@ -67,6 +67,7 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/roulette?sslmode=disable
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_RESERVE_CHANNEL_ID=${TELEGRAM_RESERVE_CHANNEL_ID}
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
       # Переменные окружения для OxaPay
       - DEFAULT_PAYMENT_PROVIDER=${DEFAULT_PAYMENT_PROVIDER:-mock}
