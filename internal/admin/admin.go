@@ -33,6 +33,8 @@ type Settings struct {
 	DisableIPFilters bool
 }
 
+var botName = "socialroulette_bot" 
+
 // Создание новой админ-панели
 func NewAdminPanel(service service.Service, repo repository.Repository, settings *Settings, paymentService *service.PaymentService) *AdminPanel {
 	gin.SetMode(gin.ReleaseMode)
