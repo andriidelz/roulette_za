@@ -204,9 +204,10 @@ func (r *PostgresRepository) GetUserWeeklyRating(userID uint, year, week int) (*
 	// Якщо рейтингу немає, створюємо новий
 	if err == gorm.ErrRecordNotFound {
 		rating = models.WeeklyRating{
-			UserID: userID,
-			Year:   year,
-			Week:   week,
+			UserID:   userID,
+			Year:     year,
+			Week:     week,
+			Position: r.getLastWeeklyRatingPosition() + 1, // Устанавливаем последнюю позицию,
 		}
 		if err := r.db.Create(&rating).Error; err != nil {
 			return nil, err

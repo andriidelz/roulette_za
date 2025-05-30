@@ -31,7 +31,7 @@ func (r *PostgresRepository) GetUserRankAndNeighbors(userID uint, year, week int
 			Week:      week,
 			Points:    0,
 			Bets:      0,
-			Position:  0, // Позиция пока неизвестна
+			Position:  r.getLastWeeklyRatingPosition() + 1, // Устанавливаем последнюю позицию
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
@@ -79,6 +79,17 @@ func (r *PostgresRepository) GetUserRankAndNeighbors(userID uint, year, week int
 	}
 
 	return ratings, position, nil
+}
+
+// getLastWeeklyRatingPosition получает последнюю позицию,
+// устанавливается при регистрации нового пользователя
+func (r *PostgresRepository) getLastWeeklyRatingPosition() int {
+	var userRating models.WeeklyRating
+	err := r.db.Order("position desc").First(&userRating).Error
+	if err != nil {
+		return 0
+	}
+	return userRating.Position
 }
 
 // calculateUserPosition рассчитывает текущую позицию пользователя в рейтинге
@@ -144,7 +155,7 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 				Points:     0,
 				Bets:       0,
 				Efficiency: 0,
-				Position:   0, // Будет обновлено позже
+				Position:   r.getLastWeeklyRatingPosition() + 1, // Устанавливаем последнюю позицию
 				CreatedAt:  time.Now(),
 				UpdatedAt:  time.Now(),
 			}
@@ -194,7 +205,7 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 			Points:     totalPoints,
 			Bets:       totalBets,
 			Efficiency: efficiency,
-			Position:   0, // Будет обновлено позже
+			Position:   r.getLastWeeklyRatingPosition() + 1, // Устанавливаем последнюю позицию
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
 		}
