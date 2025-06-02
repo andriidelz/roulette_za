@@ -184,7 +184,7 @@ func (r *PostgresRepository) GetUserBetsCount(userID uint) (int, error) {
 func (r *PostgresRepository) GetWeeklyRating(year, week int, limit int) ([]models.WeeklyRating, error) {
 	var ratings []models.WeeklyRating
 	query := r.db.Where("year = ? AND week = ?", year, week).
-		Order("points desc, efficiency desc").
+		Order("points desc, efficiency desc, user_id asc").
 		Preload("User")
 
 	if limit > 0 {
@@ -205,9 +205,10 @@ func (r *PostgresRepository) GetUserWeeklyRating(userID uint, year, week int) (*
 	// Якщо рейтингу немає, створюємо новий
 	if err == gorm.ErrRecordNotFound {
 		rating = models.WeeklyRating{
-			UserID: userID,
-			Year:   year,
-			Week:   week,
+			UserID:   userID,
+			Year:     year,
+			Week:     week,
+			Position: r.getLastWeeklyRatingPosition() + 1, // Устанавливаем последнюю позицию,
 		}
 		if err := r.db.Create(&rating).Error; err != nil {
 			return nil, err
