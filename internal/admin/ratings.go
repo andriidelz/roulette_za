@@ -379,8 +379,8 @@ func (a *AdminPanel) distributeRatingPrizes(c *gin.Context) {
 			// И продолжаем распределение
 			fallthrough
 		case "PENDING", "NOT_CONFIGURED":
-			// Распределяем призы
-			if err := a.service.DistributePrizes(); err != nil {
+			// Распределяем призы с указанием года и недели из URL
+			if err := a.service.DistributePrizes(year, week); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
@@ -389,6 +389,30 @@ func (a *AdminPanel) distributeRatingPrizes(c *gin.Context) {
 
 	// Возвращаем успешный результат
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (a *AdminPanel) cancelRatingPrizes(c *gin.Context) {
+	// Получаем год и неделю из URL
+	year, err := strconv.Atoi(c.Param("year"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid year"})
+		return
+	}
+
+	week, err := strconv.Atoi(c.Param("week"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid week"})
+		return
+	}
+
+	// Отменяем распределение призов
+	if err := a.service.CancelPrizeDistribution(year, week); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Возвращаем успешный результат
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Prize distribution cancelled"})
 }
 
 // Список супер-рейтингів

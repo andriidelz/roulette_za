@@ -373,3 +373,7 @@ func (s *ServiceImpl) UpdateCurrentPrizeFund(amount float64, topCount int) error
 
 	return nil
 }
+
+func (s *ServiceImpl) CancelPrizeDistribution(year, week int) error {
+	return s.repo.CancelPrizeDistribution(year, week)
+}

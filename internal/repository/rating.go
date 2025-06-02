@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"roulette/internal/models"
 	"strconv"
 	"time"
@@ -424,4 +425,86 @@ func (r *PostgresRepository) GetAllPrizeFunds(page, perPage int) ([]models.Prize
 	}
 
 	return funds, count, nil
+}
+
+// Реализация метода для отмены распределения призов
+func (r *PostgresRepository) CancelPrizeDistribution(year, week int) error {
+	// Начинаем транзакцию
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("failed to begin transaction: %w", tx.Error)
+	}
+
+	// Получаем призовой фонд
+	var prizeFund models.PrizeFund
+	if err := tx.Where("year = ? AND week = ?", year, week).First(&prizeFund).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("error getting prize fund: %w", err)
+	}
+
+	// Проверяем, был ли призовой фонд уже распределен
+	if !prizeFund.Processed {
+		tx.Rollback()
+		return fmt.Errorf("prize fund for week %d/%d has not been processed yet", year, week)
+	}
+
+	// Получаем пользователей, которые получили призы за эту неделю
+	var ratings []models.WeeklyRating
+	if err := tx.Where("year = ? AND week = ? AND prize > 0", year, week).Find(&ratings).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("error getting ratings: %w", err)
+	}
+
+	// Возвращаем средства из балансов пользователей
+	for _, rating := range ratings {
+		// Получаем пользователя
+		var user models.User
+		if err := tx.First(&user, rating.UserID).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("error getting user %d: %w", rating.UserID, err)
+		}
+
+		// Вычитаем приз из баланса
+		user.Balance -= rating.Prize
+		if err := tx.Save(&user).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("error updating user balance: %w", err)
+		}
+
+		// Создаем уведомление о возврате приза
+		notification := models.Notification{
+			UserID:    user.ID,
+			Type:      "prize_cancel",
+			Message:   fmt.Sprintf("Prize of %.2f for week %d/%d has been cancelled", rating.Prize, year, week),
+			CreatedAt: time.Now(),
+		}
+
+		if err := tx.Create(&notification).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("error creating notification: %w", err)
+		}
+
+		// Обнуляем приз в рейтинге
+		if err := tx.Model(&models.WeeklyRating{}).
+			Where("id = ?", rating.ID).
+			Update("prize", 0).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("error updating rating prize: %w", err)
+		}
+	}
+
+	// Обновляем статус призового фонда
+	if err := tx.Model(&models.PrizeFund{}).
+		Where("id = ?", prizeFund.ID).
+		Update("processed", false).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("error updating prize fund status: %w", err)
+	}
+
+	// Фиксируем транзакцию
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	return nil
 }

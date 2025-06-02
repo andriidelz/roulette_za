@@ -138,6 +138,7 @@ func (a *AdminPanel) setupRoutes() {
 		admin.GET("/ratings", a.ratingsList)
 		admin.GET("/rating/:year/:week", a.ratingDetails)
 		admin.POST("/rating/:year/:week/distribute", a.distributeRatingPrizes)
+		admin.POST("/rating/:year/:week/cancel", a.cancelRatingPrizes)
 
 		admin.GET("/super-ratings", a.superRatingsList)
 		admin.GET("/super-rating/:period", a.superRatingDetails)

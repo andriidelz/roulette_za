@@ -55,6 +55,7 @@ type Repository interface {
 	GetPrizeFundWithoutCreation(year, week int) (*models.PrizeFund, error)
 	GetRecentPrizeFunds(limit int) ([]models.PrizeFund, error)
 	CreatePrizeFund(fund *models.PrizeFund) error
+	CancelPrizeDistribution(year, week int) error
 
 	// Методы для работы с настройками
 	GetSetting(key string) (*models.Setting, error)

@@ -57,7 +57,11 @@ func (b *Bot) StartRatingScheduler() {
 					}
 
 					// Распределяем призы для предыдущей недели
-					if err := b.service.DistributePrizes(); err != nil {
+					now := time.Now()
+					yesterday := now.AddDate(0, 0, -1)
+					year, week := yesterday.ISOWeek()
+
+					if err := b.service.DistributePrizes(year, week); err != nil {
 						log.Printf("Error distributing prizes: %v", err)
 					} else {
 						log.Println("Successfully distributed prizes")
