@@ -195,7 +195,10 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 			return neighbors[i].Points > neighbors[j].Points
 		}
 		// Если баллы одинаковые, сортируем по убыванию эффективности
-		return neighbors[i].Efficiency > neighbors[j].Efficiency
+		if neighbors[i].Efficiency != neighbors[j].Efficiency {
+			return neighbors[i].Efficiency > neighbors[j].Efficiency
+		}
+		return neighbors[i].UserID < neighbors[j].UserID
 	})
 
 	var templateKey string
