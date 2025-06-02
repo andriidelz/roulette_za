@@ -183,7 +183,7 @@ func (r *PostgresRepository) GetUserBetsCount(userID uint) (int, error) {
 func (r *PostgresRepository) GetWeeklyRating(year, week int, limit int) ([]models.WeeklyRating, error) {
 	var ratings []models.WeeklyRating
 	query := r.db.Where("year = ? AND week = ?", year, week).
-		Order("points desc, efficiency desc").
+		Order("points desc, efficiency desc, user_id asc").
 		Preload("User")
 
 	if limit > 0 {

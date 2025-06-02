@@ -70,7 +70,7 @@ func (r *PostgresRepository) GetUserRankAndNeighbors(userID uint, year, week int
 	var ratings []models.WeeklyRating
 	err = r.db.Where("year = ? AND week = ? AND position >= ? AND position <= ?",
 		year, week, startPos, endPos).
-		Order("points DESC, efficiency DESC"). // Сортировка по критериям рейтинга
+		Order("points DESC, efficiency DESC, user_id ASC"). // Сортировка по критериям рейтинга
 		Preload("User").
 		Find(&ratings).Error
 
@@ -244,7 +244,7 @@ func (r *PostgresRepository) RefreshAllWeeklyRatings() error {
 	positionQuery := `
         WITH ranked AS (
             SELECT id, user_id, ROW_NUMBER() OVER (
-                ORDER BY points DESC, efficiency DESC
+                ORDER BY points DESC, efficiency DESC, user_id ASC
             ) AS new_position
             FROM weekly_ratings
             WHERE week = ? AND year = ?
