@@ -83,7 +83,7 @@ func (a *AdminPanel) setupRoutes() {
 			}
 			return float64(a) / float64(b)
 		},
-		"multiply": func(a, b int) int {
+		"multiply": func(a, b float64) float64 {
 			return a * b
 		},
 		"formatDate": func(t time.Time) string {
