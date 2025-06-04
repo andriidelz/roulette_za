@@ -14,6 +14,7 @@ type Config struct {
 
 	// Телеграм
 	TelegramToken string
+	TelegramName  string // название бота
 
 	// Адмін-панель
 	AdminPort        string
@@ -41,6 +42,7 @@ func NewConfig() *Config {
 
 		// Телеграм
 		TelegramToken: getEnv("TELEGRAM_TOKEN", ""),
+		TelegramName:  getEnv("TELEGRAM_NAME", ""),
 
 		// Адмін-панель
 		AdminPort:        getEnv("ADMIN_PORT", "8080"),

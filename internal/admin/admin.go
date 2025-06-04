@@ -29,11 +29,10 @@ type Settings struct {
 	SessionSecret    string
 	AdminUsername    string
 	AdminPassword    string
+	BotName          string
 	AllowedIPs       []string
 	DisableIPFilters bool
 }
-
-var botName = "socialroulette_bot" 
 
 // Создание новой админ-панели
 func NewAdminPanel(service service.Service, repo repository.Repository, settings *Settings, paymentService *service.PaymentService) *AdminPanel {
