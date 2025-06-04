@@ -258,7 +258,7 @@ func (r *PostgresRepository) GetTopPlayersBySuccessRate(limit int) ([]map[string
 		)
 		SELECT 
 			user_id,
-			COALESCE(username, CONCAT(first_name, ' ', last_name)) AS display_name,
+			COALESCE(NULLIF(username, ''), CONCAT(first_name, ' ', last_name)) AS display_name,
 			total_bets,
 			won_bets,
 			total_points,
@@ -306,7 +306,7 @@ func (r *PostgresRepository) GetTopPlayersByAttempts(limit int) ([]map[string]in
 	rows, err := r.db.Raw(`
 		SELECT 
 			u.id AS user_id,
-			COALESCE(u.username, CONCAT(u.first_name, ' ', u.last_name)) AS display_name,
+			COALESCE(NULLIF(u.username, ''), CONCAT(u.first_name, ' ', u.last_name)) AS display_name,
 			COUNT(b.id) AS total_bets,
 			SUM(CASE WHEN b.won THEN 1 ELSE 0 END) AS won_bets,
 			SUM(CASE WHEN b.won THEN b.points ELSE 0 END) AS total_points,

@@ -29,6 +29,7 @@ type Settings struct {
 	SessionSecret    string
 	AdminUsername    string
 	AdminPassword    string
+	BotName          string
 	AllowedIPs       []string
 	DisableIPFilters bool
 }

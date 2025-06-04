@@ -55,6 +55,7 @@ func main() {
 		AdminPassword:    cfg.AdminPassword,
 		AllowedIPs:       cfg.AllowedIPs,
 		DisableIPFilters: cfg.DisableIPFilters,
+		BotName:          cfg.TelegramName,
 	}
 
 	// Створюємо адмін-панель
