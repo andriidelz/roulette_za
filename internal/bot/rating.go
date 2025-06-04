@@ -100,6 +100,11 @@ func (b *Bot) handleWeeklyRating(message *telego.Message) {
 		language = "en"
 	}
 
+	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
+	if dbUser, err := b.service.GetUser(user.ID); err == nil {
+		b.service.GetRepo().UpdateWeeklyRatingForUser(dbUser.ID)
+	}
+
 	// Получаем текущий недельный рейтинг (топ 100)
 	ratings, err := b.service.GetWeeklyTopRating(100)
 	if err != nil {
@@ -190,7 +195,10 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 			return neighbors[i].Points > neighbors[j].Points
 		}
 		// Если баллы одинаковые, сортируем по убыванию эффективности
-		return neighbors[i].Efficiency > neighbors[j].Efficiency
+		if neighbors[i].Efficiency != neighbors[j].Efficiency {
+			return neighbors[i].Efficiency > neighbors[j].Efficiency
+		}
+		return neighbors[i].UserID < neighbors[j].UserID
 	})
 
 	var templateKey string

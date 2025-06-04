@@ -280,7 +280,10 @@ func (s *ServiceImpl) FormatRatingList(ratings []models.WeeklyRating, currentUse
 			return ratings[i].Points > ratings[j].Points
 		}
 		// Если баллы одинаковые, сортируем по убыванию эффективности
-		return ratings[i].Efficiency > ratings[j].Efficiency
+		if ratings[i].Efficiency != ratings[j].Efficiency {
+			return ratings[i].Efficiency > ratings[j].Efficiency
+		}
+		return ratings[i].UserID < ratings[j].UserID
 	})
 
 	// Форматируем каждую строку и объединяем их
@@ -372,4 +375,8 @@ func (s *ServiceImpl) UpdateCurrentPrizeFund(amount float64, topCount int) error
 		year, week, amount, topCount)
 
 	return nil
+}
+
+func (s *ServiceImpl) CancelPrizeDistribution(year, week int) error {
+	return s.repo.CancelPrizeDistribution(year, week)
 }

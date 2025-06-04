@@ -45,7 +45,8 @@ type Service interface {
 	GetUserPosition(telegramID int64) (int, error)
 	GetSuperRating(limit int) ([]models.SuperRating, error)
 	UpdateWeeklyRatings() error
-	DistributePrizes() error
+	DistributePrizes(year, week int) error
+	CancelPrizeDistribution(year, week int) error
 	GetPrizeFund(year, week int) (*models.PrizeFund, error)
 	GetWeeklyTopRating(limit int) ([]models.WeeklyRating, error)
 	GetUserRatingPosition(telegramID int64, neighborsCount int) ([]models.WeeklyRating, int, error)
@@ -602,8 +603,7 @@ func (s *ServiceImpl) UpdateWeeklyRatings() error {
 	return nil
 }
 
-func (s *ServiceImpl) DistributePrizes() error {
-	year, week := time.Now().ISOWeek()
+func (s *ServiceImpl) DistributePrizes(year, week int) error {
 
 	// Отримуємо призовий фонд
 	prizeFund, err := s.repo.GetPrizeFund(year, week)
