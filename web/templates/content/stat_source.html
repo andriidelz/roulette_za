@@ -1,0 +1,127 @@
+{{define "stat_source"}}
+{{template "header" .}}
+{{template "navbar" .}}
+<div class="d-flex">
+    {{template "sidebar" .}}
+    <main class="main-content flex-grow-1">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <h1 class="mb-4">Статистика по источникам</h1>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <!-- Выбор периода -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary" data-period="day">День</button>
+                                <button type="button" class="btn btn-outline-primary" data-period="week">Неделя</button>
+                                <button type="button" class="btn btn-outline-primary" data-period="month">Месяц</button>
+                                <button type="button" class="btn btn-outline-primary active"
+                                    data-period="year">Год</button>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="input-group">
+                                <span class="input-group-text">Период</span>
+                                <input type="date" class="form-control" id="start-date">
+                                <span class="input-group-text">-</span>
+                                <input type="date" class="form-control" id="end-date">
+                                <button class="btn btn-outline-secondary" type="button" id="apply-date-filter">
+                                    Применить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover card-view-on-mobile" id="stat_table">
+                            <thead>
+                                <tr>
+                                    <th>Дата регистрации</th>
+                                    <th>ID источника</th>
+                                    <th>Кол-во пользователей</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+    </main>
+</div>
+
+{{block "additionalScripts_stat" .}}
+<script>
+    $(document).ready(function () {
+
+        let filter = { period: 'year' };
+        let tableRef = document.getElementById('stat_table').getElementsByTagName('tbody')[0];
+
+        // Обработчики фильтров периода
+        document.querySelectorAll('[data-period]').forEach(button => {
+            button.addEventListener('click', function () {
+                document.querySelectorAll('[data-period]').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                this.classList.add('active');
+
+                filter.dateFrom = '';
+                filter.dateTo = '';
+                filter.period = this.getAttribute('data-period');
+
+                $('#start-date').val('');
+                $('#end-date').val('');
+                update();
+            });
+        });
+
+        // Add new localization
+        $('#apply-date-filter').click(function () {
+            filter.dateFrom = $('#start-date').val();
+            filter.dateTo = $('#end-date').val();
+            filter.period = '';
+            update();
+        });
+
+        function update() {
+            console.log(filter);
+            tableRef.innerHTML = "";
+
+            $.ajax({
+                url: '/admin/stat_source/get_all',
+                type: 'POST',
+                data: filter,
+                success: function (response) {
+                    if (response.count === 0) {
+                        tableRef.insertRow().innerHTML = '<tr><td colspan="20">Нет данных</td></tr>';
+                        return;
+                    }
+
+                    console.log(response.result);
+                    response.result.forEach((cell, index) => {
+                        //insert Row
+                        tableRef.insertRow().innerHTML =
+                            '<tr><td>' + cell.created_at + '</td>' +
+                            '<td>' + cell.source + '</td>' +
+                            '<td>' + cell.count + '</td></tr>';
+                    });
+
+                },
+                error: function (response) {
+                    console.log(response.responseText);
+                    tableRef.innerHTML = '<tr><td colspan="20">' + response.responseText + '</td></tr>';
+                }
+            });
+        }
+
+        update();
+    });
+</script>
+{{end}}
+
+{{template "footer" .}}
+{{end}}

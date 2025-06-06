@@ -351,3 +351,42 @@ func (r *PostgresRepository) GetTopPlayersByAttempts(limit int) ([]map[string]in
 
 	return result, nil
 }
+
+// GetSource возвращает кол-во регистраций по источникам
+func (r *PostgresRepository) GetSource(dateFrom, dateTo string) ([]map[string]interface{}, error) {
+	var result []map[string]interface{}
+
+	// SQL запрос для получения кол-ва регистраций по источнику
+	// ::date скорочена нотація Postgres для приведення значення в формат
+	// WHERE source = ref_key
+	rows, err := r.db.Raw(`
+		SELECT created_at::date, COALESCE(source, '') AS source, COUNT(*)
+		FROM public.users
+		WHERE created_at >= ? and created_at <= ?
+		GROUP BY created_at::date, source
+		ORDER BY created_at DESC, source DESC;
+	`, dateFrom, dateTo).Rows()
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var created_at, source string
+		var count int
+
+		if err := rows.Scan(&created_at, &source, &count); err != nil {
+			return nil, err
+		}
+
+		player := map[string]interface{}{
+			"created_at": created_at,
+			"source":     source,
+			"count":      count,
+		}
+		result = append(result, player)
+	}
+
+	return result, nil
+}

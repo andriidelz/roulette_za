@@ -18,6 +18,11 @@
             </a>
         </li>
         <li class="nav-item">
+            <a class="nav-link {{if eq .activeTab "stat_source"}}active{{end}}" href="/admin/stat_source">
+                <i class="bi bi-database-add"></i> Источники
+            </a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
                 <i class="bi bi-trophy"></i> Рейтинг
             </a>
@@ -84,6 +89,11 @@
             <li class="nav-item">
                 <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "stats"}}active{{end}}" href="/admin/stats">
                     <i class="bi bi-bar-chart me-2"></i> Статистика
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "stat_source"}}active{{end}}" href="/admin/stat_source">
+                    <i class="bi bi-database-add me-2"></i> Источники
                 </a>
             </li>
             <li class="nav-item">

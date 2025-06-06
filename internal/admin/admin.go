@@ -135,6 +135,8 @@ func (a *AdminPanel) setupRoutes() {
 		admin.GET("/user/:id/stats/json", a.getUserDetailedStats)
 
 		admin.GET("/stats", a.statistics)
+		admin.GET("/stat_source", a.statSourcePage)
+		admin.POST("/stat_source/get_all", a.statSourceGetAll)
 
 		admin.GET("/ratings", a.ratingsList)
 		admin.GET("/rating/:year/:week", a.ratingDetails)

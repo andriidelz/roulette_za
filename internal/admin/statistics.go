@@ -2,6 +2,8 @@ package admin
 
 import (
 	"net/http"
+	"roulette/internal/logger"
+	"roulette/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -56,4 +58,47 @@ func (a *AdminPanel) statistics(c *gin.Context) {
 		"topSuccessRatePlayers": topSuccessRatePlayers,
 		"topBetsPlayers":        topBetsPlayers,
 	})
+}
+
+// Статистика по источникам
+func (a *AdminPanel) statSourcePage(c *gin.Context) {
+	c.HTML(http.StatusOK, "stat_source", gin.H{
+		"title":     "Admin-panel - Statistics by source",
+		"activeTab": "stat_source",
+	})
+}
+
+// Статистика по источникам
+func (a *AdminPanel) statSourceGetAll(c *gin.Context) {
+
+	params := struct {
+		Period   string `form:"period" json:"period"`
+		DateFrom string `form:"dateFrom" json:"dateFrom"`
+		DateTo   string `form:"dateTo" json:"dateTo"`
+	}{}
+
+	if err := c.Bind(&params); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	logger.Error.Println(params.Period, params.DateFrom, params.DateTo)
+
+	_, err := utils.PeriodControl(&params.DateFrom, &params.DateTo, &params.Period)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	logger.Error.Println(params.DateFrom, params.DateTo)
+
+	// Получаем статистику
+	result, err := a.service.GetSource(params.DateFrom, params.DateTo)
+	if err != nil {
+		logger.Error.Println(err)
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": result, "count": len(result)})
 }
