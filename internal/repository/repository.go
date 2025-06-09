@@ -31,7 +31,12 @@ type Repository interface {
 	GetSuccessRateStats() (map[string]float64, error)
 	GetTopPlayersBySuccessRate(limit int) ([]map[string]interface{}, error)
 	GetTopPlayersByAttempts(limit int) ([]map[string]interface{}, error)
+
+	// Источники
 	GetSource(dateFrom, dateTo string) ([]map[string]interface{}, error)
+	SetSourceKey(key string, name string) error
+	CheckSourceKeyExists(key string) (bool, error)
+	GetAllSourceKeys() ([]models.SourceKey, error)
 
 	// Игры и стаки
 	CreateBet(bet *models.Bet) error

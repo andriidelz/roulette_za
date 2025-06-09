@@ -61,15 +61,16 @@ func (a *AdminPanel) statistics(c *gin.Context) {
 }
 
 // Статистика по источникам
-func (a *AdminPanel) statSourcePage(c *gin.Context) {
-	c.HTML(http.StatusOK, "stat_source", gin.H{
-		"title":     "Admin-panel - Statistics by source",
-		"activeTab": "stat_source",
+func (a *AdminPanel) sourcesPage(c *gin.Context) {
+	c.HTML(http.StatusOK, "sources_statistics", gin.H{
+		"title":        "Admin-panel - Statistics by source",
+		"activeTab":    "sources",
+		"activeSubTab": "",
 	})
 }
 
 // Статистика по источникам
-func (a *AdminPanel) statSourceGetAll(c *gin.Context) {
+func (a *AdminPanel) sourcesGetAll(c *gin.Context) {
 
 	params := struct {
 		Period   string `form:"period" json:"period"`

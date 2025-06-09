@@ -134,6 +134,13 @@ type Localization struct {
 	Value    string `gorm:"type:text"`
 }
 
+// Источники
+type SourceKey struct {
+	ID   uint   `gorm:"primaryKey"`
+	Key  string `gorm:"size:255;index"`
+	Name string `gorm:"type:text"`
+}
+
 // Призовий фонд за тиждень
 type PrizeFund struct {
 	ID        uint    `gorm:"primaryKey"`

@@ -118,6 +118,16 @@ CREATE TABLE IF NOT EXISTS localizations (
 CREATE INDEX IF NOT EXISTS idx_localizations_key ON localizations (key);
 CREATE INDEX IF NOT EXISTS idx_localizations_language ON localizations (language);
 
+-- Источники
+CREATE TABLE IF NOT EXISTS source_keys (
+    id SERIAL PRIMARY KEY,
+    key VARCHAR(255) NOT NULL,
+    name TEXT,
+    UNIQUE (key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_source_keys_key ON sources_keys (key);
+
 -- Призовые фонды
 CREATE TABLE IF NOT EXISTS prize_funds (
     id SERIAL PRIMARY KEY,
