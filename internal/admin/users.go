@@ -245,6 +245,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	c.HTML(http.StatusOK, "user_details", gin.H{
 		"title":            fmt.Sprintf("Admin-panel - Користувач %s", user.Username),
 		"user":             user,
+		"botName":          a.settings.BotName,
 		"stats":            stats,
 		"rating":           rating,
 		"bets":             bets,

@@ -14,6 +14,7 @@ type Config struct {
 
 	// Телеграм
 	TelegramToken            string
+	TelegramName             string // название бота
 	TelegramReserveChannelID string
 
 	// Адмін-панель
@@ -42,6 +43,7 @@ func NewConfig() *Config {
 
 		// Телеграм
 		TelegramToken:            getEnv("TELEGRAM_TOKEN", ""),
+		TelegramName:             getEnv("TELEGRAM_NAME", ""),
 		TelegramReserveChannelID: getEnv("TELEGRAM_RESERVE_CHANNEL_ID", ""),
 
 		// Адмін-панель

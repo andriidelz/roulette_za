@@ -26,6 +26,7 @@ func NewPaymentService(repo repository.Repository, providers *payment.Factory, d
 	}
 }
 
+// unused
 // RequestWithdrawal processes a withdrawal request
 func (s *PaymentService) RequestWithdrawal(userID uint, amount float64, walletAddress string) (*models.Withdrawal, error) {
 	log.Printf("[PaymentService] Processing withdrawal request: userID=%d, amount=%.2f, wallet=%s",
@@ -197,6 +198,16 @@ func (s *PaymentService) ApproveWithdrawal(withdrawalID uint) error {
 		log.Printf("[PaymentService] Withdrawal %d is not in pending status: %s",
 			withdrawalID, withdrawal.Status)
 		return fmt.Errorf("withdrawal is not in pending status: %s", withdrawal.Status)
+	}
+
+	user, err := s.repo.GetUserByID(withdrawal.UserID)
+	if err != nil {
+		log.Printf("[PaymentService] Error getting userByID %d: %v", withdrawal.UserID, err)
+		return fmt.Errorf("error getting userByID: %w", err)
+	}
+
+	if user.Balance < 0 {
+		return fmt.Errorf("user balance is negative")
 	}
 
 	log.Printf("[PaymentService] Getting provider '%s' for withdrawal", s.defaultProvider)
