@@ -68,6 +68,7 @@ type Repository interface {
 	GetLocalization(key string, language string) (string, error)
 	SetLocalization(key string, language string, value string) error
 	GetAllLocalizationsForLanguage(language string) ([]models.Localization, error)
+	GetAllLocalizationsByKey(key string) ([]models.Localization, error) // ДОБАВЛЕН НЕДОСТАЮЩИЙ МЕТОД
 	DeleteLocalization(key string) error
 	GetLocalizationCount(language string) (int64, error)
 	CheckLocalizationExists(key string) (bool, error)
@@ -81,6 +82,9 @@ type Repository interface {
 	CreateNotification(notification *models.Notification) error
 	GetUserNotifications(userID uint, limit int) ([]models.Notification, error)
 	MarkNotificationAsRead(id uint) error
+	GetPendingNotificationTasks() ([]models.NotificationTask, error)
+	GetPendingNotifications() ([]models.Notification, error)
+	MarkNotificationAsSent(id uint) error
 
 	// Вывод средств
 	CreateWithdrawal(withdrawal *models.Withdrawal) error
