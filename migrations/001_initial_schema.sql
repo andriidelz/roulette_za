@@ -123,10 +123,12 @@ CREATE TABLE IF NOT EXISTS source_keys (
     id SERIAL PRIMARY KEY,
     key VARCHAR(255) NOT NULL,
     name TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE (key)
 );
 
-CREATE INDEX IF NOT EXISTS idx_source_keys_key ON sources_keys (key);
+CREATE INDEX IF NOT EXISTS idx_source_keys_key ON source_keys (key);
 
 -- Призовые фонды
 CREATE TABLE IF NOT EXISTS prize_funds (

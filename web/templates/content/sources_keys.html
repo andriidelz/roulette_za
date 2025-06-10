@@ -1,6 +1,10 @@
 {{define "sources_keys"}}
 {{template "header" .}}
 {{template "navbar" .}}
+
+<script type="text/javascript">
+    window.botName = "{{ .botName }}";
+</script>
 <div class="d-flex">
     {{template "sidebar" .}}
     <main class="main-content flex-grow-1">
@@ -27,7 +31,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{if eq .activeSubTab " keys"}}active{{end}}" href="/admin/sources/keys">
+                    <a class="nav-link {{if eq .activeSubTab "keys"}}active{{end}}" href="/admin/sources/keys">
                         <i class="bi bi-key me-1"></i> Ключи
                     </a>
                 </li>
@@ -53,6 +57,7 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                {{ $botName := .botName}}
                                 {{range .sources}}
                                 <tr data-key="{{.Key}}">
                                     <td>{{.Key}}</td>
@@ -66,6 +71,11 @@
                                         <div class="btn-group">
                                             <button class="btn btn-sm btn-outline-primary edit-source">
                                                 <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary copy-referral-btn"
+                                                data-clipboard-text="https://t.me/{{ $botName}}?start={{ .Key }}"
+                                                title="Копировать ссылку">
+                                                <i class="bi bi-clipboard"></i>
                                             </button>
                                         </div>
                                     </td>
@@ -154,7 +164,7 @@
                             valueDisplay.text(name);
                             valueDisplay.removeClass('d-none');
                             valueEditor.addClass('d-none');
-                            row.find('.edit-localization').html('<i class="bi bi-pencil"></i>');
+                            row.find('.edit-source').html('<i class="bi bi-pencil"></i>');
                             showNotification('Локализация успешно сохранена', 'success');
                         } else {
                             showNotification('Ошибка при сохранении: ' + response.error, 'danger');
@@ -166,6 +176,18 @@
                     }
                 });
             }
+        });
+
+        // Копирование реферальной ссылки
+        $('.copy-referral-btn').click(function () {
+            var address = $(this).data('clipboard-text');
+            navigator.clipboard.writeText(address).then(function () {
+                $(this).attr('title', 'Скопировано!');
+                $(this).tooltip('show');
+                setTimeout(function () {
+                    $(this).attr('title', 'Копировать адрес');
+                }.bind(this), 2000);
+            }.bind(this));
         });
 
         // Add new source
@@ -242,6 +264,11 @@
                 <button class="btn btn-sm btn-outline-primary edit-source">
                   <i class="bi bi-pencil"></i>
                 </button>
+                <button class="btn btn-sm btn-outline-primary copy-referral-btn"
+                    data-clipboard-text="https://t.me/${window.botName}?start=${key}"
+                    title="Копировать ссылку">
+                    <i class="bi bi-clipboard"></i>
+                </button>
               </div>
             </td>
           </tr>
@@ -294,6 +321,17 @@
                         }
                     });
                 }
+            });
+
+            row.find('.copy-referral-btn').click(function () {
+                var address = $(this).data('clipboard-text');
+                navigator.clipboard.writeText(address).then(function () {
+                    $(this).attr('title', 'Скопировано!');
+                    $(this).tooltip('show');
+                    setTimeout(function () {
+                        $(this).attr('title', 'Копировать адрес');
+                    }.bind(this), 2000);
+                }.bind(this));
             });
         }
 

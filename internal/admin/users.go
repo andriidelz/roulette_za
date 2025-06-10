@@ -429,6 +429,12 @@ func (a *AdminPanel) userRef(c *gin.Context) {
 	}
 
 	user.RefKey = fmt.Sprint(user.ID)
+	// Сохраняем источник
+	if err := a.repo.SetSourceKey(user.RefKey, "Пользователь "+fmt.Sprint(user.ID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := a.repo.UpdateUser(user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

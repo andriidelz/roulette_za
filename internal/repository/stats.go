@@ -360,11 +360,12 @@ func (r *PostgresRepository) GetSource(dateFrom, dateTo string) ([]map[string]in
 	// ::date скорочена нотація Postgres для приведення значення в формат
 	// WHERE source = ref_key
 	rows, err := r.db.Raw(`
-		SELECT created_at::date, COALESCE(source, '') AS source, COUNT(*)
-		FROM public.users
-		WHERE created_at >= ? and created_at <= ?
-		GROUP BY created_at::date, source
-		ORDER BY created_at DESC, source DESC;
+SELECT u.created_at::date, COALESCE(k.name, u.source) AS source, COUNT(u.id)
+FROM public.users u LEFT OUTER JOIN "source_keys" k
+ON u.source = k.key
+WHERE u.created_at >= ? and u.created_at <= ?
+GROUP BY u.created_at::date, source, k.name
+ORDER BY created_at DESC, source DESC;
 	`, dateFrom, dateTo).Rows()
 
 	if err != nil {

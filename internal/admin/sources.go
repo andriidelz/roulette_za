@@ -23,6 +23,7 @@ func (a *AdminPanel) sourcesKeysPage(c *gin.Context) {
 		"activeTab":    "sources",
 		"activeSubTab": "keys",
 		"sources":      sources,
+		"botName":      a.settings.BotName,
 	})
 }
 

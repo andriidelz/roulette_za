@@ -2,6 +2,7 @@ package repository
 
 import (
 	"roulette/internal/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -14,8 +15,10 @@ func (r *PostgresRepository) SetSourceKey(key string, name string) error {
 	if err == gorm.ErrRecordNotFound {
 		// Создаем новый источник
 		res = models.SourceKey{
-			Key:  key,
-			Name: name,
+			Key:       key,
+			Name:      name,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		}
 		return r.db.Create(&res).Error
 	} else if err != nil {
@@ -24,6 +27,7 @@ func (r *PostgresRepository) SetSourceKey(key string, name string) error {
 
 	// Обновляем источник
 	res.Name = name
+	res.UpdatedAt = time.Now()
 	return r.db.Save(&res).Error
 }
 
