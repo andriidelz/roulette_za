@@ -56,7 +56,7 @@
                             <thead>
                                 <tr>
                                     <th>Дата регистрации</th>
-                                    <th>ID источника</th>
+                                    <th>Источник</th>
                                     <th>Кол-во пользователей</th>
                                 </tr>
                             </thead>
@@ -93,7 +93,7 @@
             });
         });
 
-        // Add new localization
+        // Filter by date
         $('#apply-date-filter').click(function () {
             filter.dateFrom = $('#start-date').val();
             filter.dateTo = $('#end-date').val();

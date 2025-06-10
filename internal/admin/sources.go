@@ -29,13 +29,12 @@ func (a *AdminPanel) sourcesKeysPage(c *gin.Context) {
 
 // Обработчик сохранения источника
 func (a *AdminPanel) sourceKeysSave(c *gin.Context) {
-	// Получаем ключ локализации
+	// Получаем ключ
 	key := c.Param("key")
 
 	// Получаем данные из формы
 	name := c.PostForm("name")
 
-	// Сохраняем локализации для каждого языка, если они предоставлены
 	if err := a.repo.SetSourceKey(key, name); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
