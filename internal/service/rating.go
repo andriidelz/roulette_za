@@ -227,7 +227,7 @@ func (s *ServiceImpl) FormatPlayerLine(rating models.WeeklyRating, position int,
 	if rating.User.Nickname != "" {
 		displayName = rating.User.Nickname
 	} else if rating.User.Username != "" {
-		displayName = "@" + rating.User.Username
+		displayName = rating.User.Username
 	} else if rating.User.FirstName != "" {
 		displayName = rating.User.FirstName
 		if rating.User.LastName != "" {
@@ -297,9 +297,8 @@ func (s *ServiceImpl) FormatRatingList(ratings []models.WeeklyRating, currentUse
 	return strings.Join(lines, "\n")
 }
 
-// CreateNewWeeklyRating создает новый недельный рейтинг
-// и инициализирует призовой фонд на основе текущих настроек
-func (s *ServiceImpl) CreateNewWeeklyRating(year, week int) error {
+// CreateNewPrizeFund создает новый призовой фонд на основе текущих настроек
+func (s *ServiceImpl) CreateNewPrizeFund(year, week int) error {
 	// Получаем настройки
 	settings, err := s.GetSettings()
 	if err != nil {

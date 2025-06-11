@@ -134,6 +134,15 @@ type Localization struct {
 	Value    string `gorm:"type:text"`
 }
 
+// Источники
+type SourceKey struct {
+	ID        uint      `gorm:"primaryKey"`
+	Key       string    `gorm:"size:255;index"`
+	Name      string    `gorm:"type:text"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // Призовий фонд за тиждень
 type PrizeFund struct {
 	ID        uint    `gorm:"primaryKey"`
@@ -148,13 +157,20 @@ type PrizeFund struct {
 
 // Сповіщення користувача
 type Notification struct {
-	ID        uint   `gorm:"primaryKey"`
-	UserID    uint   `gorm:"index"`
-	User      User   `gorm:"foreignKey:UserID"`
-	Type      string `gorm:"size:50;index"`
-	Message   string `gorm:"type:text"`
-	Read      bool   `gorm:"default:false"`
-	CreatedAt time.Time
+	ID             uint       `gorm:"primaryKey"`
+	UserID         uint       `gorm:"index"`
+	User           User       `gorm:"foreignKey:UserID"`
+	Type           string     `gorm:"size:50;index"`
+	Message        string     `gorm:"type:text"`
+	Title          string     `gorm:"type:text"`
+	ImageURL       string     `gorm:"type:text;column:image_url"`
+	ButtonText     string     `gorm:"type:text;column:button_text"`
+	ButtonURL      string     `gorm:"type:text;column:button_url"`
+	ButtonCallback string     `gorm:"type:text;column:button_callback"`
+	Read           bool       `gorm:"default:false"`
+	Delivered      bool       `gorm:"default:false"`
+	ReadAt         *time.Time `gorm:"column:read_at"`
+	CreatedAt      time.Time
 }
 
 // Запит на виведення коштів

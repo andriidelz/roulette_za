@@ -5,10 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
 	"strings"
+	"time"
 
 	logger "roulette/internal/logger"
 )
@@ -91,4 +93,79 @@ func GetColorForNumber(number int64) string {
 		}
 	}
 	return "black"
+}
+
+// PeriodControl - check dates
+func PeriodControl(dateFrom, dateTo, period *string) (bool, error) {
+
+	if *dateTo == "" && *dateFrom == "" {
+		year, month, day := time.Now().Date()
+		switch *period {
+		case "week":
+			weekday := time.Now().Weekday()
+			res := time.Date(year, month, day-int(weekday)+1, 0, 0, 0, 0, time.UTC).Local()
+			*dateFrom = res.Format("2006-01-02")
+			*dateTo = res.AddDate(0, 0, 7).Format("2006-01-02")
+		case "month":
+			*dateFrom = time.Date(year, month, 1, 0, 0, 0, 0, time.UTC).Local().Format("2006-01-02")
+			*dateTo = time.Date(year, month+1, -1, 0, 0, 0, 0, time.UTC).Local().Format("2006-01-02")
+		case "year":
+			*dateFrom = time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC).Local().Format("2006-01-02")
+			*dateTo = time.Date(year+1, 1, -1, 0, 0, 0, 0, time.UTC).Local().Format("2006-01-02")
+		default:
+			res := time.Date(year, month, day-1, 0, 0, 0, 0, time.UTC).Local()
+			*dateFrom = res.Format("2006-01-02")
+			*dateTo = res.AddDate(0, 0, 1).Format("2006-01-02")
+			return false, nil
+		}
+
+	} else if *dateTo == "" || *dateFrom == "" {
+		return false, errors.New("введенна только одна дата, введите вторую")
+	} else {
+		before, err := CheckTimeBefore(dateTo, dateFrom)
+		if err {
+			return false, errors.New("формат даты указан неправильно, нужно YYYY-MM-DD")
+		}
+		if !before {
+			return false, errors.New("период 'from' больше периода 'to'")
+		}
+	}
+	return true, nil
+}
+
+// CheckTimeBefore - checkTimeBefore dates
+func CheckTimeBefore(dateTo, dateFrom *string) (bool, bool) {
+	from, err1 := time.Parse("2006-01-02", *dateFrom)
+	to, err2 := time.Parse("2006-01-02", *dateTo)
+	if err2 != nil || err1 != nil {
+		return false, true
+	}
+	return from.Before(to), false
+}
+
+func ReplaceMacrosInTexts(title, message, buttonText string, params map[string]interface{}) (string, string, string) {
+	// Заменяем все макросы в текстах
+	for key, value := range params {
+		placeholder := "{" + key + "}"
+		var strValue string
+
+		switch v := value.(type) {
+		case int:
+			strValue = fmt.Sprintf("%d", v)
+		case float64:
+			strValue = fmt.Sprintf("%.2f", v)
+		case string:
+			strValue = v
+		default:
+			strValue = fmt.Sprintf("%v", v)
+		}
+
+		title = strings.Replace(title, placeholder, strValue, -1)
+		message = strings.Replace(message, placeholder, strValue, -1)
+		if buttonText != "" {
+			buttonText = strings.Replace(buttonText, placeholder, strValue, -1)
+		}
+	}
+
+	return title, message, buttonText
 }

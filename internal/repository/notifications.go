@@ -52,7 +52,6 @@ func (r *PostgresRepository) GetNotificationTemplateByID(id uint) (*models.Notif
 
 // UpdateNotificationTemplate обновляет шаблон уведомления
 func (r *PostgresRepository) UpdateNotificationTemplate(template *models.NotificationTemplate) error {
-
 	// Получаем текущее значение из базы данных
 	var existingTemplate models.NotificationTemplate
 	if err := r.db.First(&existingTemplate, template.ID).Error; err != nil {
@@ -132,7 +131,24 @@ func (r *PostgresRepository) UpdateNotificationTask(task *models.NotificationTas
 
 // DeleteNotificationTask удаляет задачу
 func (r *PostgresRepository) DeleteNotificationTask(id uint) error {
-	return r.db.Delete(&models.NotificationTask{}, id).Error
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	// Удаляем получателей
+	if err := tx.Where("task_id = ?", id).Delete(&models.NotificationRecipient{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Удаляем задачу
+	if err := tx.Delete(&models.NotificationTask{}, id).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }
 
 // CreateNotificationRecipient создает получателя уведомления
@@ -186,6 +202,26 @@ func (r *PostgresRepository) GetPendingNotificationTasks() ([]models.Notificatio
 		Find(&tasks).Error
 
 	return tasks, err
+}
+
+// GetPendingNotifications получает неотправленные уведомления
+func (r *PostgresRepository) GetPendingNotifications() ([]models.Notification, error) {
+	var notifications []models.Notification
+	err := r.db.Where("delivered = ?", false).
+		Preload("User").
+		Limit(100).
+		Find(&notifications).Error
+	return notifications, err
+}
+
+// MarkNotificationAsSent помечает уведомление как отправленное
+func (r *PostgresRepository) MarkNotificationAsSent(id uint) error {
+	return r.db.Model(&models.Notification{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"delivered": true,
+			"read":      false,
+		}).Error
 }
 
 // GetUsersForNotificationTask находит пользователей, соответствующих параметрам таргетинга
@@ -290,7 +326,6 @@ func (r *PostgresRepository) GetNotificationTasksStats(period string) (*models.N
 	}
 
 	// SQL-запрос для статистики по странам
-	// Здесь используем сырой SQL-запрос для группировки по странам
 	query := `
 		SELECT 
 			u.country, 
@@ -314,7 +349,7 @@ func (r *PostgresRepository) GetNotificationTasksStats(period string) (*models.N
 	for i, cs := range countryStats {
 		stats.CountryStats[i] = models.CountryStats{
 			Country:     cs.Country,
-			CountryName: getCountryName(cs.Country), // Определение названия страны по коду
+			CountryName: data.GetCountryByCode(cs.Country).Name,
 			Sent:        cs.Sent,
 			Delivered:   cs.Delivered,
 			Read:        cs.Read,
@@ -324,13 +359,6 @@ func (r *PostgresRepository) GetNotificationTasksStats(period string) (*models.N
 	return stats, nil
 }
 
-// getCountryName возвращает название страны по коду
-func getCountryName(countryCode string) string {
-	// Функция из пакета данных для стран
-	return ""
-}
-
-// GetCountriesWithUserCounts получает список стран с количеством пользователей
 // GetCountriesWithUserCounts получает список стран с количеством пользователей
 func (r *PostgresRepository) GetCountriesWithUserCounts() ([]models.CountryOption, error) {
 	var results []struct {
@@ -499,13 +527,6 @@ func (r *PostgresRepository) GetTemplateWithLocalizations(templateID uint) (*mod
 	}
 
 	return result, nil
-}
-
-// GetAllLocalizationsByKey получает все локализации по ключу
-func (r *PostgresRepository) GetAllLocalizationsByKey(key string) ([]models.Localization, error) {
-	var localizations []models.Localization
-	err := r.db.Where("key = ?", key).Find(&localizations).Error
-	return localizations, err
 }
 
 // UpdateTaskProgress обновляет прогресс выполнения задачи

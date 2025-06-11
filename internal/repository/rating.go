@@ -359,6 +359,7 @@ func (r *PostgresRepository) FixPartiallyDistributedPrizes(year, week int, actio
 	return tx.Commit().Error
 }
 
+// unused
 // CreatePrizeFund создает новый призовой фонд
 func (r *PostgresRepository) CreatePrizeFund(fund *models.PrizeFund) error {
 	// Проверяем, существует ли уже призовой фонд для указанной недели
