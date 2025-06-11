@@ -113,6 +113,12 @@ func (b *Bot) Start() error {
 	}
 	log.Printf("Bot started: https://t.me/%s", me.Username)
 
+	// Настраиваем обработчик уведомлений
+	if err := b.setupNotificationHandler(); err != nil {
+		log.Printf("Warning: Failed to setup notification handler: %v", err)
+		// Продолжаем работу, так как это не критическая ошибка
+	}
+
 	// Начало получения обновлений
 	updates, err := b.bot.UpdatesViaLongPolling(&telego.GetUpdatesParams{
 		Timeout: 60,
