@@ -107,6 +107,7 @@ services:
       - ADMIN_PORT=8080
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - TELEGRAM_NAME=${TELEGRAM_NAME}
       - SESSION_SECRET=${SESSION_SECRET:-super_secret_key}
       - DISABLE_IP_FILTERS=true
       # Переменные окружения для OxaPay
