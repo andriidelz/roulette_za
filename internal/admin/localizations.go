@@ -150,6 +150,13 @@ func (a *AdminPanel) localizationAdd(c *gin.Context) {
 	ruValue := c.PostForm("ru")
 	ukValue := c.PostForm("uk")
 
+	// Проверяем, существует ли уже такая локализация
+	exists, _ := a.repo.CheckLocalizationExists(key)
+	if exists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ключ уже существует"})
+		return
+	}
+
 	// Проверяем, что все необходимые данные предоставлены
 	if key == "" || ukValue == "" || enValue == "" || ruValue == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Все поля должны быть заполнены"})

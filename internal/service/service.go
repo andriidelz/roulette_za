@@ -57,7 +57,7 @@ type Service interface {
 	FormatRatingForDisplay(ratings []models.WeeklyRating, currentUserID int64) []string
 	GetPrizeDistributionStatus(year, week int) (string, error)
 	FormatRatingList(ratings []models.WeeklyRating, currentUserID int64, language string) string
-	CreateNewWeeklyRating(year, week int) error
+	CreateNewPrizeFund(year, week int) error
 	UpdateCurrentPrizeFund(amount float64, topCount int) error
 
 	// Настройки и локализация
@@ -90,11 +90,20 @@ type Service interface {
 	DeleteNotificationTemplate(id uint) error
 	GetTemplateWithLocalizations(templateID uint) (*models.NotificationTemplateWithLocalizations, error)
 
+	// Автоматические уведомления
+	HandleBalanceUpdate(userID uint, amount float64) error
+	HandleTopRatingEntry(userID uint, position int) error
+
 	GetNotificationTasks(status string, page, perPage int) ([]models.NotificationTask, int64, error)
 	GetEnhancedNotificationTask(id uint) (*models.EnhancedNotificationTask, error)
 	CreateNotificationTask(templateID uint, targetType string, targetParams models.NotificationTargetParams, scheduledAt *time.Time) (*models.NotificationTask, error)
 	CancelNotificationTask(id uint) error
 	SendNotifications(taskID uint) error
+
+	GetPendingNotificationTasks() ([]models.NotificationTask, error)
+
+	SendNotification(notification *models.Notification) error
+	GetPendingNotifications() ([]models.Notification, error)
 
 	GetNotificationTasksStats(period string) (*models.NotificationStatistics, error)
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)
@@ -608,7 +617,7 @@ func (s *ServiceImpl) UpdateWeeklyRatings() error {
 	_, err := s.repo.GetPrizeFundWithoutCreation(currentYear, currentWeek)
 	if err != nil {
 		// Если призовой фонд не найден, создаем новый
-		if err := s.CreateNewWeeklyRating(currentYear, currentWeek); err != nil {
+		if err := s.CreateNewPrizeFund(currentYear, currentWeek); err != nil {
 			return fmt.Errorf("error creating new weekly rating: %w", err)
 		}
 	}
@@ -668,16 +677,18 @@ func (s *ServiceImpl) DistributePrizes(year, week int) error {
 			return err
 		}
 
-		// Створюємо сповіщення про виграш
-		notification := &models.Notification{
-			UserID:    user.ID,
-			Type:      "prize",
-			Message:   fmt.Sprintf("You won %.2f in the weekly rating! Position: %d", prize, rating.Position),
-			CreatedAt: time.Now(),
+		// Отправляем автоматическое уведомление о пополнении баланса
+		if err := s.HandleBalanceUpdate(user.ID, prize); err != nil {
+			log.Printf("Error sending balance update notification to user %d: %v", user.ID, err)
+			// Продолжаем обработку других пользователей
 		}
 
-		if err := s.repo.CreateNotification(notification); err != nil {
-			return err
+		// Отправляем автоматическое уведомление о входе в топ рейтинга, если позиция пользователя ≤ TopCount
+		if rating.Position <= prizeFund.TopCount {
+			if err := s.HandleTopRatingEntry(user.ID, rating.Position); err != nil {
+				log.Printf("Error sending top rating notification to user %d: %v", user.ID, err)
+				// Продолжаем обработку других пользователей
+			}
 		}
 	}
 

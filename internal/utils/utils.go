@@ -142,3 +142,30 @@ func CheckTimeBefore(dateTo, dateFrom *string) (bool, bool) {
 	}
 	return from.Before(to), false
 }
+
+func ReplaceMacrosInTexts(title, message, buttonText string, params map[string]interface{}) (string, string, string) {
+	// Заменяем все макросы в текстах
+	for key, value := range params {
+		placeholder := "{" + key + "}"
+		var strValue string
+
+		switch v := value.(type) {
+		case int:
+			strValue = fmt.Sprintf("%d", v)
+		case float64:
+			strValue = fmt.Sprintf("%.2f", v)
+		case string:
+			strValue = v
+		default:
+			strValue = fmt.Sprintf("%v", v)
+		}
+
+		title = strings.Replace(title, placeholder, strValue, -1)
+		message = strings.Replace(message, placeholder, strValue, -1)
+		if buttonText != "" {
+			buttonText = strings.Replace(buttonText, placeholder, strValue, -1)
+		}
+	}
+
+	return title, message, buttonText
+}
