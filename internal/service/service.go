@@ -56,7 +56,7 @@ type Service interface {
 	FormatRatingForDisplay(ratings []models.WeeklyRating, currentUserID int64) []string
 	GetPrizeDistributionStatus(year, week int) (string, error)
 	FormatRatingList(ratings []models.WeeklyRating, currentUserID int64, language string) string
-	CreateNewWeeklyRating(year, week int) error
+	CreateNewPrizeFund(year, week int) error
 	UpdateCurrentPrizeFund(amount float64, topCount int) error
 
 	// Настройки и локализация
@@ -595,7 +595,7 @@ func (s *ServiceImpl) UpdateWeeklyRatings() error {
 	_, err := s.repo.GetPrizeFundWithoutCreation(currentYear, currentWeek)
 	if err != nil {
 		// Если призовой фонд не найден, создаем новый
-		if err := s.CreateNewWeeklyRating(currentYear, currentWeek); err != nil {
+		if err := s.CreateNewPrizeFund(currentYear, currentWeek); err != nil {
 			return fmt.Errorf("error creating new weekly rating: %w", err)
 		}
 	}
