@@ -136,6 +136,14 @@ func (a *AdminPanel) setupRoutes() {
 
 		admin.GET("/stats", a.statistics)
 
+		// Страницы источников
+		admin.GET("/sources", a.sourcesPage)
+		admin.POST("/sources/get_all", a.sourcesGetAll)
+
+		admin.GET("/sources/keys", a.sourcesKeysPage)
+		admin.POST("/sources/keys/:key", a.sourceKeysSave)
+		admin.POST("/sources/keys/add", a.sourceKeysAdd)
+
 		admin.GET("/ratings", a.ratingsList)
 		admin.GET("/rating/:year/:week", a.ratingDetails)
 		admin.POST("/rating/:year/:week/distribute", a.distributeRatingPrizes)

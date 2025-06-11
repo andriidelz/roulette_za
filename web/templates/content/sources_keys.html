@@ -1,0 +1,365 @@
+{{define "sources_keys"}}
+{{template "header" .}}
+{{template "navbar" .}}
+
+<script type="text/javascript">
+    window.botName = "{{ .botName }}";
+</script>
+<div class="d-flex">
+    {{template "sidebar" .}}
+    <main class="main-content flex-grow-1">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h1>Источники</h1>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                data-bs-target="#addKeyModal">
+                                <i class="bi bi-plus-circle"></i> Добавить ключ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладки для навигации в разделе источников -->
+            <ul class="nav nav-tabs mb-4">
+                <li class="nav-item">
+                    <a class="nav-link {{if eq .activeSubTab ""}}active{{end}}" href="/admin/sources">
+                        <i class="bi bi-graph-up me-1"></i> Статистика
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{if eq .activeSubTab "keys"}}active{{end}}" href="/admin/sources/keys">
+                        <i class="bi bi-key me-1"></i> Ключи
+                    </a>
+                </li>
+            </ul>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="search-sources"
+                                placeholder="Поиск по ключу или значению...">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover sources-table">
+                            <thead>
+                                <tr>
+                                    <th width="30%">Ключ</th>
+                                    <th>Название</th>
+                                    <th width="120px">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ $botName := .botName}}
+                                {{range .sources}}
+                                <tr data-key="{{.Key}}">
+                                    <td>{{.Key}}</td>
+                                    <td>
+                                        <div class="source-value">{{.Name}}</div>
+                                        <div class="source-editor d-none">
+                                            <input type="text" class="form-control" id="name" value="{{.Name}}">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-primary edit-source">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary copy-referral-btn"
+                                                data-clipboard-text="https://t.me/{{ $botName}}?start={{ .Key }}"
+                                                title="Копировать ссылку">
+                                                <i class="bi bi-clipboard"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {{else}}
+                                <tr>
+                                    <td colspan="3" class="text-center">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="bi bi-info-circle me-2"></i>Нет записей
+                                        </div>
+                                    </td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Модальное окно добавления нового источника -->
+<div class="modal fade" id="addKeyModal" tabindex="-1" aria-labelledby="addKeyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addKeyModalLabel">Добавить новый ключ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-form">
+                    <div class="mb-3">
+                        <label for="key" class="form-label">Ключ</label>
+                        <input type="text" class="form-control" id="key" required>
+                        <div class="form-text">Используйте только латинские буквы и цифры</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="name" required>
+                        <div class="form-text">Используется в фильтре</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="save-new-key">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{template "footer" .}}
+
+<script>
+    $(document).ready(function () {
+        // Existing code for editing and adding key sources
+        $('.edit-source').click(function () {
+            const row = $(this).closest('tr');
+            const valueCell = row.find('td:nth-child(2)');
+            const valueDisplay = valueCell.find('.source-value');
+            const valueEditor = valueCell.find('.source-editor');
+
+            if (valueEditor.hasClass('d-none')) {
+                valueDisplay.addClass('d-none');
+                valueEditor.removeClass('d-none');
+                $(this).html('<i class="bi bi-check-lg"></i>');
+            } else {
+                const key = row.data('key');
+                const name = valueEditor.find('input').val();
+
+                if (!key || !name) {
+                    showNotification('Все поля должны быть заполнены', 'warning');
+                    return;
+                }
+
+                $.ajax({
+                    url: '/admin/sources/keys/' + key,
+                    type: 'POST',
+                    data: {
+                        name: name,
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            valueDisplay.text(name);
+                            valueDisplay.removeClass('d-none');
+                            valueEditor.addClass('d-none');
+                            row.find('.edit-source').html('<i class="bi bi-pencil"></i>');
+                            showNotification('Источник успешно изменен', 'success');
+                        } else {
+                            showNotification('Ошибка при сохранении: ' + response.error, 'danger');
+                        }
+                    },
+                    error: function (response) {
+                        console.log(response.responseText);
+                        showNotification(response.responseText, 'danger');
+                    }
+                });
+            }
+        });
+
+        // Копирование реферальной ссылки
+        $('.copy-referral-btn').click(function () {
+            var address = $(this).data('clipboard-text');
+            navigator.clipboard.writeText(address).then(function () {
+                $(this).attr('title', 'Скопировано!');
+                $(this).tooltip('show');
+                setTimeout(function () {
+                    $(this).attr('title', 'Копировать адрес');
+                }.bind(this), 2000);
+            }.bind(this));
+        });
+
+        // Add new source
+        $('#save-new-key').click(function () {
+
+            const key = $('#addKeyModal').find('#key').val();
+            const name = $('#addKeyModal').find('#name').val();
+
+            if (!key || !name) {
+                showNotification('Все поля должны быть заполнены', 'warning');
+                return;
+            }
+
+            if (!/^[a-z0-9]+$/.test(key)) {
+                showNotification('Ключ может содержать только латинские буквы и цифры', 'warning');
+                return;
+            }
+
+            $.ajax({
+                url: '/admin/sources/keys/add',
+                type: 'POST',
+                data: {
+                    key: key,
+                    name: name,
+                },
+                success: function (response) {
+                    if (response.success) {
+                        addKeyRow(key, name);
+
+                        $('#add-form')[0].reset();
+                        $('#addKeyModal').modal('hide');
+                        showNotification('Источник успешно добавлен', 'success');
+                    } else {
+                        showNotification('Ошибка при добавлении: ' + response.error, 'danger');
+                    }
+                },
+                error: function (response) {
+                    console.log(response.responseText);
+                    showNotification(response.responseText, 'danger');
+                }
+            });
+        });
+
+        // Search functionality
+        $('#search-sources').on('keyup', function () {
+            const value = $(this).val().toLowerCase();
+
+            $('.sources-table tbody tr').filter(function () {
+                const key = $(this).find('td:first').text().toLowerCase();
+                const textValue = $(this).find('.source-value').text().toLowerCase();
+
+                $(this).toggle(key.indexOf(value) > -1 || textValue.indexOf(value) > -1);
+            });
+        });
+
+        function addKeyRow(key, name) {
+            const table = $('.sources-table');
+            // If table was empty clear it
+            if (table.find('tbody tr td[colspan="3"]').length > 0) {
+                table.find('tbody').empty();
+            }
+
+            const newRow = `
+          <tr data-key="${key}">
+            <td>${key}</td>
+            <td>
+              <div class="source-value">${name}</div>
+              <div class="source-editor d-none">
+                <input type="text" class="form-control" id="name" value="${name}">
+              </div>
+            </td>
+            <td>
+              <div class="btn-group">
+                <button class="btn btn-sm btn-outline-primary edit-source">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-primary copy-referral-btn"
+                    data-clipboard-text="https://t.me/${window.botName}?start=${key}"
+                    title="Копировать ссылку">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+
+            table.find('tbody').append(newRow);
+            bindKeyEvents(table.find('tr[data-key="' + key + '"]'));
+        }
+
+        function bindKeyEvents(row) {
+            row.find('.edit-source').click(function () {
+                const row = $(this).closest('tr');
+                const valueCell = row.find('td:nth-child(2)');
+                const valueDisplay = valueCell.find('.source-value');
+                const valueEditor = valueCell.find('.source-editor');
+
+                if (valueEditor.hasClass('d-none')) {
+                    valueDisplay.addClass('d-none');
+                    valueEditor.removeClass('d-none');
+                    $(this).html('<i class="bi bi-check-lg"></i>');
+                } else {
+                    const key = row.data('key');
+                    const name = valueEditor.find('input').val();
+
+                    if (!key || !name) {
+                        showNotification('Все поля должны быть заполнены', 'warning');
+                        return;
+                    }
+
+                    $.ajax({
+                        url: '/admin/sources/keys/' + key,
+                        type: 'POST',
+                        data: {
+                            name: name,
+                        },
+                        success: function (response) {
+                            if (response.success) {
+                                valueDisplay.text(name);
+                                valueDisplay.removeClass('d-none');
+                                valueEditor.addClass('d-none');
+                                row.find('.edit-source').html('<i class="bi bi-pencil"></i>');
+                                showNotification('Источник успешно сохранен', 'success');
+                            } else {
+                                showNotification('Ошибка при сохранении: ' + response.error, 'danger');
+                            }
+                        },
+                        error: function (response) {
+                            console.log(response.responseText);
+                            showNotification(response.responseText, 'danger');
+                        }
+                    });
+                }
+            });
+
+            row.find('.copy-referral-btn').click(function () {
+                var address = $(this).data('clipboard-text');
+                navigator.clipboard.writeText(address).then(function () {
+                    $(this).attr('title', 'Скопировано!');
+                    $(this).tooltip('show');
+                    setTimeout(function () {
+                        $(this).attr('title', 'Копировать адрес');
+                    }.bind(this), 2000);
+                }.bind(this));
+            });
+        }
+
+        function showNotification(message, type) {
+            const notification = $(`
+          <div class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+              <div class="toast-body">
+                ${message}
+              </div>
+              <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+          </div>
+        `);
+
+            if ($('#notification-container').length === 0) {
+                $('body').append('<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>');
+            }
+
+            $('#notification-container').append(notification);
+
+            const toast = new bootstrap.Toast(notification);
+            toast.show();
+
+            notification.on('hidden.bs.toast', function () {
+                $(this).remove();
+            });
+        }
+    });
+</script>
+{{end}}

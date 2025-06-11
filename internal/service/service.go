@@ -39,6 +39,7 @@ type Service interface {
 	GetSuccessRateStats() (map[string]float64, error)
 	GetTopPlayersBySuccessRate(limit int) ([]map[string]interface{}, error)
 	GetTopPlayersByAttempts(limit int) ([]map[string]interface{}, error)
+	GetSource(dateFrom, dateTo string) ([]map[string]interface{}, error)
 
 	// Рейтинги
 	GetWeeklyRating(limit int) ([]models.WeeklyRating, error)
@@ -159,8 +160,14 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 
 		// Не перезаписываем источник, если он уже установлен
 		if existingUser.Source == "" && source != "" {
-			existingUser.Source = source
-			updateNeeded = true
+
+			exists, _ := s.repo.CheckSourceKeyExists(source)
+			if exists {
+				existingUser.Source = source
+				updateNeeded = true
+			} else {
+				log.Println("Error find source", telegramID, source)
+			}
 		}
 
 		// Если у пользователя нет аватарки, попробуем получить ее из Telegram
@@ -185,6 +192,12 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 	avatarURL := ""
 	if avatar, err := utils.GetUserProfilePhoto(s.telegramToken, telegramID); err == nil {
 		avatarURL = avatar
+	}
+
+	exists, _ := s.repo.CheckSourceKeyExists(source)
+	if !exists {
+		source = ""
+		log.Println("Error find source", telegramID, source)
 	}
 
 	// Создаем нового пользователя
