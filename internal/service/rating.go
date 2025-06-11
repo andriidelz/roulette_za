@@ -227,7 +227,7 @@ func (s *ServiceImpl) FormatPlayerLine(rating models.WeeklyRating, position int,
 	if rating.User.Nickname != "" {
 		displayName = rating.User.Nickname
 	} else if rating.User.Username != "" {
-		displayName = "@" + rating.User.Username
+		displayName = rating.User.Username
 	} else if rating.User.FirstName != "" {
 		displayName = rating.User.FirstName
 		if rating.User.LastName != "" {
