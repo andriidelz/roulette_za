@@ -41,16 +41,6 @@ func (r *PostgresRepository) GetUserRankAndNeighbors(userID uint, year, week int
 			return nil, 0, err
 		}
 
-		// Обновляем позицию пользователя
-		position, err := r.calculateUserPosition(userID, year, week)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		userRating.Position = position
-		if err := r.db.Save(&userRating).Error; err != nil {
-			return nil, 0, err
-		}
 	} else if err != nil {
 		return nil, 0, err
 	}
@@ -66,12 +56,12 @@ func (r *PostgresRepository) GetUserRankAndNeighbors(userID uint, year, week int
 
 	endPos := position + neighborsCount
 
-	// ИСПРАВЛЕНИЕ: Сортируем рейтинги сначала по количеству баллов (убывание),
-	// затем по эффективности (убывание)
+	// ИСПРАВЛЕНИЕ: Сортируем рейтинги по позиции, перед этим происходит вызов
+	// RefreshWeeklyRatingsPosition который пересчитывает все позиции
 	var ratings []models.WeeklyRating
 	err = r.db.Where("year = ? AND week = ? AND position >= ? AND position <= ?",
 		year, week, startPos, endPos).
-		Order("points DESC, efficiency DESC, user_id ASC"). // Сортировка по критериям рейтинга
+		Order("position ASC").
 		Preload("User").
 		Find(&ratings).Error
 
@@ -91,33 +81,6 @@ func (r *PostgresRepository) getLastWeeklyRatingPosition() int {
 		return 0
 	}
 	return userRating.Position
-}
-
-// calculateUserPosition рассчитывает текущую позицию пользователя в рейтинге
-func (r *PostgresRepository) calculateUserPosition(userID uint, year, week int) (int, error) {
-	// Получаем баллы и ставки пользователя
-	var userRating models.WeeklyRating
-	err := r.db.Select("points, bets, efficiency").
-		Where("user_id = ? AND year = ? AND week = ?", userID, year, week).
-		First(&userRating).Error
-
-	if err != nil {
-		return 0, err
-	}
-
-	// ИСПРАВЛЕНИЕ: Уточняем логику подсчета пользователей с лучшими результатами
-	var count int64
-	err = r.db.Model(&models.WeeklyRating{}).
-		Where("year = ? AND week = ? AND (points > ? OR (points = ? AND efficiency > ?))",
-			year, week, userRating.Points, userRating.Points, userRating.Efficiency).
-		Count(&count).Error
-
-	if err != nil {
-		return 0, err
-	}
-
-	// Позиция = количество пользователей с лучшими результатами + 1
-	return int(count) + 1, nil
 }
 
 // UpdateWeeklyRating обновляет или создает запись еженедельного рейтинга для пользователя
@@ -226,14 +189,8 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 		}
 	}
 
-	// Обновляем позицию пользователя
-	position, err := r.calculateUserPosition(userID, year, week)
-	if err != nil {
-		return err
-	}
-
-	rating.Position = position
-	return r.db.Save(&rating).Error
+	// Обновляем все рейтинги
+	return r.RefreshWeeklyRatingsPosition(year, week)
 }
 
 // RefreshWeeklyRatingsPosition обновляет позиции всех пользователей в еженедельном рейтинге

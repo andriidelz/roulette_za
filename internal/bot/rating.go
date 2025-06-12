@@ -3,7 +3,6 @@ package bot
 import (
 	"fmt"
 	"log"
-	"sort"
 	"time"
 
 	"github.com/mymmrac/telego"
@@ -66,40 +65,38 @@ func (b *Bot) getWeeklyRating(telegramID int64) (string, string) {
 
 	var templateKey string
 	var resultText string
+	// Ограничиваем количество отображаемых игроков
+	maxDisplayCount := 100
 
 	// Если рейтинг пуст
 	if len(ratings) == 0 {
 		templateKey = "weekly_rating_empty"
 		resultText = b.service.GetText(templateKey, language)
+	} else if len(ratings) > maxDisplayCount {
+		// Ограничиваем список
+		truncatedRatings := ratings
+		if len(truncatedRatings) > maxDisplayCount {
+			truncatedRatings = truncatedRatings[:maxDisplayCount]
+		}
+		formattedList := b.service.FormatRatingList(truncatedRatings, telegramID, language)
+
+		// Получаем шаблон с форматированием для топ-игроков
+		templateKey = "weekly_rating_top"
+		resultText = fmt.Sprintf(
+			b.service.GetText(templateKey, language),
+			maxDisplayCount,
+			formattedList,
+		)
 	} else {
 		// Форматируем список рейтинга
 		formattedList := b.service.FormatRatingList(ratings, telegramID, language)
 
-		// Ограничиваем количество отображаемых игроков
-		maxDisplayCount := 100
-		if len(ratings) > maxDisplayCount {
-			// Ограничиваем список
-			truncatedRatings := ratings
-			if len(truncatedRatings) > maxDisplayCount {
-				truncatedRatings = truncatedRatings[:maxDisplayCount]
-			}
-			formattedList = b.service.FormatRatingList(truncatedRatings, telegramID, language)
-
-			// Получаем шаблон с форматированием для топ-игроков
-			templateKey = "weekly_rating_top"
-			resultText = fmt.Sprintf(
-				b.service.GetText(templateKey, language),
-				maxDisplayCount,
-				formattedList,
-			)
-		} else {
-			// Получаем шаблон для всего рейтинга
-			templateKey = "weekly_rating_all"
-			resultText = fmt.Sprintf(
-				b.service.GetText(templateKey, language),
-				formattedList,
-			)
-		}
+		// Получаем шаблон для всего рейтинга
+		templateKey = "weekly_rating_all"
+		resultText = fmt.Sprintf(
+			b.service.GetText(templateKey, language),
+			formattedList,
+		)
 	}
 	return resultText, language
 }
@@ -144,19 +141,6 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 		})
 		return
 	}
-
-	// Сортируем соседей по баллам и эффективности
-	sort.Slice(neighbors, func(i, j int) bool {
-		// Если баллы разные, сортируем по убыванию баллов
-		if neighbors[i].Points != neighbors[j].Points {
-			return neighbors[i].Points > neighbors[j].Points
-		}
-		// Если баллы одинаковые, сортируем по убыванию эффективности
-		if neighbors[i].Efficiency != neighbors[j].Efficiency {
-			return neighbors[i].Efficiency > neighbors[j].Efficiency
-		}
-		return neighbors[i].UserID < neighbors[j].UserID
-	})
 
 	var templateKey string
 	var resultText string
