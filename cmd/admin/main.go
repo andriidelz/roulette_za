@@ -79,6 +79,23 @@ func main() {
 		}
 	}()
 
+	// Запускаем планировщик проверки пользователей в топе рейтинга (каждый час)
+	topRatingTicker := time.NewTicker(2 * time.Minute)
+	go func() {
+		for range topRatingTicker.C {
+			now := time.Now()
+			hour := now.Hour()
+			minute := now.Minute()
+
+			if hour == 20 && minute >= 0 && minute <= 30 { // Окно отправки 20:00-20:30
+				log.Println("Starting scheduled check of top rating entries...")
+				if err := svc.CheckTopRatingEntries(); err != nil {
+					log.Printf("Error checking top rating entries: %v", err)
+				}
+			}
+		}
+	}()
+
 	// Запускаем планировщик проверки запланированных уведомлений (каждую минуту)
 	notificationTaskTicker := time.NewTicker(1 * time.Minute)
 	go func() {
@@ -102,29 +119,6 @@ func main() {
 		}
 	}()
 
-	// Запускаем планировщик отправки уведомлений (каждую минуту)
-	notificationSenderTicker := time.NewTicker(1 * time.Minute)
-	go func() {
-		for range notificationSenderTicker.C {
-			log.Println("Starting scheduled check of pending notifications...")
-			// Получаем неотправленные уведомления
-			notifications, err := svc.GetPendingNotifications()
-			if err != nil {
-				log.Printf("Error getting pending notifications: %v", err)
-				continue
-			}
-
-			// Отправляем каждое уведомление
-			for _, notification := range notifications {
-				if err := svc.SendNotification(&notification); err != nil {
-					log.Printf("Error sending notification %d: %v", notification.ID, err)
-				} else {
-					log.Printf("Successfully sent notification %d", notification.ID)
-				}
-			}
-		}
-	}()
-
 	// Виводимо повідомлення про запуск
 	log.Printf("Admin panel started on http://localhost:%s", cfg.AdminPort)
 
@@ -135,8 +129,8 @@ func main() {
 
 	// Останавливаем ticker перед выходом
 	ticker.Stop()
+	topRatingTicker.Stop()
 	notificationTaskTicker.Stop()
-	notificationSenderTicker.Stop()
 
 	log.Println("Shutting down admin panel...")
 }

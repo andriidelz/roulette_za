@@ -1,3 +1,4 @@
+<!-- web/templates/content/notifications_manual.html - упрощенная версия -->
 {{define "notifications_manual"}}
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
@@ -7,26 +8,6 @@
     </button>
   </div>
   <div class="card-body">
-    <!-- Фильтр и поиск -->
-    <div class="row mb-3">
-      <div class="col-md-6">
-        <div class="input-group">
-          <input type="text" class="form-control" placeholder="Поиск шаблонов..." id="search-templates">
-          <button class="btn btn-outline-secondary" type="button" id="search-templates-btn" title="Искать">
-            <i class="bi bi-search"></i>
-          </button>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="d-flex justify-content-end">
-          <div class="form-check form-switch me-3">
-            <input class="form-check-input" type="checkbox" id="show-only-active" checked>
-            <label class="form-check-label" for="show-only-active">Только активные</label>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Список шаблонов -->
     <div class="table-responsive">
       <table class="table table-striped table-hover mobile-responsive">
@@ -206,11 +187,11 @@
                 <td>{{.Template.Name}}</td>
                 <td>
                   {{if eq .TargetType "all"}}
-                    <span class="badge bg-info">Все</span>
+                    <span class="badge bg-info">Все пользователи</span>
                   {{else if eq .TargetType "country"}}
-                    <span class="badge bg-primary">Страны</span>
+                    <span class="badge bg-primary">По странам</span>
                   {{else if eq .TargetType "activity"}}
-                    <span class="badge bg-warning">Активность</span>
+                    <span class="badge bg-warning">По активности</span>
                   {{else if eq .TargetType "custom"}}
                     <span class="badge bg-secondary">Выборочно</span>
                   {{else}}

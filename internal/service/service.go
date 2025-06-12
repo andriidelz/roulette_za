@@ -99,14 +99,10 @@ type Service interface {
 	CreateNotificationTask(templateID uint, targetType string, targetParams models.NotificationTargetParams, scheduledAt *time.Time) (*models.NotificationTask, error)
 	CancelNotificationTask(id uint) error
 	SendNotifications(taskID uint) error
-
 	GetPendingNotificationTasks() ([]models.NotificationTask, error)
-
-	SendNotification(notification *models.Notification) error
-	GetPendingNotifications() ([]models.Notification, error)
-
 	GetNotificationTasksStats(period string) (*models.NotificationStatistics, error)
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)
+	CheckTopRatingEntries() error
 
 	// Вспомогательный метод для доступа к репозиторию
 	GetRepo() repository.Repository

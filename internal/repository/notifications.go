@@ -204,16 +204,6 @@ func (r *PostgresRepository) GetPendingNotificationTasks() ([]models.Notificatio
 	return tasks, err
 }
 
-// GetPendingNotifications получает неотправленные уведомления
-func (r *PostgresRepository) GetPendingNotifications() ([]models.Notification, error) {
-	var notifications []models.Notification
-	err := r.db.Where("delivered = ?", false).
-		Preload("User").
-		Limit(100).
-		Find(&notifications).Error
-	return notifications, err
-}
-
 // MarkNotificationAsSent помечает уведомление как отправленное
 func (r *PostgresRepository) MarkNotificationAsSent(id uint) error {
 	return r.db.Model(&models.Notification{}).
@@ -553,4 +543,44 @@ func (r *PostgresRepository) GetScheduledRecipients(limit int) ([]models.Notific
 		Find(&recipients).Error
 
 	return recipients, err
+}
+
+// CheckNotificationSent проверяет, было ли отправлено уведомление данного типа пользователю в указанную дату
+func (r *PostgresRepository) CheckNotificationSent(userID uint, notificationType string, date string) (bool, error) {
+	var count int64
+	startOfDay, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return false, err
+	}
+
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	err = r.db.Model(&models.Notification{}).
+		Where("user_id = ? AND type = ? AND created_at >= ? AND created_at < ?",
+			userID, notificationType, startOfDay, endOfDay).
+		Count(&count).Error
+
+	return count > 0, err
+}
+
+// SaveNotificationSent сохраняет запись о том, что уведомление было отправлено
+func (r *PostgresRepository) SaveNotificationSent(userID uint, notificationType string, date string) error {
+	// Получаем пользователя
+	_, err := r.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	// Создаем уведомление как запись о том, что оно было отправлено
+	notification := &models.Notification{
+		UserID:    userID,
+		Type:      notificationType,
+		Message:   "Notification tracking record for " + date,
+		Title:     "Rating notification",
+		Delivered: true,
+		Read:      false,
+		CreatedAt: time.Now(),
+	}
+
+	return r.CreateNotification(notification)
 }
