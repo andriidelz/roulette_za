@@ -32,58 +32,8 @@ func (b *Bot) handleRatingCommand(message *telego.Message) {
 
 func (b *Bot) handleRatingCallbackQuery(query *telego.CallbackQuery) {
 	user := query.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
 
-	// Получаем текущий недельный рейтинг (топ 100)
-	ratings, err := b.service.GetWeeklyTopRating(100)
-	if err != nil {
-		log.Printf("Error getting weekly rating: %v", err)
-		if query.Message != nil {
-			b.SendMessage(query.Message.Chat.ID, MessageOptions{
-				Text: b.service.GetText("rating_error", language),
-			})
-		}
-		return
-	}
-
-	var templateKey string
-	var resultText string
-
-	// Если рейтинг пуст
-	if len(ratings) == 0 {
-		templateKey = "weekly_rating_empty"
-		resultText = b.service.GetText(templateKey, language)
-	} else {
-		// Форматируем список рейтинга
-		formattedList := b.service.FormatRatingList(ratings, user.ID, language)
-
-		// Ограничиваем количество отображаемых игроков
-		maxDisplayCount := 100
-		if len(ratings) > maxDisplayCount {
-			// Ограничиваем список
-			truncatedRatings := ratings
-			if len(truncatedRatings) > maxDisplayCount {
-				truncatedRatings = truncatedRatings[:maxDisplayCount]
-			}
-			formattedList = b.service.FormatRatingList(truncatedRatings, user.ID, language)
-
-			templateKey = "weekly_rating_top"
-			resultText = fmt.Sprintf(
-				b.service.GetText(templateKey, language),
-				maxDisplayCount,
-				formattedList,
-			)
-		} else {
-			templateKey = "weekly_rating_all"
-			resultText = fmt.Sprintf(
-				b.service.GetText(templateKey, language),
-				formattedList,
-			)
-		}
-	}
+	resultText, _ := b.getWeeklyRating(user.ID)
 
 	if query.Message != nil {
 		b.SendMessage(query.Message.Chat.ID, MessageOptions{
@@ -92,27 +42,26 @@ func (b *Bot) handleRatingCallbackQuery(query *telego.CallbackQuery) {
 	}
 }
 
-// handleWeeklyRating обрабатывает запрос на просмотр недельного рейтинга
-func (b *Bot) handleWeeklyRating(message *telego.Message) {
-	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+// getWeeklyRating используется для вывода рейтинга в меню и в игре
+func (b *Bot) getWeeklyRating(telegramID int64) (string, string) {
 
 	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
-	if dbUser, err := b.service.GetUser(user.ID); err == nil {
+	dbUser, err := b.service.GetUser(telegramID)
+	if err == nil {
 		b.service.GetRepo().UpdateWeeklyRatingForUser(dbUser.ID)
+	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
 	}
 
 	// Получаем текущий недельный рейтинг (топ 100)
 	ratings, err := b.service.GetWeeklyTopRating(100)
 	if err != nil {
 		log.Printf("Error getting weekly rating: %v", err)
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: b.service.GetText("rating_error", language),
-		})
-		return
+		return b.service.GetText("rating_error", language), language
 	}
 
 	var templateKey string
@@ -124,7 +73,7 @@ func (b *Bot) handleWeeklyRating(message *telego.Message) {
 		resultText = b.service.GetText(templateKey, language)
 	} else {
 		// Форматируем список рейтинга
-		formattedList := b.service.FormatRatingList(ratings, user.ID, language)
+		formattedList := b.service.FormatRatingList(ratings, telegramID, language)
 
 		// Ограничиваем количество отображаемых игроков
 		maxDisplayCount := 100
@@ -134,7 +83,7 @@ func (b *Bot) handleWeeklyRating(message *telego.Message) {
 			if len(truncatedRatings) > maxDisplayCount {
 				truncatedRatings = truncatedRatings[:maxDisplayCount]
 			}
-			formattedList = b.service.FormatRatingList(truncatedRatings, user.ID, language)
+			formattedList = b.service.FormatRatingList(truncatedRatings, telegramID, language)
 
 			// Получаем шаблон с форматированием для топ-игроков
 			templateKey = "weekly_rating_top"
@@ -152,6 +101,14 @@ func (b *Bot) handleWeeklyRating(message *telego.Message) {
 			)
 		}
 	}
+	return resultText, language
+}
+
+// handleWeeklyRating обрабатывает запрос на просмотр недельного рейтинга
+func (b *Bot) handleWeeklyRating(message *telego.Message) {
+	user := message.From
+
+	resultText, language := b.getWeeklyRating(user.ID)
 
 	// Отправляем сообщение с рейтингом
 	b.SendMessage(message.Chat.ID, MessageOptions{
