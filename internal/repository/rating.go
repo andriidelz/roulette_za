@@ -236,10 +236,8 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 	return r.db.Save(&rating).Error
 }
 
-// RefreshAllWeeklyRatings обновляет позиции всех пользователей в еженедельном рейтинге
-func (r *PostgresRepository) RefreshAllWeeklyRatings() error {
-	// Получаем текущий год и неделю
-	year, week := time.Now().ISOWeek()
+// RefreshWeeklyRatingsPosition обновляет позиции всех пользователей в еженедельном рейтинге
+func (r *PostgresRepository) RefreshWeeklyRatingsPosition(year, week int) error {
 
 	// ИСПРАВЛЕНИЕ: Обновляем порядок сортировки при обновлении позиций
 	positionQuery := `

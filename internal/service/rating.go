@@ -15,7 +15,10 @@ import (
 func (s *ServiceImpl) GetWeeklyTopRating(limit int) ([]models.WeeklyRating, error) {
 	// Обновляем все рейтинги для актуальности данных
 	// TODO: добавление кэширования результатов с кратковременным TTL (например, 30 секунд)
-	if err := s.repo.RefreshAllWeeklyRatings(); err != nil {
+
+	// Получаем текущий год и неделю
+	year, week := time.Now().ISOWeek()
+	if err := s.repo.RefreshWeeklyRatingsPosition(year, week); err != nil {
 		return nil, err
 	}
 
@@ -109,7 +112,9 @@ func (s *ServiceImpl) GetPointsNeededForUser(telegramID int64) (int, error) {
 
 // RefreshAllRatings обновляет позиции всех пользователей в рейтинге
 func (s *ServiceImpl) RefreshAllRatings() error {
-	return s.repo.RefreshAllWeeklyRatings()
+	// Получаем текущий год и неделю
+	year, week := time.Now().ISOWeek()
+	return s.repo.RefreshWeeklyRatingsPosition(year, week)
 }
 
 // FormatRatingForDisplay форматирует рейтинг для отображения
