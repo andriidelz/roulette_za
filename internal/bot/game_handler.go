@@ -556,29 +556,23 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		winLoseText = loseMsgText
 	}
 
+	// Формируем часть о рейтинге
+
 	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
-	// Обновляем позиции всех пользователей перед получением позиции
-	if err := h.service.RefreshAllRatings(); err != nil {
+	// Пересчитываем балы и эффективность пользователя и
+	// обновляем позиции всех пользователей
+	if err := h.service.GetRepo().UpdateWeeklyRatingForUser(userInfo.ID); err != nil {
 		log.Printf("Error refreshing ratings before getting position: %v", err)
 	}
 
-	// Формируем часть о рейтинге
 	// Получаем текущий рейтинг пользователя
-	position, err := h.service.GetUserPosition(userID)
+	year, week := time.Now().ISOWeek()
+	rating, err := h.service.GetRepo().GetUserWeeklyRating(userInfo.ID, year, week)
 	if err != nil {
-		log.Printf("Error getting user position: %v", err)
-		position = 0
-	}
-
-	// Получаем статистику пользователя
-	stats, err := h.service.GetUserStats(userID)
-	if err != nil {
-		log.Printf("Error getting user stats: %v", err)
-		stats = map[string]int{}
+		log.Printf("Error get rating: %v", err)
 	}
 
 	// Получаем информацию о призовом фонде
-	year, week := time.Now().ISOWeek()
 
 	// Переменные для текста рейтинга
 	var ratingText string
@@ -593,23 +587,23 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		prizeFundAmount = prizeFund.Amount
 		topCount = prizeFund.TopCount
 
-		if position > 0 && position <= topCount {
+		if rating.Position > 0 && rating.Position <= topCount {
 			// Расчет доли пользователя
-			userShare = prizeFundAmount / float64(topCount) * (float64(topCount-position+1) / float64(topCount))
+			userShare = prizeFundAmount / float64(topCount) * (float64(topCount-rating.Position+1) / float64(topCount))
 		}
 	} else {
 		log.Printf("Error getting prize fund: %v", err)
 
 		// Если не удалось получить данные о призовом фонде, используем значения по умолчанию
-		if position > 0 && position <= 100 {
+		if rating.Position > 0 && rating.Position <= 100 {
 			// Упрощенный расчет доли пользователя
-			userShare = prizeFundAmount / 100.0 * (float64(100-position+1) / 100.0)
+			userShare = prizeFundAmount / 100.0 * (float64(100-rating.Position+1) / 100.0)
 		}
 	}
 
 	// Формируем сообщение о рейтинге
 	ratingTemplate := h.service.GetText("bidrating", language)
-	ratingText = fmt.Sprintf(ratingTemplate, stats["totalPoints"], position, userShare, prizeFundAmount)
+	ratingText = fmt.Sprintf(ratingTemplate, rating.Points, rating.Position, userShare, prizeFundAmount)
 
 	// Часть проверки баланса ставок
 	betsBalance, err := h.service.GetUserRemainingBets(userID)
