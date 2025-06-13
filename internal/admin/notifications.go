@@ -511,11 +511,6 @@ func (a *AdminPanel) createNotificationTask(c *gin.Context) {
 		return
 	}
 
-	// Если задача должна быть выполнена сразу, запускаем отправку
-	if scheduledAt == nil {
-		go a.service.SendNotifications(task.ID)
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"id":         task.ID,
 		"message":    "Notification task created successfully",

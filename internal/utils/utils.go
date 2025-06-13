@@ -153,12 +153,15 @@ func ReplaceMacrosInTexts(title, message, buttonText string, params map[string]i
 		case int:
 			strValue = fmt.Sprintf("%d", v)
 		case float64:
+			// Форматируем числа с плавающей точкой с двумя знаками после запятой
 			strValue = fmt.Sprintf("%.2f", v)
 		case string:
 			strValue = v
 		default:
 			strValue = fmt.Sprintf("%v", v)
 		}
+
+		log.Printf("Replacing macro '%s' with value '%s'", placeholder, strValue)
 
 		title = strings.Replace(title, placeholder, strValue, -1)
 		message = strings.Replace(message, placeholder, strValue, -1)

@@ -89,7 +89,6 @@ type Repository interface {
 	GetUserNotifications(userID uint, limit int) ([]models.Notification, error)
 	MarkNotificationAsRead(id uint) error
 	GetPendingNotificationTasks() ([]models.NotificationTask, error)
-	GetPendingNotifications() ([]models.Notification, error)
 	MarkNotificationAsSent(id uint) error
 
 	// Вывод средств
@@ -146,6 +145,8 @@ type Repository interface {
 	UpdateNotificationTask(task *models.NotificationTask) error
 	UpdateNotificationTemplate(template *models.NotificationTemplate) error
 	UpdateTaskProgress(taskID uint, sentCount, deliveredCount, readCount int) error
+	CheckNotificationSent(userID uint, notificationType string, date string) (bool, error)
+	SaveNotificationSent(userID uint, notificationType string, date string) error
 
 	// Закрытие соединения
 	Close() error

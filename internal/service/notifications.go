@@ -154,7 +154,13 @@ func (s *ServiceImpl) CreateNotificationTask(templateID uint, targetType string,
 		return nil, err
 	}
 
-	// Создаем объект задачи
+	// Если scheduledAt не указано, устанавливаем текущее время
+	if scheduledAt == nil {
+		now := time.Now()
+		scheduledAt = &now
+	}
+
+	// Создаем объект задачи с установленным временем
 	task := &models.NotificationTask{
 		TemplateID:   templateID,
 		Status:       "pending",
@@ -190,19 +196,20 @@ func (s *ServiceImpl) CreateNotificationTask(templateID uint, targetType string,
 	recipients := make([]models.NotificationRecipient, 0, len(users))
 	for _, user := range users {
 		// Определяем время отправки с учетом часового пояса
-		var recipientScheduledAt *time.Time
-		if scheduledAt != nil {
+		recipientScheduledAt := *scheduledAt // Копируем значение времени
+
+		// Если указаны параметры адаптации времени
+		if targetParams.SendTimeStart != "" && targetParams.SendTimeEnd != "" && user.Country != "" {
 			// Определяем часовой пояс пользователя на основе страны
 			userTimeZone := data.GetTimezone(user.Country)
-			localTime := adjustTimeToUserTimeZone(*scheduledAt, userTimeZone, targetParams.SendTimeStart, targetParams.SendTimeEnd)
-			recipientScheduledAt = &localTime
+			recipientScheduledAt = adjustTimeToUserTimeZone(recipientScheduledAt, userTimeZone, targetParams.SendTimeStart, targetParams.SendTimeEnd)
 		}
 
 		recipient := models.NotificationRecipient{
 			TaskID:      task.ID,
 			UserID:      user.ID,
 			Status:      "pending",
-			ScheduledAt: recipientScheduledAt,
+			ScheduledAt: &recipientScheduledAt,
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 		}
@@ -218,7 +225,7 @@ func (s *ServiceImpl) CreateNotificationTask(templateID uint, targetType string,
 	log.Printf("Создано %d получателей для задачи %d", len(recipients), task.ID)
 
 	// Проверяем, созданы ли получатели
-	recipients, total, err := s.repo.GetNotificationRecipients(task.ID, "", 1, 1)
+	_, total, err := s.repo.GetNotificationRecipients(task.ID, "", 1, 1)
 	if err != nil {
 		log.Printf("Ошибка при проверке получателей для задачи %d: %v", task.ID, err)
 	} else if total == 0 {
@@ -538,58 +545,6 @@ func (s *ServiceImpl) GetPendingNotificationTasks() ([]models.NotificationTask, 
 	return s.repo.GetPendingNotificationTasks()
 }
 
-func (s *ServiceImpl) GetPendingNotifications() ([]models.Notification, error) {
-	return s.repo.GetPendingNotifications()
-}
-
-// SendNotification отправляет уведомление немедленно
-func (s *ServiceImpl) SendNotification(notification *models.Notification) error {
-	// Получаем пользователя
-	user, err := s.repo.GetUserByID(notification.UserID)
-	if err != nil {
-		return err
-	}
-
-	// Создаем карту данных для отправки через RabbitMQ
-	// Это наиболее надежный способ передачи структурированных данных
-	notificationDataMap := map[string]interface{}{
-		"user_id":         user.ID,
-		"telegram_id":     user.TelegramID,
-		"title":           notification.Title,
-		"message":         notification.Message,
-		"image_url":       notification.ImageURL,
-		"button_text":     notification.ButtonText,
-		"button_url":      notification.ButtonURL,
-		"button_callback": notification.ButtonCallback,
-		"notification_id": notification.ID,
-	}
-
-	// Подключаемся к RabbitMQ
-	rmq, err := messaging.NewRabbitMQ(s.getRabbitMQURL(), "roulette_events", "notification_service")
-	if err != nil {
-		log.Printf("Error connecting to RabbitMQ: %v", err)
-		return err
-	}
-	defer rmq.Close()
-
-	// Устанавливаем таймаут для отправки сообщения
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// Публикуем карту данных напрямую через RabbitMQ
-	// Это позволит избежать проблем с сериализацией/десериализацией
-	if err := rmq.Publish(ctx, RoutingUserNotification, EventUserNotification, 0, notificationDataMap, messaging.PriorityNormal); err != nil {
-		log.Printf("Error publishing notification to RabbitMQ: %v", err)
-		return err
-	}
-
-	log.Printf("Notification queued for user %d (%d): %s - %s",
-		user.ID, user.TelegramID, notification.Title, notification.Message)
-
-	// Помечаем уведомление как отправленное в базе данных только после успешной публикации
-	return s.repo.MarkNotificationAsSent(notification.ID)
-}
-
 // sendNotificationToUser отправляет уведомление из задач notification_tasks
 func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.NotificationTemplate, task *models.NotificationTask) error {
 	// Получаем пользователя
@@ -652,7 +607,29 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 	// Собираем параметры для замены макросов в зависимости от типа уведомления
 	params := make(map[string]interface{})
 
-	if template.TriggerEvent == "top_rating_entered" {
+	// Если в targetParams есть макросы, используем их
+	if task.TargetParams.Macros != nil && len(task.TargetParams.Macros) > 0 {
+		for key, value := range task.TargetParams.Macros {
+			params[key] = value
+		}
+		log.Printf("Using macros from targetParams for user %d: %+v", userID, task.TargetParams.Macros)
+	}
+
+	// В зависимости от типа уведомления добавляем дополнительные параметры
+	switch template.TriggerEvent {
+	case "balance_updated":
+		// Если параметры не были переданы через targetParams.Macros,
+		// попробуем найти транзакцию или использовать текущий баланс
+		if _, exists := params["amount"]; !exists {
+			// Тут можно добавить логику получения суммы из истории транзакций
+			params["amount"] = "N/A" // Значение по умолчанию
+			log.Printf("Warning: 'amount' parameter missing for balance_updated notification for user %d", userID)
+		}
+		if _, exists := params["balance"]; !exists {
+			params["balance"] = user.Balance
+		}
+
+	case "top_rating_entered":
 		// Получаем текущий год и неделю
 		year, week := time.Now().ISOWeek()
 
@@ -662,6 +639,8 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 			// Добавляем позицию и очки пользователя
 			params["position"] = rating.Position
 			params["points"] = rating.Points
+		} else {
+			log.Printf("Warning: Could not get rating for user %d: %v", userID, err)
 		}
 
 		// Получаем призовой фонд
@@ -669,13 +648,18 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 		if err == nil && prizeFund != nil {
 			// Добавляем сумму призового фонда
 			params["prize_fund"] = prizeFund.Amount
+		} else {
+			log.Printf("Warning: Could not get prize fund for year %d, week %d: %v", year, week, err)
 		}
 	}
+
+	// Выводим информацию о параметрах в лог для отладки
+	log.Printf("Final notification params for user %d: %+v", userID, params)
 
 	// Заменяем макросы в текстах с помощью общей функции
 	title, message, buttonText = utils.ReplaceMacrosInTexts(title, message, buttonText, params)
 
-	// Создаем запись уведомления для истории пользователя
+	// Создаем запись уведомления для истории до отправки
 	notification := &models.Notification{
 		UserID:         user.ID,
 		Type:           template.Type,
@@ -705,7 +689,7 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 		"button_text":     buttonText,
 		"button_url":      buttonURL,
 		"button_callback": buttonCallback,
-		"notification_id": notification.ID,
+		"notification_id": notification.ID, // Передаем ID для обновления статуса
 	}
 
 	// Подключаемся к RabbitMQ
@@ -726,8 +710,14 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 		return err
 	}
 
+	// После успешной отправки обновляем статус уведомления
+	if err := s.repo.MarkNotificationAsSent(notification.ID); err != nil {
+		log.Printf("Error marking notification as sent: %v", err)
+		// Не критическая ошибка, уведомление уже отправлено
+	}
+
 	// Если все прошло успешно, логируем информацию
-	log.Printf("Notification queued for user %d (%d): %s - %s",
+	log.Printf("Notification sent for user %d (%d): %s - %s",
 		user.ID, user.TelegramID, title, message)
 
 	return nil
@@ -746,4 +736,50 @@ func (s *ServiceImpl) getRabbitMQURL() string {
 	}
 
 	return "amqp://guest:guest@rabbitmq:5672/" // Значение по умолчанию
+}
+
+// CheckTopRatingEntries проверяет пользователей, вошедших в топ рейтинга и отправляет им уведомления
+func (s *ServiceImpl) CheckTopRatingEntries() error {
+	// Получаем текущий год и неделю
+	year, week := time.Now().ISOWeek()
+
+	// Получаем призовой фонд для текущей недели, чтобы узнать количество призовых мест
+	fund, err := s.repo.GetPrizeFund(year, week)
+	if err != nil {
+		return fmt.Errorf("failed to get prize fund: %w", err)
+	}
+
+	// Получаем топ рейтинга
+	topRating, err := s.repo.GetWeeklyRating(year, week, fund.TopCount)
+	if err != nil {
+		return fmt.Errorf("failed to get weekly rating: %w", err)
+	}
+
+	// Для каждого пользователя в топе проверяем, отправлялось ли ему уже уведомление
+	for _, rating := range topRating {
+		// Проверяем, было ли уже отправлено уведомление сегодня
+		notificationSent, err := s.repo.CheckNotificationSent(rating.UserID, "top_rating_entered", time.Now().Format("2006-01-02"))
+		if err != nil {
+			log.Printf("Error checking notification status for user %d: %v", rating.UserID, err)
+			continue
+		}
+
+		// Если уведомление уже было отправлено сегодня, пропускаем этого пользователя
+		if notificationSent {
+			continue
+		}
+
+		// Отправляем уведомление о вхождении в топ рейтинга
+		if err := s.HandleTopRatingEntry(rating.UserID, rating.Position); err != nil {
+			log.Printf("Error sending top rating notification to user %d: %v", rating.UserID, err)
+			// Продолжаем обработку других пользователей
+		} else {
+			// Сохраняем информацию о том, что уведомление было отправлено
+			if err := s.repo.SaveNotificationSent(rating.UserID, "top_rating_entered", time.Now().Format("2006-01-02")); err != nil {
+				log.Printf("Error saving notification status for user %d: %v", rating.UserID, err)
+			}
+		}
+	}
+
+	return nil
 }
