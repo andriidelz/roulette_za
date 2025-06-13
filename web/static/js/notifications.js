@@ -1,4 +1,853 @@
 /**
+ * Удаление шаблона уведомления
+ * @param {string} id ID шаблона
+ */
+function deleteTemplate(id) {
+    // Отправляем запрос на удаление
+    fetch(`/admin/api/notification-templates/${id}`, {
+        method: 'DELETE'
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => Promise.reject(err));
+        }
+        return response.json();
+    })
+    .then(result => {
+        showNotification('Шаблон успешно удален', 'success');
+        
+        // Обновляем страницу
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+    })
+    .catch(error => {
+        console.error('Error deleting template:', error);
+        showNotification(error.error || 'Ошибка удаления шаблона', 'danger');
+    });
+}
+
+/**
+ * Создание задачи на отправку уведомления
+ * @param {string} templateId ID шаблона
+ * @param {string} templateName Название шаблона
+ */
+function createTask(templateId, templateName) {
+    // Устанавливаем ID шаблона в форме задачи
+    document.getElementById('task-template-id').value = templateId;
+    document.getElementById('task-template-name').textContent = templateName;
+    
+    // Сбрасываем форму
+    document.getElementById('taskForm').reset();
+    
+    // Устанавливаем дату и время по умолчанию (через 15 минут от текущего времени)
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 15);
+    const dateTimeString = now.toISOString().slice(0, 16);
+    document.getElementById('scheduled-at').value = dateTimeString;
+    
+    // Скрываем контейнеры таргетинга и настройки расписания
+    document.getElementById('target-countries-container').style.display = 'none';
+    document.getElementById('target-activity-container').style.display = 'none';
+    document.getElementById('scheduled-settings').style.display = 'none';
+    document.getElementById('adjust-time-settings').style.display = 'none';
+    
+    // Загружаем данные для фильтров
+    loadCountriesForFilter();
+    
+    // Открываем модальное окно
+    const modal = new bootstrap.Modal(document.getElementById('createTaskModal'));
+    modal.show();
+}
+
+/**
+ * Загрузка списка стран для фильтра
+ */
+function loadCountriesForFilter() {
+    const countriesList = document.getElementById('countries-list');
+    
+    // Показываем индикатор загрузки
+    countriesList.innerHTML = '<div class="text-center py-3"><div class="spinner-border" role="status"><span class="visually-hidden">Загрузка...</span></div></div>';
+    
+    // Загружаем список стран
+    fetch('/admin/api/countries-with-users')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Очищаем список
+            countriesList.innerHTML = '';
+            
+            // Добавляем опцию "Все страны"
+            const allCountriesDiv = document.createElement('div');
+            allCountriesDiv.className = 'mb-2';
+            allCountriesDiv.innerHTML = `
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="country-all" value="all" checked>
+                    <label class="form-check-label" for="country-all">
+                        🌎 Все страны
+                    </label>
+                </div>
+            `;
+            countriesList.appendChild(allCountriesDiv);
+            
+            // Сортируем страны по количеству пользователей
+            data.sort((a, b) => b.count - a.count);
+            
+            // Добавляем все страны в список
+            data.forEach(country => {
+                const countryDiv = document.createElement('div');
+                countryDiv.className = 'mb-2';
+                countryDiv.innerHTML = `
+                    <div class="form-check">
+                        <input class="form-check-input country-checkbox" type="checkbox" id="country-${country.code}" value="${country.code}" data-users="${country.count}" disabled>
+                        <label class="form-check-label" for="country-${country.code}">
+                            ${country.emoji || ''} ${country.name} (${country.count} пользователей)
+                        </label>
+                    </div>
+                `;
+                countriesList.appendChild(countryDiv);
+            });
+            
+            // Добавляем обработчик для чекбокса "Все страны"
+            document.getElementById('country-all').addEventListener('change', function() {
+                const checked = this.checked;
+                document.querySelectorAll('.country-checkbox').forEach(checkbox => {
+                    checkbox.checked = checked;
+                    checkbox.disabled = checked;
+                });
+            });
+        })
+        .catch(error => {
+            console.error('Error loading countries:', error);
+            countriesList.innerHTML = `<div class="alert alert-danger">
+                Ошибка загрузки списка стран: ${error.message}
+            </div>`;
+        });
+}
+
+/**
+ * Просмотр задачи на отправку уведомления
+ * @param {string} id ID задачи
+ */
+function viewTask(id) {
+    // Проверяем, выполняется ли уже загрузка
+    if (document.getElementById('view-task-loading-indicator')) {
+        console.log('Task view loading already in progress, ignoring duplicate request');
+        return;
+    }
+    
+    // Показываем лоадер
+    document.getElementById('viewTaskLoader').style.display = 'block';
+    document.getElementById('viewTaskContent').style.display = 'none';
+    document.getElementById('cancel-task-btn').style.display = 'none';
+    
+    // Добавляем индикатор загрузки для отслеживания
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.id = 'view-task-loading-indicator';
+    loadingIndicator.style.display = 'none';
+    document.getElementById('viewTaskLoader').appendChild(loadingIndicator);
+    
+    // Открываем модальное окно
+    const viewTaskModal = new bootstrap.Modal(document.getElementById('viewTaskModal'));
+    viewTaskModal.show();
+    
+    // Загружаем данные задачи
+    fetch(`/admin/api/notification-tasks/${id}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Полученные данные задачи:', data);
+            
+            // Прямой доступ к JSON ответу для диагностики
+            console.log('JSON string:', JSON.stringify(data));
+            
+            // Определяем функцию форматирования даты
+            const formatDate = (dateStr) => {
+                if (!dateStr) return '-';
+                try {
+                    const date = new Date(dateStr);
+                    // Проверяем валидность даты
+                    if (isNaN(date.getTime())) return '-';
+                    return date.toLocaleString();
+                } catch (e) {
+                    console.error("Ошибка форматирования даты:", e);
+                    return '-';
+                }
+            };
+            
+            // Заполняем общую информацию
+            const templateName = data.template ? data.template.name : 'Неизвестный шаблон';
+            
+            document.getElementById('view-task-template-name').textContent = templateName;
+
+            
+            // Определяем статус и соответствующий класс
+            let statusText = '';
+            let statusClass = '';
+            switch (data.status) {
+                case 'pending':
+                    statusText = 'Ожидает';
+                    statusClass = 'bg-warning';
+                    // Показываем кнопку отмены для ожидающих задач
+                    document.getElementById('cancel-task-btn').style.display = 'block';
+                    document.getElementById('cancel-task-btn').setAttribute('data-id', id);
+                    break;
+                case 'processing':
+                    statusText = 'Выполняется';
+                    statusClass = 'bg-primary';
+                    // Показываем кнопку отмены для выполняющихся задач
+                    document.getElementById('cancel-task-btn').style.display = 'block';
+                    document.getElementById('cancel-task-btn').setAttribute('data-id', id);
+                    break;
+                case 'completed':
+                    statusText = 'Завершено';
+                    statusClass = 'bg-success';
+                    break;
+                case 'failed':
+                    statusText = 'Ошибка';
+                    statusClass = 'bg-danger';
+                    break;
+                case 'canceled':
+                    statusText = 'Отменено';
+                    statusClass = 'bg-secondary';
+                    break;
+            }
+            document.getElementById('view-task-status').innerHTML = `<span class="badge ${statusClass}">${statusText}</span>`;
+            
+            // Определяем и отображаем тип таргетинга
+            console.log("Данные таргетинга:");
+            console.log("target_type =", data.target_type);
+            console.log("targetType =", data.targetType);
+            console.log("targetParams =", data.targetParams);
+            console.log("target_params =", data.target_params);
+            
+            const targetType = data.target_type || data.targetType || "";
+            let targetTypeText = '';
+            switch (targetType) {
+                case 'all':
+                    targetTypeText = 'Все пользователи';
+                    break;
+                case 'country':
+                    targetTypeText = 'По странам';
+                    break;
+                case 'activity':
+                    targetTypeText = 'По активности';
+                    break;
+                case 'custom':
+                    targetTypeText = 'Выборочно';
+                    break;
+                default:
+                    targetTypeText = targetType || 'Неизвестно';
+                    break;
+            }
+            document.getElementById('view-task-target-type').textContent = targetTypeText;
+            
+            // Отображаем запланированное время
+            console.log("scheduled_at =", data.scheduled_at);
+            console.log("scheduledAt =", data.scheduledAt);
+            
+            const scheduledTime = data.scheduled_at || data.scheduledAt;
+            if (scheduledTime) {
+                const scheduledDate = new Date(scheduledTime);
+                document.getElementById('view-task-scheduled-at').textContent = formatDate(scheduledTime);
+            } else {
+                document.getElementById('view-task-scheduled-at').textContent = 'Немедленно';
+            }
+            
+            // Отображаем прогресс
+            const progress = typeof data.taskProgress !== 'undefined' ? data.taskProgress : 0;
+            const progressBar = document.getElementById('view-task-progress-bar');
+            progressBar.style.width = `${progress.toFixed(1)}%`;
+            progressBar.textContent = `${progress.toFixed(1)}%`;
+            progressBar.setAttribute('aria-valuenow', progress);
+            
+            // Отображаем статистику
+            
+            // Прямое обращение к свойствам, выводим в лог все возможные имена
+            console.log("Детальный анализ данных статистики:");
+            Object.keys(data).forEach(key => {
+                if (key.toLowerCase().includes('count') || key.toLowerCase().includes('total') || key.toLowerCase().includes('user')) {
+                    console.log(`${key} = ${data[key]}`);
+                }
+            });
+            
+            // Специальная обработка для поддержки разных форматов API
+            let totalUsers = 0;
+            let sentCount = 0;
+            let deliveredCount = 0;
+            let readCount = 0;
+            
+            // Ищем поля по разным именам
+            for (const key in data) {
+                const keyLower = key.toLowerCase();
+                if (keyLower.includes('total') && keyLower.includes('user')) {
+                    totalUsers = parseInt(data[key]) || 0;
+                }
+                if (keyLower.includes('sent') && keyLower.includes('count')) {
+                    sentCount = parseInt(data[key]) || 0;
+                }
+                if (keyLower.includes('deliver') && keyLower.includes('count')) {
+                    deliveredCount = parseInt(data[key]) || 0;
+                }
+                if (keyLower.includes('read') && keyLower.includes('count')) {
+                    readCount = parseInt(data[key]) || 0;
+                }
+            }
+            
+            // Прямое обращение к предполагаемым именам полей
+            if (totalUsers === 0) totalUsers = parseInt(data.totalUsers || data.total_users || 0);
+            if (sentCount === 0) sentCount = parseInt(data.sentCount || data.sent_count || 0);
+            if (deliveredCount === 0) deliveredCount = parseInt(data.deliveredCount || data.delivered_count || 0);
+            if (readCount === 0) readCount = parseInt(data.readCount || data.read_count || 0);
+            
+            console.log(`Финальные значения: totalUsers=${totalUsers}, sentCount=${sentCount}, deliveredCount=${deliveredCount}, readCount=${readCount}`);
+            
+            document.getElementById('view-task-total-users').textContent = totalUsers;
+            document.getElementById('view-task-sent-count').textContent = sentCount;
+            document.getElementById('view-task-delivered-count').textContent = deliveredCount;
+            document.getElementById('view-task-read-count').textContent = readCount;
+
+            
+            // Отображаем оставшееся время (если задача в процессе)
+            const timeRemainingContainer = document.getElementById('view-task-time-remaining-container');
+            if (data.status === 'processing' && data.estimatedTimeRemaining) {
+                timeRemainingContainer.style.display = 'block';
+                document.getElementById('view-task-time-remaining').textContent = data.estimatedTimeRemaining;
+            } else {
+                timeRemainingContainer.style.display = 'none';
+            }
+            
+            // Отображаем параметры таргетинга
+            console.log("Параметры таргетинга:");
+            const targetParams = data.target_params || data.targetParams || {};
+            console.log("targetParams =", targetParams);
+            
+            let targetParamsHTML = '<p>Все пользователи</p>';
+            
+            if (targetType === 'country') {
+                const countries = targetParams.countries || [];
+                if (countries && countries.length > 0) {
+                    targetParamsHTML = '<p><strong>Выбранные страны:</strong></p><ul>';
+                    countries.forEach(country => {
+                        targetParamsHTML += `<li>${country}</li>`;
+                    });
+                    targetParamsHTML += '</ul>';
+                } else {
+                    targetParamsHTML = '<p>Все страны</p>';
+                }
+            } else if (targetType === 'activity') {
+                const activityFilters = targetParams.activity_filters || targetParams.activityFilters || [];
+                if (activityFilters && activityFilters.length > 0) {
+                    // Поскольку теперь у нас только один фильтр активности, упростим отображение
+                    const filter = activityFilters[0];
+                    let filterText = '';
+                    
+                    switch (filter) {
+                        case 'inactive_3days':
+                            filterText = 'Не играл менее 3 дней (от 3 дней до 12 часов)';
+                            break;
+                        case 'inactive_7days':
+                            filterText = 'Не играл более 3 дней и менее 7 дней';
+                            break;
+                        case 'inactive_14days':
+                            filterText = 'Не играл более 7 дней и менее 14 дней';
+                            break;
+                        case 'inactive_more_14days':
+                            filterText = 'Не играл более 14 дней';
+                            break;
+                        default:
+                            filterText = filter || 'Неизвестный фильтр';
+                    }
+                    
+                    targetParamsHTML = `<p><strong>Фильтр активности:</strong> ${filterText}</p>`;
+                }
+            } else if (targetType === 'custom') {
+                const userIds = targetParams.user_ids || targetParams.userIds || [];
+                if (userIds && userIds.length > 0) {
+                    targetParamsHTML = '<p><strong>Выбранные пользователи:</strong></p><ul>';
+                    userIds.forEach(userId => {
+                        targetParamsHTML += `<li>ID: ${userId}</li>`;
+                    });
+                    targetParamsHTML += '</ul>';
+                }
+                
+                // Если есть макросы, показываем их
+                const macros = targetParams.macros || {};
+                if (Object.keys(macros).length > 0) {
+                    targetParamsHTML += '<p><strong>Параметры шаблона:</strong></p><ul>';
+                    for (const key in macros) {
+                        targetParamsHTML += `<li>${key}: ${macros[key]}</li>`;
+                    }
+                    targetParamsHTML += '</ul>';
+                }
+            }
+            
+            document.getElementById('view-task-target-params').innerHTML = targetParamsHTML;
+            
+            // Отображаем время выполнения
+            console.log("Данные времени выполнения:");
+            console.log("created_at =", data.created_at);
+            console.log("started_at =", data.started_at);
+            console.log("completed_at =", data.completed_at);
+            
+            document.getElementById('view-task-created-at').textContent = formatDate(data.created_at);
+            document.getElementById('view-task-started-at').textContent = formatDate(data.started_at);
+            document.getElementById('view-task-completed-at').textContent = formatDate(data.completed_at);
+            
+            // Скрываем лоадер и показываем контент
+            document.getElementById('viewTaskLoader').style.display = 'none';
+            document.getElementById('viewTaskContent').style.display = 'block';
+            
+            // Удаляем индикатор загрузки
+            const loadingIndicator = document.getElementById('view-task-loading-indicator');
+            if (loadingIndicator) {
+                loadingIndicator.remove();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading task:', error);
+            // Показываем ошибку в лоадере
+            document.getElementById('viewTaskLoader').innerHTML = `
+            <div class="alert alert-danger">
+                Ошибка загрузки данных: ${error.message}
+                <button type="button" class="btn-close float-end" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            `;
+            
+            // Удаляем индикатор загрузки
+            const loadingIndicator = document.getElementById('view-task-loading-indicator');
+            if (loadingIndicator) {
+                loadingIndicator.remove();
+            }
+        });
+}
+
+/**
+ * Отмена задачи на отправку уведомления
+ * @param {string} id ID задачи
+ */
+function cancelTask(id) {
+    // Проверяем, выполняется ли уже отмена
+    if (document.getElementById('cancel-task-loading-indicator')) {
+        console.log('Task cancellation already in progress, ignoring duplicate request');
+        return;
+    }
+    
+    // Добавляем индикатор загрузки
+    const cancelBtn = document.querySelector(`[data-id="${id}"].cancel-task`) || document.getElementById('cancel-task-btn');
+    if (cancelBtn) {
+        cancelBtn.disabled = true;
+        cancelBtn.innerHTML = '<span id="cancel-task-loading-indicator" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Отмена...';
+    }
+    
+    fetch(`/admin/api/notification-tasks/${id}/cancel`, {
+        method: 'POST'
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => Promise.reject(err));
+        }
+        return response.json();
+    })
+    .then(result => {
+        // Если было открыто модальное окно, закрываем его
+        const viewTaskModal = bootstrap.Modal.getInstance(document.getElementById('viewTaskModal'));
+        if (viewTaskModal) {
+            viewTaskModal.hide();
+        }
+        
+        // Показываем сообщение об успехе
+        showNotification('Задача успешно отменена', 'success');
+        
+        // Обновляем страницу
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+    })
+    .catch(error => {
+        console.error('Error canceling task:', error);
+        showNotification(error.error || 'Ошибка отмены задачи', 'danger');
+    })
+    .finally(() => {
+        // Восстанавливаем кнопку
+        const cancelBtn = document.querySelector(`[data-id="${id}"].cancel-task`) || document.getElementById('cancel-task-btn');
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+            cancelBtn.innerHTML = 'Отменить задачу';
+        }
+        
+        // Удаляем индикатор загрузки
+        const indicator = document.getElementById('cancel-task-loading-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    });
+}
+
+/**
+ * Создание задачи уведомления
+ */
+function createNotificationTask() {
+    // Проверяем, выполняется ли уже создание задачи
+    if (document.getElementById('task-loading-indicator')) {
+        console.log('Task creation already in progress, ignoring duplicate request');
+        return;
+    }
+    
+    // Добавляем индикатор загрузки для отслеживания
+    const createTaskBtn = document.getElementById('create-task-btn');
+    if (createTaskBtn) {
+        createTaskBtn.disabled = true;
+        createTaskBtn.innerHTML = '<span id="task-loading-indicator" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Создание...';
+    }
+    
+    // Собираем данные формы
+    const templateId = document.getElementById('task-template-id').value;
+    const targetType = document.getElementById('task-target-type').value;
+    
+    // Собираем параметры таргетинга в зависимости от типа
+    let targetParams = {};
+    
+    if (targetType === 'country') {
+        // Если выбран чекбокс "Все страны", параметры не нужны
+        if (document.getElementById('country-all').checked) {
+            targetParams = { allCountries: true };
+        } else {
+            // Собираем выбранные страны
+            const selectedCountries = [];
+            document.querySelectorAll('.country-checkbox:checked').forEach(checkbox => {
+                selectedCountries.push(checkbox.value);
+            });
+            
+            if (selectedCountries.length === 0) {
+                showNotification('Пожалуйста, выберите хотя бы одну страну', 'danger');
+                resetCreateButton();
+                return;
+            }
+            
+            targetParams = { countries: selectedCountries };
+        }
+    } else if (targetType === 'activity') {
+        // Получаем выбранный фильтр активности из select
+        const activityFilter = document.getElementById('activity-filter-select').value;
+        
+        if (!activityFilter) {
+            showNotification('Пожалуйста, выберите фильтр активности', 'danger');
+            resetCreateButton();
+            return;
+        }
+        
+        targetParams = { activityFilters: [activityFilter] };
+    }
+    
+    // Проверяем, включена ли отложенная отправка
+    const scheduledSend = document.getElementById('scheduled-send').checked;
+    let scheduledAt = null;
+    
+    if (scheduledSend) {
+        scheduledAt = document.getElementById('scheduled-at').value;
+        
+        if (!scheduledAt) {
+            showNotification('Пожалуйста, укажите дату и время отправки', 'danger');
+            resetCreateButton();
+            return;
+        }
+    } else {
+        // Для немедленной отправки используем текущее время
+        const now = new Date();
+        scheduledAt = now.toISOString();
+    }
+    
+    // Подготовка данных для отправки
+    const data = {
+        templateId: parseInt(templateId),
+        targetType,
+        targetParams,
+        scheduledSend,
+        scheduledAt: scheduledAt,
+    };
+        
+    // Отправляем запрос на сервер
+    fetch('/admin/api/notification-tasks', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => Promise.reject(err));
+        }
+        return response.json();
+    })
+    .then(result => {
+        // Закрываем модальное окно
+        const modal = bootstrap.Modal.getInstance(document.getElementById('createTaskModal'));
+        modal.hide();
+        
+        // Показываем сообщение об успехе
+        showNotification(`Задача на отправку уведомления создана успешно. Всего получателей: ${result.totalUsers}`, 'success');
+        
+        // Обновляем страницу
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+    })
+    .catch(error => {
+        console.error('Error creating task:', error);
+        showNotification(error.error || 'Ошибка создания задачи', 'danger');
+    })
+    .finally(() => {
+        resetCreateButton();
+    });
+    
+    function resetCreateButton() {
+        const createTaskBtn = document.getElementById('create-task-btn');
+        if (createTaskBtn) {
+            createTaskBtn.disabled = false;
+            createTaskBtn.innerHTML = 'Создать задачу';
+        }
+        
+        const indicator = document.getElementById('task-loading-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+}
+
+/**
+ * Функция для отображения уведомлений в стиле Bootstrap
+ * @param {string} message Текст сообщения
+ * @param {string} type Тип сообщения (success, info, warning, danger)
+ */
+function showNotification(message, type) {
+    // Создаем контейнер для уведомлений, если его нет
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        container.className = 'position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '1050';
+        document.body.appendChild(container);
+    }
+    
+    // Создаем элемент уведомления
+    const notificationId = 'notification-' + Date.now();
+    const notification = document.createElement('div');
+    notification.id = notificationId;
+    notification.className = `toast align-items-center text-white bg-${type} border-0`;
+    notification.setAttribute('role', 'alert');
+    notification.setAttribute('aria-live', 'assertive');
+    notification.setAttribute('aria-atomic', 'true');
+    
+    // Добавляем содержимое уведомления
+    notification.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+    
+    // Добавляем уведомление в контейнер
+    container.appendChild(notification);
+    
+    // Инициализируем и показываем уведомление с помощью Bootstrap
+    const toast = new bootstrap.Toast(notification, {
+        delay: 5000
+    });
+    toast.show();
+    
+    // Удаляем уведомление после скрытия
+    notification.addEventListener('hidden.bs.toast', function() {
+        notification.remove();
+    });
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация обработчиков для шаблонов уведомлений
+    initializeTemplateHandlers();
+    
+    // Инициализация форм
+    initializeNotificationForms();
+
+    // Для модального окна просмотра задачи
+    document.querySelectorAll('.modal').forEach(function(modal) {
+        modal.addEventListener('hidden.bs.modal', function() {
+            // Удаляем все .modal-backdrop элементы
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => {
+                backdrop.remove();
+            });
+            
+            // Убираем класс modal-open с body
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        });
+    });
+});
+
+/**
+ * Инициализация обработчиков для шаблонов уведомлений
+ */
+function initializeTemplateHandlers() {
+    // Добавляем новые обработчики для кнопок
+    document.querySelectorAll('.view-template').forEach(button => {
+        button.addEventListener('click', function() {
+            const templateId = this.getAttribute('data-id');
+            viewTemplate(templateId);
+        });
+    });
+    
+    document.querySelectorAll('.edit-template').forEach(button => {
+        button.addEventListener('click', function() {
+            const templateId = this.getAttribute('data-id');
+            editTemplate(templateId);
+        });
+    });
+    
+    document.querySelectorAll('.create-task').forEach(button => {
+        button.addEventListener('click', function() {
+            const templateId = this.getAttribute('data-id');
+            const templateName = this.getAttribute('data-name');
+            createTask(templateId, templateName);
+        });
+    });
+    
+    document.querySelectorAll('.delete-template').forEach(button => {
+        button.addEventListener('click', function() {
+            const templateId = this.getAttribute('data-id');
+            if (confirm('Вы уверены, что хотите удалить этот шаблон?')) {
+                deleteTemplate(templateId);
+            }
+        });
+    });
+    
+    document.querySelectorAll('.view-task').forEach(button => {
+        button.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-id');
+            viewTask(taskId);
+        });
+    });
+    
+    document.querySelectorAll('.cancel-task').forEach(button => {
+        button.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-id');
+            if (confirm('Вы уверены, что хотите отменить эту задачу?')) {
+                cancelTask(taskId);
+            }
+        });
+    });
+    
+    // Кнопка создания нового шаблона
+    const createTemplateBtn = document.getElementById('create-template-btn');
+    if (createTemplateBtn) {
+        createTemplateBtn.addEventListener('click', function() {
+            resetTemplateForm();
+        });
+    }
+    
+    // Обработчик отмены задачи в модальном окне просмотра
+    const cancelTaskBtn = document.getElementById('cancel-task-btn');
+    if (cancelTaskBtn) {
+        cancelTaskBtn.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-id');
+            if (confirm('Вы уверены, что хотите отменить эту задачу?')) {
+                cancelTask(taskId);
+            }
+        });
+    }
+}
+
+/**
+ * Инициализация форм для уведомлений
+ */
+function initializeNotificationForms() {
+    // Инициализация формы шаблона
+    const templateForm = document.getElementById('templateForm');
+    if (templateForm) {
+        templateForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveTemplate();
+        });
+    }
+    
+    // Инициализация формы задачи на отправку
+    const taskForm = document.getElementById('taskForm');
+    if (taskForm) {
+        // Переключение видимости настроек таргетинга стран
+        const targetTypeSelect = document.getElementById('task-target-type');
+        if (targetTypeSelect) {
+            targetTypeSelect.addEventListener('change', function() {
+                const countriesContainer = document.getElementById('target-countries-container');
+                const activityContainer = document.getElementById('target-activity-container');
+                
+                if (countriesContainer) {
+                    countriesContainer.style.display = this.value === 'country' ? 'block' : 'none';
+                }
+                
+                if (activityContainer) {
+                    activityContainer.style.display = this.value === 'activity' ? 'block' : 'none';
+                }
+            });
+        }
+        
+        // Переключение видимости настроек отложенной отправки
+        const scheduledSendCheckbox = document.getElementById('scheduled-send');
+        if (scheduledSendCheckbox) {
+            scheduledSendCheckbox.addEventListener('change', function() {
+                const scheduledSettings = document.getElementById('scheduled-settings');
+                if (scheduledSettings) {
+                    scheduledSettings.style.display = this.checked ? 'block' : 'none';
+                }
+            });
+        }
+        
+        // Переключение видимости настроек адаптации времени
+        const adjustTimeCheckbox = document.getElementById('adjust-time');
+        if (adjustTimeCheckbox) {
+            adjustTimeCheckbox.addEventListener('change', function() {
+                const adjustTimeSettings = document.getElementById('adjust-time-settings');
+                if (adjustTimeSettings) {
+                    adjustTimeSettings.style.display = this.checked ? 'block' : 'none';
+                }
+            });
+        }
+        
+        // Кнопка создания задачи
+        const createTaskBtn = document.getElementById('create-task-btn');
+        if (createTaskBtn) {
+            createTaskBtn.addEventListener('click', function() {
+                createNotificationTask();
+            });
+        }
+    }
+    
+    // Переключатель для настроек кнопки
+    const hasButtonCheckbox = document.getElementById('has-button');
+    if (hasButtonCheckbox) {
+        hasButtonCheckbox.addEventListener('change', function() {
+            const buttonSettings = document.getElementById('button-settings');
+            if (buttonSettings) {
+                buttonSettings.style.display = this.checked ? 'block' : 'none';
+            }
+        });
+    }
+}// web/static/js/notifications.js - упрощенная версия
+
+/**
  * Просмотр шаблона уведомления
  * @param {string} id ID шаблона
  */
@@ -730,738 +1579,5 @@ function saveTemplate() {
             saveButton.disabled = false;
             saveButton.innerHTML = 'Сохранить';
         }
-    }
-}
-
-/**
- * Удаление шаблона уведомления
- * @param {string} id ID шаблона
- */
-function deleteTemplate(id) {
-    // Отправляем запрос на удаление
-    fetch(`/admin/api/notification-templates/${id}`, {
-        method: 'DELETE'
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(err => Promise.reject(err));
-        }
-        return response.json();
-    })
-    .then(result => {
-        showNotification('Шаблон успешно удален', 'success');
-        
-        // Обновляем страницу
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000);
-    })
-    .catch(error => {
-        console.error('Error deleting template:', error);
-        showNotification(error.error || 'Ошибка удаления шаблона', 'danger');
-    });
-}
-
-/**
- * Создание задачи на отправку уведомления
- * @param {string} templateId ID шаблона
- * @param {string} templateName Название шаблона
- */
-function createTask(templateId, templateName) {
-    // Устанавливаем ID шаблона в форме задачи
-    document.getElementById('task-template-id').value = templateId;
-    document.getElementById('task-template-name').textContent = templateName;
-    
-    // Сбрасываем форму
-    document.getElementById('taskForm').reset();
-    
-    // Устанавливаем дату и время по умолчанию (через 15 минут от текущего времени)
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + 15);
-    const dateTimeString = now.toISOString().slice(0, 16);
-    document.getElementById('scheduled-at').value = dateTimeString;
-    
-    // Скрываем контейнеры таргетинга и настройки расписания
-    document.getElementById('target-countries-container').style.display = 'none';
-    document.getElementById('target-activity-container').style.display = 'none';
-    document.getElementById('scheduled-settings').style.display = 'none';
-    document.getElementById('adjust-time-settings').style.display = 'none';
-    
-    // Загружаем данные для фильтров
-    loadCountriesForFilter();
-    
-    // Открываем модальное окно
-    const modal = new bootstrap.Modal(document.getElementById('createTaskModal'));
-    modal.show();
-}
-
-/**
- * Загрузка списка стран для фильтра
- */
-function loadCountriesForFilter() {
-    const countriesList = document.getElementById('countries-list');
-    
-    // Показываем индикатор загрузки
-    countriesList.innerHTML = '<div class="text-center py-3"><div class="spinner-border" role="status"><span class="visually-hidden">Загрузка...</span></div></div>';
-    
-    // Загружаем список стран
-    fetch('/admin/api/countries-with-users')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Очищаем список
-            countriesList.innerHTML = '';
-            
-            // Добавляем опцию "Все страны"
-            const allCountriesDiv = document.createElement('div');
-            allCountriesDiv.className = 'mb-2';
-            allCountriesDiv.innerHTML = `
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="country-all" value="all" checked>
-                    <label class="form-check-label" for="country-all">
-                        🌎 Все страны
-                    </label>
-                </div>
-            `;
-            countriesList.appendChild(allCountriesDiv);
-            
-            // Сортируем страны по количеству пользователей
-            data.sort((a, b) => b.count - a.count);
-            
-            // Добавляем все страны в список
-            data.forEach(country => {
-                const countryDiv = document.createElement('div');
-                countryDiv.className = 'mb-2';
-                countryDiv.innerHTML = `
-                    <div class="form-check">
-                        <input class="form-check-input country-checkbox" type="checkbox" id="country-${country.code}" value="${country.code}" data-users="${country.count}" disabled>
-                        <label class="form-check-label" for="country-${country.code}">
-                            ${country.emoji || ''} ${country.name} (${country.count} пользователей)
-                        </label>
-                    </div>
-                `;
-                countriesList.appendChild(countryDiv);
-            });
-            
-            // Добавляем обработчик для чекбокса "Все страны"
-            document.getElementById('country-all').addEventListener('change', function() {
-                const checked = this.checked;
-                document.querySelectorAll('.country-checkbox').forEach(checkbox => {
-                    checkbox.checked = checked;
-                    checkbox.disabled = checked;
-                });
-            });
-        })
-        .catch(error => {
-            console.error('Error loading countries:', error);
-            countriesList.innerHTML = `<div class="alert alert-danger">
-                Ошибка загрузки списка стран: ${error.message}
-            </div>`;
-        });
-}
-
-/**
- * Просмотр задачи на отправку уведомления
- * @param {string} id ID задачи
- */
-function viewTask(id) {
-    // Проверяем, выполняется ли уже загрузка
-    if (document.getElementById('view-task-loading-indicator')) {
-        console.log('Task view loading already in progress, ignoring duplicate request');
-        return;
-    }
-    
-    // Показываем лоадер
-    document.getElementById('viewTaskLoader').style.display = 'block';
-    document.getElementById('viewTaskContent').style.display = 'none';
-    document.getElementById('cancel-task-btn').style.display = 'none';
-    
-    // Добавляем индикатор загрузки для отслеживания
-    const loadingIndicator = document.createElement('div');
-    loadingIndicator.id = 'view-task-loading-indicator';
-    loadingIndicator.style.display = 'none';
-    document.getElementById('viewTaskLoader').appendChild(loadingIndicator);
-    
-    // Открываем модальное окно
-    const viewTaskModal = new bootstrap.Modal(document.getElementById('viewTaskModal'));
-    viewTaskModal.show();
-    
-    // Загружаем данные задачи
-    fetch(`/admin/api/notification-tasks/${id}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Заполняем общую информацию
-            const templateName = data.template ? data.template.name : 'Неизвестный шаблон';
-            
-            document.getElementById('view-task-template-name').textContent = templateName;
-            
-            // Определяем статус и соответствующий класс
-            let statusText = '';
-            let statusClass = '';
-            switch (data.status) {
-                case 'pending':
-                    statusText = 'Ожидает';
-                    statusClass = 'bg-warning';
-                    // Показываем кнопку отмены для ожидающих задач
-                    document.getElementById('cancel-task-btn').style.display = 'block';
-                    document.getElementById('cancel-task-btn').setAttribute('data-id', id);
-                    break;
-                case 'processing':
-                    statusText = 'Выполняется';
-                    statusClass = 'bg-primary';
-                    // Показываем кнопку отмены для выполняющихся задач
-                    document.getElementById('cancel-task-btn').style.display = 'block';
-                    document.getElementById('cancel-task-btn').setAttribute('data-id', id);
-                    break;
-                case 'completed':
-                    statusText = 'Завершено';
-                    statusClass = 'bg-success';
-                    break;
-                case 'failed':
-                    statusText = 'Ошибка';
-                    statusClass = 'bg-danger';
-                    break;
-                case 'canceled':
-                    statusText = 'Отменено';
-                    statusClass = 'bg-secondary';
-                    break;
-            }
-            document.getElementById('view-task-status').innerHTML = `<span class="badge ${statusClass}">${statusText}</span>`;
-            
-            // Определяем и отображаем тип таргетинга
-            let targetTypeText = '';
-            switch (data.targetType) {
-                case 'all':
-                    targetTypeText = 'Все пользователи';
-                    break;
-                case 'country':
-                    targetTypeText = 'По странам';
-                    break;
-                case 'activity':
-                    targetTypeText = 'По активности';
-                    break;
-            }
-            document.getElementById('view-task-target-type').textContent = targetTypeText;
-            
-            // Отображаем запланированное время
-            if (data.scheduledAt) {
-                const scheduledDate = new Date(data.scheduledAt);
-                document.getElementById('view-task-scheduled-at').textContent = scheduledDate.toLocaleString();
-            } else {
-                document.getElementById('view-task-scheduled-at').textContent = 'Немедленно';
-            }
-            
-            // Отображаем прогресс
-            const progress = typeof data.taskProgress !== 'undefined' ? data.taskProgress : 0;
-            const progressBar = document.getElementById('view-task-progress-bar');
-            progressBar.style.width = `${progress.toFixed(1)}%`;
-            progressBar.textContent = `${progress.toFixed(1)}%`;
-            progressBar.setAttribute('aria-valuenow', progress);
-            
-            // Отображаем статистику
-            document.getElementById('view-task-total-users').textContent = data.totalUsers || 0;
-            document.getElementById('view-task-sent-count').textContent = data.sentCount || 0;
-            document.getElementById('view-task-delivered-count').textContent = data.deliveredCount || 0;
-            document.getElementById('view-task-read-count').textContent = data.readCount || 0;
-            
-            // Отображаем оставшееся время (если задача в процессе)
-            const timeRemainingContainer = document.getElementById('view-task-time-remaining-container');
-            if (data.status === 'processing' && data.estimatedTimeRemaining) {
-                timeRemainingContainer.style.display = 'block';
-                document.getElementById('view-task-time-remaining').textContent = data.estimatedTimeRemaining;
-            } else {
-                timeRemainingContainer.style.display = 'none';
-            }
-            
-            // Отображаем параметры таргетинга
-            let targetParamsHTML = '<p>Все пользователи</p>';
-            if (data.targetType === 'country' && data.targetParams && data.targetParams.countries) {
-                targetParamsHTML = '<p><strong>Выбранные страны:</strong></p><ul>';
-                data.targetParams.countries.forEach(country => {
-                    targetParamsHTML += `<li>${country}</li>`;
-                });
-                targetParamsHTML += '</ul>';
-            } else if (data.targetType === 'activity' && data.targetParams && data.targetParams.activityFilters) {
-                // Поскольку теперь у нас только один фильтр активности, упростим отображение
-                const filter = data.targetParams.activityFilters[0];
-                let filterText = '';
-                
-                switch (filter) {
-                    case 'inactive_3days':
-                        filterText = 'Не играл менее 3 дней (от 3 дней до 12 часов)';
-                        break;
-                    case 'inactive_7days':
-                        filterText = 'Не играл более 3 дней и менее 7 дней';
-                        break;
-                    case 'inactive_14days':
-                        filterText = 'Не играл более 7 дней и менее 14 дней';
-                        break;
-                    case 'inactive_more_14days':
-                        filterText = 'Не играл более 14 дней';
-                        break;
-                    default:
-                        filterText = filter;
-                }
-                
-                targetParamsHTML = `<p><strong>Фильтр активности:</strong> ${filterText}</p>`;
-            }
-            document.getElementById('view-task-target-params').innerHTML = targetParamsHTML;
-            
-            // Отображаем время выполнения
-            document.getElementById('view-task-created-at').textContent = data.createdAt ? new Date(data.createdAt).toLocaleString() : '-';
-            document.getElementById('view-task-started-at').textContent = data.startedAt ? new Date(data.startedAt).toLocaleString() : '-';
-            document.getElementById('view-task-completed-at').textContent = data.completedAt ? new Date(data.completedAt).toLocaleString() : '-';
-            
-            // Скрываем лоадер и показываем контент
-            document.getElementById('viewTaskLoader').style.display = 'none';
-            document.getElementById('viewTaskContent').style.display = 'block';
-            
-            // Удаляем индикатор загрузки
-            const loadingIndicator = document.getElementById('view-task-loading-indicator');
-            if (loadingIndicator) {
-                loadingIndicator.remove();
-            }
-        })
-        .catch(error => {
-            console.error('Error loading task:', error);
-            // Показываем ошибку в лоадере
-            document.getElementById('viewTaskLoader').innerHTML = `
-            <div class="alert alert-danger">
-                Ошибка загрузки данных: ${error.message}
-                <button type="button" class="btn-close float-end" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            `;
-            
-            // Удаляем индикатор загрузки
-            const loadingIndicator = document.getElementById('view-task-loading-indicator');
-            if (loadingIndicator) {
-                loadingIndicator.remove();
-            }
-        });
-}
-
-/**
- * Отмена задачи на отправку уведомления
- * @param {string} id ID задачи
- */
-function cancelTask(id) {
-    // Проверяем, выполняется ли уже отмена
-    if (document.getElementById('cancel-task-loading-indicator')) {
-        console.log('Task cancellation already in progress, ignoring duplicate request');
-        return;
-    }
-    
-    // Добавляем индикатор загрузки
-    const cancelBtn = document.querySelector(`[data-id="${id}"].cancel-task`) || document.getElementById('cancel-task-btn');
-    if (cancelBtn) {
-        cancelBtn.disabled = true;
-        cancelBtn.innerHTML = '<span id="cancel-task-loading-indicator" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Отмена...';
-    }
-    
-    fetch(`/admin/api/notification-tasks/${id}/cancel`, {
-        method: 'POST'
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(err => Promise.reject(err));
-        }
-        return response.json();
-    })
-    .then(result => {
-        // Если было открыто модальное окно, закрываем его
-        const viewTaskModal = bootstrap.Modal.getInstance(document.getElementById('viewTaskModal'));
-        if (viewTaskModal) {
-            viewTaskModal.hide();
-        }
-        
-        // Показываем сообщение об успехе
-        showNotification('Задача успешно отменена', 'success');
-        
-        // Обновляем страницу
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000);
-    })
-    .catch(error => {
-        console.error('Error canceling task:', error);
-        showNotification(error.error || 'Ошибка отмены задачи', 'danger');
-    })
-    .finally(() => {
-        // Восстанавливаем кнопку
-        const cancelBtn = document.querySelector(`[data-id="${id}"].cancel-task`) || document.getElementById('cancel-task-btn');
-        if (cancelBtn) {
-            cancelBtn.disabled = false;
-            cancelBtn.innerHTML = 'Отменить задачу';
-        }
-        
-        // Удаляем индикатор загрузки
-        const indicator = document.getElementById('cancel-task-loading-indicator');
-        if (indicator) {
-            indicator.remove();
-        }
-    });
-}
-
-/**
- * Создание задачи уведомления
- */
-function createNotificationTask() {
-    // Проверяем, выполняется ли уже создание задачи
-    if (document.getElementById('task-loading-indicator')) {
-        console.log('Task creation already in progress, ignoring duplicate request');
-        return;
-    }
-    
-    // Добавляем индикатор загрузки для отслеживания
-    const createTaskBtn = document.getElementById('create-task-btn');
-    if (createTaskBtn) {
-        createTaskBtn.disabled = true;
-        createTaskBtn.innerHTML = '<span id="task-loading-indicator" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Создание...';
-    }
-    
-    // Собираем данные формы
-    const templateId = document.getElementById('task-template-id').value;
-    const targetType = document.getElementById('task-target-type').value;
-    
-    // Собираем параметры таргетинга в зависимости от типа
-    let targetParams = {};
-    
-    if (targetType === 'country') {
-        // Если выбран чекбокс "Все страны", параметры не нужны
-        if (document.getElementById('country-all').checked) {
-            targetParams = { allCountries: true };
-        } else {
-            // Собираем выбранные страны
-            const selectedCountries = [];
-            document.querySelectorAll('.country-checkbox:checked').forEach(checkbox => {
-                selectedCountries.push(checkbox.value);
-            });
-            
-            if (selectedCountries.length === 0) {
-                showNotification('Пожалуйста, выберите хотя бы одну страну', 'danger');
-                resetCreateButton();
-                return;
-            }
-            
-            targetParams = { countries: selectedCountries };
-        }
-    } else if (targetType === 'activity') {
-        // Получаем выбранный фильтр активности из select
-        const activityFilter = document.getElementById('activity-filter-select').value;
-        
-        if (!activityFilter) {
-            showNotification('Пожалуйста, выберите фильтр активности', 'danger');
-            resetCreateButton();
-            return;
-        }
-        
-        targetParams = { activityFilters: [activityFilter] };
-    }
-    
-    // Проверяем, включена ли отложенная отправка
-    const scheduledSend = document.getElementById('scheduled-send').checked;
-    let scheduledAt = null;
-    
-    if (scheduledSend) {
-        scheduledAt = document.getElementById('scheduled-at').value;
-        
-        if (!scheduledAt) {
-            showNotification('Пожалуйста, укажите дату и время отправки', 'danger');
-            resetCreateButton();
-            return;
-        }
-    } else {
-        // Для немедленной отправки используем текущее время
-        const now = new Date();
-        scheduledAt = now.toISOString();
-    }
-    
-    // Подготовка данных для отправки
-    const data = {
-        templateId: parseInt(templateId),
-        targetType,
-        targetParams,
-        scheduledSend,
-        scheduledAt: scheduledAt,
-    };
-        
-    // Отправляем запрос на сервер
-    fetch('/admin/api/notification-tasks', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(err => Promise.reject(err));
-        }
-        return response.json();
-    })
-    .then(result => {
-        // Закрываем модальное окно
-        const modal = bootstrap.Modal.getInstance(document.getElementById('createTaskModal'));
-        modal.hide();
-        
-        // Показываем сообщение об успехе
-        showNotification(`Задача на отправку уведомления создана успешно. Всего получателей: ${result.totalUsers}`, 'success');
-        
-        // Обновляем страницу
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
-    })
-    .catch(error => {
-        console.error('Error creating task:', error);
-        showNotification(error.error || 'Ошибка создания задачи', 'danger');
-    })
-    .finally(() => {
-        resetCreateButton();
-    });
-    
-    function resetCreateButton() {
-        const createTaskBtn = document.getElementById('create-task-btn');
-        if (createTaskBtn) {
-            createTaskBtn.disabled = false;
-            createTaskBtn.innerHTML = 'Создать задачу';
-        }
-        
-        const indicator = document.getElementById('task-loading-indicator');
-        if (indicator) {
-            indicator.remove();
-        }
-    }
-}
-
-/**
- * Функция для отображения уведомлений в стиле Bootstrap
- * @param {string} message Текст сообщения
- * @param {string} type Тип сообщения (success, info, warning, danger)
- */
-function showNotification(message, type) {
-    // Создаем контейнер для уведомлений, если его нет
-    let container = document.getElementById('notification-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'notification-container';
-        container.className = 'position-fixed top-0 end-0 p-3';
-        container.style.zIndex = '1050';
-        document.body.appendChild(container);
-    }
-    
-    // Создаем элемент уведомления
-    const notificationId = 'notification-' + Date.now();
-    const notification = document.createElement('div');
-    notification.id = notificationId;
-    notification.className = `toast align-items-center text-white bg-${type} border-0`;
-    notification.setAttribute('role', 'alert');
-    notification.setAttribute('aria-live', 'assertive');
-    notification.setAttribute('aria-atomic', 'true');
-    
-    // Добавляем содержимое уведомления
-    notification.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">
-                ${message}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    `;
-    
-    // Добавляем уведомление в контейнер
-    container.appendChild(notification);
-    
-    // Инициализируем и показываем уведомление с помощью Bootstrap
-    const toast = new bootstrap.Toast(notification, {
-        delay: 5000
-    });
-    toast.show();
-    
-    // Удаляем уведомление после скрытия
-    notification.addEventListener('hidden.bs.toast', function() {
-        notification.remove();
-    });
-}
-
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    // Инициализация обработчиков для шаблонов уведомлений
-    initializeTemplateHandlers();
-    
-    // Инициализация форм
-    initializeNotificationForms();
-
-    // Для модального окна просмотра задачи
-    document.querySelectorAll('.modal').forEach(function(modal) {
-        modal.addEventListener('hidden.bs.modal', function() {
-            // Удаляем все .modal-backdrop элементы
-            const backdrops = document.querySelectorAll('.modal-backdrop');
-            backdrops.forEach(backdrop => {
-                backdrop.remove();
-            });
-            
-            // Убираем класс modal-open с body
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
-        });
-    });
-});
-
-/**
- * Инициализация обработчиков для шаблонов уведомлений
- */
-function initializeTemplateHandlers() {
-    // Добавляем новые обработчики для кнопок
-    document.querySelectorAll('.view-template').forEach(button => {
-        button.addEventListener('click', function() {
-            const templateId = this.getAttribute('data-id');
-            viewTemplate(templateId);
-        });
-    });
-    
-    document.querySelectorAll('.edit-template').forEach(button => {
-        button.addEventListener('click', function() {
-            const templateId = this.getAttribute('data-id');
-            editTemplate(templateId);
-        });
-    });
-    
-    document.querySelectorAll('.create-task').forEach(button => {
-        button.addEventListener('click', function() {
-            const templateId = this.getAttribute('data-id');
-            const templateName = this.getAttribute('data-name');
-            createTask(templateId, templateName);
-        });
-    });
-    
-    document.querySelectorAll('.delete-template').forEach(button => {
-        button.addEventListener('click', function() {
-            const templateId = this.getAttribute('data-id');
-            if (confirm('Вы уверены, что хотите удалить этот шаблон?')) {
-                deleteTemplate(templateId);
-            }
-        });
-    });
-    
-    document.querySelectorAll('.view-task').forEach(button => {
-        button.addEventListener('click', function() {
-            const taskId = this.getAttribute('data-id');
-            viewTask(taskId);
-        });
-    });
-    
-    document.querySelectorAll('.cancel-task').forEach(button => {
-        button.addEventListener('click', function() {
-            const taskId = this.getAttribute('data-id');
-            if (confirm('Вы уверены, что хотите отменить эту задачу?')) {
-                cancelTask(taskId);
-            }
-        });
-    });
-    
-    // Кнопка создания нового шаблона
-    const createTemplateBtn = document.getElementById('create-template-btn');
-    if (createTemplateBtn) {
-        createTemplateBtn.addEventListener('click', function() {
-            resetTemplateForm();
-        });
-    }
-    
-    // Обработчик отмены задачи в модальном окне просмотра
-    const cancelTaskBtn = document.getElementById('cancel-task-btn');
-    if (cancelTaskBtn) {
-        cancelTaskBtn.addEventListener('click', function() {
-            const taskId = this.getAttribute('data-id');
-            if (confirm('Вы уверены, что хотите отменить эту задачу?')) {
-                cancelTask(taskId);
-            }
-        });
-    }
-}
-
-/**
- * Инициализация форм для уведомлений
- */
-function initializeNotificationForms() {
-    // Инициализация формы шаблона
-    const templateForm = document.getElementById('templateForm');
-    if (templateForm) {
-        templateForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            saveTemplate();
-        });
-    }
-    
-    // Инициализация формы задачи на отправку
-    const taskForm = document.getElementById('taskForm');
-    if (taskForm) {
-        // Переключение видимости настроек таргетинга стран
-        const targetTypeSelect = document.getElementById('task-target-type');
-        if (targetTypeSelect) {
-            targetTypeSelect.addEventListener('change', function() {
-                const countriesContainer = document.getElementById('target-countries-container');
-                const activityContainer = document.getElementById('target-activity-container');
-                
-                if (countriesContainer) {
-                    countriesContainer.style.display = this.value === 'country' ? 'block' : 'none';
-                }
-                
-                if (activityContainer) {
-                    activityContainer.style.display = this.value === 'activity' ? 'block' : 'none';
-                }
-            });
-        }
-        
-        // Переключение видимости настроек отложенной отправки
-        const scheduledSendCheckbox = document.getElementById('scheduled-send');
-        if (scheduledSendCheckbox) {
-            scheduledSendCheckbox.addEventListener('change', function() {
-                const scheduledSettings = document.getElementById('scheduled-settings');
-                if (scheduledSettings) {
-                    scheduledSettings.style.display = this.checked ? 'block' : 'none';
-                }
-            });
-        }
-        
-        // Переключение видимости настроек адаптации времени
-        const adjustTimeCheckbox = document.getElementById('adjust-time');
-        if (adjustTimeCheckbox) {
-            adjustTimeCheckbox.addEventListener('change', function() {
-                const adjustTimeSettings = document.getElementById('adjust-time-settings');
-                if (adjustTimeSettings) {
-                    adjustTimeSettings.style.display = this.checked ? 'block' : 'none';
-                }
-            });
-        }
-        
-        // Кнопка создания задачи
-        const createTaskBtn = document.getElementById('create-task-btn');
-        if (createTaskBtn) {
-            createTaskBtn.addEventListener('click', function() {
-                createNotificationTask();
-            });
-        }
-    }
-    
-    // Переключатель для настроек кнопки
-    const hasButtonCheckbox = document.getElementById('has-button');
-    if (hasButtonCheckbox) {
-        hasButtonCheckbox.addEventListener('change', function() {
-            const buttonSettings = document.getElementById('button-settings');
-            if (buttonSettings) {
-                buttonSettings.style.display = this.checked ? 'block' : 'none';
-            }
-        });
     }
 }
