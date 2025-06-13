@@ -171,8 +171,8 @@
             <th>Тип таргетинга</th>
             <th>Статус</th>
             <th>Отправлено</th>
-            <th>Доставлено</th>
-            <th>Прочитано</th>
+            <!-- <th>Доставлено</th> -->
+            <!-- <th>Прочитано</th> -->
             <th>Дата завершения</th>
             <th>Действия</th>
           </tr>
@@ -215,18 +215,18 @@
                     <small class="text-muted">/{{.TotalUsers}}</small>
                   {{end}}
                 </td>
-                <td>
+                <!-- <td>
                   <span class="fw-bold">{{.DeliveredCount}}</span>
                   {{if gt .TotalUsers 0}}
                     <small class="text-muted">/{{.TotalUsers}}</small>
                   {{end}}
-                </td>
-                <td>
+                </td> -->
+                <!-- <td>
                   <span class="fw-bold">{{.ReadCount}}</span>
                   {{if gt .TotalUsers 0}}
                     <small class="text-muted">/{{.TotalUsers}}</small>
                   {{end}}
-                </td>
+                </td> -->
                 <td>
                   {{if .CompletedAt}}
                     {{.CompletedAt | formatDate}}

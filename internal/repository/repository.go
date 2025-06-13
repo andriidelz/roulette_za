@@ -17,6 +17,7 @@ type Repository interface {
 	GetUserCount() (int64, error)
 	GetUserWithdrawals(userID uint, limit int) ([]models.Withdrawal, error)
 	SearchUsers(query string, page, perPage int) ([]models.User, int64, error)
+	UpdateUserActivity(userID uint) error
 
 	// Статистика
 	GetUserTotalBets(userID uint) (int, error)

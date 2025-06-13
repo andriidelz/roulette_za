@@ -465,6 +465,7 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 // handleMessage обрабатывает сообщения
 func (b *Bot) handleMessage(message *telego.Message) {
 	user := message.From
+	go b.service.UpdateUserActivity(user.ID)
 
 	// Режим эмуляции
 	originalUserID := user.ID
@@ -778,6 +779,8 @@ func (b *Bot) handleMessage(message *telego.Message) {
 func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	// Валидация пользователя
 	user := query.From
+	go b.service.UpdateUserActivity(user.ID)
+
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
 		// Регистрация пользователя, если он не найден
