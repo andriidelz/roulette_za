@@ -17,7 +17,7 @@ type Service interface {
 	// Пользователи
 	RegisterUser(telegramID int64, username, firstName, lastName, source, languageCode string) (*models.User, error)
 	GetUser(telegramID int64) (*models.User, error)
-	GetUserStats(telegramID int64) (map[string]int, error)
+	// GetUserStats(telegramID int64) (map[string]int, error)
 	GetDetailedUserStats(telegramID int64, period string) (map[string]int, error)
 
 	// Игра и раунды
@@ -43,7 +43,6 @@ type Service interface {
 
 	// Рейтинги
 	GetWeeklyRating(limit int) ([]models.WeeklyRating, error)
-	GetUserPosition(telegramID int64) (int, error)
 	GetSuperRating(limit int) ([]models.SuperRating, error)
 	UpdateWeeklyRatings() error
 	DistributePrizes(year, week int) error
@@ -99,14 +98,10 @@ type Service interface {
 	CreateNotificationTask(templateID uint, targetType string, targetParams models.NotificationTargetParams, scheduledAt *time.Time) (*models.NotificationTask, error)
 	CancelNotificationTask(id uint) error
 	SendNotifications(taskID uint) error
-
 	GetPendingNotificationTasks() ([]models.NotificationTask, error)
-
-	SendNotification(notification *models.Notification) error
-	GetPendingNotifications() ([]models.Notification, error)
-
 	GetNotificationTasksStats(period string) (*models.NotificationStatistics, error)
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)
+	CheckTopRatingEntries() error
 
 	// Вспомогательный метод для доступа к репозиторию
 	GetRepo() repository.Repository
@@ -226,6 +221,7 @@ func (s *ServiceImpl) GetUser(telegramID int64) (*models.User, error) {
 	return s.repo.GetUserByTelegramID(telegramID)
 }
 
+// unused
 func (s *ServiceImpl) GetUserStats(telegramID int64) (map[string]int, error) {
 	user, err := s.repo.GetUserByTelegramID(telegramID)
 	if err != nil {
@@ -574,21 +570,6 @@ func (s *ServiceImpl) GetHashEntryByID(id uint) (*models.HashEntry, error) {
 func (s *ServiceImpl) GetWeeklyRating(limit int) ([]models.WeeklyRating, error) {
 	year, week := time.Now().ISOWeek()
 	return s.repo.GetWeeklyRating(year, week, limit)
-}
-
-func (s *ServiceImpl) GetUserPosition(telegramID int64) (int, error) {
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return 0, err
-	}
-
-	year, week := time.Now().ISOWeek()
-	rating, err := s.repo.GetUserWeeklyRating(user.ID, year, week)
-	if err != nil {
-		return 0, err
-	}
-
-	return rating.Position, nil
 }
 
 func (s *ServiceImpl) GetSuperRating(limit int) ([]models.SuperRating, error) {

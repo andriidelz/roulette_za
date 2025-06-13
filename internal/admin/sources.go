@@ -19,7 +19,7 @@ func (a *AdminPanel) sourcesKeysPage(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "sources_keys", gin.H{
-		"title":        "Admin-panel - Sources",
+		"title":        "Admin-panel - Referral Link",
 		"activeTab":    "sources",
 		"activeSubTab": "keys",
 		"sources":      sources,

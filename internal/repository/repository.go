@@ -56,7 +56,7 @@ type Repository interface {
 	UpdateWeeklyRatingForUser(userID uint) error
 	GetUserRankAndNeighbors(userID uint, year, week int, neighborsCount int) ([]models.WeeklyRating, int, error)
 	GetPointsToReachPrizeZone(year, week, topCount int) (int, error)
-	RefreshAllWeeklyRatings() error
+	RefreshWeeklyRatingsPosition(year, week int) error
 	CheckIfPrizesAlreadyDistributed(year, week int) (bool, error)
 	GetPrizeFundWithoutCreation(year, week int) (*models.PrizeFund, error)
 	GetRecentPrizeFunds(limit int) ([]models.PrizeFund, error)
@@ -89,7 +89,6 @@ type Repository interface {
 	GetUserNotifications(userID uint, limit int) ([]models.Notification, error)
 	MarkNotificationAsRead(id uint) error
 	GetPendingNotificationTasks() ([]models.NotificationTask, error)
-	GetPendingNotifications() ([]models.Notification, error)
 	MarkNotificationAsSent(id uint) error
 
 	// Вывод средств
@@ -146,6 +145,8 @@ type Repository interface {
 	UpdateNotificationTask(task *models.NotificationTask) error
 	UpdateNotificationTemplate(template *models.NotificationTemplate) error
 	UpdateTaskProgress(taskID uint, sentCount, deliveredCount, readCount int) error
+	CheckNotificationSent(userID uint, notificationType string, date string) (bool, error)
+	SaveNotificationSent(userID uint, notificationType string, date string) error
 
 	// Закрытие соединения
 	Close() error
@@ -265,19 +266,7 @@ func (r *PostgresRepository) CalculateWeeklyRatings(year, week int) error {
 	}
 
 	// Обновляем позиции в рейтинге
-	positionQuery := `
-		WITH ranked AS (
-			SELECT id, ROW_NUMBER() OVER (ORDER BY points DESC, efficiency DESC) AS new_position
-			FROM weekly_ratings
-			WHERE week = ? AND year = ?
-		)
-		UPDATE weekly_ratings wr
-		SET position = r.new_position
-		FROM ranked r
-		WHERE wr.id = r.id AND wr.week = ? AND wr.year = ?
-	`
-
-	return r.db.Exec(positionQuery, week, year, week, year).Error
+	return r.RefreshWeeklyRatingsPosition(year, week)
 }
 
 func (r *PostgresRepository) GetSuperRating(period string, limit int) ([]models.SuperRating, error) {
