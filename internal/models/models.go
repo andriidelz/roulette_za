@@ -17,23 +17,24 @@ const (
 
 // Пользователь
 type User struct {
-	ID            uint    `gorm:"primaryKey"`
-	TelegramID    int64   `gorm:"uniqueIndex"`
-	Username      string  `gorm:"size:255"`
-	Nickname      string  `gorm:"size:50"`
-	FirstName     string  `gorm:"size:255"`
-	LastName      string  `gorm:"size:255"`
-	Source        string  `gorm:"size:10"` // источник по реферальной ссылке
-	RefKey        string  `gorm:"size:10"` // источник по реферальной ссылке
-	LanguageCode  string  `gorm:"size:10"`
-	Country       string  `gorm:"size:2"` // ISO 3166-1 alpha-2 код страны
-	WalletAddress string  `gorm:"size:255"`
-	AvatarURL     string  `gorm:"size:512"`
-	Balance       float64 `gorm:"default:0"`
-	Banned        bool    `gorm:"default:false"`
-	AgeVerified   *bool   `gorm:"default:null"` // Указатель на bool для возможности хранения NULL значения
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID             uint    `gorm:"primaryKey"`
+	TelegramID     int64   `gorm:"uniqueIndex"`
+	Username       string  `gorm:"size:255"`
+	Nickname       string  `gorm:"size:50"`
+	FirstName      string  `gorm:"size:255"`
+	LastName       string  `gorm:"size:255"`
+	Source         string  `gorm:"size:10"` // источник по реферальной ссылке
+	RefKey         string  `gorm:"size:10"` // источник по реферальной ссылке
+	LanguageCode   string  `gorm:"size:10"`
+	Country        string  `gorm:"size:2"` // ISO 3166-1 alpha-2 код страны
+	WalletAddress  string  `gorm:"size:255"`
+	AvatarURL      string  `gorm:"size:512"`
+	Balance        float64 `gorm:"default:0"`
+	Banned         bool    `gorm:"default:false"`
+	AgeVerified    *bool   `gorm:"default:null"` // Указатель на bool для возможности хранения NULL значения
+	LastActivityAt time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // HashEntry представляє запис хешу (раунд) в базі даних
