@@ -94,8 +94,16 @@ func (r *PostgresRepository) GetNotificationTasks(status string, page, pageSize 
 	var total int64
 
 	query := r.db.Preload("Template")
+
+	// Применяем фильтр по статусу (поддерживаем несколько статусов через запятую)
 	if status != "" {
-		query = query.Where("status = ?", status)
+		// Проверяем, содержит ли строка запятую (несколько статусов)
+		if strings.Contains(status, ",") {
+			statuses := strings.Split(status, ",")
+			query = query.Where("status IN ?", statuses)
+		} else {
+			query = query.Where("status = ?", status)
+		}
 	}
 
 	// Получаем общее количество записей

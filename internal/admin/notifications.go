@@ -18,7 +18,7 @@ func (a *AdminPanel) setupNotificationsRoutes() {
 	admin.GET("/notifications", a.notificationsPage)
 	admin.GET("/notifications/manual", a.notificationsManualPage)
 	admin.GET("/notifications/automatic", a.notificationsAutomaticPage)
-	admin.GET("/notifications/statistics", a.notificationsStatisticsPage)
+	admin.GET("/notifications/history", a.notificationsHistoryPage)
 
 	// API для работы с шаблонами уведомлений
 	admin.GET("/api/notification-templates", a.getNotificationTemplates)
@@ -32,9 +32,6 @@ func (a *AdminPanel) setupNotificationsRoutes() {
 	admin.GET("/api/notification-tasks/:id", a.getNotificationTask)
 	admin.POST("/api/notification-tasks", a.createNotificationTask)
 	admin.POST("/api/notification-tasks/:id/cancel", a.cancelNotificationTask)
-
-	// API для статистики уведомлений
-	admin.GET("/api/notifications/statistics", a.getNotificationsStatistics)
 
 	// API для получения списка стран
 	admin.GET("/api/countries-with-users", a.getCountriesWithUsers)
@@ -96,10 +93,14 @@ func (a *AdminPanel) notificationsAutomaticPage(c *gin.Context) {
 	})
 }
 
-// notificationsStatisticsPage - страница статистики уведомлений
-func (a *AdminPanel) notificationsStatisticsPage(c *gin.Context) {
-	// Получаем статистику уведомлений
-	stats, err := a.service.GetNotificationTasksStats("day")
+// notificationsHistoryPage - страница истории отправок
+func (a *AdminPanel) notificationsHistoryPage(c *gin.Context) {
+	// Получаем параметры пагинации
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage := 20
+
+	// Получаем историю завершенных задач
+	tasks, total, err := a.service.GetNotificationTasks("completed,failed,canceled", page, perPage)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
@@ -108,22 +109,19 @@ func (a *AdminPanel) notificationsStatisticsPage(c *gin.Context) {
 		return
 	}
 
-	// Рассчитываем процент прочтения
-	readRate := 0.0
-	if stats.TotalSent > 0 {
-		readRate = float64(stats.TotalRead) / float64(stats.TotalSent) * 100
-	}
+	// Вычисляем общее количество страниц
+	totalPages := (int(total) + perPage - 1) / perPage
 
 	c.HTML(http.StatusOK, "notifications", gin.H{
-		"title":        "Статистика уведомлений",
+		"title":        "История отправок",
 		"activeTab":    "notifications",
-		"activeSubTab": "statistics",
-		"stats": gin.H{
-			"TotalSent":      stats.TotalSent,
-			"TotalDelivered": stats.TotalDelivered,
-			"TotalRead":      stats.TotalRead,
-			"ReadRate":       readRate,
-			"CountryStats":   stats.CountryStats,
+		"activeSubTab": "history",
+		"tasks":        tasks,
+		"pagination": gin.H{
+			"current":    page,
+			"total":      totalPages,
+			"totalItems": total,
+			"perPage":    perPage,
 		},
 	})
 }
@@ -453,9 +451,10 @@ func (a *AdminPanel) getNotificationTasks(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"tasks": tasks,
 		"meta": gin.H{
-			"total":   total,
-			"page":    page,
-			"perPage": perPage,
+			"total":      total,
+			"page":       page,
+			"perPage":    perPage,
+			"totalPages": (total + int64(perPage) - 1) / int64(perPage),
 		},
 	})
 }
@@ -534,19 +533,6 @@ func (a *AdminPanel) cancelNotificationTask(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Task canceled successfully",
 	})
-}
-
-// getNotificationsStatistics - API метод для получения статистики уведомлений
-func (a *AdminPanel) getNotificationsStatistics(c *gin.Context) {
-	period := c.DefaultQuery("period", "day")
-
-	stats, err := a.service.GetNotificationTasksStats(period)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, stats)
 }
 
 // getCountriesWithUsers - API метод для получения списка стран с количеством пользователей
