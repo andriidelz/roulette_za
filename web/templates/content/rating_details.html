@@ -69,14 +69,20 @@
               <div class="card">
                   <div class="card-header d-flex justify-content-between align-items-center">
                       <h5 class="mb-0">Участники рейтинга</h5>
-                      {{if eq .prizeStatus "PENDING"}}
-                          <form id="distributeForm" action="/admin/rating/{{.year}}/{{.week}}/distribute" method="post" class="d-inline">
-                              <input type="hidden" name="amount" value="{{.prizeFund.Amount}}">
-                              <input type="hidden" name="top_count" value="{{.prizeFund.TopCount}}">
-                              <input type="hidden" name="action" value="distribute">
-                              <button type="submit" class="btn btn-success">Распределить призы</button>
-                          </form>
-                      {{end}}
+                      <div>
+                          {{if eq .prizeStatus "PENDING"}}
+                            {{if or (lt .year .currentYear) (and (eq .year .currentYear) (lt .week .currentWeek))}}
+                                <form id="distributeForm" action="/admin/rating/{{.year}}/{{.week}}/distribute" method="post" class="d-inline">
+                                    <input type="hidden" name="amount" value="{{.prizeFund.Amount}}">
+                                    <input type="hidden" name="top_count" value="{{.prizeFund.TopCount}}">
+                                    <input type="hidden" name="action" value="distribute">
+                                    <button type="button" id="distributePrizesBtn" class="btn btn-success">Распределить призы</button>
+                                </form>
+                            {{else}}
+                                <button type="button" class="btn btn-secondary" disabled title="Нельзя распределить призы за текущую неделю">Распределить призы</button>
+                            {{end}}
+                        {{end}}
+                      </div>
                   </div>
                   <div class="card-body">
                       <div class="table-responsive">
@@ -108,7 +114,7 @@
                                           </td>
                                           <td>{{.Points}}</td>
                                           <td>{{.Bets}}</td>
-                                          <td>{{printf "%.2f" .Efficiency}}%</td>
+                                          <td>{{printf "%.2f" (multiply .Efficiency 100)}}%</td>
                                           <td>{{printf "%.2f" .Prize}}$</td>
                                           <td>
                                               <a href="/admin/user/{{.UserID}}" class="btn btn-sm btn-outline-primary">Профиль</a>
@@ -134,16 +140,17 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Обработка кнопки распределения призов
+        const distributePrizesBtn = document.getElementById('distributePrizesBtn');
         const distributeForm = document.getElementById('distributeForm');
-        if (distributeForm) {
-            distributeForm.addEventListener('submit', function(event) {
-                event.preventDefault();
-                
+        
+        if (distributePrizesBtn && distributeForm) {
+            distributePrizesBtn.addEventListener('click', function() {
                 if (!confirm('Вы уверены, что хотите распределить призы? Это действие нельзя отменить.')) {
                     return;
                 }
                 
-                const formData = new FormData(this);
+                const formData = new FormData(distributeForm);
                 const actionUrl = distributeForm.getAttribute('action');
                 
                 fetch(actionUrl, {
@@ -161,6 +168,41 @@
                 })
                 .catch(error => {
                     alert('Произошла ошибка при распределении призов');
+                    console.error('Error:', error);
+                });
+            });
+        }
+        
+        // Обработка кнопки отмены распределения призов
+        const cancelPrizesBtn = document.getElementById('cancelPrizesBtn');
+        const cancelPrizesForm = document.getElementById('cancelPrizesForm');
+        
+        if (cancelPrizesBtn && cancelPrizesForm) {
+            cancelPrizesBtn.addEventListener('click', function() {
+                if (!confirm('Вы уверены, что хотите отменить распределение призов? Это действие уменьшит баланс пользователей, которые получили призы.')) {
+                    return;
+                }
+                
+                const actionUrl = cancelPrizesForm.getAttribute('action');
+                
+                fetch(actionUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new FormData(cancelPrizesForm)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Распределение призов успешно отменено!');
+                        location.reload();
+                    } else {
+                        alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                    }
+                })
+                .catch(error => {
+                    alert('Произошла ошибка при отмене распределения призов');
                     console.error('Error:', error);
                 });
             });

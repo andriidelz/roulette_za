@@ -14,18 +14,18 @@
         <!-- Вкладки для навигации в разделе уведомлений -->
         <ul class="nav nav-tabs mb-4">
           <li class="nav-item">
-            <a class="nav-link {{if eq .title "Автоматические уведомления"}}active{{end}}" href="/admin/notifications/automatic">
+            <a class="nav-link {{if eq .activeSubTab "automatic"}}active{{end}}" href="/admin/notifications/automatic">
               <i class="bi bi-clock-history me-1"></i> Автоматические
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {{if eq .title "Ручные уведомления"}}active{{end}}" href="/admin/notifications/manual">
+            <a class="nav-link {{if eq .activeSubTab "manual"}}active{{end}}" href="/admin/notifications/manual">
               <i class="bi bi-hand-index-thumb me-1"></i> Ручные
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {{if eq .title "Статистика уведомлений"}}active{{end}}" href="/admin/notifications/statistics">
-              <i class="bi bi-graph-up me-1"></i> Статистика
+            <a class="nav-link {{if eq .activeSubTab "history"}}active{{end}}" href="/admin/notifications/history">
+              <i class="bi bi-clock-history me-1"></i> История отправок
             </a>
           </li>
         </ul>
@@ -35,8 +35,8 @@
           {{template "notifications_manual" .}}
         {{else if eq .activeSubTab "automatic"}}
           {{template "notifications_automatic" .}}
-        {{else if eq .activeSubTab "statistics"}}
-          {{template "notifications_statistics" .}}
+        {{else if eq .activeSubTab "history"}}
+          {{template "notifications_history" .}}
         {{end}}
 
         <!-- Модальные окна -->
@@ -46,8 +46,6 @@
   </div>
   
   {{template "footer" .}}
-
-  {{template "additionalScripts_notifications" .}}
 {{end}}
 
 {{define "additionalScripts_notifications"}}

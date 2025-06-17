@@ -128,10 +128,58 @@ func (p *PrizeScheduler) checkAndDistributePrizes() {
 
 // distributePrizes выполняет раздачу призов
 func (p *PrizeScheduler) distributePrizes() {
-	err := p.service.DistributePrizes()
+	// Получаем настройки для определения дня раздачи призов
+	settings, err := p.service.GetSettings()
 	if err != nil {
-		log.Printf("Error distributing prizes: %v", err)
+		log.Printf("Error getting settings for prize distribution: %v", err)
 		return
 	}
-	log.Println("Prize distribution completed successfully")
+
+	// Определяем день недели для раздачи призов из настроек
+	prizeDay := 1 // По умолчанию - понедельник
+	if dayStr, ok := settings["prize_distribution_day"]; ok && dayStr != "" {
+		if day, err := strconv.Atoi(dayStr); err == nil && day >= 1 && day <= 7 {
+			prizeDay = day
+		}
+	}
+
+	// Получаем текущую дату
+	now := time.Now()
+
+	// Определяем дату для обработки предыдущей недели
+	// Если сегодня день раздачи (например, четверг),
+	// то мы хотим обработать предыдущую полную неделю (не текущую)
+	var targetDate time.Time
+
+	currentDay := int(now.Weekday())
+	if currentDay == 0 {
+		currentDay = 7 // Воскресенье в Go имеет индекс 0, преобразуем в 7
+	}
+
+	if currentDay == prizeDay {
+		// Если сегодня день раздачи призов, обрабатываем предыдущую неделю
+		// Находим последний день предыдущей недели (воскресенье предыдущей недели)
+		daysToSubtract := currentDay + 7
+		targetDate = now.AddDate(0, 0, -daysToSubtract)
+	} else {
+		// Для других дней, это может быть вызвано только если дата изменилась
+		// в настройках или при ручном вызове - используем последний день предыдущей недели
+		// Находим последнее воскресенье
+		daysToLastSunday := currentDay
+		if currentDay == 7 { // Если сегодня воскресенье
+			daysToLastSunday = 7
+		}
+		targetDate = now.AddDate(0, 0, -daysToLastSunday)
+	}
+
+	// Получаем год и неделю для этой даты
+	year, week := targetDate.ISOWeek()
+
+	// Распределяем призы для найденной недели
+	err = p.service.DistributePrizes(year, week)
+	if err != nil {
+		log.Printf("Error distributing prizes for week %d/%d: %v", year, week, err)
+		return
+	}
+	log.Printf("Prize distribution for week %d/%d completed successfully", year, week)
 }

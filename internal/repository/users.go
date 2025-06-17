@@ -2,6 +2,7 @@ package repository
 
 import (
 	"roulette/internal/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -113,4 +114,11 @@ func (r *PostgresRepository) SearchUsers(query string, page, perPage int) ([]mod
 	}
 
 	return users, totalCount, nil
+}
+
+// UpdateUserActivity обновляет время последней активности пользователя
+func (r *PostgresRepository) UpdateUserActivity(userID uint) error {
+	return r.db.Model(&models.User{}).
+		Where("id = ?", userID).
+		Update("last_activity_at", time.Now()).Error
 }

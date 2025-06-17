@@ -89,6 +89,7 @@ roulette-bot/
 
    ```
    TELEGRAM_TOKEN=your_token_here
+   TELEGRAM_NAME=your_bot_name
    DATABASE_URL=postgres://postgres:postgres@localhost:5432/roulette?sslmode=disable
    ADMIN_USERNAME=admin
    ADMIN_PASSWORD=secure_password
@@ -126,6 +127,7 @@ roulette-bot/
 
    ```
    TELEGRAM_TOKEN=your_token_here
+   TELEGRAM_NAME=your_bot_name
    ADMIN_USERNAME=admin
    ADMIN_PASSWORD=secure_password
    SESSION_SECRET=your_session_secret
@@ -226,6 +228,7 @@ func main() {
 | Параметр | Описание | Значение по умолчанию |
 |----------|----------|----------------------|
 | `TELEGRAM_TOKEN` | Токен Telegram бота | - |
+| `TELEGRAM_NAME` | Название Telegram бота | - |
 | `DATABASE_URL` | URL подключения к PostgreSQL | `postgres://postgres:postgres@localhost:5432/roulette?sslmode=disable` |
 | `ADMIN_PORT` | Порт для админ-панели | `8080` |
 | `ADMIN_USERNAME` | Имя пользователя админ-панели | `admin` |

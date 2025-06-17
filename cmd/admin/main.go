@@ -55,6 +55,7 @@ func main() {
 		AdminPassword:    cfg.AdminPassword,
 		AllowedIPs:       cfg.AllowedIPs,
 		DisableIPFilters: cfg.DisableIPFilters,
+		BotName:          cfg.TelegramName,
 	}
 
 	// Створюємо адмін-панель
@@ -78,6 +79,46 @@ func main() {
 		}
 	}()
 
+	// Запускаем планировщик проверки пользователей в топе рейтинга (каждый час)
+	topRatingTicker := time.NewTicker(2 * time.Minute)
+	go func() {
+		for range topRatingTicker.C {
+			now := time.Now()
+			hour := now.Hour()
+			minute := now.Minute()
+
+			if hour == 20 && minute >= 0 && minute <= 30 { // Окно отправки 20:00-20:30
+				log.Println("Starting scheduled check of top rating entries...")
+				if err := svc.CheckTopRatingEntries(); err != nil {
+					log.Printf("Error checking top rating entries: %v", err)
+				}
+			}
+		}
+	}()
+
+	// Запускаем планировщик проверки запланированных уведомлений (каждую минуту)
+	notificationTaskTicker := time.NewTicker(1 * time.Minute)
+	go func() {
+		for range notificationTaskTicker.C {
+			log.Println("Starting scheduled check of pending notification tasks...")
+			// Получаем задачи, запланированные на текущее время
+			pendingTasks, err := svc.GetPendingNotificationTasks()
+			if err != nil {
+				log.Printf("Error getting pending notification tasks: %v", err)
+				continue
+			}
+
+			// Запускаем отправку для каждой задачи
+			for _, task := range pendingTasks {
+				if err := svc.SendNotifications(task.ID); err != nil {
+					log.Printf("Error sending notifications for task %d: %v", task.ID, err)
+				} else {
+					log.Printf("Successfully started notification task %d", task.ID)
+				}
+			}
+		}
+	}()
+
 	// Виводимо повідомлення про запуск
 	log.Printf("Admin panel started on http://localhost:%s", cfg.AdminPort)
 
@@ -88,6 +129,8 @@ func main() {
 
 	// Останавливаем ticker перед выходом
 	ticker.Stop()
+	topRatingTicker.Stop()
+	notificationTaskTicker.Stop()
 
 	log.Println("Shutting down admin panel...")
 }

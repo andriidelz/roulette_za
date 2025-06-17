@@ -258,7 +258,7 @@ func (r *PostgresRepository) GetTopPlayersBySuccessRate(limit int) ([]map[string
 		)
 		SELECT 
 			user_id,
-			COALESCE(username, CONCAT(first_name, ' ', last_name)) AS display_name,
+			COALESCE(NULLIF(username, ''), CONCAT(first_name, ' ', last_name)) AS display_name,
 			total_bets,
 			won_bets,
 			total_points,
@@ -306,7 +306,7 @@ func (r *PostgresRepository) GetTopPlayersByAttempts(limit int) ([]map[string]in
 	rows, err := r.db.Raw(`
 		SELECT 
 			u.id AS user_id,
-			COALESCE(u.username, CONCAT(u.first_name, ' ', u.last_name)) AS display_name,
+			COALESCE(NULLIF(u.username, ''), CONCAT(u.first_name, ' ', u.last_name)) AS display_name,
 			COUNT(b.id) AS total_bets,
 			SUM(CASE WHEN b.won THEN 1 ELSE 0 END) AS won_bets,
 			SUM(CASE WHEN b.won THEN b.points ELSE 0 END) AS total_points,
@@ -346,6 +346,46 @@ func (r *PostgresRepository) GetTopPlayersByAttempts(limit int) ([]map[string]in
 			"successRate": successRate,
 		}
 
+		result = append(result, player)
+	}
+
+	return result, nil
+}
+
+// GetSource возвращает кол-во регистраций по источникам
+func (r *PostgresRepository) GetSource(dateFrom, dateTo string) ([]map[string]interface{}, error) {
+	var result []map[string]interface{}
+
+	// SQL запрос для получения кол-ва регистраций по источнику
+	// ::date скорочена нотація Postgres для приведення значення в формат
+	// WHERE source = ref_key
+	rows, err := r.db.Raw(`
+SELECT u.created_at::date, COALESCE(k.name, u.source) AS source, COUNT(u.id)
+FROM public.users u LEFT OUTER JOIN "source_keys" k
+ON u.source = k.key
+WHERE u.created_at >= ? and u.created_at <= ?
+GROUP BY u.created_at::date, source, k.name
+ORDER BY created_at DESC, source DESC;
+	`, dateFrom, dateTo).Rows()
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var created_at, source string
+		var count int
+
+		if err := rows.Scan(&created_at, &source, &count); err != nil {
+			return nil, err
+		}
+
+		player := map[string]interface{}{
+			"created_at": created_at,
+			"source":     source,
+			"count":      count,
+		}
 		result = append(result, player)
 	}
 

@@ -477,7 +477,7 @@ func (b *Bot) handleRequestWithdrawCallback(query *telego.CallbackQuery) {
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
 		// Регистрация пользователя, если он не найден
-		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
 		if err != nil {
 			log.Printf("Error registering user: %v", err)
 			return

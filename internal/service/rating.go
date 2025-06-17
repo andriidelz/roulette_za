@@ -15,12 +15,15 @@ import (
 func (s *ServiceImpl) GetWeeklyTopRating(limit int) ([]models.WeeklyRating, error) {
 	// Обновляем все рейтинги для актуальности данных
 	// TODO: добавление кэширования результатов с кратковременным TTL (например, 30 секунд)
-	if err := s.repo.RefreshAllWeeklyRatings(); err != nil {
+
+	// Получаем текущий год и неделю
+	year, week := time.Now().ISOWeek()
+	if err := s.repo.RefreshWeeklyRatingsPosition(year, week); err != nil {
 		return nil, err
 	}
 
 	// Получаем текущий недельный рейтинг
-	return s.repo.GetCurrentWeekRating(limit)
+	return s.repo.GetWeeklyRating(year, week, limit)
 }
 
 // GetUserRatingPosition получает текущую позицию пользователя в рейтинге
@@ -32,7 +35,7 @@ func (s *ServiceImpl) GetUserRatingPosition(telegramID int64, neighborsCount int
 		return nil, 0, err
 	}
 
-	// Обновляем рейтинг пользователя
+	// Обновляем рейтинг пользователя и пересчитываем позиции всех в рейтинге
 	if err := s.repo.UpdateWeeklyRatingForUser(user.ID); err != nil {
 		return nil, 0, err
 	}
@@ -109,7 +112,9 @@ func (s *ServiceImpl) GetPointsNeededForUser(telegramID int64) (int, error) {
 
 // RefreshAllRatings обновляет позиции всех пользователей в рейтинге
 func (s *ServiceImpl) RefreshAllRatings() error {
-	return s.repo.RefreshAllWeeklyRatings()
+	// Получаем текущий год и неделю
+	year, week := time.Now().ISOWeek()
+	return s.repo.RefreshWeeklyRatingsPosition(year, week)
 }
 
 // FormatRatingForDisplay форматирует рейтинг для отображения
@@ -227,7 +232,7 @@ func (s *ServiceImpl) FormatPlayerLine(rating models.WeeklyRating, position int,
 	if rating.User.Nickname != "" {
 		displayName = rating.User.Nickname
 	} else if rating.User.Username != "" {
-		displayName = "@" + rating.User.Username
+		displayName = rating.User.Username
 	} else if rating.User.FirstName != "" {
 		displayName = rating.User.FirstName
 		if rating.User.LastName != "" {
@@ -275,28 +280,33 @@ func (s *ServiceImpl) FormatRatingList(ratings []models.WeeklyRating, currentUse
 
 	// Сначала сортируем рейтинг
 	sort.Slice(ratings, func(i, j int) bool {
+		// Сортируем по позиции
+		if ratings[i].Position != ratings[j].Position {
+			return ratings[i].Position < ratings[j].Position
+		}
 		// Если баллы разные, сортируем по убыванию баллов
 		if ratings[i].Points != ratings[j].Points {
 			return ratings[i].Points > ratings[j].Points
 		}
 		// Если баллы одинаковые, сортируем по убыванию эффективности
-		return ratings[i].Efficiency > ratings[j].Efficiency
+		if ratings[i].Efficiency != ratings[j].Efficiency {
+			return ratings[i].Efficiency > ratings[j].Efficiency
+		}
+		return ratings[i].UserID < ratings[j].UserID
 	})
 
 	// Форматируем каждую строку и объединяем их
 	var lines []string
-	for i, rating := range ratings {
-		position := i + 1 // Позиция начинается с 1
-		line := s.FormatPlayerLine(rating, position, currentUserID, language)
+	for _, rating := range ratings {
+		line := s.FormatPlayerLine(rating, rating.Position, currentUserID, language)
 		lines = append(lines, line)
 	}
 
 	return strings.Join(lines, "\n")
 }
 
-// CreateNewWeeklyRating создает новый недельный рейтинг
-// и инициализирует призовой фонд на основе текущих настроек
-func (s *ServiceImpl) CreateNewWeeklyRating(year, week int) error {
+// CreateNewPrizeFund создает новый призовой фонд на основе текущих настроек
+func (s *ServiceImpl) CreateNewPrizeFund(year, week int) error {
 	// Получаем настройки
 	settings, err := s.GetSettings()
 	if err != nil {
@@ -372,4 +382,8 @@ func (s *ServiceImpl) UpdateCurrentPrizeFund(amount float64, topCount int) error
 		year, week, amount, topCount)
 
 	return nil
+}
+
+func (s *ServiceImpl) CancelPrizeDistribution(year, week int) error {
+	return s.repo.CancelPrizeDistribution(year, week)
 }
