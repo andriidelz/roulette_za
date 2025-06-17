@@ -26,13 +26,11 @@ type NotificationTemplate struct {
 
 // NotificationTargetParams представляет параметры таргетинга для уведомлений
 type NotificationTargetParams struct {
-	Countries       []string               `json:"countries,omitempty"`       // Список стран для таргетинга
-	ActivityFilters []string               `json:"activityFilters,omitempty"` // Фильтры по активности (последняя игра)
-	UserIDs         []uint                 `json:"userIds,omitempty"`         // Конкретные ID пользователей
-	TimeZone        string                 `json:"timeZone,omitempty"`        // Часовой пояс для отправки
-	SendTimeStart   string                 `json:"sendTimeStart,omitempty"`   // Начало периода отправки (по местному времени)
-	SendTimeEnd     string                 `json:"sendTimeEnd,omitempty"`     // Конец периода отправки (по местному времени)
-	Macros          map[string]interface{} `json:"macros,omitempty"`          // Макросы для замены в тексте
+	Countries       []string `json:"countries,omitempty"`       // Список стран для таргетинга
+	ActivityFilters []string `json:"activityFilters,omitempty"` // Фильтры по активности (последняя игра)
+	UserIDs         []uint   `json:"userIds,omitempty"`         // Конкретные ID пользователей
+	SendTimeStart   string   `json:"sendTimeStart,omitempty"`   // Начало периода отправки (по местному времени)
+	SendTimeEnd     string   `json:"sendTimeEnd,omitempty"`     // Конец периода отправки (по местному времени)
 }
 
 // Value реализует интерфейс driver.Valuer для сохранения в БД
@@ -81,6 +79,7 @@ type NotificationRecipient struct {
 	DeliveredAt  *time.Time `json:"delivered_at"`                                     // Время доставки
 	ReadAt       *time.Time `json:"read_at"`                                          // Время прочтения
 	ErrorMessage string     `json:"error_message"`                                    // Сообщение об ошибке
+	Macros       string     `gorm:"type:jsonb" json:"macros"`                         // JSON строка с индивидуальными макросами для пользователя
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 }
