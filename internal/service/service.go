@@ -95,8 +95,9 @@ type Service interface {
 	HandleTopRatingEntry(userID uint, position int) error
 
 	GetNotificationTasks(status string, page, perPage int) ([]models.NotificationTask, int64, error)
+	GetNotificationRecipients(taskID uint, status string, page, limit int) ([]models.NotificationRecipient, int64, error)
 	GetEnhancedNotificationTask(id uint) (*models.EnhancedNotificationTask, error)
-	CreateNotificationTask(templateID uint, targetType string, targetParams models.NotificationTargetParams, scheduledAt *time.Time) (*models.NotificationTask, error)
+	CreateNotificationTask(templateID uint, targetType string, targetParams models.NotificationTargetParams, scheduledAt *time.Time, macrosForUsers map[uint]map[string]interface{}) (*models.NotificationTask, error)
 	CancelNotificationTask(id uint) error
 	SendNotifications(taskID uint) error
 	GetPendingNotificationTasks() ([]models.NotificationTask, error)
@@ -673,14 +674,6 @@ func (s *ServiceImpl) DistributePrizes(year, week int) error {
 		if err := s.HandleBalanceUpdate(user.ID, prize); err != nil {
 			log.Printf("Error sending balance update notification to user %d: %v", user.ID, err)
 			// Продолжаем обработку других пользователей
-		}
-
-		// Отправляем автоматическое уведомление о входе в топ рейтинга, если позиция пользователя ≤ TopCount
-		if rating.Position <= prizeFund.TopCount {
-			if err := s.HandleTopRatingEntry(user.ID, rating.Position); err != nil {
-				log.Printf("Error sending top rating notification to user %d: %v", user.ID, err)
-				// Продолжаем обработку других пользователей
-			}
 		}
 	}
 

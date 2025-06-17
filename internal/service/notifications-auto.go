@@ -21,21 +21,21 @@ func NewAutoNotificationService(service Service) *AutoNotificationService {
 
 // HandleBalanceUpdated обрабатывает событие обновления баланса и отправляет уведомление
 func (s *AutoNotificationService) HandleBalanceUpdated(userID uint, amount float64) error {
-	// Создаем базовые параметры для макросов
-	params := map[string]interface{}{
+	if amount <= 0 {
+		return nil
+	}
+
+	userMacros := map[string]interface{}{
 		"amount": amount,
 	}
 
-	// Получаем пользователя для определения языка и текущего баланса
 	user, err := s.service.GetRepo().GetUserByID(userID)
 	if err != nil {
 		return err
 	}
 
-	// Добавляем текущий баланс в параметры
-	params["balance"] = user.Balance
+	userMacros["balance"] = user.Balance
 
-	// Находим соответствующий шаблон для события
 	templates, _, err := s.service.GetNotificationTemplates("automatic", 1, 100)
 	if err != nil {
 		return err
@@ -54,34 +54,29 @@ func (s *AutoNotificationService) HandleBalanceUpdated(userID uint, amount float
 		return nil
 	}
 
-	// Создаем параметры таргетинга для конкретного пользователя
 	targetParams := models.NotificationTargetParams{
 		UserIDs: []uint{user.ID},
-		Macros:  params, // Передаем параметры для макросов
 	}
 
-	log.Printf("Creating balance update notification task for user %d with params: %+v",
-		userID, targetParams.Macros)
+	macrosForUsers := map[uint]map[string]interface{}{
+		user.ID: userMacros,
+	}
 
-	// Создаем задачу на отправку уведомления (немедленно)
-	task, err := s.service.CreateNotificationTask(balanceTemplate.ID, "custom", targetParams, nil)
+	_, err = s.service.CreateNotificationTask(balanceTemplate.ID, "custom", targetParams, nil, macrosForUsers)
 	if err != nil {
 		log.Printf("Error creating balance update notification task for user %d: %v", userID, err)
 		return err
 	}
 
-	log.Printf("Created balance update notification task %d for user %d", task.ID, userID)
 	return nil
 }
 
 // HandleTopRatingEntered обрабатывает событие входа в топ рейтинга и отправляет уведомление
 func (s *AutoNotificationService) HandleTopRatingEntry(userID uint, position int) error {
-	// Находим соответствующий шаблон для события
 	templates, _, err := s.service.GetNotificationTemplates("automatic", 1, 100)
 	if err != nil {
 		return err
 	}
-
 	var ratingTemplate *models.NotificationTemplate
 	for _, tpl := range templates {
 		if tpl.TriggerEvent == "top_rating_entered" && tpl.Active {
@@ -95,40 +90,56 @@ func (s *AutoNotificationService) HandleTopRatingEntry(userID uint, position int
 		return nil
 	}
 
-	// Получаем пользователя для определения языка
 	user, err := s.service.GetRepo().GetUserByID(userID)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Создаем уведомление о входе в топ рейтинга для пользователя %d, позиция: %d", userID, position)
+	// Получаем данные о рейтинге пользователя
+	year, week := time.Now().ISOWeek()
+	userRating, err := s.service.GetRepo().GetUserWeeklyRating(userID, year, week)
+	if err != nil {
+		log.Printf("Error getting user rating: %v", err)
+		// Продолжаем, используя только позицию
+	}
 
-	// Учитываем часовой пояс пользователя, если указана страна
-	timeZone := "UTC"
-	if user.Country != "" {
-		timeZone = data.GetTimezone(user.Country)
-		log.Printf("Определен часовой пояс для пользователя %d: %s", userID, timeZone)
+	// Получаем данные о призовом фонде
+	prizeFund, err := s.service.GetRepo().GetPrizeFund(year, week)
+	if err != nil {
+		log.Printf("Error getting prize fund: %v", err)
+		// Продолжаем без данных о фонде
 	}
 
 	// Рассчитываем время отправки - 20:00 по локальному времени пользователя
 	scheduledTime := s.calculateTimeFor8PM(user.Country)
-	log.Printf("Запланировано время отправки для пользователя %d: %s", userID, scheduledTime.Format("2006-01-02 15:04:05"))
 
 	// Создаем параметры таргетирования для конкретного пользователя
 	targetParams := models.NotificationTargetParams{
-		UserIDs:  []uint{user.ID},
-		TimeZone: timeZone,
+		UserIDs: []uint{user.ID},
 	}
 
-	// Используем метод CreateNotificationTask, который создаст получателей
-	task, err := s.service.CreateNotificationTask(ratingTemplate.ID, "custom", targetParams, &scheduledTime)
+	// Создаем макросы для пользователя
+	userMacros := map[string]interface{}{
+		"position": position,
+	}
+
+	if userRating != nil {
+		userMacros["points"] = userRating.Points
+	}
+
+	if prizeFund != nil {
+		userMacros["prize_fund"] = prizeFund.Amount
+	}
+
+	macrosForUsers := map[uint]map[string]interface{}{
+		user.ID: userMacros,
+	}
+
+	_, err = s.service.CreateNotificationTask(ratingTemplate.ID, "custom", targetParams, &scheduledTime, macrosForUsers)
 	if err != nil {
 		log.Printf("Ошибка при создании задачи уведомления: %v", err)
 		return err
 	}
-
-	log.Printf("Создана задача уведомления %d для пользователя %d с %d получателями",
-		task.ID, userID, task.TotalUsers)
 
 	return nil
 }

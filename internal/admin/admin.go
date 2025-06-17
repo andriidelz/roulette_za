@@ -90,6 +90,18 @@ func (a *AdminPanel) setupRoutes() {
 		"formatDate": func(t time.Time) string {
 			return t.Format("02.01.2006 15:04")
 		},
+		// Функция seq генерирует последовательность чисел от start до end включительно
+		// Используется для создания диапазона страниц в пагинации
+		"seq": func(start, end int) []int {
+			if end < start {
+				return []int{}
+			}
+			seq := make([]int, end-start+1)
+			for i := range seq {
+				seq[i] = start + i
+			}
+			return seq
+		},
 	})
 
 	files1, _ := filepath.Glob("web/templates/*.html")
