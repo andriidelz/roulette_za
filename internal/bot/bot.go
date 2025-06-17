@@ -20,14 +20,15 @@ import (
 
 // Структура бота
 type Bot struct {
-	bot          *telego.Bot
-	updates      <-chan telego.Update
-	service      service.Service
-	initialized  bool
-	ctx          context.Context
-	cancel       context.CancelFunc
-	gameHandler  *GameHandler  // Обработчик игры
-	stateManager *StateManager // Менеджер состояний
+	bot               *telego.Bot
+	updates           <-chan telego.Update
+	service           service.Service
+	initialized       bool
+	ctx               context.Context
+	cancel            context.CancelFunc
+	gameHandler       *GameHandler       // Обработчик игры
+	stateManager      *StateManager      // Менеджер состояний
+	subscriptionCache *SubscriptionCache // Кеш подписок на каналы
 }
 
 // Константы для команд и callback-запитов
@@ -537,19 +538,19 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			b.handleContactCommand(message)
 			return
 		case CommandPlay:
-			if !b.requireCompleteRegistration(message, dbUser) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
 				return
 			}
 			b.gameHandler.HandlePlayCommand(message)
 			return
 		case CommandStats:
-			if !b.requireCompleteRegistration(message, dbUser) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
 				return
 			}
 			b.handleStatsCommand(message)
 			return
 		case CommandRating:
-			if !b.requireCompleteRegistration(message, dbUser) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
 				return
 			}
 			b.handleRatingCommand(message)
@@ -559,7 +560,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			b.handleFAQCommand(message)
 			return
 		case CommandSettings:
-			if !b.requireCompleteRegistration(message, dbUser) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, user.ID) {
 				return
 			}
 			b.handleSettingsCommand(message)
@@ -594,7 +595,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			return
 		case StateInputUpNickname:
 			// Для обновления никнейма требуется завершенная регистрация
-			if !b.requireCompleteRegistration(message, dbUser) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
 				b.stateManager.ClearState(user.ID)
 				return
 			}
@@ -602,7 +603,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			return
 		case StateInputWallet:
 			// Для ввода кошелька требуется завершенная регистрация
-			if !b.requireCompleteRegistration(message, dbUser) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
 				b.stateManager.ClearState(user.ID)
 				return
 			}
@@ -610,7 +611,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			return
 		case StateInputWithdrawAmount:
 			// Для вывода средств требуется завершенная регистрация
-			if !b.requireCompleteRegistration(message, dbUser) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
 				b.stateManager.ClearState(user.ID)
 				return
 			}
@@ -618,7 +619,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			return
 		case StateInputWithdrawWallet:
 			// Для вывода средств требуется завершенная регистрация
-			if !b.requireCompleteRegistration(message, dbUser) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
 				b.stateManager.ClearState(user.ID)
 				return
 			}
@@ -628,7 +629,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	}
 
 	// Для всех остальных текстовых команд требуется завершенная регистрация
-	if !b.requireCompleteRegistration(message, dbUser) {
+	if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
 		return
 	}
 
@@ -2040,63 +2041,6 @@ func (b *Bot) isRegistrationComplete(user *models.User) bool {
 	}
 
 	return true
-}
-
-// requireCompleteRegistration проверяет регистрацию и перенаправляет на её завершение при необходимости
-func (b *Bot) requireCompleteRegistration(message *telego.Message, user *models.User) bool {
-	if b.isRegistrationComplete(user) {
-		return true // Регистрация завершена, можно продолжать
-	}
-
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
-
-	// Определяем, на каком этапе регистрации находится пользователь
-	if user.AgeVerified == nil {
-		// Нужно подтвердить возраст
-		b.sendAgeVerificationRequest(message.Chat.ID, language)
-		return false
-	}
-
-	if user.AgeVerified != nil && !*user.AgeVerified {
-		// Пользователь не подтвердил совершеннолетие - показываем сообщение о блокировке
-		stopAgeText := b.service.GetText("stopage", language)
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: stopAgeText,
-		})
-		return false
-	}
-
-	if user.Country == "" {
-		// Нужно выбрать страну
-		countryText := b.service.GetText("countrymes", language)
-		countriesKeyboard := b.createCountriesKeyboard(1)
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text:           countryText,
-			InlineKeyboard: countriesKeyboard,
-		})
-		return false
-	}
-
-	if user.Banned {
-		// Пользователь забанен (RU/BY или несовершеннолетний)
-		if user.Country == "RU" || user.Country == "BY" {
-			banText := b.service.GetText("stopcountry", language)
-			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text: banText,
-			})
-		} else {
-			stopAgeText := b.service.GetText("stopage", language)
-			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text: stopAgeText,
-			})
-		}
-		return false
-	}
-
-	return false
 }
 
 // handleInputNicknameState обрабатывает ввод никнейма при регистрации
