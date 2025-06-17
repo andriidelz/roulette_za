@@ -53,7 +53,7 @@ type Repository interface {
 	GetSuperRating(period string, limit int) ([]models.SuperRating, error)
 	UpdateSuperRating(rating *models.SuperRating) error
 	FixPartiallyDistributedPrizes(year, week int, action string) error
-	GetCurrentWeekRating(limit int) ([]models.WeeklyRating, error)
+	DeleteRating(userID uint) error
 	UpdateWeeklyRatingForUser(userID uint) error
 	GetUserRankAndNeighbors(userID uint, year, week int, neighborsCount int) ([]models.WeeklyRating, int, error)
 	GetPointsToReachPrizeZone(year, week, topCount int) (int, error)
@@ -252,8 +252,9 @@ func (r *PostgresRepository) CalculateWeeklyRatings(year, week int) error {
 			0,                         -- position (будет обновлено позже)
 			NOW(),                     -- created_at
 			NOW()                      -- updated_at
-		FROM bets b
-		WHERE DATE_PART('week', b.created_at) = ? AND DATE_PART('year', b.created_at) = ?
+		FROM bets b INNER JOIN users u 
+		ON b.user_id = u.id
+		WHERE u.banned IS NOT TRUE AND DATE_PART('week', b.created_at) = ? AND DATE_PART('year', b.created_at) = ?
 		GROUP BY b.user_id
 		ON CONFLICT (user_id, week, year) 
 		DO UPDATE SET

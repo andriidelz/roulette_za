@@ -7,6 +7,7 @@ import (
 	"roulette/internal/data"
 	"roulette/internal/models"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -378,6 +379,13 @@ func (a *AdminPanel) userBan(c *gin.Context) {
 		return
 	}
 
+	// Удаляем рейтинг пользователя и пересчитываем позиции всех в рейтинге
+	a.repo.DeleteRating(user.ID)
+
+	// Обновляем все рейтинги
+	year, week := time.Now().ISOWeek()
+	a.repo.RefreshWeeklyRatingsPosition(year, week)
+
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
@@ -403,6 +411,9 @@ func (a *AdminPanel) userUnban(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Создаем рейтинг пользователя и пересчитываем позиции всех в рейтинге
+	a.repo.UpdateWeeklyRatingForUser(user.ID)
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
