@@ -164,11 +164,6 @@ function viewTask(id) {
             return response.json();
         })
         .then(data => {
-            console.log('Полученные данные задачи:', data);
-            
-            // Прямой доступ к JSON ответу для диагностики
-            console.log('JSON string:', JSON.stringify(data));
-            
             // Определяем функцию форматирования даты
             const formatDate = (dateStr) => {
                 if (!dateStr) return '-';
@@ -178,16 +173,13 @@ function viewTask(id) {
                     if (isNaN(date.getTime())) return '-';
                     return date.toLocaleString();
                 } catch (e) {
-                    console.error("Ошибка форматирования даты:", e);
                     return '-';
                 }
             };
             
             // Заполняем общую информацию
             const templateName = data.template ? data.template.name : 'Неизвестный шаблон';
-            
             document.getElementById('view-task-template-name').textContent = templateName;
-
             
             // Определяем статус и соответствующий класс
             let statusText = '';
@@ -223,12 +215,6 @@ function viewTask(id) {
             document.getElementById('view-task-status').innerHTML = `<span class="badge ${statusClass}">${statusText}</span>`;
             
             // Определяем и отображаем тип таргетинга
-            console.log("Данные таргетинга:");
-            console.log("target_type =", data.target_type);
-            console.log("targetType =", data.targetType);
-            console.log("targetParams =", data.targetParams);
-            console.log("target_params =", data.target_params);
-            
             const targetType = data.target_type || data.targetType || "";
             let targetTypeText = '';
             switch (targetType) {
@@ -251,12 +237,8 @@ function viewTask(id) {
             document.getElementById('view-task-target-type').textContent = targetTypeText;
             
             // Отображаем запланированное время
-            console.log("scheduled_at =", data.scheduled_at);
-            console.log("scheduledAt =", data.scheduledAt);
-            
             const scheduledTime = data.scheduled_at || data.scheduledAt;
             if (scheduledTime) {
-                const scheduledDate = new Date(scheduledTime);
                 document.getElementById('view-task-scheduled-at').textContent = formatDate(scheduledTime);
             } else {
                 document.getElementById('view-task-scheduled-at').textContent = 'Немедленно';
@@ -270,15 +252,6 @@ function viewTask(id) {
             progressBar.setAttribute('aria-valuenow', progress);
             
             // Отображаем статистику
-            
-            // Прямое обращение к свойствам, выводим в лог все возможные имена
-            console.log("Детальный анализ данных статистики:");
-            Object.keys(data).forEach(key => {
-                if (key.toLowerCase().includes('count') || key.toLowerCase().includes('total') || key.toLowerCase().includes('user')) {
-                    console.log(`${key} = ${data[key]}`);
-                }
-            });
-            
             // Специальная обработка для поддержки разных форматов API
             let totalUsers = 0;
             let sentCount = 0;
@@ -308,13 +281,10 @@ function viewTask(id) {
             if (deliveredCount === 0) deliveredCount = parseInt(data.deliveredCount || data.delivered_count || 0);
             if (readCount === 0) readCount = parseInt(data.readCount || data.read_count || 0);
             
-            console.log(`Финальные значения: totalUsers=${totalUsers}, sentCount=${sentCount}, deliveredCount=${deliveredCount}, readCount=${readCount}`);
-            
             document.getElementById('view-task-total-users').textContent = totalUsers;
             document.getElementById('view-task-sent-count').textContent = sentCount;
             document.getElementById('view-task-delivered-count').textContent = deliveredCount;
             document.getElementById('view-task-read-count').textContent = readCount;
-
             
             // Отображаем оставшееся время (если задача в процессе)
             const timeRemainingContainer = document.getElementById('view-task-time-remaining-container');
@@ -326,78 +296,164 @@ function viewTask(id) {
             }
             
             // Отображаем параметры таргетинга
-            console.log("Параметры таргетинга:");
             const targetParams = data.target_params || data.targetParams || {};
-            console.log("targetParams =", targetParams);
+            let targetParamsHTML = '';
             
-            let targetParamsHTML = '<p>Все пользователи</p>';
-            
-            if (targetType === 'country') {
-                const countries = targetParams.countries || [];
-                if (countries && countries.length > 0) {
-                    targetParamsHTML = '<p><strong>Выбранные страны:</strong></p><ul>';
-                    countries.forEach(country => {
-                        targetParamsHTML += `<li>${country}</li>`;
-                    });
-                    targetParamsHTML += '</ul>';
-                } else {
-                    targetParamsHTML = '<p>Все страны</p>';
-                }
-            } else if (targetType === 'activity') {
-                const activityFilters = targetParams.activity_filters || targetParams.activityFilters || [];
-                if (activityFilters && activityFilters.length > 0) {
-                    // Поскольку теперь у нас только один фильтр активности, упростим отображение
-                    const filter = activityFilters[0];
-                    let filterText = '';
+            switch (targetType) {
+                case 'all':
+                    targetParamsHTML = '<p>Все пользователи</p>';
+                    break;
                     
-                    switch (filter) {
-                        case 'inactive_3days':
-                            filterText = 'Не играл менее 3 дней (от 3 дней до 12 часов)';
-                            break;
-                        case 'inactive_7days':
-                            filterText = 'Не играл более 3 дней и менее 7 дней';
-                            break;
-                        case 'inactive_14days':
-                            filterText = 'Не играл более 7 дней и менее 14 дней';
-                            break;
-                        case 'inactive_more_14days':
-                            filterText = 'Не играл более 14 дней';
-                            break;
-                        default:
-                            filterText = filter || 'Неизвестный фильтр';
+                case 'country':
+                    const countries = targetParams.countries || [];
+                    if (countries && countries.length > 0) {
+                        targetParamsHTML = '<p><strong>Выбранные страны:</strong></p><ul>';
+                        countries.forEach(country => {
+                            targetParamsHTML += `<li>${country}</li>`;
+                        });
+                        targetParamsHTML += '</ul>';
+                    } else {
+                        targetParamsHTML = '<p>Все страны</p>';
                     }
+                    break;
                     
-                    targetParamsHTML = `<p><strong>Фильтр активности:</strong> ${filterText}</p>`;
-                }
-            } else if (targetType === 'custom') {
-                const userIds = targetParams.user_ids || targetParams.userIds || [];
-                if (userIds && userIds.length > 0) {
-                    targetParamsHTML = '<p><strong>Выбранные пользователи:</strong></p><ul>';
-                    userIds.forEach(userId => {
-                        targetParamsHTML += `<li>ID: ${userId}</li>`;
-                    });
-                    targetParamsHTML += '</ul>';
-                }
-                
-                // Если есть макросы, показываем их
-                const macros = targetParams.macros || {};
-                if (Object.keys(macros).length > 0) {
-                    targetParamsHTML += '<p><strong>Параметры шаблона:</strong></p><ul>';
-                    for (const key in macros) {
-                        targetParamsHTML += `<li>${key}: ${macros[key]}</li>`;
+                case 'activity':
+                    const activityFilters = targetParams.activity_filters || targetParams.activityFilters || [];
+                    if (activityFilters && activityFilters.length > 0) {
+                        const filterLabels = {
+                            'inactive_3days': 'Не играл менее 3 дней (от 3 дней до 12 часов)',
+                            'inactive_7days': 'Не играл более 3 дней и менее 7 дней',
+                            'inactive_14days': 'Не играл более 7 дней и менее 14 дней',
+                            'inactive_more_14days': 'Не играл более 14 дней'
+                        };
+                        
+                        targetParamsHTML = '<p><strong>Фильтры активности:</strong></p><ul>';
+                        activityFilters.forEach(filter => {
+                            const label = filterLabels[filter] || filter;
+                            targetParamsHTML += `<li>${label}</li>`;
+                        });
+                        targetParamsHTML += '</ul>';
                     }
-                    targetParamsHTML += '</ul>';
-                }
+                    break;
+                    
+                case 'custom':
+                    targetParamsHTML = `<p><strong>Выбранные пользователи:</strong> ${totalUsers} чел.</p>`;
+                    break;
+                    
+                default:
+                    targetParamsHTML = `<p><strong>Тип таргетинга:</strong> ${targetType}</p>`;
             }
             
             document.getElementById('view-task-target-params').innerHTML = targetParamsHTML;
             
-            // Отображаем время выполнения
-            console.log("Данные времени выполнения:");
-            console.log("created_at =", data.created_at);
-            console.log("started_at =", data.started_at);
-            console.log("completed_at =", data.completed_at);
+            // Загрузка получателей и их макросов
+            if (id) {
+                // Показываем секцию макросов
+                document.getElementById('user-macros-section').style.display = 'block';
+                
+                // Получаем список получателей для этой задачи
+                fetch(`/admin/api/notification-recipients?task_id=${id}&limit=100`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(recipientsData => {
+                        const recipients = recipientsData.recipients || [];
+                        if (recipients && recipients.length > 0) {
+                            // Создаем таблицу для отображения макросов
+                            let macrosHTML = '<table class="table table-sm table-bordered">';
+                            macrosHTML += '<thead><tr><th>ID пользователя</th><th>Макросы</th><th>Статус</th></tr></thead>';
+                            macrosHTML += '<tbody>';
+                            
+                            // Проверяем, есть ли макросы хотя бы у одного получателя
+                            let hasMacros = false;
+                            
+                            recipients.forEach(recipient => {
+                                let macrosText = '';
+                                let macrosObj = null;
+                                
+                                // Пытаемся получить макросы из разных возможных мест
+                                if (recipient.macros) {
+                                    try {
+                                        // Если macros - строка, пытаемся распарсить JSON
+                                        if (typeof recipient.macros === 'string') {
+                                            macrosObj = JSON.parse(recipient.macros);
+                                        } 
+                                        // Если macros уже объект
+                                        else if (typeof recipient.macros === 'object') {
+                                            macrosObj = recipient.macros;
+                                        }
+                                        
+                                        // Форматируем макросы в читаемый вид
+                                        if (macrosObj && Object.keys(macrosObj).length > 0) {
+                                            hasMacros = true;
+                                            macrosText = '';
+                                            for (const key in macrosObj) {
+                                                macrosText += `<span class="badge bg-info text-dark me-1 mb-1">${key}: ${macrosObj[key]}</span>`;
+                                            }
+                                        } else {
+                                            macrosText = '<span class="text-muted">—</span>';
+                                        }
+                                    } catch (e) {
+                                        macrosText = '<span class="text-muted">—</span>';
+                                    }
+                                } else {
+                                    macrosText = '<span class="text-muted">—</span>';
+                                }
+                                
+                                // Определяем класс и текст статуса
+                                let statusClass = 'secondary';
+                                let statusText = recipient.status || 'pending';
+                                
+                                switch (statusText) {
+                                    case 'sent':
+                                        statusClass = 'primary';
+                                        break;
+                                    case 'delivered':
+                                        statusClass = 'info';
+                                        break;
+                                    case 'read':
+                                        statusClass = 'success';
+                                        break;
+                                    case 'failed':
+                                        statusClass = 'danger';
+                                        break;
+                                }
+                                
+                                macrosHTML += `<tr>
+                                    <td>${recipient.user_id}</td>
+                                    <td>${macrosText}</td>
+                                    <td><span class="badge bg-${statusClass}">${statusText}</span></td>
+                                </tr>`;
+                            });
+                            
+                            macrosHTML += '</tbody></table>';
+                            
+                            // Если получателей много, добавляем ограничение по высоте и скролл
+                            if (recipients.length > 5) {
+                                macrosHTML = `<div style="max-height: 300px; overflow-y: auto;">${macrosHTML}</div>`;
+                            }
+                            
+                            // Добавляем заголовок с общей информацией
+                            const heading = `<h6 class="mb-3">Получатели (${recipients.length} из ${recipientsData.total || recipients.length})</h6>`;
+                            
+                            document.getElementById('view-task-user-macros').innerHTML = heading + macrosHTML;
+                        } else {
+                            document.getElementById('view-task-user-macros').innerHTML = '<div class="alert alert-info">Нет данных о получателях</div>';
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('view-task-user-macros').innerHTML = 
+                            `<div class="alert alert-danger">Ошибка загрузки данных о получателях: ${error.message}</div>`;
+                    });
+            } else {
+                // Скрываем секцию макросов, если id задачи не указан
+                document.getElementById('user-macros-section').style.display = 'none';
+            }
             
+            // Отображаем время выполнения
             document.getElementById('view-task-created-at').textContent = formatDate(data.created_at);
             document.getElementById('view-task-started-at').textContent = formatDate(data.started_at);
             document.getElementById('view-task-completed-at').textContent = formatDate(data.completed_at);
@@ -413,7 +469,6 @@ function viewTask(id) {
             }
         })
         .catch(error => {
-            console.error('Error loading task:', error);
             // Показываем ошибку в лоадере
             document.getElementById('viewTaskLoader').innerHTML = `
             <div class="alert alert-danger">
@@ -564,6 +619,18 @@ function createNotificationTask() {
         // Для немедленной отправки используем текущее время
         const now = new Date();
         scheduledAt = now.toISOString();
+    }
+    
+    // Проверяем, включена ли адаптация времени
+    const adjustTime = document.getElementById('adjust-time');
+    if (adjustTime && adjustTime.checked) {
+        const sendTimeStart = document.getElementById('send-time-start').value;
+        const sendTimeEnd = document.getElementById('send-time-end').value;
+        
+        if (sendTimeStart && sendTimeEnd) {
+            targetParams.sendTimeStart = sendTimeStart;
+            targetParams.sendTimeEnd = sendTimeEnd;
+        }
     }
     
     // Подготовка данных для отправки

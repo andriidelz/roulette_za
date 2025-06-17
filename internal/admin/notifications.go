@@ -32,6 +32,7 @@ func (a *AdminPanel) setupNotificationsRoutes() {
 	admin.GET("/api/notification-tasks/:id", a.getNotificationTask)
 	admin.POST("/api/notification-tasks", a.createNotificationTask)
 	admin.POST("/api/notification-tasks/:id/cancel", a.cancelNotificationTask)
+	admin.GET("/api/notification-recipients", a.getNotificationRecipients)
 
 	// API для получения списка стран
 	admin.GET("/api/countries-with-users", a.getCountriesWithUsers)
@@ -476,6 +477,35 @@ func (a *AdminPanel) getNotificationTask(c *gin.Context) {
 	c.JSON(http.StatusOK, task)
 }
 
+// getNotificationRecipients - API метод для получения получателей уведомления
+func (a *AdminPanel) getNotificationRecipients(c *gin.Context) {
+	taskID := c.Query("task_id")
+	if taskID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Не указан ID задачи"})
+		return
+	}
+
+	taskIDUint, err := strconv.ParseUint(taskID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID задачи"})
+		return
+	}
+
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+
+	// Получаем получателей для задачи
+	recipients, total, err := a.service.GetNotificationRecipients(uint(taskIDUint), "", 1, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"recipients": recipients,
+		"total":      total,
+	})
+}
+
 // createNotificationTask - API метод для создания задачи уведомления
 func (a *AdminPanel) createNotificationTask(c *gin.Context) {
 	var request struct {
@@ -484,6 +514,7 @@ func (a *AdminPanel) createNotificationTask(c *gin.Context) {
 		TargetParams  models.NotificationTargetParams `json:"targetParams"`
 		ScheduledSend bool                            `json:"scheduledSend"`
 		ScheduledAt   time.Time                       `json:"scheduledAt,omitempty"`
+		Macros        map[string]interface{}          `json:"macros,omitempty"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -497,12 +528,26 @@ func (a *AdminPanel) createNotificationTask(c *gin.Context) {
 		scheduledAt = &request.ScheduledAt
 	}
 
+	// Создаем пустую карту макросов для пользователей
+	macrosForUsers := make(map[uint]map[string]interface{})
+
+	// Если есть макросы в параметрах таргетинга, добавляем их для каждого пользователя
+	if len(request.TargetParams.UserIDs) > 0 {
+		for _, userID := range request.TargetParams.UserIDs {
+			// Если в запросе были указаны макросы, копируем их для каждого пользователя
+			if request.Macros != nil {
+				macrosForUsers[userID] = request.Macros
+			}
+		}
+	}
+
 	// Создаем задачу через сервис
 	task, err := a.service.CreateNotificationTask(
 		request.TemplateID,
 		request.TargetType,
 		request.TargetParams,
 		scheduledAt,
+		macrosForUsers,
 	)
 
 	if err != nil {

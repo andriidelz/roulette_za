@@ -131,6 +131,7 @@ type Repository interface {
 	CreateNotificationTask(task *models.NotificationTask) error
 	CreateNotificationTemplate(template *models.NotificationTemplate) error
 	DeleteNotificationTask(id uint) error
+	CreateNotificationRecipient(recipient *models.NotificationRecipient) error
 	DeleteNotificationTemplate(id uint) error
 	GetActivityFiltersWithUserCounts() ([]models.ActivityFilterOption, error)
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)

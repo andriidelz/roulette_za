@@ -153,8 +153,14 @@ func ReplaceMacrosInTexts(title, message, buttonText string, params map[string]i
 		case int:
 			strValue = fmt.Sprintf("%d", v)
 		case float64:
-			// Форматируем числа с плавающей точкой с двумя знаками после запятой
-			strValue = fmt.Sprintf("%.2f", v)
+			// Проверяем, является ли число фактически целым
+			if v == float64(int(v)) && (key == "position" || key == "points") {
+				// Для позиции и очков выводим как целое число
+				strValue = fmt.Sprintf("%d", int(v))
+			} else {
+				// Форматируем числа с плавающей точкой с двумя знаками после запятой
+				strValue = fmt.Sprintf("%.2f", v)
+			}
 		case string:
 			strValue = v
 		default:

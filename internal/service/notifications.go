@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -91,6 +92,11 @@ func (s *ServiceImpl) GetNotificationTasks(status string, page, perPage int) ([]
 	return s.repo.GetNotificationTasks(status, page, perPage)
 }
 
+// GetNotificationRecipients получает список получателей для задачи
+func (s *ServiceImpl) GetNotificationRecipients(taskID uint, status string, page, limit int) ([]models.NotificationRecipient, int64, error) {
+	return s.repo.GetNotificationRecipients(taskID, status, page, limit)
+}
+
 // GetNotificationTaskByID получает задачу уведомления по ID
 func (s *ServiceImpl) GetNotificationTaskByID(id uint) (*models.NotificationTask, error) {
 	return s.repo.GetNotificationTaskByID(id)
@@ -147,17 +153,114 @@ func (s *ServiceImpl) GetEnhancedNotificationTask(id uint) (*models.EnhancedNoti
 }
 
 // CreateNotificationTask создает задачу на отправку уведомлений
-func (s *ServiceImpl) CreateNotificationTask(templateID uint, targetType string, targetParams models.NotificationTargetParams, scheduledAt *time.Time) (*models.NotificationTask, error) {
+func (s *ServiceImpl) CreateNotificationTask(templateID uint, targetType string, targetParams models.NotificationTargetParams, scheduledAt *time.Time, macrosForUsers map[uint]map[string]interface{}) (*models.NotificationTask, error) {
 	// Проверяем существование шаблона
-	_, err := s.repo.GetNotificationTemplateByID(templateID)
+	template, err := s.repo.GetNotificationTemplateByID(templateID)
 	if err != nil {
 		return nil, err
 	}
-
 	// Если scheduledAt не указано, устанавливаем текущее время
 	if scheduledAt == nil {
 		now := time.Now()
 		scheduledAt = &now
+	}
+
+	// Для автоматических уведомлений проверяем, существует ли уже активная задача этого типа
+	if template.Type == "automatic" && template.TriggerEvent != "" {
+		// Для уведомлений, которые могут быть объединены, пытаемся найти существующую задачу
+		// Проверяем только для определенных типов событий
+		if template.TriggerEvent == "balance_updated" || template.TriggerEvent == "top_rating_entered" {
+			// Ищем существующую задачу с таким же шаблоном и статусом "pending" или "processing"
+			existingTasks, _, err := s.repo.GetNotificationTasks("pending,processing", 1, 10)
+			if err == nil {
+				for _, task := range existingTasks {
+					// Проверяем, что это задача с тем же шаблоном
+					if task.TemplateID == templateID {
+						// Нашли существующую задачу того же типа
+
+						// Проверяем, если это шаблон для конкретного пользователя
+						if targetType == "custom" && len(targetParams.UserIDs) == 1 {
+							// Получаем ID пользователя
+							userID := targetParams.UserIDs[0]
+
+							// Проверяем, что пользователь еще не включен в эту задачу
+							existingRecipients, _, err := s.repo.GetNotificationRecipients(task.ID, "", 1, 1000)
+							if err == nil {
+								// Проверяем, есть ли уже этот пользователь среди получателей
+								userExists := false
+								for _, recipient := range existingRecipients {
+									if recipient.UserID == userID {
+										userExists = true
+										break
+									}
+								}
+
+								// Если пользователя еще нет в задаче, добавляем его
+								if !userExists {
+									// Получаем данные о пользователе
+									user, err := s.repo.GetUserByID(userID)
+									if err != nil {
+										log.Printf("Error getting user %d: %v", userID, err)
+										continue
+									}
+
+									// Определяем время отправки с учетом часового пояса
+									recipientScheduledAt := *scheduledAt // Копируем значение времени
+
+									// Если указаны параметры адаптации времени
+									if targetParams.SendTimeStart != "" && targetParams.SendTimeEnd != "" && user.Country != "" {
+										// Определяем часовой пояс пользователя на основе страны
+										userTimeZone := data.GetTimezone(user.Country)
+										recipientScheduledAt = adjustTimeToUserTimeZone(recipientScheduledAt, userTimeZone, targetParams.SendTimeStart, targetParams.SendTimeEnd)
+									}
+
+									// Получаем макросы для этого пользователя
+									userMacros := macrosForUsers[userID]
+
+									// Сериализуем макросы в JSON
+									var macrosJSON []byte
+									if userMacros != nil {
+										macrosJSON, err = json.Marshal(userMacros)
+										if err != nil {
+											log.Printf("Error marshaling macros: %v", err)
+											macrosJSON = []byte("{}")
+										}
+									} else {
+										macrosJSON = []byte("{}")
+									}
+
+									// Создаем нового получателя с сохранением индивидуальных макросов
+									recipient := models.NotificationRecipient{
+										TaskID:      task.ID,
+										UserID:      userID,
+										Status:      "pending",
+										ScheduledAt: &recipientScheduledAt,
+										Macros:      string(macrosJSON),
+										CreatedAt:   time.Now(),
+										UpdatedAt:   time.Now(),
+									}
+
+									// Добавляем получателя в задачу
+									if err := s.repo.CreateNotificationRecipient(&recipient); err != nil {
+										log.Printf("Error creating recipient for task %d: %v", task.ID, err)
+										continue
+									}
+
+									// Увеличиваем счетчик получателей в задаче
+									task.TotalUsers++
+									if err := s.repo.UpdateNotificationTask(&task); err != nil {
+										log.Printf("Error updating task %d: %v", task.ID, err)
+									}
+
+									// Возвращаем существующую задачу
+									return &task, nil
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// Создаем объект задачи с установленным временем
@@ -205,11 +308,29 @@ func (s *ServiceImpl) CreateNotificationTask(templateID uint, targetType string,
 			recipientScheduledAt = adjustTimeToUserTimeZone(recipientScheduledAt, userTimeZone, targetParams.SendTimeStart, targetParams.SendTimeEnd)
 		}
 
+		// Получаем макросы для этого пользователя
+		userMacros := macrosForUsers[user.ID]
+
+		// Определяем макросы для получателя
+		var macrosJSON string
+		if userMacros != nil {
+			macrosData, err := json.Marshal(userMacros)
+			if err != nil {
+				log.Printf("Error marshaling macros: %v", err)
+				macrosJSON = "{}"
+			} else {
+				macrosJSON = string(macrosData)
+			}
+		} else {
+			macrosJSON = "{}"
+		}
+
 		recipient := models.NotificationRecipient{
 			TaskID:      task.ID,
 			UserID:      user.ID,
 			Status:      "pending",
 			ScheduledAt: &recipientScheduledAt,
+			Macros:      macrosJSON,
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 		}
@@ -432,9 +553,6 @@ func (s *ServiceImpl) DeleteNotificationTask(id uint) error {
 		return fmt.Errorf("нельзя удалить задачу с активными получателями")
 	}
 
-	// Логируем операцию
-	log.Printf("Удаление задачи уведомлений %d (шаблон: %s)", id, task.Template.Name)
-
 	// Удаляем через репозиторий
 	if err := s.repo.DeleteNotificationTask(id); err != nil {
 		return fmt.Errorf("ошибка при удалении задачи: %w", err)
@@ -553,6 +671,22 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 		return err
 	}
 
+	// Получаем получателя для этого пользователя в рамках данной задачи
+	recipients, _, err := s.repo.GetNotificationRecipients(task.ID, "", 1, 1000)
+	if err != nil {
+		log.Printf("Error getting recipients for task %d: %v", task.ID, err)
+		// Продолжаем, используя пустые параметры
+	}
+
+	// Находим получателя для данного пользователя
+	var recipient *models.NotificationRecipient
+	for i, r := range recipients {
+		if r.UserID == userID {
+			recipient = &recipients[i]
+			break
+		}
+	}
+
 	// Получаем локализованные тексты
 	language := user.LanguageCode
 	if language == "" {
@@ -604,21 +738,22 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 		}
 	}
 
-	// Собираем параметры для замены макросов в зависимости от типа уведомления
+	// Собираем параметры для замены макросов
 	params := make(map[string]interface{})
 
-	// Если в targetParams есть макросы, используем их
-	if task.TargetParams.Macros != nil && len(task.TargetParams.Macros) > 0 {
-		for key, value := range task.TargetParams.Macros {
-			params[key] = value
+	// Проверяем, есть ли индивидуальные макросы у получателя
+	if recipient != nil && recipient.Macros != "" {
+		// Парсим макросы из JSON
+		err := json.Unmarshal([]byte(recipient.Macros), &params)
+		if err != nil {
+			log.Printf("Error parsing recipient macros: %v", err)
 		}
-		log.Printf("Using macros from targetParams for user %d: %+v", userID, task.TargetParams.Macros)
 	}
 
 	// В зависимости от типа уведомления добавляем дополнительные параметры
 	switch template.TriggerEvent {
 	case "balance_updated":
-		// Если параметры не были переданы через targetParams.Macros,
+		// Если параметры не были переданы через макросы получателя,
 		// попробуем найти транзакцию или использовать текущий баланс
 		if _, exists := params["amount"]; !exists {
 			// Тут можно добавить логику получения суммы из истории транзакций
@@ -633,28 +768,29 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 		// Получаем текущий год и неделю
 		year, week := time.Now().ISOWeek()
 
-		// Получаем рейтинг пользователя
-		rating, err := s.repo.GetUserWeeklyRating(user.ID, year, week)
-		if err == nil && rating != nil {
-			// Добавляем позицию и очки пользователя
-			params["position"] = rating.Position
-			params["points"] = rating.Points
-		} else {
-			log.Printf("Warning: Could not get rating for user %d: %v", userID, err)
+		// Получаем рейтинг пользователя, если информация отсутствует в макросах
+		if _, exists := params["position"]; !exists {
+			rating, err := s.repo.GetUserWeeklyRating(user.ID, year, week)
+			if err == nil && rating != nil {
+				// Добавляем позицию пользователя
+				params["position"] = rating.Position
+				params["points"] = rating.Points
+			} else {
+				log.Printf("Warning: Could not get rating for user %d: %v", user.ID, err)
+			}
 		}
 
-		// Получаем призовой фонд
-		prizeFund, err := s.repo.GetPrizeFund(year, week)
-		if err == nil && prizeFund != nil {
-			// Добавляем сумму призового фонда
-			params["prize_fund"] = prizeFund.Amount
-		} else {
-			log.Printf("Warning: Could not get prize fund for year %d, week %d: %v", year, week, err)
+		// Получаем призовой фонд, если информация отсутствует в макросах
+		if _, exists := params["prize_fund"]; !exists {
+			prizeFund, err := s.repo.GetPrizeFund(year, week)
+			if err == nil && prizeFund != nil {
+				// Добавляем сумму призового фонда
+				params["prize_fund"] = prizeFund.Amount
+			} else {
+				log.Printf("Warning: Could not get prize fund for year %d, week %d: %v", year, week, err)
+			}
 		}
 	}
-
-	// Выводим информацию о параметрах в лог для отладки
-	log.Printf("Final notification params for user %d: %+v", userID, params)
 
 	// Заменяем макросы в текстах с помощью общей функции
 	title, message, buttonText = utils.ReplaceMacrosInTexts(title, message, buttonText, params)
