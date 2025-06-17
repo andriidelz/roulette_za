@@ -23,7 +23,7 @@ func (s *ServiceImpl) GetWeeklyTopRating(limit int) ([]models.WeeklyRating, erro
 	}
 
 	// Получаем текущий недельный рейтинг
-	return s.repo.GetCurrentWeekRating(limit)
+	return s.repo.GetWeeklyRating(year, week, limit)
 }
 
 // GetUserRatingPosition получает текущую позицию пользователя в рейтинге

@@ -9,14 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// GetCurrentWeekRating получает текущий недельный рейтинг с ограничением по количеству записей
-func (r *PostgresRepository) GetCurrentWeekRating(limit int) ([]models.WeeklyRating, error) {
-	// Получаем текущую неделю и год
-	year, week := time.Now().ISOWeek()
-
-	return r.GetWeeklyRating(year, week, limit)
-}
-
 // GetUserRankAndNeighbors получает позицию пользователя в рейтинге и его соседей
 func (r *PostgresRepository) GetUserRankAndNeighbors(userID uint, year, week int, neighborsCount int) ([]models.WeeklyRating, int, error) {
 	// Получаем рейтинг пользователя
@@ -81,6 +73,11 @@ func (r *PostgresRepository) getLastWeeklyRatingPosition() int {
 		return 0
 	}
 	return userRating.Position
+}
+
+// DeleteRating удаляет рейтинг в случае бана пользователя
+func (r *PostgresRepository) DeleteRating(userID uint) error {
+	return r.db.Where("user_id = ?", userID).Delete(&models.WeeklyRating{}).Error
 }
 
 // UpdateWeeklyRating обновляет или создает запись еженедельного рейтинга для пользователя
