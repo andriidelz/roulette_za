@@ -946,7 +946,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			if query.Message != nil {
 				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
 					Text:           languageText,
-					InlineKeyboard: b.createLanguageKeyboard(),
+					InlineKeyboard: b.createLanguageKeyboard(language),
 				})
 			}
 			return
