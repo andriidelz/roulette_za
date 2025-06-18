@@ -741,6 +741,11 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 	// Собираем параметры для замены макросов
 	params := make(map[string]interface{})
 
+	// Добавляем глобальные макросы
+	for key, value := range s.getGlobalMacros() {
+		params[key] = value
+	}
+
 	// Проверяем, есть ли индивидуальные макросы у получателя
 	if recipient != nil && recipient.Macros != "" {
 		// Парсим макросы из JSON
@@ -777,17 +782,6 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 				params["points"] = rating.Points
 			} else {
 				log.Printf("Warning: Could not get rating for user %d: %v", user.ID, err)
-			}
-		}
-
-		// Получаем призовой фонд, если информация отсутствует в макросах
-		if _, exists := params["prize_fund"]; !exists {
-			prizeFund, err := s.repo.GetPrizeFund(year, week)
-			if err == nil && prizeFund != nil {
-				// Добавляем сумму призового фонда
-				params["prize_fund"] = prizeFund.Amount
-			} else {
-				log.Printf("Warning: Could not get prize fund for year %d, week %d: %v", year, week, err)
 			}
 		}
 	}
@@ -918,4 +912,54 @@ func (s *ServiceImpl) CheckTopRatingEntries() error {
 	}
 
 	return nil
+}
+
+// getGlobalMacros получает глобальные макросы из настроек системы
+func (s *ServiceImpl) getGlobalMacros() map[string]interface{} {
+	// Получаем настройки системы
+	settings, err := s.GetSettings()
+	if err != nil {
+		log.Printf("Error getting settings for global macros: %v", err)
+		return map[string]interface{}{}
+	}
+
+	// Создаем карту глобальных макросов
+	globalMacros := make(map[string]interface{})
+
+	// Добавляем лимит ставок за день
+	if dailyBetsLimit, ok := settings["daily_bets_limit"]; ok {
+		if limit, err := strconv.Atoi(dailyBetsLimit); err == nil {
+			globalMacros["daily_bets_limit"] = limit
+		}
+	}
+
+	// Добавляем лимит ставок для Zero
+	if dailyBetsZeroLimit, ok := settings["daily_bets_zero_limit"]; ok {
+		if limit, err := strconv.Atoi(dailyBetsZeroLimit); err == nil {
+			globalMacros["daily_bets_zero_limit"] = limit
+		}
+	}
+
+	// Добавляем минимальную сумму для вывода
+	if minWithdrawal, ok := settings["minimum_withdrawal"]; ok {
+		if amount, err := strconv.ParseFloat(minWithdrawal, 64); err == nil {
+			globalMacros["minimum_withdrawal"] = amount
+		}
+	}
+
+	// Добавляем сумму недельного призового фонда
+	if prizeAmount, ok := settings["weekly_prize_amount"]; ok {
+		if amount, err := strconv.ParseFloat(prizeAmount, 64); err == nil {
+			globalMacros["prize_fund"] = amount
+		}
+	}
+
+	// Добавляем количество призовых мест
+	if prizeTop, ok := settings["weekly_prize_top"]; ok {
+		if top, err := strconv.Atoi(prizeTop); err == nil {
+			globalMacros["prize_top"] = top
+		}
+	}
+
+	return globalMacros
 }
