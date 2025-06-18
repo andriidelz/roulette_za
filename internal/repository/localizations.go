@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// GetLocalization получает локализацию по ключу и языку
 func (r *PostgresRepository) GetLocalization(key string, language string) (string, error) {
 	var loc models.Localization
 	err := r.db.Where("key = ? AND language = ?", key, language).First(&loc).Error
@@ -19,6 +20,7 @@ func (r *PostgresRepository) GetLocalization(key string, language string) (strin
 	return loc.Value, nil
 }
 
+// SetLocalization устанавливает локализацию по ключу и языку
 func (r *PostgresRepository) SetLocalization(key string, language string, value string) error {
 	var loc models.Localization
 	err := r.db.Where("key = ? AND language = ?", key, language).First(&loc).Error
@@ -47,6 +49,13 @@ func (r *PostgresRepository) GetAllLocalizationsForLanguage(language string) ([]
 		return nil, err
 	}
 	return localizations, nil
+}
+
+// GetAllLocalizationsByKey получает все локализации по ключу для всех языков
+func (r *PostgresRepository) GetAllLocalizationsByKey(key string) ([]models.Localization, error) {
+	var localizations []models.Localization
+	err := r.db.Where("key = ?", key).Find(&localizations).Error
+	return localizations, err
 }
 
 // DeleteLocalization удаляет локализацию для всех языков по ключу

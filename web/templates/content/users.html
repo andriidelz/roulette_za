@@ -75,11 +75,11 @@
                                     <td class="d-none d-xl-table-cell">
                                         {{ if .LanguageCode }}
                                             {{ if eq .LanguageCode "en" }}
-                                                <span class="badge bg-primary">EN</span>
+                                                <span class="badge bg-primary">English</span>
                                             {{ else if eq .LanguageCode "ru" }}
-                                                <span class="badge bg-info">RU</span>
+                                                <span class="badge bg-info">Русский</span>
                                             {{ else if eq .LanguageCode "uk" }}
-                                                <span class="badge bg-warning">UA</span>
+                                                <span class="badge bg-warning">Українська</span>
                                             {{ else }}
                                                 <span class="badge bg-secondary">{{ .LanguageCode }}</span>
                                             {{ end }}
@@ -89,16 +89,17 @@
                                     </td>
                                     <td class="d-none d-xl-table-cell">
                                         {{ if .Country }}
+                                            {{ $userCountry := .Country }}
                                             {{ range $country := $.countries }}
-                                                {{ if eq $country.Code $.Country }}
-                                                    {{ $country.Emoji }} {{ $country.Code }}
+                                                {{ if eq $country.Code $userCountry }}
+                                                    {{ $country.Emoji }} {{ $country.Name }}
                                                 {{ end }}
                                             {{ end }}
                                         {{ else }}
                                             <span class="text-muted">—</span>
                                         {{ end }}
                                     </td>
-                                    <td>{{ .Balance }}$</td>
+                                    <td>{{ printf "%.2f" .Balance }}$</td>
                                     <td class="d-none d-md-table-cell">{{ .DailyBets }}</td>
                                     <td>
                                         {{ if .Banned }}
@@ -609,7 +610,7 @@
                       operation: operation
                   }, function(response) {
                       if (response.success) {
-                          $('#current-balance strong').text(response.balance + ' $');
+                          $('#current-balance strong').text(parseFloat(response.balance).toFixed(2) + ' $');
                           $('#balance-amount').val('');
                           alert('Баланс успешно обновлен');
                       } else {

@@ -129,7 +129,132 @@
               <option value="top_rating_entered">Вход в еженедельный топ</option>
             </select>
           </div>
-          
+
+          <div class="card mb-3">
+            <div class="card-header bg-info text-white">
+              <h6 class="mb-0">
+                <i class="bi bi-info-circle me-1"></i> Доступные макросы
+                <button class="btn btn-sm btn-link text-white float-end" type="button" data-bs-toggle="collapse" data-bs-target="#macrosHelp" aria-expanded="false">
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+              </h6>
+            </div>
+            <div class="collapse" id="macrosHelp">
+              <div class="card-body">
+                <p class="small">Макросы вставляются в текст в формате <code>{имя_макроса}</code> и автоматически заменяются при отправке уведомления.</p>
+
+                <!-- Табы для типов макросов -->
+                <ul class="nav nav-tabs" id="macrosTabs" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="global-tab" data-bs-toggle="tab" data-bs-target="#global-macros" type="button" role="tab">Глобальные</button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="balance-tab" data-bs-toggle="tab" data-bs-target="#balance-macros" type="button" role="tab">Зачисление вознаграждения</button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="rating-tab" data-bs-toggle="tab" data-bs-target="#rating-macros" type="button" role="tab">Вход в еженедельный топ</button>
+                  </li>
+                </ul>
+                
+                <!-- Содержимое табов -->
+                <div class="tab-content pt-2" id="macrosTabContent">
+                  <!-- Глобальные макросы -->
+                  <div class="tab-pane fade show active" id="global-macros" role="tabpanel">
+                    <h6 class="mb-2">Глобальные макросы, доступные во всех типах уведомлений:</h6>
+                    <table class="table table-sm table-striped">
+                      <thead>
+                        <tr>
+                          <th>Макрос</th>
+                          <th>Описание</th>
+                          <th>Пример</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>{daily_bets_limit}</code></td>
+                          <td>Лимит ставок за день</td>
+                          <td>2880</td>
+                        </tr>
+                        <tr>
+                          <td><code>{daily_bets_zero_limit}</code></td>
+                          <td>Лимит ставок для Zero</td>
+                          <td>100</td>
+                        </tr>
+                        <tr>
+                          <td><code>{minimum_withdrawal}</code></td>
+                          <td>Минимальная сумма для вывода</td>
+                          <td>10.00</td>
+                        </tr>
+                        <tr>
+                          <td><code>{prize_fund}</code></td>
+                          <td>Сумма недельного призового фонда</td>
+                          <td>1000.00</td>
+                        </tr>
+                        <tr>
+                          <td><code>{prize_top}</code></td>
+                          <td>Количество призовых мест</td>
+                          <td>100</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <!-- Макросы для пополнения баланса -->
+                  <div class="tab-pane fade" id="balance-macros" role="tabpanel">
+                    <h6 class="mb-2">Макросы для уведомлений типа <code>balance_updated</code>:</h6>
+                    <table class="table table-sm table-striped">
+                      <thead>
+                        <tr>
+                          <th>Макрос</th>
+                          <th>Описание</th>
+                          <th>Пример</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>{amount}</code></td>
+                          <td>Сумма пополнения</td>
+                          <td>50.00</td>
+                        </tr>
+                        <tr>
+                          <td><code>{balance}</code></td>
+                          <td>Текущий баланс пользователя</td>
+                          <td>150.00</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <!-- Макросы для топ рейтинга -->
+                  <div class="tab-pane fade" id="rating-macros" role="tabpanel">
+                    <h6 class="mb-2">Макросы для уведомлений типа <code>top_rating_entered</code>:</h6>
+                    <table class="table table-sm table-striped">
+                      <thead>
+                        <tr>
+                          <th>Макрос</th>
+                          <th>Описание</th>
+                          <th>Пример</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>{position}</code></td>
+                          <td>Позиция пользователя в рейтинге</td>
+                          <td>5</td>
+                        </tr>
+                        <tr>
+                          <td><code>{points}</code></td>
+                          <td>Количество очков пользователя</td>
+                          <td>120</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Заголовок -->
           <div class="card mb-3">
             <div class="card-header">
@@ -385,14 +510,9 @@
                   <input type="datetime-local" class="form-control" id="scheduled-at" name="scheduledAt">
                 </div>
                 <div class="col-md-6">
-                  <label for="time-zone" class="form-label">Часовой пояс</label>
-                  <select class="form-select" id="time-zone" name="timeZone">
-                    <option value="UTC">UTC</option>
-                    <option value="Europe/Moscow">Москва (UTC+3)</option>
-                    <option value="Europe/Kiev">Киев (UTC+2)</option>
-                    <option value="Europe/London">Лондон (UTC+0)</option>
-                    <option value="America/New_York">Нью-Йорк (UTC-5)</option>
-                  </select>
+                  <label class="form-label">Часовой пояс</label>
+                  <div class="form-control bg-light">UTC (для всех получателей)</div>
+                  <div class="form-text">Время будет адаптировано под часовой пояс каждого пользователя</div>
                 </div>
               </div>
               
@@ -500,8 +620,10 @@
               <h6 class="mb-0">Параметры таргетинга</h6>
             </div>
             <div class="card-body">
-              <div id="view-task-target-params">
-                <!-- Здесь будут отображаться параметры таргетинга -->
+              <div id="view-task-target-params"></div>
+              <div class="mt-3" id="user-macros-section" style="display: none;">
+                <h6 class="border-top pt-3 mb-2">Макросы пользователей:</h6>
+                <div id="view-task-user-macros" class="table-responsive"></div>
               </div>
             </div>
           </div>

@@ -17,6 +17,7 @@ type Repository interface {
 	GetUserCount() (int64, error)
 	GetUserWithdrawals(userID uint, limit int) ([]models.Withdrawal, error)
 	SearchUsers(query string, page, perPage int) ([]models.User, int64, error)
+	UpdateUserActivity(userID uint) error
 
 	// Статистика
 	GetUserTotalBets(userID uint) (int, error)
@@ -32,6 +33,12 @@ type Repository interface {
 	GetTopPlayersBySuccessRate(limit int) ([]map[string]interface{}, error)
 	GetTopPlayersByAttempts(limit int) ([]map[string]interface{}, error)
 
+	// Источники
+	GetSource(dateFrom, dateTo string) ([]map[string]interface{}, error)
+	SetSourceKey(key string, name string) error
+	CheckSourceKeyExists(key string) (bool, error)
+	GetAllSourceKeys() ([]models.SourceKey, error)
+
 	// Игры и стаки
 	CreateBet(bet *models.Bet) error
 	GetUserBets(userID uint, limit int) ([]models.Bet, error)
@@ -46,15 +53,16 @@ type Repository interface {
 	GetSuperRating(period string, limit int) ([]models.SuperRating, error)
 	UpdateSuperRating(rating *models.SuperRating) error
 	FixPartiallyDistributedPrizes(year, week int, action string) error
-	GetCurrentWeekRating(limit int) ([]models.WeeklyRating, error)
+	DeleteRating(userID uint) error
 	UpdateWeeklyRatingForUser(userID uint) error
 	GetUserRankAndNeighbors(userID uint, year, week int, neighborsCount int) ([]models.WeeklyRating, int, error)
 	GetPointsToReachPrizeZone(year, week, topCount int) (int, error)
-	RefreshAllWeeklyRatings() error
+	RefreshWeeklyRatingsPosition(year, week int) error
 	CheckIfPrizesAlreadyDistributed(year, week int) (bool, error)
 	GetPrizeFundWithoutCreation(year, week int) (*models.PrizeFund, error)
 	GetRecentPrizeFunds(limit int) ([]models.PrizeFund, error)
-	CreatePrizeFund(fund *models.PrizeFund) error
+	// CreatePrizeFund(fund *models.PrizeFund) error
+	CancelPrizeDistribution(year, week int) error
 
 	// Методы для работы с настройками
 	GetSetting(key string) (*models.Setting, error)
@@ -67,6 +75,7 @@ type Repository interface {
 	GetLocalization(key string, language string) (string, error)
 	SetLocalization(key string, language string, value string) error
 	GetAllLocalizationsForLanguage(language string) ([]models.Localization, error)
+	GetAllLocalizationsByKey(key string) ([]models.Localization, error) // ДОБАВЛЕН НЕДОСТАЮЩИЙ МЕТОД
 	DeleteLocalization(key string) error
 	GetLocalizationCount(language string) (int64, error)
 	CheckLocalizationExists(key string) (bool, error)
@@ -80,6 +89,8 @@ type Repository interface {
 	CreateNotification(notification *models.Notification) error
 	GetUserNotifications(userID uint, limit int) ([]models.Notification, error)
 	MarkNotificationAsRead(id uint) error
+	GetPendingNotificationTasks() ([]models.NotificationTask, error)
+	MarkNotificationAsSent(id uint) error
 
 	// Вывод средств
 	CreateWithdrawal(withdrawal *models.Withdrawal) error
@@ -120,6 +131,7 @@ type Repository interface {
 	CreateNotificationTask(task *models.NotificationTask) error
 	CreateNotificationTemplate(template *models.NotificationTemplate) error
 	DeleteNotificationTask(id uint) error
+	CreateNotificationRecipient(recipient *models.NotificationRecipient) error
 	DeleteNotificationTemplate(id uint) error
 	GetActivityFiltersWithUserCounts() ([]models.ActivityFilterOption, error)
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)
@@ -135,6 +147,8 @@ type Repository interface {
 	UpdateNotificationTask(task *models.NotificationTask) error
 	UpdateNotificationTemplate(template *models.NotificationTemplate) error
 	UpdateTaskProgress(taskID uint, sentCount, deliveredCount, readCount int) error
+	CheckNotificationSent(userID uint, notificationType string, date string) (bool, error)
+	SaveNotificationSent(userID uint, notificationType string, date string) error
 
 	// Закрытие соединения
 	Close() error
@@ -183,7 +197,7 @@ func (r *PostgresRepository) GetUserBetsCount(userID uint) (int, error) {
 func (r *PostgresRepository) GetWeeklyRating(year, week int, limit int) ([]models.WeeklyRating, error) {
 	var ratings []models.WeeklyRating
 	query := r.db.Where("year = ? AND week = ?", year, week).
-		Order("points desc, efficiency desc").
+		Order("position ASC").
 		Preload("User")
 
 	if limit > 0 {
@@ -204,9 +218,10 @@ func (r *PostgresRepository) GetUserWeeklyRating(userID uint, year, week int) (*
 	// Якщо рейтингу немає, створюємо новий
 	if err == gorm.ErrRecordNotFound {
 		rating = models.WeeklyRating{
-			UserID: userID,
-			Year:   year,
-			Week:   week,
+			UserID:   userID,
+			Year:     year,
+			Week:     week,
+			Position: r.getLastWeeklyRatingPosition() + 1, // Устанавливаем последнюю позицию,
 		}
 		if err := r.db.Create(&rating).Error; err != nil {
 			return nil, err
@@ -237,8 +252,9 @@ func (r *PostgresRepository) CalculateWeeklyRatings(year, week int) error {
 			0,                         -- position (будет обновлено позже)
 			NOW(),                     -- created_at
 			NOW()                      -- updated_at
-		FROM bets b
-		WHERE DATE_PART('week', b.created_at) = ? AND DATE_PART('year', b.created_at) = ?
+		FROM bets b INNER JOIN users u 
+		ON b.user_id = u.id
+		WHERE u.banned IS NOT TRUE AND DATE_PART('week', b.created_at) = ? AND DATE_PART('year', b.created_at) = ?
 		GROUP BY b.user_id
 		ON CONFLICT (user_id, week, year) 
 		DO UPDATE SET
@@ -253,19 +269,7 @@ func (r *PostgresRepository) CalculateWeeklyRatings(year, week int) error {
 	}
 
 	// Обновляем позиции в рейтинге
-	positionQuery := `
-		WITH ranked AS (
-			SELECT id, ROW_NUMBER() OVER (ORDER BY points DESC, efficiency DESC) AS new_position
-			FROM weekly_ratings
-			WHERE week = ? AND year = ?
-		)
-		UPDATE weekly_ratings wr
-		SET position = r.new_position
-		FROM ranked r
-		WHERE wr.id = r.id AND wr.week = ? AND wr.year = ?
-	`
-
-	return r.db.Exec(positionQuery, week, year, week, year).Error
+	return r.RefreshWeeklyRatingsPosition(year, week)
 }
 
 func (r *PostgresRepository) GetSuperRating(period string, limit int) ([]models.SuperRating, error) {

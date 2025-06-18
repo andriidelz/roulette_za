@@ -29,6 +29,7 @@ type Settings struct {
 	SessionSecret    string
 	AdminUsername    string
 	AdminPassword    string
+	BotName          string
 	AllowedIPs       []string
 	DisableIPFilters bool
 }
@@ -83,11 +84,23 @@ func (a *AdminPanel) setupRoutes() {
 			}
 			return float64(a) / float64(b)
 		},
-		"multiply": func(a, b int) int {
+		"multiply": func(a, b float64) float64 {
 			return a * b
 		},
 		"formatDate": func(t time.Time) string {
 			return t.Format("02.01.2006 15:04")
+		},
+		// Функция seq генерирует последовательность чисел от start до end включительно
+		// Используется для создания диапазона страниц в пагинации
+		"seq": func(start, end int) []int {
+			if end < start {
+				return []int{}
+			}
+			seq := make([]int, end-start+1)
+			for i := range seq {
+				seq[i] = start + i
+			}
+			return seq
 		},
 	})
 
@@ -125,6 +138,7 @@ func (a *AdminPanel) setupRoutes() {
 		admin.GET("/user/:id", a.userDetails)
 		admin.POST("/user/:id/ban", a.userBan)
 		admin.POST("/user/:id/unban", a.userUnban)
+		admin.POST("/user/:id/ref", a.userRef)
 		admin.POST("/user/:id/update", a.updateUserProfile)
 		admin.POST("/user/:id/balance", a.updateUserBalance)
 
@@ -134,9 +148,18 @@ func (a *AdminPanel) setupRoutes() {
 
 		admin.GET("/stats", a.statistics)
 
+		// Страницы источников
+		admin.GET("/sources", a.sourcesPage)
+		admin.POST("/sources/get_all", a.sourcesGetAll)
+
+		admin.GET("/sources/keys", a.sourcesKeysPage)
+		admin.POST("/sources/keys/:key", a.sourceKeysSave)
+		admin.POST("/sources/keys/add", a.sourceKeysAdd)
+
 		admin.GET("/ratings", a.ratingsList)
 		admin.GET("/rating/:year/:week", a.ratingDetails)
 		admin.POST("/rating/:year/:week/distribute", a.distributeRatingPrizes)
+		admin.POST("/rating/:year/:week/cancel", a.cancelRatingPrizes)
 
 		admin.GET("/super-ratings", a.superRatingsList)
 		admin.GET("/super-rating/:period", a.superRatingDetails)
@@ -153,6 +176,8 @@ func (a *AdminPanel) setupRoutes() {
 		admin.POST("/localization/:key", a.localizationSave)
 		admin.POST("/localization/:key/delete", a.localizationDelete)
 		admin.POST("/localization/add", a.localizationAdd)
+		admin.GET("/localization/export", a.localizationExport) // Export with ?lang=en/ru/uk or all
+		admin.POST("/localization/import", a.localizationImport)
 
 		admin.GET("/hashes", a.hashesPage)
 

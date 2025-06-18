@@ -7,6 +7,7 @@ import (
 	"roulette/internal/data"
 	"roulette/internal/models"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -245,6 +246,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	c.HTML(http.StatusOK, "user_details", gin.H{
 		"title":            fmt.Sprintf("Admin-panel - Користувач %s", user.Username),
 		"user":             user,
+		"botName":          a.settings.BotName,
 		"stats":            stats,
 		"rating":           rating,
 		"bets":             bets,
@@ -377,6 +379,13 @@ func (a *AdminPanel) userBan(c *gin.Context) {
 		return
 	}
 
+	// Удаляем рейтинг пользователя и пересчитываем позиции всех в рейтинге
+	a.repo.DeleteRating(user.ID)
+
+	// Обновляем все рейтинги
+	year, week := time.Now().ISOWeek()
+	a.repo.RefreshWeeklyRatingsPosition(year, week)
+
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
@@ -398,6 +407,45 @@ func (a *AdminPanel) userUnban(c *gin.Context) {
 
 	// Розблокуємо користувача
 	user.Banned = false
+	if err := a.repo.UpdateUser(user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Создаем рейтинг пользователя и пересчитываем позиции всех в рейтинге
+	a.repo.UpdateWeeklyRatingForUser(user.ID)
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// Установка реферальной ссылки
+func (a *AdminPanel) userRef(c *gin.Context) {
+	// Отримуємо ID користувача
+	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірний ID користувача"})
+		return
+	}
+
+	// Отримуємо інформацію про користувача
+	user, err := a.repo.GetUserByID(uint(userID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if user.RefKey != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Используется ключ: " + user.RefKey})
+		return
+	}
+
+	user.RefKey = fmt.Sprint(user.ID)
+	// Сохраняем источник
+	if err := a.repo.SetSourceKey(user.RefKey, "Пользователь "+fmt.Sprint(user.ID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := a.repo.UpdateUser(user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

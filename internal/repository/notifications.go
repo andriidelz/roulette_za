@@ -52,7 +52,6 @@ func (r *PostgresRepository) GetNotificationTemplateByID(id uint) (*models.Notif
 
 // UpdateNotificationTemplate обновляет шаблон уведомления
 func (r *PostgresRepository) UpdateNotificationTemplate(template *models.NotificationTemplate) error {
-
 	// Получаем текущее значение из базы данных
 	var existingTemplate models.NotificationTemplate
 	if err := r.db.First(&existingTemplate, template.ID).Error; err != nil {
@@ -95,8 +94,16 @@ func (r *PostgresRepository) GetNotificationTasks(status string, page, pageSize 
 	var total int64
 
 	query := r.db.Preload("Template")
+
+	// Применяем фильтр по статусу (поддерживаем несколько статусов через запятую)
 	if status != "" {
-		query = query.Where("status = ?", status)
+		// Проверяем, содержит ли строка запятую (несколько статусов)
+		if strings.Contains(status, ",") {
+			statuses := strings.Split(status, ",")
+			query = query.Where("status IN ?", statuses)
+		} else {
+			query = query.Where("status = ?", status)
+		}
 	}
 
 	// Получаем общее количество записей
@@ -132,7 +139,24 @@ func (r *PostgresRepository) UpdateNotificationTask(task *models.NotificationTas
 
 // DeleteNotificationTask удаляет задачу
 func (r *PostgresRepository) DeleteNotificationTask(id uint) error {
-	return r.db.Delete(&models.NotificationTask{}, id).Error
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	// Удаляем получателей
+	if err := tx.Where("task_id = ?", id).Delete(&models.NotificationRecipient{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Удаляем задачу
+	if err := tx.Delete(&models.NotificationTask{}, id).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }
 
 // CreateNotificationRecipient создает получателя уведомления
@@ -188,61 +212,91 @@ func (r *PostgresRepository) GetPendingNotificationTasks() ([]models.Notificatio
 	return tasks, err
 }
 
+// MarkNotificationAsSent помечает уведомление как отправленное
+func (r *PostgresRepository) MarkNotificationAsSent(id uint) error {
+	return r.db.Model(&models.Notification{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"delivered": true,
+			"read":      false,
+		}).Error
+}
+
 // GetUsersForNotificationTask находит пользователей, соответствующих параметрам таргетинга
 func (r *PostgresRepository) GetUsersForNotificationTask(task *models.NotificationTask) ([]models.User, error) {
 	var users []models.User
+
+	// Базовый запрос: пользователи не заблокированы
 	query := r.db.Model(&models.User{}).Where("banned = ?", false)
 
 	// Применяем фильтры в зависимости от типа таргетинга
 	switch task.TargetType {
 	case "all":
-		// Не применяем дополнительные фильтры
+		// Все пользователи, не нужны дополнительные фильтры
 
 	case "country":
+		// Таргетинг по странам
 		if len(task.TargetParams.Countries) > 0 {
 			query = query.Where("country IN ?", task.TargetParams.Countries)
 		}
 
 	case "activity":
+		// Таргетинг по активности
 		if len(task.TargetParams.ActivityFilters) > 0 {
-			// Обрабатываем каждый фильтр активности
+			// Временные границы для разных фильтров
+			now := time.Now()
+			threeDay := now.Add(-3 * 24 * time.Hour)
+			twelveHour := now.Add(-12 * time.Hour)
+			sevenDay := now.Add(-7 * 24 * time.Hour)
+			fourteenDay := now.Add(-14 * 24 * time.Hour)
+
+			// Множественные условия WHERE
 			var conditions []string
 			var values []interface{}
 
 			for _, filter := range task.TargetParams.ActivityFilters {
 				switch filter {
 				case "inactive_3days":
-					// Не играл от 3 дней до 12 часов
-					conditions = append(conditions, "(last_activity_at < ? AND last_activity_at > ?)")
-					values = append(values, time.Now().Add(-3*24*time.Hour), time.Now().Add(-12*time.Hour))
+					// Пользователи, активные от 12 часов до 3 дней назад
+					conditions = append(conditions, "(last_activity_at >= ? AND last_activity_at <= ?)")
+					values = append(values, threeDay, twelveHour)
+
 				case "inactive_7days":
-					// Не играл более 3 дней и менее 7 дней
-					conditions = append(conditions, "(last_activity_at < ? AND last_activity_at > ?)")
-					values = append(values, time.Now().Add(-7*24*time.Hour), time.Now().Add(-3*24*time.Hour))
+					// Пользователи, активные от 3 до 7 дней назад
+					conditions = append(conditions, "(last_activity_at >= ? AND last_activity_at <= ?)")
+					values = append(values, sevenDay, threeDay)
+
 				case "inactive_14days":
-					// Не играл более 7 дней и менее 14 дней
-					conditions = append(conditions, "(last_activity_at < ? AND last_activity_at > ?)")
-					values = append(values, time.Now().Add(-14*24*time.Hour), time.Now().Add(-7*24*time.Hour))
+					// Пользователи, активные от 7 до 14 дней назад
+					conditions = append(conditions, "(last_activity_at >= ? AND last_activity_at <= ?)")
+					values = append(values, fourteenDay, sevenDay)
+
 				case "inactive_more_14days":
-					// Не играл более 14 дней
-					conditions = append(conditions, "last_activity_at < ?")
-					values = append(values, time.Now().Add(-14*24*time.Hour))
+					// Пользователи, активные более 14 дней назад
+					conditions = append(conditions, "last_activity_at <= ?")
+					values = append(values, fourteenDay)
 				}
 			}
 
 			if len(conditions) > 0 {
-				query = query.Where(strings.Join(conditions, " OR "), values...)
+				// Объединяем условия через OR
+				whereClause := "(" + strings.Join(conditions, " OR ") + ")"
+
+				// Применяем условие к запросу
+				query = query.Where(whereClause, values...)
 			}
 		}
 
 	case "custom":
+		// Таргетинг по конкретным пользователям
 		if len(task.TargetParams.UserIDs) > 0 {
 			query = query.Where("id IN ?", task.TargetParams.UserIDs)
 		}
 	}
 
-	// Получаем пользователей
+	// Выполняем запрос
 	err := query.Find(&users).Error
+
 	return users, err
 }
 
@@ -290,7 +344,6 @@ func (r *PostgresRepository) GetNotificationTasksStats(period string) (*models.N
 	}
 
 	// SQL-запрос для статистики по странам
-	// Здесь используем сырой SQL-запрос для группировки по странам
 	query := `
 		SELECT 
 			u.country, 
@@ -314,7 +367,7 @@ func (r *PostgresRepository) GetNotificationTasksStats(period string) (*models.N
 	for i, cs := range countryStats {
 		stats.CountryStats[i] = models.CountryStats{
 			Country:     cs.Country,
-			CountryName: getCountryName(cs.Country), // Определение названия страны по коду
+			CountryName: data.GetCountryByCode(cs.Country).Name,
 			Sent:        cs.Sent,
 			Delivered:   cs.Delivered,
 			Read:        cs.Read,
@@ -324,13 +377,6 @@ func (r *PostgresRepository) GetNotificationTasksStats(period string) (*models.N
 	return stats, nil
 }
 
-// getCountryName возвращает название страны по коду
-func getCountryName(countryCode string) string {
-	// Функция из пакета данных для стран
-	return ""
-}
-
-// GetCountriesWithUserCounts получает список стран с количеством пользователей
 // GetCountriesWithUserCounts получает список стран с количеством пользователей
 func (r *PostgresRepository) GetCountriesWithUserCounts() ([]models.CountryOption, error) {
 	var results []struct {
@@ -501,13 +547,6 @@ func (r *PostgresRepository) GetTemplateWithLocalizations(templateID uint) (*mod
 	return result, nil
 }
 
-// GetAllLocalizationsByKey получает все локализации по ключу
-func (r *PostgresRepository) GetAllLocalizationsByKey(key string) ([]models.Localization, error) {
-	var localizations []models.Localization
-	err := r.db.Where("key = ?", key).Find(&localizations).Error
-	return localizations, err
-}
-
 // UpdateTaskProgress обновляет прогресс выполнения задачи
 func (r *PostgresRepository) UpdateTaskProgress(taskID uint, sentCount, deliveredCount, readCount int) error {
 	return r.db.Model(&models.NotificationTask{}).
@@ -532,4 +571,44 @@ func (r *PostgresRepository) GetScheduledRecipients(limit int) ([]models.Notific
 		Find(&recipients).Error
 
 	return recipients, err
+}
+
+// CheckNotificationSent проверяет, было ли отправлено уведомление данного типа пользователю в указанную дату
+func (r *PostgresRepository) CheckNotificationSent(userID uint, notificationType string, date string) (bool, error) {
+	var count int64
+	startOfDay, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return false, err
+	}
+
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	err = r.db.Model(&models.Notification{}).
+		Where("user_id = ? AND type = ? AND created_at >= ? AND created_at < ?",
+			userID, notificationType, startOfDay, endOfDay).
+		Count(&count).Error
+
+	return count > 0, err
+}
+
+// SaveNotificationSent сохраняет запись о том, что уведомление было отправлено
+func (r *PostgresRepository) SaveNotificationSent(userID uint, notificationType string, date string) error {
+	// Получаем пользователя
+	_, err := r.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	// Создаем уведомление как запись о том, что оно было отправлено
+	notification := &models.Notification{
+		UserID:    userID,
+		Type:      notificationType,
+		Message:   "Notification tracking record for " + date,
+		Title:     "Rating notification",
+		Delivered: true,
+		Read:      false,
+		CreatedAt: time.Now(),
+	}
+
+	return r.CreateNotification(notification)
 }

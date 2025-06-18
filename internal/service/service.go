@@ -15,9 +15,10 @@ import (
 // Service інтерфейс для бізнес-логіки
 type Service interface {
 	// Пользователи
-	RegisterUser(telegramID int64, username, firstName, lastName, languageCode string) (*models.User, error)
+	RegisterUser(telegramID int64, username, firstName, lastName, source, languageCode string) (*models.User, error)
 	GetUser(telegramID int64) (*models.User, error)
-	GetUserStats(telegramID int64) (map[string]int, error)
+	UpdateUserActivity(telegramID int64) error
+	// GetUserStats(telegramID int64) (map[string]int, error)
 	GetDetailedUserStats(telegramID int64, period string) (map[string]int, error)
 
 	// Игра и раунды
@@ -39,13 +40,14 @@ type Service interface {
 	GetSuccessRateStats() (map[string]float64, error)
 	GetTopPlayersBySuccessRate(limit int) ([]map[string]interface{}, error)
 	GetTopPlayersByAttempts(limit int) ([]map[string]interface{}, error)
+	GetSource(dateFrom, dateTo string) ([]map[string]interface{}, error)
 
 	// Рейтинги
 	GetWeeklyRating(limit int) ([]models.WeeklyRating, error)
-	GetUserPosition(telegramID int64) (int, error)
 	GetSuperRating(limit int) ([]models.SuperRating, error)
 	UpdateWeeklyRatings() error
-	DistributePrizes() error
+	DistributePrizes(year, week int) error
+	CancelPrizeDistribution(year, week int) error
 	GetPrizeFund(year, week int) (*models.PrizeFund, error)
 	GetWeeklyTopRating(limit int) ([]models.WeeklyRating, error)
 	GetUserRatingPosition(telegramID int64, neighborsCount int) ([]models.WeeklyRating, int, error)
@@ -55,7 +57,7 @@ type Service interface {
 	FormatRatingForDisplay(ratings []models.WeeklyRating, currentUserID int64) []string
 	GetPrizeDistributionStatus(year, week int) (string, error)
 	FormatRatingList(ratings []models.WeeklyRating, currentUserID int64, language string) string
-	CreateNewWeeklyRating(year, week int) error
+	CreateNewPrizeFund(year, week int) error
 	UpdateCurrentPrizeFund(amount float64, topCount int) error
 
 	// Настройки и локализация
@@ -88,14 +90,20 @@ type Service interface {
 	DeleteNotificationTemplate(id uint) error
 	GetTemplateWithLocalizations(templateID uint) (*models.NotificationTemplateWithLocalizations, error)
 
+	// Автоматические уведомления
+	HandleBalanceUpdate(userID uint, amount float64) error
+	HandleTopRatingEntry(userID uint, position int) error
+
 	GetNotificationTasks(status string, page, perPage int) ([]models.NotificationTask, int64, error)
+	GetNotificationRecipients(taskID uint, status string, page, limit int) ([]models.NotificationRecipient, int64, error)
 	GetEnhancedNotificationTask(id uint) (*models.EnhancedNotificationTask, error)
-	CreateNotificationTask(templateID uint, targetType string, targetParams models.NotificationTargetParams, scheduledAt *time.Time) (*models.NotificationTask, error)
+	CreateNotificationTask(templateID uint, targetType string, targetParams models.NotificationTargetParams, scheduledAt *time.Time, macrosForUsers map[uint]map[string]interface{}) (*models.NotificationTask, error)
 	CancelNotificationTask(id uint) error
 	SendNotifications(taskID uint) error
-
+	GetPendingNotificationTasks() ([]models.NotificationTask, error)
 	GetNotificationTasksStats(period string) (*models.NotificationStatistics, error)
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)
+	CheckTopRatingEntries() error
 
 	// Вспомогательный метод для доступа к репозиторию
 	GetRepo() repository.Repository
@@ -116,7 +124,7 @@ func NewService(repo repository.Repository, telegramToken string) Service {
 
 // Реалізація методів для користувачів
 
-func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastName, languageCode string) (*models.User, error) {
+func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastName, source, languageCode string) (*models.User, error) {
 	// Проверяем, существует ли пользователь
 	existingUser, err := s.repo.GetUserByTelegramID(telegramID)
 	if err == nil {
@@ -147,6 +155,18 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 			updateNeeded = true
 		}
 
+		// Не перезаписываем источник, если он уже установлен
+		if existingUser.Source == "" && source != "" {
+
+			exists, _ := s.repo.CheckSourceKeyExists(source)
+			if exists {
+				existingUser.Source = source
+				updateNeeded = true
+			} else {
+				log.Println("Error find source", telegramID, source)
+			}
+		}
+
 		// Если у пользователя нет аватарки, попробуем получить ее из Telegram
 		if existingUser.AvatarURL == "" {
 			if avatarURL, err := utils.GetUserProfilePhoto(s.telegramToken, telegramID); err == nil && avatarURL != "" {
@@ -171,6 +191,12 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 		avatarURL = avatar
 	}
 
+	exists, _ := s.repo.CheckSourceKeyExists(source)
+	if !exists {
+		source = ""
+		log.Println("Error find source", telegramID, source)
+	}
+
 	// Создаем нового пользователя
 	user := &models.User{
 		TelegramID:   telegramID,
@@ -178,6 +204,8 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 		Nickname:     "", // Пустой никнейм для новых пользователей
 		FirstName:    firstName,
 		LastName:     lastName,
+		Source:       source,
+		RefKey:       "", // Пустая реферальная ссылка для новых пользователей
 		LanguageCode: languageCode,
 		AvatarURL:    avatarURL,
 		CreatedAt:    time.Now(),
@@ -195,6 +223,17 @@ func (s *ServiceImpl) GetUser(telegramID int64) (*models.User, error) {
 	return s.repo.GetUserByTelegramID(telegramID)
 }
 
+// UpdateUserActivity обновляет время последней активности пользователя
+func (s *ServiceImpl) UpdateUserActivity(telegramID int64) error {
+	user, err := s.repo.GetUserByTelegramID(telegramID)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.UpdateUserActivity(user.ID)
+}
+
+// unused
 func (s *ServiceImpl) GetUserStats(telegramID int64) (map[string]int, error) {
 	user, err := s.repo.GetUserByTelegramID(telegramID)
 	if err != nil {
@@ -545,21 +584,6 @@ func (s *ServiceImpl) GetWeeklyRating(limit int) ([]models.WeeklyRating, error) 
 	return s.repo.GetWeeklyRating(year, week, limit)
 }
 
-func (s *ServiceImpl) GetUserPosition(telegramID int64) (int, error) {
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return 0, err
-	}
-
-	year, week := time.Now().ISOWeek()
-	rating, err := s.repo.GetUserWeeklyRating(user.ID, year, week)
-	if err != nil {
-		return 0, err
-	}
-
-	return rating.Position, nil
-}
-
 func (s *ServiceImpl) GetSuperRating(limit int) ([]models.SuperRating, error) {
 	now := time.Now()
 	quarter := fmt.Sprintf("%d-Q%d", now.Year(), (now.Month()-1)/3+1)
@@ -586,7 +610,7 @@ func (s *ServiceImpl) UpdateWeeklyRatings() error {
 	_, err := s.repo.GetPrizeFundWithoutCreation(currentYear, currentWeek)
 	if err != nil {
 		// Если призовой фонд не найден, создаем новый
-		if err := s.CreateNewWeeklyRating(currentYear, currentWeek); err != nil {
+		if err := s.CreateNewPrizeFund(currentYear, currentWeek); err != nil {
 			return fmt.Errorf("error creating new weekly rating: %w", err)
 		}
 	}
@@ -594,8 +618,7 @@ func (s *ServiceImpl) UpdateWeeklyRatings() error {
 	return nil
 }
 
-func (s *ServiceImpl) DistributePrizes() error {
-	year, week := time.Now().ISOWeek()
+func (s *ServiceImpl) DistributePrizes(year, week int) error {
 
 	// Отримуємо призовий фонд
 	prizeFund, err := s.repo.GetPrizeFund(year, week)
@@ -647,16 +670,10 @@ func (s *ServiceImpl) DistributePrizes() error {
 			return err
 		}
 
-		// Створюємо сповіщення про виграш
-		notification := &models.Notification{
-			UserID:    user.ID,
-			Type:      "prize",
-			Message:   fmt.Sprintf("You won %.2f in the weekly rating! Position: %d", prize, rating.Position),
-			CreatedAt: time.Now(),
-		}
-
-		if err := s.repo.CreateNotification(notification); err != nil {
-			return err
+		// Отправляем автоматическое уведомление о пополнении баланса
+		if err := s.HandleBalanceUpdate(user.ID, prize); err != nil {
+			log.Printf("Error sending balance update notification to user %d: %v", user.ID, err)
+			// Продолжаем обработку других пользователей
 		}
 	}
 

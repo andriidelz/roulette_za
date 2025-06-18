@@ -1,20 +1,13 @@
 package repository
 
 import (
+	"fmt"
 	"roulette/internal/models"
 	"strconv"
 	"time"
 
 	"gorm.io/gorm"
 )
-
-// GetCurrentWeekRating получает текущий недельный рейтинг с ограничением по количеству записей
-func (r *PostgresRepository) GetCurrentWeekRating(limit int) ([]models.WeeklyRating, error) {
-	// Получаем текущую неделю и год
-	year, week := time.Now().ISOWeek()
-
-	return r.GetWeeklyRating(year, week, limit)
-}
 
 // GetUserRankAndNeighbors получает позицию пользователя в рейтинге и его соседей
 func (r *PostgresRepository) GetUserRankAndNeighbors(userID uint, year, week int, neighborsCount int) ([]models.WeeklyRating, int, error) {
@@ -31,7 +24,7 @@ func (r *PostgresRepository) GetUserRankAndNeighbors(userID uint, year, week int
 			Week:      week,
 			Points:    0,
 			Bets:      0,
-			Position:  0, // Позиция пока неизвестна
+			Position:  r.getLastWeeklyRatingPosition() + 1, // Устанавливаем последнюю позицию
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
@@ -40,16 +33,6 @@ func (r *PostgresRepository) GetUserRankAndNeighbors(userID uint, year, week int
 			return nil, 0, err
 		}
 
-		// Обновляем позицию пользователя
-		position, err := r.calculateUserPosition(userID, year, week)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		userRating.Position = position
-		if err := r.db.Save(&userRating).Error; err != nil {
-			return nil, 0, err
-		}
 	} else if err != nil {
 		return nil, 0, err
 	}
@@ -65,12 +48,12 @@ func (r *PostgresRepository) GetUserRankAndNeighbors(userID uint, year, week int
 
 	endPos := position + neighborsCount
 
-	// ИСПРАВЛЕНИЕ: Сортируем рейтинги сначала по количеству баллов (убывание),
-	// затем по эффективности (убывание)
+	// ИСПРАВЛЕНИЕ: Сортируем рейтинги по позиции, перед этим происходит вызов
+	// RefreshWeeklyRatingsPosition который пересчитывает все позиции
 	var ratings []models.WeeklyRating
 	err = r.db.Where("year = ? AND week = ? AND position >= ? AND position <= ?",
 		year, week, startPos, endPos).
-		Order("points DESC, efficiency DESC"). // Сортировка по критериям рейтинга
+		Order("position ASC").
 		Preload("User").
 		Find(&ratings).Error
 
@@ -81,31 +64,20 @@ func (r *PostgresRepository) GetUserRankAndNeighbors(userID uint, year, week int
 	return ratings, position, nil
 }
 
-// calculateUserPosition рассчитывает текущую позицию пользователя в рейтинге
-func (r *PostgresRepository) calculateUserPosition(userID uint, year, week int) (int, error) {
-	// Получаем баллы и ставки пользователя
+// getLastWeeklyRatingPosition получает последнюю позицию,
+// устанавливается при регистрации нового пользователя
+func (r *PostgresRepository) getLastWeeklyRatingPosition() int {
 	var userRating models.WeeklyRating
-	err := r.db.Select("points, bets, efficiency").
-		Where("user_id = ? AND year = ? AND week = ?", userID, year, week).
-		First(&userRating).Error
-
+	err := r.db.Order("position desc").First(&userRating).Error
 	if err != nil {
-		return 0, err
+		return 0
 	}
+	return userRating.Position
+}
 
-	// ИСПРАВЛЕНИЕ: Уточняем логику подсчета пользователей с лучшими результатами
-	var count int64
-	err = r.db.Model(&models.WeeklyRating{}).
-		Where("year = ? AND week = ? AND (points > ? OR (points = ? AND efficiency > ?))",
-			year, week, userRating.Points, userRating.Points, userRating.Efficiency).
-		Count(&count).Error
-
-	if err != nil {
-		return 0, err
-	}
-
-	// Позиция = количество пользователей с лучшими результатами + 1
-	return int(count) + 1, nil
+// DeleteRating удаляет рейтинг в случае бана пользователя
+func (r *PostgresRepository) DeleteRating(userID uint) error {
+	return r.db.Where("user_id = ?", userID).Delete(&models.WeeklyRating{}).Error
 }
 
 // UpdateWeeklyRating обновляет или создает запись еженедельного рейтинга для пользователя
@@ -144,7 +116,7 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 				Points:     0,
 				Bets:       0,
 				Efficiency: 0,
-				Position:   0, // Будет обновлено позже
+				Position:   r.getLastWeeklyRatingPosition() + 1, // Устанавливаем последнюю позицию
 				CreatedAt:  time.Now(),
 				UpdatedAt:  time.Now(),
 			}
@@ -194,7 +166,7 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 			Points:     totalPoints,
 			Bets:       totalBets,
 			Efficiency: efficiency,
-			Position:   0, // Будет обновлено позже
+			Position:   r.getLastWeeklyRatingPosition() + 1, // Устанавливаем последнюю позицию
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
 		}
@@ -214,26 +186,18 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 		}
 	}
 
-	// Обновляем позицию пользователя
-	position, err := r.calculateUserPosition(userID, year, week)
-	if err != nil {
-		return err
-	}
-
-	rating.Position = position
-	return r.db.Save(&rating).Error
+	// Обновляем все рейтинги
+	return r.RefreshWeeklyRatingsPosition(year, week)
 }
 
-// RefreshAllWeeklyRatings обновляет позиции всех пользователей в еженедельном рейтинге
-func (r *PostgresRepository) RefreshAllWeeklyRatings() error {
-	// Получаем текущий год и неделю
-	year, week := time.Now().ISOWeek()
+// RefreshWeeklyRatingsPosition обновляет позиции всех пользователей в еженедельном рейтинге
+func (r *PostgresRepository) RefreshWeeklyRatingsPosition(year, week int) error {
 
 	// ИСПРАВЛЕНИЕ: Обновляем порядок сортировки при обновлении позиций
 	positionQuery := `
         WITH ranked AS (
             SELECT id, user_id, ROW_NUMBER() OVER (
-                ORDER BY points DESC, efficiency DESC
+                ORDER BY points DESC, efficiency DESC, user_id ASC
             ) AS new_position
             FROM weekly_ratings
             WHERE week = ? AND year = ?
@@ -347,6 +311,7 @@ func (r *PostgresRepository) FixPartiallyDistributedPrizes(year, week int, actio
 	return tx.Commit().Error
 }
 
+// unused
 // CreatePrizeFund создает новый призовой фонд
 func (r *PostgresRepository) CreatePrizeFund(fund *models.PrizeFund) error {
 	// Проверяем, существует ли уже призовой фонд для указанной недели
@@ -424,4 +389,86 @@ func (r *PostgresRepository) GetAllPrizeFunds(page, perPage int) ([]models.Prize
 	}
 
 	return funds, count, nil
+}
+
+// Реализация метода для отмены распределения призов
+func (r *PostgresRepository) CancelPrizeDistribution(year, week int) error {
+	// Начинаем транзакцию
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("failed to begin transaction: %w", tx.Error)
+	}
+
+	// Получаем призовой фонд
+	var prizeFund models.PrizeFund
+	if err := tx.Where("year = ? AND week = ?", year, week).First(&prizeFund).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("error getting prize fund: %w", err)
+	}
+
+	// Проверяем, был ли призовой фонд уже распределен
+	if !prizeFund.Processed {
+		tx.Rollback()
+		return fmt.Errorf("prize fund for week %d/%d has not been processed yet", year, week)
+	}
+
+	// Получаем пользователей, которые получили призы за эту неделю
+	var ratings []models.WeeklyRating
+	if err := tx.Where("year = ? AND week = ? AND prize > 0", year, week).Find(&ratings).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("error getting ratings: %w", err)
+	}
+
+	// Возвращаем средства из балансов пользователей
+	for _, rating := range ratings {
+		// Получаем пользователя
+		var user models.User
+		if err := tx.First(&user, rating.UserID).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("error getting user %d: %w", rating.UserID, err)
+		}
+
+		// Вычитаем приз из баланса
+		user.Balance -= rating.Prize
+		if err := tx.Save(&user).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("error updating user balance: %w", err)
+		}
+
+		// Создаем уведомление о возврате приза
+		notification := models.Notification{
+			UserID:    user.ID,
+			Type:      "prize_cancel",
+			Message:   fmt.Sprintf("Prize of %.2f for week %d/%d has been cancelled", rating.Prize, year, week),
+			CreatedAt: time.Now(),
+		}
+
+		if err := tx.Create(&notification).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("error creating notification: %w", err)
+		}
+
+		// Обнуляем приз в рейтинге
+		if err := tx.Model(&models.WeeklyRating{}).
+			Where("id = ?", rating.ID).
+			Update("prize", 0).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("error updating rating prize: %w", err)
+		}
+	}
+
+	// Обновляем статус призового фонда
+	if err := tx.Model(&models.PrizeFund{}).
+		Where("id = ?", prizeFund.ID).
+		Update("processed", false).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("error updating prize fund status: %w", err)
+	}
+
+	// Фиксируем транзакцию
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	return nil
 }

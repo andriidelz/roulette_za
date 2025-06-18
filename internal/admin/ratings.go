@@ -260,6 +260,8 @@ func (a *AdminPanel) ratingDetails(c *gin.Context) {
 	// Парсим дату начала и конца недели
 	startDate, endDate := getWeekDates(year, week)
 
+	currentYear, currentWeek := time.Now().ISOWeek()
+
 	c.HTML(http.StatusOK, "rating_details", gin.H{
 		"title":       fmt.Sprintf("Рейтинг %d/%d", year, week),
 		"ratings":     ratings,
@@ -270,6 +272,8 @@ func (a *AdminPanel) ratingDetails(c *gin.Context) {
 		"startDate":   startDate.Format("02.01.2006"),
 		"endDate":     endDate.Format("02.01.2006"),
 		"activeTab":   "ratings",
+		"currentYear": currentYear,
+		"currentWeek": currentWeek,
 	})
 }
 
@@ -317,6 +321,13 @@ func (a *AdminPanel) distributeRatingPrizes(c *gin.Context) {
 	week, err := strconv.Atoi(c.Param("week"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверная неделя"})
+		return
+	}
+
+	// Проверяем, не является ли это текущей неделей
+	currentYear, currentWeek := time.Now().ISOWeek()
+	if year == currentYear && week == currentWeek {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Нельзя распределить призы за текущую неделю"})
 		return
 	}
 
@@ -379,8 +390,8 @@ func (a *AdminPanel) distributeRatingPrizes(c *gin.Context) {
 			// И продолжаем распределение
 			fallthrough
 		case "PENDING", "NOT_CONFIGURED":
-			// Распределяем призы
-			if err := a.service.DistributePrizes(); err != nil {
+			// Распределяем призы с указанием года и недели из URL
+			if err := a.service.DistributePrizes(year, week); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
@@ -389,6 +400,30 @@ func (a *AdminPanel) distributeRatingPrizes(c *gin.Context) {
 
 	// Возвращаем успешный результат
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (a *AdminPanel) cancelRatingPrizes(c *gin.Context) {
+	// Получаем год и неделю из URL
+	year, err := strconv.Atoi(c.Param("year"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid year"})
+		return
+	}
+
+	week, err := strconv.Atoi(c.Param("week"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid week"})
+		return
+	}
+
+	// Отменяем распределение призов
+	if err := a.service.CancelPrizeDistribution(year, week); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Возвращаем успешный результат
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Prize distribution cancelled"})
 }
 
 // Список супер-рейтингів

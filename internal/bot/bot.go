@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"roulette/internal/config"
 	"roulette/internal/models"
 	"roulette/internal/service"
 	"roulette/internal/utils"
@@ -19,14 +20,15 @@ import (
 
 // Структура бота
 type Bot struct {
-	bot          *telego.Bot
-	updates      <-chan telego.Update
-	service      service.Service
-	initialized  bool
-	ctx          context.Context
-	cancel       context.CancelFunc
-	gameHandler  *GameHandler  // Обработчик игры
-	stateManager *StateManager // Менеджер состояний
+	bot               *telego.Bot
+	updates           <-chan telego.Update
+	service           service.Service
+	initialized       bool
+	ctx               context.Context
+	cancel            context.CancelFunc
+	gameHandler       *GameHandler       // Обработчик игры
+	stateManager      *StateManager      // Менеджер состояний
+	subscriptionCache *SubscriptionCache // Кеш подписок на каналы
 }
 
 // Константы для команд и callback-запитов
@@ -51,8 +53,6 @@ const (
 	CallbackBetZero             = "bet_zero"
 	CallbackBack                = "back"
 
-	ReserveChannelID = "@socialroulette_dev" // https://t.me/socialroulette_dev
-
 	StickerNoBids    = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
 	StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
 	StickerLose      = "CAACAgUAAxkBAAEORL5n9lEOq_kczbL1CGpgN5-UhhhgqQAC3BIAAtGwqVdlepoFId2tMzYE" // lose
@@ -63,6 +63,14 @@ const (
 	StickerZeroRes1  = "CAACAgUAAxkBAAEORMRn9lEar58eDwvent8Lp3TvMRvF5AACtxEAAlRRsFdySRXPzXyVqzYE" // zeroresult (вариант 1)
 	StickerZeroRes2  = "CAACAgUAAxkBAAEORMZn9lEd12gNsWFFxGXLAZoeJbSEsgACCxYAAmDwqVdsE7WC-rayWDYE" // zeroresult (вариант 2)
 )
+
+var ReserveChannelID = "@socialroulette_dev" // https://t.me/socialroulette_dev
+
+func init() {
+	// Инициализируем конфигурацию
+	cfg := config.NewConfig()
+	ReserveChannelID = cfg.TelegramReserveChannelID
+}
 
 // NewBot создает новый экземпляр бота
 func NewBot(token string, service service.Service, rabbitmqURL string) (*Bot, error) {
@@ -105,6 +113,12 @@ func (b *Bot) Start() error {
 		return fmt.Errorf("failed to get bot info: %w", err)
 	}
 	log.Printf("Bot started: https://t.me/%s", me.Username)
+
+	// Настраиваем обработчик уведомлений
+	if err := b.setupNotificationHandler(); err != nil {
+		log.Printf("Warning: Failed to setup notification handler: %v", err)
+		// Продолжаем работу, так как это не критическая ошибка
+	}
 
 	// Начало получения обновлений
 	updates, err := b.bot.UpdatesViaLongPolling(&telego.GetUpdatesParams{
@@ -452,12 +466,35 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 // handleMessage обрабатывает сообщения
 func (b *Bot) handleMessage(message *telego.Message) {
 	user := message.From
+	go b.service.UpdateUserActivity(user.ID)
+
+	// Режим эмуляции
+	originalUserID := user.ID
+	if emulatedID, ok := emulatedUsers[originalUserID]; ok {
+		if !strings.HasPrefix(message.Text, "/"+CommandStopEmulateID) {
+			user.ID = emulatedID
+			defer func() {
+				user.ID = originalUserID
+			}()
+		}
+	}
 
 	// Получаем данные пользователя из базы
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		// Регистрация пользователя, если он новый
-		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+		// Если пользователь новый выполняется его предварительная регистрация,
+		// независимо от того какую команду он выполнил
+		// handleStartCommand только для обновления незаполненных полей
+
+		// Получаем источник
+		userSource := ""
+		if strings.Contains(message.Text, " ") {
+			commandArgs := strings.Split(message.Text, " ")
+			if len(commandArgs) > 1 {
+				userSource = strings.TrimSpace(commandArgs[1]) // Получаем источник
+			}
+		}
+		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, userSource, user.LanguageCode)
 		if err != nil {
 			log.Printf("Error registering user: %v", err)
 		}
@@ -482,213 +519,6 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		user.LanguageCode = language
 	}
 
-	// Проверяем состояние пользователя
-	state, messageID, exists := b.stateManager.GetState(user.ID)
-	if exists && state != StateNone {
-		switch state {
-		case StateInputNickname:
-			// Обработка ввода никнейма при регистрации
-			if len(message.Text) > 0 {
-
-				// Проверяем валидность никнейма (только латинские буквы и цифры)
-				nickname := strings.TrimSpace(message.Text)
-				isValid := true
-
-				// Проверяем, что никнейм состоит только из разрешенных символов
-				for _, r := range nickname {
-					if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
-						isValid = false
-						break
-					}
-				}
-
-				if !isValid || len(nickname) < 3 || len(nickname) > 20 {
-					// Никнейм невалиден, отправляем сообщение об ошибке
-					invalidNicknameText := b.service.GetText("invalid_nickname", user.LanguageCode)
-					b.SendMessage(message.Chat.ID, MessageOptions{
-						Text: invalidNicknameText,
-					})
-					return
-				}
-
-				// Обновляем никнейм пользователя
-				dbUser, err := b.service.GetUser(user.ID)
-				if err != nil {
-					log.Printf("Error getting user: %v", err)
-					b.stateManager.ClearState(user.ID)
-					return
-				}
-
-				// Сохраняем никнейм в отдельное поле Nickname
-				dbUser.Nickname = nickname
-				if err := b.service.UpdateUser(dbUser); err != nil {
-					log.Printf("Error updating user nickname: %v", err)
-				}
-
-				// Отправляем сообщение об успешном обновлении
-				successText := b.service.GetText("name_changesave", user.LanguageCode)
-				b.SendMessage(message.Chat.ID, MessageOptions{
-					Text: successText,
-				})
-
-				// Очищаем состояние
-				b.stateManager.ClearState(user.ID)
-
-				// Продолжаем процесс регистрации
-				go func() {
-					// Небольшая задержка для чтения сообщения
-					time.Sleep(2 * time.Second)
-					// Отправляем запрос на подписку
-					b.sendSubscriptionRequest(message.Chat.ID, user.LanguageCode)
-				}()
-
-				return
-			}
-		case StateInputName:
-			// Обработка ввода имени
-			if len(message.Text) > 0 {
-				// Обновляем имя пользователя
-				dbUser, err := b.service.GetUser(user.ID)
-				if err != nil {
-					log.Printf("Error getting user: %v", err)
-					b.stateManager.ClearState(user.ID)
-					return
-				}
-
-				dbUser.FirstName = message.Text
-				if err := b.service.UpdateUser(dbUser); err != nil {
-					log.Printf("Error updating user name: %v", err)
-				}
-
-				// Отправляем сообщение об успешном обновлении
-				successText := b.service.GetText("name_saved", user.LanguageCode)
-				backBtn := b.createBackBtnKeyboard(user.LanguageCode)
-
-				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
-					Text:           successText,
-					InlineKeyboard: backBtn,
-				})
-
-				// Очищаем состояние
-				b.stateManager.ClearState(user.ID)
-				return
-			}
-
-		case StateInputUpNickname:
-			// Обработка ввода никнейма при обновлении в настройках
-			if len(message.Text) > 0 {
-				// Обновляем никнейм пользователя
-				dbUser, err := b.service.GetUser(user.ID)
-				if err != nil {
-					log.Printf("Error getting user: %v", err)
-					b.stateManager.ClearState(user.ID)
-					return
-				}
-
-				// Проверяем валидность никнейма (только латинские буквы и цифры)
-				nickname := strings.TrimSpace(message.Text)
-				isValid := true
-
-				// Проверяем, что никнейм состоит только из разрешенных символов
-				for _, r := range nickname {
-					if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
-						isValid = false
-						break
-					}
-				}
-
-				if !isValid || len(nickname) < 3 || len(nickname) > 20 {
-					// Никнейм невалиден, отправляем сообщение об ошибке
-					invalidNicknameText := b.service.GetText("invalid_nickname", user.LanguageCode)
-					b.SendMessage(message.Chat.ID, MessageOptions{
-						Text: invalidNicknameText,
-					})
-					return
-				}
-
-				// Обновляем никнейм пользователя
-				dbUser.Nickname = nickname
-				if err := b.service.UpdateUser(dbUser); err != nil {
-					log.Printf("Error updating user nickname: %v", err)
-				}
-
-				// Отправляем сообщение об успешном обновлении
-				successText := b.service.GetText("nickname_saved", user.LanguageCode)
-				backBtn := b.createBackBtnKeyboard(user.LanguageCode)
-
-				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
-					Text:           successText,
-					InlineKeyboard: backBtn,
-				})
-
-				// Очищаем состояние
-				b.stateManager.ClearState(user.ID)
-				return
-			}
-		case StateInputWallet:
-			// Обработка ввода адреса кошелька
-			if len(message.Text) > 0 {
-				// Проверка валидности адреса кошелька (базовая проверка)
-				walletAddress := strings.TrimSpace(message.Text)
-
-				// Базовая валидация адреса TRC20
-				if !strings.HasPrefix(walletAddress, "T") || len(walletAddress) < 30 {
-					// Неверный формат кошелька
-					invalidWalletText := b.service.GetText("withdrawusdtchangeerror", user.LanguageCode)
-
-					// Создаем клавиатуру с кнопкой назад
-					backBtn := b.createBackBtnKeyboard(user.LanguageCode)
-
-					// Отправляем сообщение об ошибке
-					b.SendMessage(message.Chat.ID, MessageOptions{
-						Text:           invalidWalletText,
-						InlineKeyboard: backBtn,
-					})
-					return
-				}
-
-				// Обновляем адрес кошелька пользователя
-				dbUser, err := b.service.GetUser(user.ID)
-				if err != nil {
-					log.Printf("Error getting user: %v", err)
-					b.stateManager.ClearState(user.ID)
-					return
-				}
-
-				dbUser.WalletAddress = walletAddress
-				if err := b.service.UpdateUser(dbUser); err != nil {
-					log.Printf("Error updating user wallet address: %v", err)
-				}
-
-				// Отправляем сообщение об успешном обновлении
-				successText := b.service.GetText("withdrawusdtchangeok", user.LanguageCode)
-				backBtn := b.createBackBtnKeyboard(user.LanguageCode)
-
-				b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
-					Text:           successText,
-					InlineKeyboard: backBtn,
-				})
-
-				// Очищаем состояние
-				b.stateManager.ClearState(user.ID)
-				return
-			}
-		case StateInputWithdrawAmount:
-			// Обработка ввода суммы для вывода
-			if len(message.Text) > 0 {
-				b.handleInputWithdrawAmountCommand(message)
-				return
-			}
-		case StateInputWithdrawWallet:
-			// Обработка ввода изменения кошелька для вывода
-			if len(message.Text) > 0 {
-				b.handleInputWithdrawWalletCommand(message)
-				return
-			}
-		}
-
-	}
-
 	text := message.Text
 
 	// Обработка команд, начинающихся с /
@@ -699,24 +529,107 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		switch command {
 		case CommandStart:
 			b.handleStartCommand(message)
+			return
 		case CommandPrivacy:
+			// Команды privacy и contact доступны всегда (не требуют завершения регистрации)
 			b.handlePrivacyCommand(message)
+			return
 		case CommandContact:
 			b.handleContactCommand(message)
+			return
 		case CommandPlay:
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+				return
+			}
 			b.gameHandler.HandlePlayCommand(message)
+			return
 		case CommandStats:
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+				return
+			}
 			b.handleStatsCommand(message)
+			return
 		case CommandRating:
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+				return
+			}
 			b.handleRatingCommand(message)
+			return
 		case CommandFAQ:
+			// FAQ доступен всегда
 			b.handleFAQCommand(message)
-		case CommandSettings: // Добавляем обработку команды настроек
+			return
+		case CommandSettings:
+			if !b.RequireCompleteRegistration(message.Chat.ID, user.ID) {
+				return
+			}
 			b.handleSettingsCommand(message)
+			return
+		case CommandMyID:
+			b.handleMyIDCommand(message)
+			return
+		case CommandEmulateID: //  /emulateid 123456789
+			b.handleEmulateIDCommand(message)
+			return
+		case CommandStopEmulateID:
+			b.handleStopEmulateIDCommand(message)
+			return
+
 		default:
 			// Неизвестная команда
 			b.handleUnknownCommand(message)
 		}
+		return
+	}
+
+	// Проверяем состояние пользователя для обработки ввода
+	state, messageID, exists := b.stateManager.GetState(user.ID)
+	if exists && state != StateNone {
+		// Обработка состояний ввода данных при регистрации (НЕ требует завершенной регистрации)
+		switch state {
+		case StateInputNickname:
+			b.handleInputNicknameState(message)
+			return
+		case StateInputName:
+			b.handleInputNameState(message, messageID)
+			return
+		case StateInputUpNickname:
+			// Для обновления никнейма требуется завершенная регистрация
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+				b.stateManager.ClearState(user.ID)
+				return
+			}
+			b.handleInputUpNicknameState(message, messageID)
+			return
+		case StateInputWallet:
+			// Для ввода кошелька требуется завершенная регистрация
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+				b.stateManager.ClearState(user.ID)
+				return
+			}
+			b.handleInputWalletState(message, messageID)
+			return
+		case StateInputWithdrawAmount:
+			// Для вывода средств требуется завершенная регистрация
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+				b.stateManager.ClearState(user.ID)
+				return
+			}
+			b.handleInputWithdrawAmountCommand(message)
+			return
+		case StateInputWithdrawWallet:
+			// Для вывода средств требуется завершенная регистрация
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+				b.stateManager.ClearState(user.ID)
+				return
+			}
+			b.handleInputWithdrawWalletCommand(message)
+			return
+		}
+	}
+
+	// Для всех остальных текстовых команд требуется завершенная регистрация
+	if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
 		return
 	}
 
@@ -867,14 +780,25 @@ func (b *Bot) handleMessage(message *telego.Message) {
 func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	// Валидация пользователя
 	user := query.From
+	go b.service.UpdateUserActivity(user.ID)
+
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
 		// Регистрация пользователя, если он не найден
-		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
 		if err != nil {
 			log.Printf("Error registering user: %v", err)
 			return
 		}
+	}
+
+	// Режим эмуляции
+	if emulatedID, ok := emulatedUsers[user.ID]; ok {
+		originalID := user.ID
+		user.ID = emulatedID
+		defer func() {
+			user.ID = originalID
+		}()
 	}
 
 	// Всегда используем язык из базы данных, т.к. он может быть обновлен
@@ -1023,7 +947,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			if query.Message != nil {
 				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
 					Text:           languageText,
-					InlineKeyboard: b.createLanguageKeyboard(),
+					InlineKeyboard: b.createLanguageKeyboard(language),
 				})
 			}
 			return
@@ -1272,6 +1196,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 // Обработчики команд
 
 // handleStartCommand обрабатывает команду /start
+// сама регистрация пользователя выполняется в начале функции handleMessage
+// в этой функции только дозаполнение полей
 func (b *Bot) handleStartCommand(message *telego.Message) {
 	user := message.From
 
@@ -1279,8 +1205,19 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 	_, err := b.service.GetUser(user.ID)
 	isNewUser := err != nil // Флаг нового пользователя
 
+	// Получаем источник
+	userSource := ""
+	if isNewUser {
+		if strings.Contains(message.Text, " ") {
+			commandArgs := strings.Split(message.Text, " ")
+			if len(commandArgs) > 1 {
+				userSource = strings.TrimSpace(commandArgs[1]) // Получаем источник
+			}
+		}
+	}
+
 	// Регистрируем пользователя или обновляем информацию
-	dbUser, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, user.LanguageCode)
+	dbUser, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, userSource, user.LanguageCode)
 	if err != nil {
 		log.Printf("Error registering user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
@@ -1743,7 +1680,7 @@ func (b *Bot) showStatisticsForPeriod(message *telego.Message, period string) {
 	})
 
 	// Отправляем сообщение с предложением выбрать другой период
-	statisticsNextText := b.service.GetText("statistics next", language)
+	statisticsNextText := b.service.GetText("statistics_next", language)
 	b.SendMessage(message.Chat.ID, MessageOptions{
 		Text:          statisticsNextText,
 		ReplyKeyboard: b.createStatsKeyboard(language),
@@ -1874,6 +1811,10 @@ func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions)
 
 // sendText отправляет текстовое сообщение
 func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, error) {
+	if options.ParseMode == "" {
+		options.ParseMode = telego.ModeHTML
+	}
+
 	params := &telego.SendMessageParams{
 		ChatID:                telego.ChatID{ID: chatID},
 		Text:                  options.Text,
@@ -1908,6 +1849,10 @@ func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, e
 
 // updateText обновляет текстовое сообщение
 func (b *Bot) updateText(chatID int64, messageID int, options MessageOptions) (*telego.Message, error) {
+	if options.ParseMode == "" {
+		options.ParseMode = telego.ModeHTML
+	}
+
 	params := &telego.EditMessageTextParams{
 		ChatID:                telego.ChatID{ID: chatID},
 		MessageID:             messageID,
@@ -1936,6 +1881,10 @@ func (b *Bot) updateText(chatID int64, messageID int, options MessageOptions) (*
 
 // sendPhoto отправляет фото с подписью
 func (b *Bot) sendPhoto(chatID int64, options MessageOptions) (*telego.Message, error) {
+	if options.ParseMode == "" {
+		options.ParseMode = telego.ModeHTML
+	}
+
 	// Параметры для отправки
 	params := &telego.SendPhotoParams{
 		ChatID:              telego.ChatID{ID: chatID},
@@ -1991,6 +1940,10 @@ func (b *Bot) sendPhotoFile(chatID int64, photoPath string, params *telego.SendP
 
 // updatePhotoByFileID обновляет фото по FileID
 func (b *Bot) updatePhotoByFileID(chatID int64, messageID int, options MessageOptions) (*telego.Message, error) {
+	if options.ParseMode == "" {
+		options.ParseMode = telego.ModeHTML
+	}
+
 	// Создаем объект InputMediaPhoto с FileID
 	mediaPhoto := &telego.InputMediaPhoto{
 		Type:      "photo",
@@ -2062,4 +2015,308 @@ func getRandomSticker(sticker1, sticker2 string) string {
 		return sticker1
 	}
 	return sticker2
+}
+
+// isRegistrationComplete проверяет, завершена ли первичная регистрация пользователя
+func (b *Bot) isRegistrationComplete(user *models.User) bool {
+	// Проверяем обязательные поля для завершения регистрации:
+	// 1. Подтверждение возраста
+	if user.AgeVerified == nil || !*user.AgeVerified {
+		return false
+	}
+
+	// 2. Выбор страны
+	if user.Country == "" {
+		return false
+	}
+
+	// 3. Язык должен быть установлен
+	if user.LanguageCode == "" {
+		return false
+	}
+
+	// 4. Пользователь не должен быть забанен
+	if user.Banned {
+		return false
+	}
+
+	return true
+}
+
+// handleInputNicknameState обрабатывает ввод никнейма при регистрации
+func (b *Bot) handleInputNicknameState(message *telego.Message) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Обработка ввода никнейма при регистрации
+	if len(message.Text) > 0 {
+		// Проверяем валидность никнейма (только латинские буквы и цифры)
+		nickname := strings.TrimSpace(message.Text)
+		isValid := true
+
+		// Проверяем, что никнейм состоит только из разрешенных символов
+		for _, r := range nickname {
+			if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+				isValid = false
+				break
+			}
+		}
+
+		if !isValid || len(nickname) < 3 || len(nickname) > 20 {
+			// Никнейм невалиден, отправляем сообщение об ошибке
+			invalidNicknameText := b.service.GetText("invalid_nickname", user.LanguageCode)
+			b.SendMessage(message.Chat.ID, MessageOptions{
+				Text: invalidNicknameText,
+			})
+			return
+		}
+
+		// Обновляем никнейм пользователя
+		dbUser, err := b.service.GetUser(user.ID)
+		if err != nil {
+			log.Printf("Error getting user: %v", err)
+			b.stateManager.ClearState(user.ID)
+			return
+		}
+
+		// Сохраняем никнейм в отдельное поле Nickname
+		dbUser.Nickname = nickname
+		if err := b.service.UpdateUser(dbUser); err != nil {
+			log.Printf("Error updating user nickname: %v", err)
+		}
+
+		// Отправляем сообщение об успешном обновлении
+		successText := b.service.GetText("name_changesave", user.LanguageCode)
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text: successText,
+		})
+
+		// Очищаем состояние
+		b.stateManager.ClearState(user.ID)
+
+		// Продолжаем процесс регистрации
+		go func() {
+			// Небольшая задержка для чтения сообщения
+			time.Sleep(2 * time.Second)
+			// Отправляем запрос на подписку
+			b.sendSubscriptionRequest(message.Chat.ID, user.LanguageCode)
+		}()
+	}
+}
+
+// handleInputNameState обрабатывает ввод имени в настройках
+func (b *Bot) handleInputNameState(message *telego.Message, messageID int) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Обработка ввода имени
+	if len(message.Text) > 0 {
+		// Валидация имени
+		name := strings.TrimSpace(message.Text)
+		if len(name) == 0 || len(name) > 100 {
+			// Неверная длина имени
+			invalidNameText := b.service.GetText("invalid_name", language)
+			if invalidNameText == "invalid_name" {
+				invalidNameText = "Имя должно содержать от 1 до 100 символов"
+			}
+			b.SendMessage(message.Chat.ID, MessageOptions{
+				Text: invalidNameText,
+			})
+			return
+		}
+
+		// Обновляем имя пользователя
+		dbUser, err := b.service.GetUser(user.ID)
+		if err != nil {
+			log.Printf("Error getting user: %v", err)
+			b.stateManager.ClearState(user.ID)
+			return
+		}
+
+		dbUser.FirstName = name
+		if err := b.service.UpdateUser(dbUser); err != nil {
+			log.Printf("Error updating user name: %v", err)
+
+			// Отправляем сообщение об ошибке
+			errorText := b.service.GetText("update_error", language)
+			if errorText == "update_error" {
+				errorText = "Ошибка при обновлении данных. Попробуйте еще раз."
+			}
+			b.SendMessage(message.Chat.ID, MessageOptions{
+				Text: errorText,
+			})
+			return
+		}
+
+		// Отправляем сообщение об успешном обновлении
+		successText := b.service.GetText("name_saved", language)
+		if successText == "name_saved" {
+			successText = "Имя успешно сохранено!"
+		}
+
+		backBtn := b.createBackBtnKeyboard(language)
+
+		b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
+			Text:           successText,
+			InlineKeyboard: backBtn,
+		})
+
+		// Очищаем состояние
+		b.stateManager.ClearState(user.ID)
+	}
+}
+
+// handleInputUpNicknameState обрабатывает ввод никнейма в настройках
+func (b *Bot) handleInputUpNicknameState(message *telego.Message, messageID int) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Обработка ввода никнейма при обновлении в настройках
+	if len(message.Text) > 0 {
+		// Обновляем никнейм пользователя
+		dbUser, err := b.service.GetUser(user.ID)
+		if err != nil {
+			log.Printf("Error getting user: %v", err)
+			b.stateManager.ClearState(user.ID)
+			return
+		}
+
+		// Проверяем валидность никнейма (только латинские буквы, цифры и подчеркивание)
+		nickname := strings.TrimSpace(message.Text)
+		isValid := true
+
+		// Проверяем, что никнейм состоит только из разрешенных символов
+		for _, r := range nickname {
+			if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+				isValid = false
+				break
+			}
+		}
+
+		if !isValid || len(nickname) < 3 || len(nickname) > 20 {
+			// Никнейм невалиден, отправляем сообщение об ошибке
+			invalidNicknameText := b.service.GetText("invalid_nickname", language)
+			if invalidNicknameText == "invalid_nickname" {
+				invalidNicknameText = "Никнейм должен содержать от 3 до 20 символов и состоять только из латинских букв, цифр и знака подчеркивания"
+			}
+			b.SendMessage(message.Chat.ID, MessageOptions{
+				Text: invalidNicknameText,
+			})
+			return
+		}
+
+		// Обновляем никнейм пользователя
+		dbUser.Nickname = nickname
+		if err := b.service.UpdateUser(dbUser); err != nil {
+			log.Printf("Error updating user nickname: %v", err)
+
+			// Отправляем сообщение об ошибке
+			errorText := b.service.GetText("update_error", language)
+			if errorText == "update_error" {
+				errorText = "Ошибка при обновлении никнейма. Попробуйте еще раз."
+			}
+			b.SendMessage(message.Chat.ID, MessageOptions{
+				Text: errorText,
+			})
+			return
+		}
+
+		// Отправляем сообщение об успешном обновлении
+		successText := b.service.GetText("nickname_saved", language)
+		if successText == "nickname_saved" {
+			successText = "Никнейм успешно сохранен!"
+		}
+
+		backBtn := b.createBackBtnKeyboard(language)
+
+		b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
+			Text:           successText,
+			InlineKeyboard: backBtn,
+		})
+
+		// Очищаем состояние
+		b.stateManager.ClearState(user.ID)
+	}
+}
+
+// handleInputWalletState обрабатывает ввод адреса кошелька в настройках
+func (b *Bot) handleInputWalletState(message *telego.Message, messageID int) {
+	user := message.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Обработка ввода адреса кошелька
+	if len(message.Text) > 0 {
+		// Проверка валидности адреса кошелька (базовая проверка)
+		walletAddress := strings.TrimSpace(message.Text)
+
+		// Базовая валидация адреса TRC20
+		if !strings.HasPrefix(walletAddress, "T") || len(walletAddress) < 30 {
+			// Неверный формат кошелька
+			invalidWalletText := b.service.GetText("withdrawusdtchangeerror", language)
+			if invalidWalletText == "withdrawusdtchangeerror" {
+				invalidWalletText = "Неверный формат адреса кошелька. Адрес TRC20 должен начинаться с 'T' и содержать не менее 30 символов."
+			}
+
+			// Создаем клавиатуру с кнопкой назад
+			backBtn := b.createBackBtnKeyboard(language)
+
+			// Отправляем сообщение об ошибке
+			b.SendMessage(message.Chat.ID, MessageOptions{
+				Text:           invalidWalletText,
+				InlineKeyboard: backBtn,
+			})
+			return
+		}
+
+		// Обновляем адрес кошелька пользователя
+		dbUser, err := b.service.GetUser(user.ID)
+		if err != nil {
+			log.Printf("Error getting user: %v", err)
+			b.stateManager.ClearState(user.ID)
+			return
+		}
+
+		dbUser.WalletAddress = walletAddress
+		if err := b.service.UpdateUser(dbUser); err != nil {
+			log.Printf("Error updating user wallet address: %v", err)
+
+			// Отправляем сообщение об ошибке
+			errorText := b.service.GetText("update_error", language)
+			if errorText == "update_error" {
+				errorText = "Ошибка при обновлении адреса кошелька. Попробуйте еще раз."
+			}
+			b.SendMessage(message.Chat.ID, MessageOptions{
+				Text: errorText,
+			})
+			return
+		}
+
+		// Отправляем сообщение об успешном обновлении
+		successText := b.service.GetText("withdrawusdtchangeok", language)
+		if successText == "withdrawusdtchangeok" {
+			successText = "Адрес кошелька успешно обновлен!"
+		}
+
+		backBtn := b.createBackBtnKeyboard(language)
+
+		b.UpdateMessage(message.Chat.ID, messageID, MessageOptions{
+			Text:           successText,
+			InlineKeyboard: backBtn,
+		})
+
+		// Очищаем состояние
+		b.stateManager.ClearState(user.ID)
+	}
 }

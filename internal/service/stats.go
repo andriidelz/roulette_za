@@ -85,3 +85,8 @@ func (s *ServiceImpl) GetTopPlayersBySuccessRate(limit int) ([]map[string]interf
 func (s *ServiceImpl) GetTopPlayersByAttempts(limit int) ([]map[string]interface{}, error) {
 	return s.repo.GetTopPlayersByAttempts(limit)
 }
+
+// GetSource возвращает кол-во регистраций по источнику
+func (s *ServiceImpl) GetSource(dateFrom, dateTo string) ([]map[string]interface{}, error) {
+	return s.repo.GetSource(dateFrom, dateTo)
+}

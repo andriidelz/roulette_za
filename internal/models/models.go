@@ -17,21 +17,24 @@ const (
 
 // Пользователь
 type User struct {
-	ID            uint    `gorm:"primaryKey"`
-	TelegramID    int64   `gorm:"uniqueIndex"`
-	Username      string  `gorm:"size:255"`
-	Nickname      string  `gorm:"size:50"`
-	FirstName     string  `gorm:"size:255"`
-	LastName      string  `gorm:"size:255"`
-	LanguageCode  string  `gorm:"size:10"`
-	Country       string  `gorm:"size:2"` // ISO 3166-1 alpha-2 код страны
-	WalletAddress string  `gorm:"size:255"`
-	AvatarURL     string  `gorm:"size:512"`
-	Balance       float64 `gorm:"default:0"`
-	Banned        bool    `gorm:"default:false"`
-	AgeVerified   *bool   `gorm:"default:null"` // Указатель на bool для возможности хранения NULL значения
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID             uint    `gorm:"primaryKey"`
+	TelegramID     int64   `gorm:"uniqueIndex"`
+	Username       string  `gorm:"size:255"`
+	Nickname       string  `gorm:"size:50"`
+	FirstName      string  `gorm:"size:255"`
+	LastName       string  `gorm:"size:255"`
+	Source         string  `gorm:"size:10"` // источник по реферальной ссылке
+	RefKey         string  `gorm:"size:10"` // источник по реферальной ссылке
+	LanguageCode   string  `gorm:"size:10"`
+	Country        string  `gorm:"size:2"` // ISO 3166-1 alpha-2 код страны
+	WalletAddress  string  `gorm:"size:255"`
+	AvatarURL      string  `gorm:"size:512"`
+	Balance        float64 `gorm:"default:0"`
+	Banned         bool    `gorm:"default:false"`
+	AgeVerified    *bool   `gorm:"default:null"` // Указатель на bool для возможности хранения NULL значения
+	LastActivityAt time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // HashEntry представляє запис хешу (раунд) в базі даних
@@ -132,6 +135,15 @@ type Localization struct {
 	Value    string `gorm:"type:text"`
 }
 
+// Источники
+type SourceKey struct {
+	ID        uint      `gorm:"primaryKey"`
+	Key       string    `gorm:"size:255;index"`
+	Name      string    `gorm:"type:text"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // Призовий фонд за тиждень
 type PrizeFund struct {
 	ID        uint    `gorm:"primaryKey"`
@@ -146,13 +158,20 @@ type PrizeFund struct {
 
 // Сповіщення користувача
 type Notification struct {
-	ID        uint   `gorm:"primaryKey"`
-	UserID    uint   `gorm:"index"`
-	User      User   `gorm:"foreignKey:UserID"`
-	Type      string `gorm:"size:50;index"`
-	Message   string `gorm:"type:text"`
-	Read      bool   `gorm:"default:false"`
-	CreatedAt time.Time
+	ID             uint       `gorm:"primaryKey"`
+	UserID         uint       `gorm:"index"`
+	User           User       `gorm:"foreignKey:UserID"`
+	Type           string     `gorm:"size:50;index"`
+	Message        string     `gorm:"type:text"`
+	Title          string     `gorm:"type:text"`
+	ImageURL       string     `gorm:"type:text;column:image_url"`
+	ButtonText     string     `gorm:"type:text;column:button_text"`
+	ButtonURL      string     `gorm:"type:text;column:button_url"`
+	ButtonCallback string     `gorm:"type:text;column:button_callback"`
+	Read           bool       `gorm:"default:false"`
+	Delivered      bool       `gorm:"default:false"`
+	ReadAt         *time.Time `gorm:"column:read_at"`
+	CreatedAt      time.Time
 }
 
 // Запит на виведення коштів

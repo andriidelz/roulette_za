@@ -173,7 +173,9 @@ func (b *Bot) createBasicSettingsKeyboard(language string) *telego.InlineKeyboar
 }
 
 // Создает клавиатуру выбора языка
-func (b *Bot) createLanguageKeyboard() *telego.InlineKeyboardMarkup {
+func (b *Bot) createLanguageKeyboard(language string) *telego.InlineKeyboardMarkup {
+	btnBackText := b.service.GetText("btn_back", language)
+
 	return &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
@@ -186,7 +188,7 @@ func (b *Bot) createLanguageKeyboard() *telego.InlineKeyboardMarkup {
 				{Text: "Українська 🇺🇦", CallbackData: CallbackLanguageUK},
 			},
 			{
-				{Text: "◀️ Back", CallbackData: CallbackSettingsBack},
+				{Text: btnBackText, CallbackData: CallbackSettingsBack},
 			},
 		},
 	}
