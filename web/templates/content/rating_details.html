@@ -91,6 +91,7 @@
                                   <tr>
                                       <th>Позиция</th>
                                       <th>Пользователь</th>
+                                      <th>Никнейм</th>
                                       <th>Баллы</th>
                                       <th>Ставок</th>
                                       <th>Эффективность</th>
@@ -112,6 +113,7 @@
                                                   {{end}}
                                               </a>
                                           </td>
+                                          <td>{{if .User.Nickname}}{{.User.Nickname}}{{else}}<span class="text-muted">—</span>{{end}}</td>
                                           <td>{{.Points}}</td>
                                           <td>{{.Bets}}</td>
                                           <td>{{printf "%.2f" (multiply .Efficiency 100)}}%</td>
@@ -123,7 +125,7 @@
                                       {{end}}
                                   {{else}}
                                       <tr>
-                                          <td colspan="7" class="text-center">Нет данных о рейтинге для этой недели</td>
+                                          <td colspan="8" class="text-center">Нет данных о рейтинге для этой недели</td>
                                       </tr>
                                   {{end}}
                               </tbody>
