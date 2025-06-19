@@ -1,10 +1,8 @@
 package admin
 
 import (
-	"html/template"
 	"net/http"
 	"path/filepath"
-	"time"
 
 	"roulette/internal/repository"
 	"roulette/internal/service"
@@ -65,52 +63,20 @@ func (a *AdminPanel) Start() error {
 // Настройка роутов
 func (a *AdminPanel) setupRoutes() {
 
-	a.router.SetFuncMap(template.FuncMap{
-		"abs": func(x float64) float64 {
-			if x < 0 {
-				return -x
-			}
-			return x
-		},
-		"add": func(a, b int) int {
-			return a + b
-		},
-		"subtract": func(a, b int) int {
-			return a - b
-		},
-		"divide": func(a, b int) float64 {
-			if b == 0 {
-				return 0
-			}
-			return float64(a) / float64(b)
-		},
-		"multiply": func(a, b float64) float64 {
-			return a * b
-		},
-		"formatDate": func(t time.Time) string {
-			return t.Format("02.01.2006 15:04")
-		},
-		// Функция seq генерирует последовательность чисел от start до end включительно
-		// Используется для создания диапазона страниц в пагинации
-		"seq": func(start, end int) []int {
-			if end < start {
-				return []int{}
-			}
-			seq := make([]int, end-start+1)
-			for i := range seq {
-				seq[i] = start + i
-			}
-			return seq
-		},
-	})
+	a.router.SetFuncMap(tplFuncMap)
 
-	files1, _ := filepath.Glob("web/templates/*.html")
-	files2, _ := filepath.Glob("web/templates/**/*.html")
+	files1, _ := filepath.Glob("web/**/templates/*.html")
+	files2, _ := filepath.Glob("web/**/templates/**/*.html")
 	allFiles := append(files1, files2...)
 	a.router.LoadHTMLFiles(allFiles...)
 
-	// Статические файлы
-	a.router.Static("/static", "./web/static")
+	// Публичные статические файлы без ограничений
+	a.router.StaticFS("/static/public", http.Dir("./web/public/static"))
+
+	// Защищенные административные статические файлы
+	adminStatic := a.router.Group("/static/admin")
+	adminStatic.Use(a.ipFilterMiddleware(), a.authRequired())
+	adminStatic.StaticFS("/", http.Dir("./web/admin/static"))
 
 	// Настраиваем публичные маршруты
 	a.setupPublicRoutes()

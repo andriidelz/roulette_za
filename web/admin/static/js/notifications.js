@@ -912,7 +912,7 @@ function initializeNotificationForms() {
             }
         });
     }
-}// web/static/js/notifications.js - упрощенная версия
+}
 
 /**
  * Просмотр шаблона уведомления
