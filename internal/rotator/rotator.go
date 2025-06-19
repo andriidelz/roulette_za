@@ -195,7 +195,10 @@ func (r *Rotator) Start() {
 
 			// Получаем текущий активный раунд перед созданием нового
 			// чтобы убедиться, что другой поток не создал его в промежутке
-			currentCheck, _ := r.service.GetCurrentRound()
+			currentCheck, err := r.service.GetCurrentRound()
+			if err != nil {
+				log.Println(err)
+			}
 			if currentCheck != nil && currentCheck.ID != currentRoundID {
 				log.Printf("New round #%d already created by another process. Skipping creation.", currentCheck.ID)
 				continue

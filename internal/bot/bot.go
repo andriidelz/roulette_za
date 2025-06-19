@@ -136,6 +136,9 @@ func (b *Bot) Start() error {
 	// Запускаем планировщик для обновления рейтингов
 	b.StartRatingScheduler()
 
+	// Запускам емуляцию ставок по заданиям для пользователей
+	b.gameHandler.initEmulate()
+
 	b.initialized = true
 	return nil
 }
@@ -452,6 +455,8 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 			errorText = b.service.GetText("betsbalancelow", language)
 		} else {
 			// Общая ошибка ставки
+
+			log.Println("bet_error", err)
 			errorText = b.service.GetText("bet_error", language)
 		}
 

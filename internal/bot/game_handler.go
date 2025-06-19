@@ -176,11 +176,11 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 		fiveSecondsMark := createdAt.Add(10 * time.Second)
 
 		// Вычисляем время до уведомления
-		timeToFiveSeconds := time.Until(fiveSecondsMark)
+		timeToFive := time.Until(fiveSecondsMark)
 
 		// Отправляем уведомление за 5 секунд до конца раунда
-		if timeToFiveSeconds > 0 {
-			time.Sleep(timeToFiveSeconds)
+		if timeToFive > 0 {
+			time.Sleep(timeToFive)
 			// Отправляем только одно уведомление - о 5 секундах до конца раунда
 			log.Printf("Sending 5 seconds remaining notification for round #%d", round.ID)
 			h.notifyTimeRemaining(round, 5)
