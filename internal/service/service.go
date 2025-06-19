@@ -457,6 +457,10 @@ func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
 		return err
 	}
 
+	if currentRound == nil {
+		return fmt.Errorf("no active round at the moment")
+	}
+
 	// Проверяем, может ли пользователь делать ставку на Zero
 	if option == models.Zero {
 		canBetZero, _, err := s.CanBetZero(telegramID)
