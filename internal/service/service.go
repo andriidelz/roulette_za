@@ -458,7 +458,7 @@ func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
 	}
 
 	if currentRound == nil {
-		return fmt.Errorf("cannot find hash")
+		return fmt.Errorf("no active round at the moment")
 	}
 
 	// Проверяем, может ли пользователь делать ставку на Zero
