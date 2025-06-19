@@ -3,8 +3,8 @@ package bot
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"roulette/internal/config"
+	"roulette/internal/logger"
 	"roulette/internal/messaging"
 	"roulette/internal/service"
 	"strings"
@@ -26,21 +26,21 @@ func (b *Bot) setupNotificationHandler() error {
 		return fmt.Errorf("failed to subscribe to notifications queue: %w", err)
 	}
 
-	log.Println("Notification handler initialized")
+	logger.Info.Println("Notification handler initialized")
 	return nil
 }
 
 // handleNotificationMessage обрабатывает сообщения с уведомлениями
 func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error {
 	// Логируем полное сообщение для отладки
-	log.Printf("[bot] Notification message data type: %T", message.Data)
+	logger.Info.Printf("Notification message data type: %T", message.Data)
 
 	// Если данные в виде строки, выводим первые 100 символов для отладки
 	if str, ok := message.Data.(string); ok {
 		if len(str) > 100 {
-			log.Printf("[bot] Message data preview: %s...", str[:100])
+			logger.Info.Printf("Message data preview: %s...", str[:100])
 		} else {
-			log.Printf("[bot] Message data full: %s", str)
+			logger.Info.Printf("Message data full: %s", str)
 		}
 	}
 
@@ -91,7 +91,7 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 
 	case []byte:
 		// Логируем данные для отладки
-		log.Printf("[bot] Message data as bytes: %s", string(data))
+		logger.Info.Printf("Message data as bytes: %s", string(data))
 
 		// Если данные в байтовом формате, десериализуем их
 		if err := json.Unmarshal(data, &notificationData); err != nil {
@@ -110,7 +110,7 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 		} else {
 			// Возможно, данные закодированы или содержат служебные символы
 			// Пробуем отправить сообщение напрямую без десериализации
-			log.Printf("[bot] Sending notification directly with raw data: %s", cleanData)
+			logger.Info.Printf("Sending notification directly with raw data: %s", cleanData)
 
 			// Отправляем сообщение с информацией об ошибке
 			b.SendMessage(77039720, MessageOptions{ // Замените на реальный ID администратора
@@ -130,7 +130,7 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 	}
 
 	// Логируем получение уведомления
-	log.Printf("[bot] Processing notification for user %d: %s", notificationData.TelegramID, notificationData.Title)
+	logger.Info.Printf("Processing notification for user %d: %s", notificationData.TelegramID, notificationData.Title)
 
 	// Создаем inline клавиатуру, если есть кнопка
 	var inlineKeyboard *telego.InlineKeyboardMarkup
@@ -177,7 +177,7 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 		}
 	}
 
-	log.Printf("[bot] Successfully sent notification to user %d", notificationData.TelegramID)
+	logger.Info.Printf("Successfully sent notification to user %d", notificationData.TelegramID)
 	return nil
 }
 

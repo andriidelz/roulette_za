@@ -2,7 +2,7 @@
 package bot
 
 import (
-	"log"
+	"roulette/internal/logger"
 	"sync"
 	"time"
 )
@@ -57,7 +57,7 @@ func (b *Bot) RequireCompleteRegistration(chatID int64, userID int64) bool {
 	// Получаем пользователя
 	dbUser, err := b.service.GetUser(userID)
 	if err != nil {
-		log.Printf("Error getting user %d: %v", userID, err)
+		logger.Error.Printf("Error getting user %d: %v", userID, err)
 		return false
 	}
 
@@ -149,7 +149,7 @@ func (b *Bot) checkSubscriptionWithCache(userID int64, channelUsername string) b
 	// Если в кеше нет, проверяем через API
 	subscribed, err := b.checkChannelSubscription(userID, channelUsername)
 	if err != nil {
-		log.Printf("Error checking subscription for user %d: %v", userID, err)
+		logger.Error.Printf("Error checking subscription for user %d: %v", userID, err)
 		return false
 	}
 

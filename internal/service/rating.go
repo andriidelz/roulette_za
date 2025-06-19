@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
-	"log"
 	"roulette/internal/data"
+	"roulette/internal/logger"
 	"roulette/internal/models"
 	"sort"
 	"strconv"
@@ -346,7 +346,7 @@ func (s *ServiceImpl) CreateNewPrizeFund(year, week int) error {
 		return fmt.Errorf("error creating prize fund: %w", err)
 	}
 
-	log.Printf("Created new weekly rating for %d/%d with prize amount %.2f and top count %d",
+	logger.Info.Printf("Created new weekly rating for %d/%d with prize amount %.2f and top count %d",
 		year, week, prizeAmount, topCount)
 
 	return nil
@@ -378,7 +378,7 @@ func (s *ServiceImpl) UpdateCurrentPrizeFund(amount float64, topCount int) error
 		return fmt.Errorf("ошибка обновления призового фонда: %w", err)
 	}
 
-	log.Printf("Обновлен призовой фонд %d/%d: сумма = %.2f, топ = %d",
+	logger.Info.Printf("Обновлен призовой фонд %d/%d: сумма = %.2f, топ = %d",
 		year, week, amount, topCount)
 
 	return nil

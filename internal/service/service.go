@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"roulette/internal/logger"
 	"roulette/internal/models"
 	"roulette/internal/repository"
 	"roulette/internal/utils"
@@ -163,7 +164,7 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 				existingUser.Source = source
 				updateNeeded = true
 			} else {
-				log.Println("Error find source", telegramID, source)
+				logger.Error.Println("Error find source", telegramID, source)
 			}
 		}
 
@@ -194,7 +195,7 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 	exists, _ := s.repo.CheckSourceKeyExists(source)
 	if !exists {
 		source = ""
-		log.Println("Error find source", telegramID, source)
+		logger.Error.Println("Error find source", telegramID, source)
 	}
 
 	// Создаем нового пользователя
@@ -433,7 +434,7 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint) ([]models.Bet, error) 
 
 		// Сохраняем обновленную ставку в БД
 		if err := s.repo.UpdateBet(&bets[i]); err != nil {
-			log.Printf("Error updating bet for user %d in round %d: %v",
+			logger.Error.Printf("Error updating bet for user %d in round %d: %v",
 				bets[i].UserID, hashEntryID, err)
 			// Продолжаем обработку других ставок
 		}
@@ -679,7 +680,7 @@ func (s *ServiceImpl) DistributePrizes(year, week int) error {
 
 		// Отправляем автоматическое уведомление о пополнении баланса
 		if err := s.HandleBalanceUpdate(user.ID, prize); err != nil {
-			log.Printf("Error sending balance update notification to user %d: %v", user.ID, err)
+			logger.Error.Printf("Error sending balance update notification to user %d: %v", user.ID, err)
 			// Продолжаем обработку других пользователей
 		}
 	}

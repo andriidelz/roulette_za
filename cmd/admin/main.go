@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -9,6 +8,7 @@ import (
 
 	"roulette/internal/admin"
 	"roulette/internal/config"
+	"roulette/internal/logger"
 	"roulette/internal/repository"
 	"roulette/internal/service"
 
@@ -20,7 +20,7 @@ import (
 func main() {
 	// Завантажуємо змінні оточення
 	if err := godotenv.Load(); err != nil {
-		log.Printf("Error loading .env file: %v", err)
+		logger.Error.Printf("Error loading .env file: %v", err)
 	}
 
 	// Ініціалізуємо конфігурацію
@@ -29,7 +29,7 @@ func main() {
 	// Підключаємося до бази даних
 	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logger.Error.Fatalf("Failed to connect to database: %v", err)
 	}
 
 	// Створюємо репозиторій
@@ -41,7 +41,7 @@ func main() {
 	// Инициализируем фабрику платежных провайдеров
 	paymentFactory, defaultProvider, err := config.InitPaymentProviders(db)
 	if err != nil {
-		log.Printf("Warning: Failed to initialize payment providers: %v", err)
+		logger.Error.Printf("Warning: Failed to initialize payment providers: %v", err)
 	}
 
 	// Создаем PaymentService
@@ -64,7 +64,7 @@ func main() {
 	// Запускаємо адмін-панель у фоновому режимі
 	go func() {
 		if err := adminPanel.Start(); err != nil {
-			log.Fatalf("Failed to start admin panel: %v", err)
+			logger.Error.Fatalf("Failed to start admin panel: %v", err)
 		}
 	}()
 
@@ -72,9 +72,9 @@ func main() {
 	ticker := time.NewTicker(1 * time.Minute)
 	go func() {
 		for range ticker.C {
-			log.Println("Starting scheduled check of pending withdrawals...")
+			logger.Info.Println("Starting scheduled check of pending withdrawals...")
 			if err := paymentSvc.CheckPendingWithdrawals(); err != nil {
-				log.Printf("Error checking pending withdrawals: %v", err)
+				logger.Error.Printf("Error checking pending withdrawals: %v", err)
 			}
 		}
 	}()
@@ -88,9 +88,9 @@ func main() {
 			minute := now.Minute()
 
 			if hour == 20 && minute >= 0 && minute <= 30 { // Окно отправки 20:00-20:30
-				log.Println("Starting scheduled check of top rating entries...")
+				logger.Info.Println("Starting scheduled check of top rating entries...")
 				if err := svc.CheckTopRatingEntries(); err != nil {
-					log.Printf("Error checking top rating entries: %v", err)
+					logger.Error.Printf("Error checking top rating entries: %v", err)
 				}
 			}
 		}
@@ -100,27 +100,27 @@ func main() {
 	notificationTaskTicker := time.NewTicker(1 * time.Minute)
 	go func() {
 		for range notificationTaskTicker.C {
-			log.Println("Starting scheduled check of pending notification tasks...")
+			logger.Info.Println("Starting scheduled check of pending notification tasks...")
 			// Получаем задачи, запланированные на текущее время
 			pendingTasks, err := svc.GetPendingNotificationTasks()
 			if err != nil {
-				log.Printf("Error getting pending notification tasks: %v", err)
+				logger.Error.Printf("Error getting pending notification tasks: %v", err)
 				continue
 			}
 
 			// Запускаем отправку для каждой задачи
 			for _, task := range pendingTasks {
 				if err := svc.SendNotifications(task.ID); err != nil {
-					log.Printf("Error sending notifications for task %d: %v", task.ID, err)
+					logger.Error.Printf("Error sending notifications for task %d: %v", task.ID, err)
 				} else {
-					log.Printf("Successfully started notification task %d", task.ID)
+					logger.Info.Printf("Successfully started notification task %d", task.ID)
 				}
 			}
 		}
 	}()
 
 	// Виводимо повідомлення про запуск
-	log.Printf("Admin panel started on http://localhost:%s", cfg.AdminPort)
+	logger.Info.Printf("Admin panel started on http://localhost:%s", cfg.AdminPort)
 
 	// Очікуємо сигнал для завершення
 	quit := make(chan os.Signal, 1)
@@ -132,5 +132,5 @@ func main() {
 	topRatingTicker.Stop()
 	notificationTaskTicker.Stop()
 
-	log.Println("Shutting down admin panel...")
+	logger.Info.Println("Shutting down admin panel...")
 }

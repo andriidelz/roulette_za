@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
 	"roulette/internal/data"
+	"roulette/internal/logger"
 	"roulette/internal/messaging"
 	"roulette/internal/models"
 	"roulette/internal/utils"
@@ -200,7 +200,7 @@ func (s *ServiceImpl) CreateNotificationTask(templateID uint, targetType string,
 									// Получаем данные о пользователе
 									user, err := s.repo.GetUserByID(userID)
 									if err != nil {
-										log.Printf("Error getting user %d: %v", userID, err)
+										logger.Error.Printf("Error getting user %d: %v", userID, err)
 										continue
 									}
 
@@ -222,7 +222,7 @@ func (s *ServiceImpl) CreateNotificationTask(templateID uint, targetType string,
 									if userMacros != nil {
 										macrosJSON, err = json.Marshal(userMacros)
 										if err != nil {
-											log.Printf("Error marshaling macros: %v", err)
+											logger.Error.Printf("Error marshaling macros: %v", err)
 											macrosJSON = []byte("{}")
 										}
 									} else {
@@ -242,14 +242,14 @@ func (s *ServiceImpl) CreateNotificationTask(templateID uint, targetType string,
 
 									// Добавляем получателя в задачу
 									if err := s.repo.CreateNotificationRecipient(&recipient); err != nil {
-										log.Printf("Error creating recipient for task %d: %v", task.ID, err)
+										logger.Error.Printf("Error creating recipient for task %d: %v", task.ID, err)
 										continue
 									}
 
 									// Увеличиваем счетчик получателей в задаче
 									task.TotalUsers++
 									if err := s.repo.UpdateNotificationTask(&task); err != nil {
-										log.Printf("Error updating task %d: %v", task.ID, err)
+										logger.Error.Printf("Error updating task %d: %v", task.ID, err)
 									}
 
 									// Возвращаем существующую задачу
@@ -293,7 +293,7 @@ func (s *ServiceImpl) CreateNotificationTask(templateID uint, targetType string,
 		return nil, err
 	}
 
-	log.Printf("Создана задача уведомлений %d, найдено %d получателей", task.ID, len(users))
+	logger.Info.Printf("Создана задача уведомлений %d, найдено %d получателей", task.ID, len(users))
 
 	// Создаем получателей
 	recipients := make([]models.NotificationRecipient, 0, len(users))
@@ -316,7 +316,7 @@ func (s *ServiceImpl) CreateNotificationTask(templateID uint, targetType string,
 		if userMacros != nil {
 			macrosData, err := json.Marshal(userMacros)
 			if err != nil {
-				log.Printf("Error marshaling macros: %v", err)
+				logger.Error.Printf("Error marshaling macros: %v", err)
 				macrosJSON = "{}"
 			} else {
 				macrosJSON = string(macrosData)
@@ -339,20 +339,20 @@ func (s *ServiceImpl) CreateNotificationTask(templateID uint, targetType string,
 
 	// Сохраняем получателей пакетно
 	if err := s.repo.CreateNotificationRecipientsBatch(recipients); err != nil {
-		log.Printf("Ошибка при создании получателей для задачи %d: %v", task.ID, err)
+		logger.Error.Printf("Ошибка при создании получателей для задачи %d: %v", task.ID, err)
 		return nil, err
 	}
 
-	log.Printf("Создано %d получателей для задачи %d", len(recipients), task.ID)
+	logger.Info.Printf("Создано %d получателей для задачи %d", len(recipients), task.ID)
 
 	// Проверяем, созданы ли получатели
 	_, total, err := s.repo.GetNotificationRecipients(task.ID, "", 1, 1)
 	if err != nil {
-		log.Printf("Ошибка при проверке получателей для задачи %d: %v", task.ID, err)
+		logger.Error.Printf("Ошибка при проверке получателей для задачи %d: %v", task.ID, err)
 	} else if total == 0 {
-		log.Printf("ВНИМАНИЕ: Для задачи %d не создано ни одного получателя!", task.ID)
+		logger.Warning.Printf("ВНИМАНИЕ: Для задачи %d не создано ни одного получателя!", task.ID)
 	} else {
-		log.Printf("Задача %d: создано %d получателей", task.ID, total)
+		logger.Info.Printf("Задача %d: создано %d получателей", task.ID, total)
 	}
 
 	return task, nil
@@ -363,20 +363,19 @@ func (s *ServiceImpl) SendNotifications(taskID uint) error {
 	// Получаем задачу
 	task, err := s.repo.GetNotificationTaskByID(taskID)
 	if err != nil {
-		log.Printf("Ошибка при получении задачи %d: %v", taskID, err)
+		logger.Error.Printf("Error getting task %d: %v", taskID, err)
 		return err
 	}
 
 	// Проверяем, что задача в статусе pending
 	if task.Status != "pending" {
-		log.Printf("Задача %d не может быть запущена, статус: %s", taskID, task.Status)
-		return fmt.Errorf("задача уже выполняется или завершена")
+		return fmt.Errorf("task already in progress or completed")
 	}
 
 	// Получаем шаблон
 	template, err := s.repo.GetNotificationTemplateByID(task.TemplateID)
 	if err != nil {
-		log.Printf("Ошибка при получении шаблона %d для задачи %d: %v", task.TemplateID, taskID, err)
+		logger.Error.Printf("Error getting template %d for task %d: %v", task.TemplateID, taskID, err)
 		return err
 	}
 
@@ -386,15 +385,14 @@ func (s *ServiceImpl) SendNotifications(taskID uint) error {
 	task.StartedAt = &now
 	task.UpdatedAt = now
 	if err := s.repo.UpdateNotificationTask(task); err != nil {
-		log.Printf("Ошибка при обновлении статуса задачи %d: %v", taskID, err)
+		logger.Error.Printf("Error updating task %d status: %v", taskID, err)
 		return err
 	}
 
-	log.Printf("Начинаем обработку задачи уведомлений %d (шаблон: %s)", taskID, template.Name)
+	logger.Info.Printf("Starting notification task %d (template: %s)", taskID, template.Name)
 
 	// Запускаем отправку в фоновом режиме
 	go func() {
-		// Получаем получателей для задачи
 		page := 1
 		pageSize := 100
 		sentCount := 0
@@ -405,45 +403,29 @@ func (s *ServiceImpl) SendNotifications(taskID uint) error {
 		// Получаем общее количество получателей
 		_, total, err := s.repo.GetNotificationRecipients(taskID, "", 1, 1)
 		if err != nil {
-			log.Printf("Ошибка при получении общего количества получателей для задачи %d: %v", taskID, err)
+			logger.Error.Printf("Error getting total recipients for task %d: %v", taskID, err)
 		} else {
-			log.Printf("Задача %d: найдено %d получателей", taskID, total)
+			logger.Info.Printf("Task %d: found %d recipients", taskID, total)
 		}
 
 		// Основной цикл обработки получателей
 		for {
 			recipients, _, err := s.repo.GetNotificationRecipients(taskID, "pending", page, pageSize)
 			if err != nil {
-				log.Printf("Ошибка при получении получателей для задачи %d: %v", taskID, err)
+				logger.Error.Printf("Error getting recipients for task %d: %v", taskID, err)
 				break
 			}
 
-			log.Printf("Задача %d: получено %d получателей на странице %d", taskID, len(recipients), page)
-
 			if len(recipients) == 0 {
-				log.Printf("Задача %d: больше нет получателей для обработки", taskID)
 				break
 			}
 
 			for _, recipient := range recipients {
 				// Проверяем время отправки
 				if recipient.ScheduledAt != nil && recipient.ScheduledAt.After(time.Now()) {
-					log.Printf("Задача %d: пропускаем получателя %d, время отправки еще не наступило: %s",
-						taskID, recipient.ID, recipient.ScheduledAt.Format("2006-01-02 15:04:05"))
 					hasDelayedRecipients = true
 					continue
 				}
-
-				// Получаем пользователя для более информативного логирования
-				user, err := s.repo.GetUserByID(recipient.UserID)
-				if err != nil {
-					log.Printf("Задача %d: ошибка при получении пользователя %d: %v",
-						taskID, recipient.UserID, err)
-					continue
-				}
-
-				log.Printf("Задача %d: отправка уведомления пользователю %d (TelegramID: %d)",
-					taskID, recipient.UserID, user.TelegramID)
 
 				// Отправляем уведомление пользователю
 				err = s.sendNotificationToUser(recipient.UserID, template, task)
@@ -452,32 +434,23 @@ func (s *ServiceImpl) SendNotifications(taskID uint) error {
 				recipient.UpdatedAt = nowSent
 
 				if err != nil {
-					// Обновляем статус и сообщение об ошибке
 					recipient.Status = "failed"
 					recipient.ErrorMessage = err.Error()
-					log.Printf("Задача %d: ошибка при отправке уведомления пользователю %d: %v",
-						taskID, recipient.UserID, err)
+					logger.Error.Printf("Task %d: failed to send to user %d: %v", taskID, recipient.UserID, err)
 				} else {
-					// Обновляем статус
 					recipient.Status = "sent"
 					sentCount++
-					log.Printf("Задача %d: успешно отправлено уведомление пользователю %d (TelegramID: %d)",
-						taskID, recipient.UserID, user.TelegramID)
 				}
 
 				// Сохраняем обновления получателя
 				if err := s.repo.UpdateNotificationRecipient(&recipient); err != nil {
-					log.Printf("Задача %d: ошибка при обновлении получателя %d: %v",
-						taskID, recipient.ID, err)
+					logger.Error.Printf("Task %d: error updating recipient %d: %v", taskID, recipient.ID, err)
 				}
 			}
 
 			// Обновляем прогресс задачи
 			if err := s.repo.UpdateTaskProgress(taskID, sentCount, deliveredCount, readCount); err != nil {
-				log.Printf("Задача %d: ошибка при обновлении прогресса: %v", taskID, err)
-			} else {
-				log.Printf("Задача %d: прогресс обновлен: отправлено %d, доставлено %d, прочитано %d",
-					taskID, sentCount, deliveredCount, readCount)
+				logger.Error.Printf("Task %d: error updating progress: %v", taskID, err)
 			}
 
 			page++
@@ -488,7 +461,7 @@ func (s *ServiceImpl) SendNotifications(taskID uint) error {
 			// Если есть отложенные получатели, возвращаем задачу в статус "pending"
 			pendingTask, err := s.repo.GetNotificationTaskByID(taskID)
 			if err != nil {
-				log.Printf("Задача %d: ошибка при получении задачи для возврата в статус pending: %v", taskID, err)
+				logger.Error.Printf("Task %d: error getting task for pending status: %v", taskID, err)
 				return
 			}
 
@@ -499,15 +472,15 @@ func (s *ServiceImpl) SendNotifications(taskID uint) error {
 			pendingTask.UpdatedAt = time.Now()
 
 			if err := s.repo.UpdateNotificationTask(pendingTask); err != nil {
-				log.Printf("Задача %d: ошибка при возврате задачи в статус pending: %v", taskID, err)
+				logger.Error.Printf("Task %d: error returning task to pending: %v", taskID, err)
 			} else {
-				log.Printf("Задача %d: возвращена в статус pending из-за наличия отложенных получателей", taskID)
+				logger.Info.Printf("Task %d: returned to pending status (delayed recipients)", taskID)
 			}
 		} else {
 			// Если отложенных получателей нет, помечаем задачу как завершенную
 			completedTask, err := s.repo.GetNotificationTaskByID(taskID)
 			if err != nil {
-				log.Printf("Задача %d: ошибка при получении задачи для завершения: %v", taskID, err)
+				logger.Error.Printf("Task %d: error getting task for completion: %v", taskID, err)
 				return
 			}
 
@@ -520,9 +493,9 @@ func (s *ServiceImpl) SendNotifications(taskID uint) error {
 			completedTask.UpdatedAt = completedNow
 
 			if err := s.repo.UpdateNotificationTask(completedTask); err != nil {
-				log.Printf("Задача %d: ошибка при завершении задачи: %v", taskID, err)
+				logger.Error.Printf("Task %d: error completing task: %v", taskID, err)
 			} else {
-				log.Printf("Задача %d завершена. Отправлено уведомлений: %d", taskID, sentCount)
+				logger.Info.Printf("Task %d completed: %d notifications sent", taskID, sentCount)
 			}
 		}
 	}()
@@ -558,7 +531,6 @@ func (s *ServiceImpl) DeleteNotificationTask(id uint) error {
 		return fmt.Errorf("ошибка при удалении задачи: %w", err)
 	}
 
-	log.Printf("Задача уведомлений %d успешно удалена", id)
 	return nil
 }
 
@@ -674,7 +646,7 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 	// Получаем получателя для этого пользователя в рамках данной задачи
 	recipients, _, err := s.repo.GetNotificationRecipients(task.ID, "", 1, 1000)
 	if err != nil {
-		log.Printf("Error getting recipients for task %d: %v", task.ID, err)
+		logger.Error.Printf("Error getting recipients for task %d: %v", task.ID, err)
 		// Продолжаем, используя пустые параметры
 	}
 
@@ -751,7 +723,7 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 		// Парсим макросы из JSON
 		err := json.Unmarshal([]byte(recipient.Macros), &params)
 		if err != nil {
-			log.Printf("Error parsing recipient macros: %v", err)
+			logger.Error.Printf("Error parsing recipient macros: %v", err)
 		}
 	}
 
@@ -763,7 +735,7 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 		if _, exists := params["amount"]; !exists {
 			// Тут можно добавить логику получения суммы из истории транзакций
 			params["amount"] = "N/A" // Значение по умолчанию
-			log.Printf("Warning: 'amount' parameter missing for balance_updated notification for user %d", userID)
+			logger.Warning.Printf("Warning: 'amount' parameter missing for balance_updated notification for user %d", userID)
 		}
 		if _, exists := params["balance"]; !exists {
 			params["balance"] = user.Balance
@@ -781,7 +753,7 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 				params["position"] = rating.Position
 				params["points"] = rating.Points
 			} else {
-				log.Printf("Warning: Could not get rating for user %d: %v", user.ID, err)
+				logger.Warning.Printf("Warning: Could not get rating for user %d: %v", user.ID, err)
 			}
 		}
 	}
@@ -805,7 +777,7 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 
 	// Сохраняем уведомление в историю
 	if err := s.repo.CreateNotification(notification); err != nil {
-		log.Printf("Error saving notification to history: %v", err)
+		logger.Error.Printf("Error saving notification to history: %v", err)
 		// Продолжаем, так как это не критическая ошибка
 	}
 
@@ -825,7 +797,7 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 	// Подключаемся к RabbitMQ
 	rmq, err := messaging.NewRabbitMQ(s.getRabbitMQURL(), "roulette_events", "notification_service")
 	if err != nil {
-		log.Printf("Error connecting to RabbitMQ: %v", err)
+		logger.Error.Printf("Error connecting to RabbitMQ: %v", err)
 		return err
 	}
 	defer rmq.Close()
@@ -836,18 +808,18 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 
 	// Публикуем карту данных напрямую через RabbitMQ
 	if err := rmq.Publish(ctx, RoutingUserNotification, EventUserNotification, 0, notificationDataMap, messaging.PriorityLow); err != nil {
-		log.Printf("Error publishing notification to RabbitMQ: %v", err)
+		logger.Error.Printf("Error publishing notification to RabbitMQ: %v", err)
 		return err
 	}
 
 	// После успешной отправки обновляем статус уведомления
 	if err := s.repo.MarkNotificationAsSent(notification.ID); err != nil {
-		log.Printf("Error marking notification as sent: %v", err)
+		logger.Error.Printf("Error marking notification as sent: %v", err)
 		// Не критическая ошибка, уведомление уже отправлено
 	}
 
 	// Если все прошло успешно, логируем информацию
-	log.Printf("Notification sent for user %d (%d): %s - %s",
+	logger.Info.Printf("Notification sent for user %d (%d): %s - %s",
 		user.ID, user.TelegramID, title, message)
 
 	return nil
@@ -890,7 +862,7 @@ func (s *ServiceImpl) CheckTopRatingEntries() error {
 		// Проверяем, было ли уже отправлено уведомление сегодня
 		notificationSent, err := s.repo.CheckNotificationSent(rating.UserID, "top_rating_entered", time.Now().Format("2006-01-02"))
 		if err != nil {
-			log.Printf("Error checking notification status for user %d: %v", rating.UserID, err)
+			logger.Error.Printf("Error checking notification status for user %d: %v", rating.UserID, err)
 			continue
 		}
 
@@ -901,12 +873,12 @@ func (s *ServiceImpl) CheckTopRatingEntries() error {
 
 		// Отправляем уведомление о вхождении в топ рейтинга
 		if err := s.HandleTopRatingEntry(rating.UserID, rating.Position); err != nil {
-			log.Printf("Error sending top rating notification to user %d: %v", rating.UserID, err)
+			logger.Error.Printf("Error sending top rating notification to user %d: %v", rating.UserID, err)
 			// Продолжаем обработку других пользователей
 		} else {
 			// Сохраняем информацию о том, что уведомление было отправлено
 			if err := s.repo.SaveNotificationSent(rating.UserID, "top_rating_entered", time.Now().Format("2006-01-02")); err != nil {
-				log.Printf("Error saving notification status for user %d: %v", rating.UserID, err)
+				logger.Error.Printf("Error saving notification status for user %d: %v", rating.UserID, err)
 			}
 		}
 	}
@@ -919,7 +891,7 @@ func (s *ServiceImpl) getGlobalMacros() map[string]interface{} {
 	// Получаем настройки системы
 	settings, err := s.GetSettings()
 	if err != nil {
-		log.Printf("Error getting settings for global macros: %v", err)
+		logger.Error.Printf("Error getting settings for global macros: %v", err)
 		return map[string]interface{}{}
 	}
 

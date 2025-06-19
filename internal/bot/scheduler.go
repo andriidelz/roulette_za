@@ -1,7 +1,7 @@
 package bot
 
 import (
-	"log"
+	"roulette/internal/logger"
 	"time"
 )
 
@@ -24,7 +24,7 @@ func (b *Bot) StartRatingScheduler() {
 		// При запуске проверим, существует ли рейтинг для текущей недели
 		_, err := b.service.GetPrizeFund(currentYear, currentWeek)
 		if err != nil {
-			log.Printf("Error checking current week's prize fund: %v", err)
+			logger.Error.Printf("Error checking current week's prize fund: %v", err)
 		}
 
 		// Устанавливаем последнюю обработанную неделю
@@ -35,9 +35,9 @@ func (b *Bot) StartRatingScheduler() {
 			case <-ratingTicker.C:
 				// Обновляем позиции в рейтинге
 				if err := b.service.RefreshAllRatings(); err != nil {
-					log.Printf("Error refreshing ratings: %v", err)
+					logger.Error.Printf("Error refreshing ratings: %v", err)
 				} else {
-					log.Println("Successfully refreshed ratings")
+					logger.Info.Println("Successfully refreshed ratings")
 				}
 
 			case <-weeklyResetTicker.C:
@@ -47,13 +47,13 @@ func (b *Bot) StartRatingScheduler() {
 
 				// Если текущая неделя отличается от последней обработанной
 				if year != lastProcessedYear || week != lastProcessedWeek {
-					log.Printf("New week detected: %d/%d (previous: %d/%d)", year, week, lastProcessedYear, lastProcessedWeek)
+					logger.Info.Printf("New week detected: %d/%d (previous: %d/%d)", year, week, lastProcessedYear, lastProcessedWeek)
 
 					// Обновляем еженедельные рейтинги
 					if err := b.service.UpdateWeeklyRatings(); err != nil {
-						log.Printf("Error updating weekly ratings: %v", err)
+						logger.Error.Printf("Error updating weekly ratings: %v", err)
 					} else {
-						log.Println("Successfully updated weekly ratings")
+						logger.Info.Println("Successfully updated weekly ratings")
 					}
 
 					// Распределяем призы для предыдущей недели
@@ -62,9 +62,9 @@ func (b *Bot) StartRatingScheduler() {
 					year, week := yesterday.ISOWeek()
 
 					if err := b.service.DistributePrizes(year, week); err != nil {
-						log.Printf("Error distributing prizes: %v", err)
+						logger.Error.Printf("Error distributing prizes: %v", err)
 					} else {
-						log.Println("Successfully distributed prizes")
+						logger.Info.Println("Successfully distributed prizes")
 					}
 
 					// Обновляем последнюю обработанную неделю
@@ -77,7 +77,7 @@ func (b *Bot) StartRatingScheduler() {
 					// Раз в неделю проверяем актуальность рейтинга для текущей недели
 					_, err := b.service.GetPrizeFund(year, week)
 					if err != nil {
-						log.Printf("Error checking prize fund for current week on Monday: %v", err)
+						logger.Error.Printf("Error checking prize fund for current week on Monday: %v", err)
 					}
 				}
 			}
