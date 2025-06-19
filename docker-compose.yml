@@ -1,3 +1,16 @@
+# Default logging configuration for all services
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+x-infrastructure-logging: &infrastructure-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -18,6 +31,7 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+    logging: *infrastructure-logging
 
   pgadmin:
     image: dpage/pgadmin4
@@ -39,6 +53,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    logging:
+      driver: "none"
 
   rabbitmq:
       image: rabbitmq:3-management
@@ -57,6 +73,7 @@ services:
         timeout: 5s
         retries: 10
         start_period: 10s
+      logging: *infrastructure-logging
 
   bot:
     build:
@@ -79,6 +96,7 @@ services:
       rabbitmq:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
   rotator:
     build:
@@ -95,6 +113,7 @@ services:
       rabbitmq:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
   admin:
     build:
@@ -119,3 +138,5 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
+    
