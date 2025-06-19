@@ -1,8 +1,8 @@
 package service
 
 import (
-	"log"
 	"roulette/internal/data"
+	"roulette/internal/logger"
 	"roulette/internal/models"
 	"time"
 )
@@ -50,7 +50,7 @@ func (s *AutoNotificationService) HandleBalanceUpdated(userID uint, amount float
 	}
 
 	if balanceTemplate == nil {
-		log.Printf("No active template found for 'balance_updated' event")
+		logger.Info.Printf("No active template found for 'balance_updated' event")
 		return nil
 	}
 
@@ -64,7 +64,7 @@ func (s *AutoNotificationService) HandleBalanceUpdated(userID uint, amount float
 
 	_, err = s.service.CreateNotificationTask(balanceTemplate.ID, "custom", targetParams, nil, macrosForUsers)
 	if err != nil {
-		log.Printf("Error creating balance update notification task for user %d: %v", userID, err)
+		logger.Error.Printf("Error creating balance update notification task for user %d: %v", userID, err)
 		return err
 	}
 
@@ -86,7 +86,7 @@ func (s *AutoNotificationService) HandleTopRatingEntry(userID uint, position int
 	}
 
 	if ratingTemplate == nil {
-		log.Printf("No active template found for 'top_rating_entered' event")
+		logger.Info.Printf("No active template found for 'top_rating_entered' event")
 		return nil
 	}
 
@@ -99,14 +99,14 @@ func (s *AutoNotificationService) HandleTopRatingEntry(userID uint, position int
 	year, week := time.Now().ISOWeek()
 	userRating, err := s.service.GetRepo().GetUserWeeklyRating(userID, year, week)
 	if err != nil {
-		log.Printf("Error getting user rating: %v", err)
+		logger.Error.Printf("Error getting user rating: %v", err)
 		// Продолжаем, используя только позицию
 	}
 
 	// Получаем данные о призовом фонде
 	prizeFund, err := s.service.GetRepo().GetPrizeFund(year, week)
 	if err != nil {
-		log.Printf("Error getting prize fund: %v", err)
+		logger.Error.Printf("Error getting prize fund: %v", err)
 		// Продолжаем без данных о фонде
 	}
 
@@ -137,7 +137,7 @@ func (s *AutoNotificationService) HandleTopRatingEntry(userID uint, position int
 
 	_, err = s.service.CreateNotificationTask(ratingTemplate.ID, "custom", targetParams, &scheduledTime, macrosForUsers)
 	if err != nil {
-		log.Printf("Ошибка при создании задачи уведомления: %v", err)
+		logger.Error.Printf("Ошибка при создании задачи уведомления: %v", err)
 		return err
 	}
 

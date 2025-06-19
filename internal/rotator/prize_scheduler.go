@@ -1,10 +1,10 @@
 package rotator
 
 import (
-	"log"
 	"strconv"
 	"time"
 
+	"roulette/internal/logger"
 	"roulette/internal/service"
 )
 
@@ -30,7 +30,7 @@ func NewPrizeScheduler(service service.Service) *PrizeScheduler {
 // Start запускает планировщик раздачи призов
 func (p *PrizeScheduler) Start() {
 	if p.isRunning {
-		log.Println("Prize scheduler is already running")
+		logger.Info.Println("Prize scheduler is already running")
 		return
 	}
 
@@ -38,7 +38,7 @@ func (p *PrizeScheduler) Start() {
 	p.ticker = time.NewTicker(1 * time.Minute)
 	p.isRunning = true
 
-	log.Println("Starting prize distribution scheduler")
+	logger.Info.Println("Starting prize distribution scheduler")
 
 	go func() {
 		for {
@@ -47,7 +47,7 @@ func (p *PrizeScheduler) Start() {
 				p.checkAndDistributePrizes()
 			case <-p.stopChan:
 				p.ticker.Stop()
-				log.Println("Prize scheduler stopped")
+				logger.Info.Println("Prize scheduler stopped")
 				return
 			}
 		}
@@ -72,7 +72,7 @@ func (p *PrizeScheduler) checkAndDistributePrizes() {
 	// Получаем из настроек день недели для раздачи призов (1-7, где 1 - Понедельник)
 	settings, err := p.service.GetSettings()
 	if err != nil {
-		log.Printf("Error getting settings for prize distribution: %v", err)
+		logger.Error.Printf("Error getting settings for prize distribution: %v", err)
 		return
 	}
 
@@ -103,7 +103,7 @@ func (p *PrizeScheduler) checkAndDistributePrizes() {
 	// Парсим время
 	prizeTime, err := time.Parse("15:04", prizeTimeStr)
 	if err != nil {
-		log.Printf("Error parsing prize distribution time: %v", err)
+		logger.Error.Printf("Error parsing prize distribution time: %v", err)
 		return
 	}
 
@@ -119,7 +119,7 @@ func (p *PrizeScheduler) checkAndDistributePrizes() {
 		targetTime := time.Date(now.Year(), now.Month(), now.Day(), prizeHour, prizeMinute, 0, 0, time.UTC)
 		if now.Sub(targetTime).Minutes() <= 5 {
 			// Запускаем процесс раздачи призов
-			log.Println("Starting prize distribution process...")
+			logger.Info.Println("Starting prize distribution process...")
 			go p.distributePrizes()
 			p.lastRun = now
 		}
@@ -131,7 +131,7 @@ func (p *PrizeScheduler) distributePrizes() {
 	// Получаем настройки для определения дня раздачи призов
 	settings, err := p.service.GetSettings()
 	if err != nil {
-		log.Printf("Error getting settings for prize distribution: %v", err)
+		logger.Error.Printf("Error getting settings for prize distribution: %v", err)
 		return
 	}
 
@@ -178,8 +178,8 @@ func (p *PrizeScheduler) distributePrizes() {
 	// Распределяем призы для найденной недели
 	err = p.service.DistributePrizes(year, week)
 	if err != nil {
-		log.Printf("Error distributing prizes for week %d/%d: %v", year, week, err)
+		logger.Error.Printf("Error distributing prizes for week %d/%d: %v", year, week, err)
 		return
 	}
-	log.Printf("Prize distribution for week %d/%d completed successfully", year, week)
+	logger.Info.Printf("Prize distribution for week %d/%d completed successfully", year, week)
 }

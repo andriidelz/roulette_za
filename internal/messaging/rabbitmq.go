@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"roulette/internal/logger"
 	"sync"
 	"time"
 
@@ -120,7 +120,7 @@ func (r *RabbitMQ) Connect() error {
 	}
 
 	r.isConnected = true
-	log.Printf("[%s] Connected to RabbitMQ and set up exchange '%s'", r.componentName, r.exchangeName)
+	logger.Info.Printf("[%s] Connected to RabbitMQ and set up exchange '%s'", r.componentName, r.exchangeName)
 	return nil
 }
 
@@ -201,7 +201,7 @@ func (r *RabbitMQ) Publish(ctx context.Context, routingKey string, msgType strin
 		return fmt.Errorf("error publishing message: %w", err)
 	}
 
-	log.Printf("[%s] Published message: type=%s, round_id=%d, routing_key=%s, seq=%d, priority=%d",
+	logger.Info.Printf("[%s] Published message: type=%s, round_id=%d, routing_key=%s, seq=%d, priority=%d",
 		r.componentName, msgType, roundID, routingKey, seq, priority)
 	return nil
 }
@@ -290,7 +290,7 @@ func (r *RabbitMQ) SubscribeToQueue(queueName string, routingKeys []string, hand
 		if err != nil {
 			return fmt.Errorf("failed to bind queue to key '%s': %w", key, err)
 		}
-		log.Printf("[%s] Bound queue '%s' to exchange '%s' with routing key '%s'",
+		logger.Info.Printf("[%s] Bound queue '%s' to exchange '%s' with routing key '%s'",
 			r.componentName, queue.Name, r.exchangeName, key)
 	}
 
@@ -321,7 +321,7 @@ func (r *RabbitMQ) SubscribeToQueue(queueName string, routingKeys []string, hand
 	// Запускаем обработчик сообщений в отдельной горутине
 	go r.messageConsumer(msgs, handler, queue.Name)
 
-	log.Printf("[%s] Subscribed to queue '%s' with %d routing keys", r.componentName, queueName, len(routingKeys))
+	logger.Info.Printf("[%s] Subscribed to queue '%s' with %d routing keys", r.componentName, queueName, len(routingKeys))
 	return nil
 }
 
@@ -331,17 +331,17 @@ func (r *RabbitMQ) messageConsumer(msgs <-chan amqp.Delivery, handler func(messa
 		// Декодируем сообщение
 		var message RouletteMessage
 		if err := json.Unmarshal(msg.Body, &message); err != nil {
-			log.Printf("[%s] Error decoding message: %v", r.componentName, err)
+			logger.Error.Printf("[%s] Error decoding message: %v", r.componentName, err)
 			msg.Nack(false, true) // отказ от сообщения с повторной доставкой
 			continue
 		}
 
-		log.Printf("[%s] Received message: type=%s, round_id=%d, routing_key=%s, seq=%d, priority=%d from %s",
+		logger.Info.Printf("[%s] Received message: type=%s, round_id=%d, routing_key=%s, seq=%d, priority=%d from %s",
 			r.componentName, message.Type, message.RoundID, msg.RoutingKey, message.Sequence, msg.Priority, message.SourceComponent)
 
 		// Обрабатываем сообщение через предоставленный обработчик
 		if err := handler(message); err != nil {
-			log.Printf("[%s] Error handling message: %v", r.componentName, err)
+			logger.Error.Printf("[%s] Error handling message: %v", r.componentName, err)
 			// При ошибке обработки не подтверждаем получение, чтобы сообщение было повторно доставлено
 			msg.Nack(false, true)
 			continue
@@ -351,7 +351,7 @@ func (r *RabbitMQ) messageConsumer(msgs <-chan amqp.Delivery, handler func(messa
 		msg.Ack(false)
 	}
 
-	log.Printf("[%s] Subscription to queue '%s' was closed", r.componentName, queueName)
+	logger.Info.Printf("[%s] Subscription to queue '%s' was closed", r.componentName, queueName)
 }
 
 // reconnectLoop проверяет состояние соединения и пытается переподключиться при разрыве
@@ -365,19 +365,19 @@ func (r *RabbitMQ) reconnectLoop() {
 		r.mu.Unlock()
 
 		if needsReconnect {
-			log.Printf("[%s] Connection lost, attempting to reconnect...", r.componentName)
+			logger.Warning.Printf("[%s] Connection lost, attempting to reconnect...", r.componentName)
 			for i := 0; i < 5; i++ { // Пробуем переподключиться 5 раз
 				if err := r.Close(); err != nil {
-					log.Printf("[%s] Error closing connection: %v", r.componentName, err)
+					logger.Error.Printf("[%s] Error closing connection: %v", r.componentName, err)
 				}
 
 				if err := r.Connect(); err != nil {
-					log.Printf("[%s] Reconnect attempt %d failed: %v", r.componentName, i+1, err)
+					logger.Error.Printf("[%s] Reconnect attempt %d failed: %v", r.componentName, i+1, err)
 					time.Sleep(2 * time.Second) // Ждем перед следующей попыткой
 					continue
 				}
 
-				log.Printf("[%s] Successfully reconnected", r.componentName)
+				logger.Info.Printf("[%s] Successfully reconnected", r.componentName)
 				break
 			}
 		}

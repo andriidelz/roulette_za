@@ -2,8 +2,8 @@ package admin
 
 import (
 	"fmt"
-	"log"
 	"net/http"
+	"roulette/internal/logger"
 	"strconv"
 	"time"
 
@@ -45,7 +45,7 @@ func (a *AdminPanel) settingsPage(c *gin.Context) {
 // saveSettings обработчик для сохранения настроек
 func (a *AdminPanel) saveSettings(c *gin.Context) {
 	if err := c.Request.ParseForm(); err != nil {
-		log.Printf("Ошибка разбора формы: %v", err)
+		logger.Error.Printf("Ошибка разбора формы: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка разбора формы: " + err.Error()})
 		return
 	}
@@ -60,7 +60,7 @@ func (a *AdminPanel) saveSettings(c *gin.Context) {
 	if len(formData) == 0 {
 		// Проверим сырые данные запроса
 		bodyBytes, _ := c.GetRawData()
-		log.Printf("Сырые данные запроса: %s", string(bodyBytes))
+		logger.Info.Printf("Сырые данные запроса: %s", string(bodyBytes))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Форма не содержит данных"})
 		return
 	}
@@ -86,7 +86,7 @@ func (a *AdminPanel) saveSettings(c *gin.Context) {
 
 	// Сохраняем настройки
 	if err := a.service.SaveSettings(formData); err != nil {
-		log.Printf("Ошибка сохранения настроек: %v", err)
+		logger.Error.Printf("Ошибка сохранения настроек: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -95,7 +95,7 @@ func (a *AdminPanel) saveSettings(c *gin.Context) {
 	if prizeAmountChanged && topCountChanged {
 		// Напрямую обновляем текущий призовой фонд
 		if err := a.service.UpdateCurrentPrizeFund(newPrizeAmount, newTopCount); err != nil {
-			log.Printf("Ошибка прямого обновления призового фонда: %v", err)
+			logger.Error.Printf("Ошибка прямого обновления призового фонда: %v", err)
 			// Отправляем специальное сообщение об ошибке
 			c.JSON(http.StatusOK, gin.H{
 				"success": true,
@@ -103,17 +103,13 @@ func (a *AdminPanel) saveSettings(c *gin.Context) {
 			})
 			return
 		}
-
-		// Логируем успешное обновление
-		log.Printf("Настройки и призовой фонд успешно обновлены: сумма = %.2f, топ = %d",
-			newPrizeAmount, newTopCount)
 	} else if prizeAmountChanged {
 		// Получаем текущее количество призовых мест
 		year, week := time.Now().ISOWeek()
 		prizeFund, err := a.repo.GetPrizeFund(year, week)
 		if err == nil && !prizeFund.Processed {
 			if err := a.service.UpdateCurrentPrizeFund(newPrizeAmount, prizeFund.TopCount); err != nil {
-				log.Printf("Ошибка обновления суммы призового фонда: %v", err)
+				logger.Error.Printf("Ошибка обновления суммы призового фонда: %v", err)
 			}
 		}
 	} else if topCountChanged {
@@ -122,7 +118,7 @@ func (a *AdminPanel) saveSettings(c *gin.Context) {
 		prizeFund, err := a.repo.GetPrizeFund(year, week)
 		if err == nil && !prizeFund.Processed {
 			if err := a.service.UpdateCurrentPrizeFund(prizeFund.Amount, newTopCount); err != nil {
-				log.Printf("Ошибка обновления количества призовых мест: %v", err)
+				logger.Error.Printf("Ошибка обновления количества призовых мест: %v", err)
 			}
 		}
 	}

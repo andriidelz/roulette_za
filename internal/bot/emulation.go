@@ -2,7 +2,7 @@ package bot
 
 import (
 	"fmt"
-	"log"
+	"roulette/internal/logger"
 	"strconv"
 	"strings"
 
@@ -25,7 +25,7 @@ func (b *Bot) handleMyIDCommand(message *telego.Message) {
 	// Получаем информацию о пользователе из базы данных
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		log.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
 			Text: "Error getting user information.",
 		})

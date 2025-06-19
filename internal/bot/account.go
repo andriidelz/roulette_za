@@ -2,7 +2,7 @@ package bot
 
 import (
 	"fmt"
-	"log"
+	"roulette/internal/logger"
 	"roulette/internal/models"
 	"strconv"
 	"strings"
@@ -88,7 +88,7 @@ func (b *Bot) handleBalanceCommand(message *telego.Message) {
 	// Получаем информацию о пользователе для проверки баланса
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		log.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
 			Text: b.service.GetText("error_retrieving_balance", language),
 		})
@@ -168,7 +168,7 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 	// Получаем информацию о пользователе для проверки баланса
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		log.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
 			Text: b.service.GetText("error_retrieving_data", language),
 		})
@@ -249,7 +249,7 @@ func (b *Bot) handleInputWithdrawAmountCommand(message *telego.Message) {
 	// Получаем информацию о пользователе для проверки баланса
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		log.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
 			Text: b.service.GetText("error_retrieving_data", language),
 		})
@@ -345,7 +345,7 @@ func (b *Bot) handleInputWithdrawAmountCommand(message *telego.Message) {
 	b.stateManager.ClearState(user.ID)
 
 	if err := b.service.CreateWithdrawal(withdrawal); err != nil {
-		log.Printf("Error creating withdrawal request: %v", err)
+		logger.Error.Printf("Error creating withdrawal request: %v", err)
 		errorText := b.service.GetText("withdrawal_error", language)
 
 		b.SendMessage(message.Chat.ID, MessageOptions{
@@ -358,7 +358,7 @@ func (b *Bot) handleInputWithdrawAmountCommand(message *telego.Message) {
 	// Уменьшаем баланс пользователя
 	dbUser.Balance -= withdrawAmount // Уменьшаем баланс на введенную суму
 	if err := b.service.UpdateUser(dbUser); err != nil {
-		log.Printf("Error updating user balance: %v", err)
+		logger.Error.Printf("Error updating user balance: %v", err)
 	}
 
 	// Отправляем сообщение об успешном создании запроса
@@ -396,7 +396,7 @@ func (b *Bot) handleInputWithdrawWalletCommand(message *telego.Message) {
 	// Получаем информацию о пользователе
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		log.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
 			Text: b.service.GetText("error_retrieving_data", language),
 		})
@@ -435,7 +435,7 @@ func (b *Bot) handleInputWithdrawWalletCommand(message *telego.Message) {
 	// Обновляем адрес кошелька пользователя
 	dbUser.WalletAddress = walletAddress
 	if err := b.service.UpdateUser(dbUser); err != nil {
-		log.Printf("Error updating user wallet address: %v", err)
+		logger.Error.Printf("Error updating user wallet address: %v", err)
 	}
 
 	// Отправляем сообщение об успешном обновлении
@@ -479,7 +479,7 @@ func (b *Bot) handleRequestWithdrawCallback(query *telego.CallbackQuery) {
 		// Регистрация пользователя, если он не найден
 		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
 		if err != nil {
-			log.Printf("Error registering user: %v", err)
+			logger.Error.Printf("Error registering user: %v", err)
 			return
 		}
 	}
@@ -513,7 +513,7 @@ func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 	// Получаем информацию о пользователе
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		log.Printf("Error getting user for withdrawal: %v", err)
+		logger.Error.Printf("Error getting user for withdrawal: %v", err)
 		return
 	}
 
@@ -598,7 +598,7 @@ func (b *Bot) handleCheckAmountCallback(query *telego.CallbackQuery) {
 	// Получаем информацию о пользователе
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		log.Printf("Error getting user for withdrawal: %v", err)
+		logger.Error.Printf("Error getting user for withdrawal: %v", err)
 		return
 	}
 
@@ -654,7 +654,7 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 	// Получаем информацию о пользователе
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		log.Printf("Error getting user for withdrawal: %v", err)
+		logger.Error.Printf("Error getting user for withdrawal: %v", err)
 		return
 	}
 
@@ -705,7 +705,7 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 	}
 
 	if err := b.service.CreateWithdrawal(withdrawal); err != nil {
-		log.Printf("Error creating withdrawal request: %v", err)
+		logger.Error.Printf("Error creating withdrawal request: %v", err)
 		errorText := b.service.GetText("withdrawal_error", language)
 
 		if query.Message != nil {
@@ -720,7 +720,7 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 	// Уменьшаем баланс пользователя
 	dbUser.Balance = 0 // Обнуляем баланс, так как выводим всю сумму
 	if err := b.service.UpdateUser(dbUser); err != nil {
-		log.Printf("Error updating user balance: %v", err)
+		logger.Error.Printf("Error updating user balance: %v", err)
 	}
 
 	// Отправляем сообщение об успешном создании запроса

@@ -3,6 +3,7 @@ package rotator
 import (
 	"context"
 	"log"
+	"roulette/internal/logger"
 	"roulette/internal/messaging"
 	"roulette/internal/service"
 	"time"
@@ -47,21 +48,21 @@ func NewRotator(service service.Service, interval time.Duration, rabbitmqURL str
 
 // Start запускает процесс периодической смены раундов
 func (r *Rotator) Start() {
-	log.Printf("Starting hash rotator with interval: %s", r.interval)
+	logger.Info.Printf("Starting hash rotator with interval: %s", r.interval)
 
 	// Генерируем первый хеш сразу
 	newRound, err := r.service.StartNewRoundFromRotator()
 	if err != nil {
-		log.Printf("Error starting initial round: %v", err)
+		logger.Error.Printf("Error starting initial round: %v", err)
 	} else if newRound != nil {
-		log.Printf("Created initial round #%d", newRound.ID)
+		logger.Info.Printf("Created initial round #%d", newRound.ID)
 
 		// Отправляем сообщение о новом раунде через RabbitMQ с высоким приоритетом
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		if err := r.rabbitmq.PublishRoundStarted(ctx, newRound.ID, newRound); err != nil {
-			log.Printf("Error publishing round started message: %v", err)
+			logger.Error.Printf("Error publishing round started message: %v", err)
 		}
 	}
 
@@ -81,13 +82,13 @@ func (r *Rotator) Start() {
 	for {
 		select {
 		case <-r.ctx.Done():
-			log.Println("Hash rotator stopped")
+			logger.Info.Println("Hash rotator stopped")
 			return
 		default:
 			// Получаем текущий активный раунд
 			currentRound, err := r.service.GetCurrentRound()
 			if err != nil {
-				log.Printf("Error getting current round: %v", err)
+				logger.Error.Printf("Error getting current round: %v", err)
 				time.Sleep(1 * time.Second) // Короткая пауза перед повторной попыткой
 				continue
 			}
@@ -96,17 +97,17 @@ func (r *Rotator) Start() {
 				// Если активного раунда нет, создаем новый
 				newRound, err := r.service.StartNewRoundFromRotator()
 				if err != nil {
-					log.Printf("Error starting new round: %v", err)
+					logger.Error.Printf("Error starting new round: %v", err)
 					time.Sleep(1 * time.Second)
 					continue
 				}
 
-				log.Printf("Created new round #%d (no active round found)", newRound.ID)
+				logger.Info.Printf("Created new round #%d (no active round found)", newRound.ID)
 
 				// Отправляем сообщение о новом раунде через RabbitMQ
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				if err := r.rabbitmq.PublishRoundStarted(ctx, newRound.ID, newRound); err != nil {
-					log.Printf("Error publishing round started message: %v", err)
+					logger.Error.Printf("Error publishing round started message: %v", err)
 				}
 				cancel()
 
@@ -136,12 +137,12 @@ func (r *Rotator) Start() {
 
 			// Точное время окончания раунда - 15-я секунда
 			roundEndTime := time.Now()
-			log.Printf("Round #%d ended at exactly: %s", currentRoundID,
+			logger.Info.Printf("Round #%d ended at exactly: %s", currentRoundID,
 				roundEndTime.Format("15:04:05.000"))
 
 			// Завершаем текущий раунд (на 15 секунде)
 			if err := r.service.CompleteRound(currentRoundID); err != nil {
-				log.Printf("Error completing round #%d: %v", currentRoundID, err)
+				logger.Error.Printf("Error completing round #%d: %v", currentRoundID, err)
 				time.Sleep(1 * time.Second)
 				continue
 			}
@@ -152,7 +153,7 @@ func (r *Rotator) Start() {
 			// Получаем обновленные данные о завершенном раунде
 			completedRound, err := r.service.GetHashEntryByID(currentRoundID)
 			if err != nil {
-				log.Printf("Error getting completed round #%d: %v", currentRoundID, err)
+				logger.Error.Printf("Error getting completed round #%d: %v", currentRoundID, err)
 				time.Sleep(1 * time.Second)
 				continue
 			}
@@ -160,7 +161,7 @@ func (r *Rotator) Start() {
 			// Создаем структуру с результатами раунда для отправки
 			roundResult, err := r.service.GetRoundResult(currentRoundID)
 			if err != nil {
-				log.Printf("Error getting round result for #%d: %v", currentRoundID, err)
+				logger.Error.Printf("Error getting round result for #%d: %v", currentRoundID, err)
 			}
 
 			roundData := map[string]interface{}{
@@ -176,22 +177,13 @@ func (r *Rotator) Start() {
 			// Отправляем сообщение о завершении раунда через RabbitMQ с САМЫМ высоким приоритетом
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			if err := r.rabbitmq.PublishRoundCompleted(ctx, currentRoundID, roundData); err != nil {
-				log.Printf("Error publishing round completed message: %v", err)
+				logger.Error.Printf("Error publishing round completed message: %v", err)
 			}
 			cancel()
-
-			// Добавляем дополнительное логирование
-			log.Printf("Round #%d completed. Waiting exactly %v seconds for messaging to complete",
-				currentRoundID, messagingPeriod.Seconds())
 
 			// Ждем ровно 5 секунд - точное время для отправки всех уведомлений
 			// После этого сразу начинаем новый раунд (на 20-й секунде)
 			time.Sleep(messagingPeriod)
-
-			// Точное время окончания отправки сообщений - 20-я секунда
-			messageEndTime := time.Now()
-			log.Printf("Messaging period for round #%d ended at: %s (after exactly 5 seconds)",
-				currentRoundID, messageEndTime.Format("15:04:05.000"))
 
 			// Получаем текущий активный раунд перед созданием нового
 			// чтобы убедиться, что другой поток не создал его в промежутке
@@ -200,7 +192,7 @@ func (r *Rotator) Start() {
 				log.Println(err)
 			}
 			if currentCheck != nil && currentCheck.ID != currentRoundID {
-				log.Printf("New round #%d already created by another process. Skipping creation.", currentCheck.ID)
+				logger.Warning.Printf("New round #%d already created by another process. Skipping creation.", currentCheck.ID)
 				continue
 			}
 
@@ -208,25 +200,20 @@ func (r *Rotator) Start() {
 			// Это происходит сразу после 20-й секунды
 			newRound, err := r.service.StartNewRoundFromRotator()
 			if err != nil {
-				log.Printf("Error starting new round: %v", err)
+				logger.Error.Printf("Error starting new round: %v", err)
 				time.Sleep(1 * time.Second)
 				continue
 			}
 
 			// Точное время начала нового раунда - сразу после 20-й секунды
 			newRoundTime := time.Now()
-			log.Printf("Created new round #%d at: %s",
+			logger.Info.Printf("Created new round #%d at: %s",
 				newRound.ID, newRoundTime.Format("15:04:05.000"))
-
-			// Рассчитываем и выводим точное время цикла
-			cycleDuration := newRoundTime.Sub(roundEndTime)
-			log.Printf("Total cycle time from end of previous round to start of new round: %v",
-				cycleDuration)
 
 			// Отправляем сообщение о новом раунде через RabbitMQ
 			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 			if err := r.rabbitmq.PublishRoundStarted(ctx, newRound.ID, newRound); err != nil {
-				log.Printf("Error publishing round started message: %v", err)
+				logger.Error.Printf("Error publishing round started message: %v", err)
 			}
 			cancel()
 		}
@@ -235,7 +222,7 @@ func (r *Rotator) Start() {
 
 // Stop останавливает процесс генерации хешей
 func (r *Rotator) Stop() {
-	log.Println("Stopping hash rotator...")
+	logger.Info.Println("Stopping hash rotator...")
 	r.cancelFunc()
 
 	// Останавливаем планировщик призов, если он был инициализирован
@@ -246,7 +233,7 @@ func (r *Rotator) Stop() {
 	// Закрываем соединение с RabbitMQ
 	if r.rabbitmq != nil {
 		if err := r.rabbitmq.Close(); err != nil {
-			log.Printf("Error closing RabbitMQ connection: %v", err)
+			logger.Error.Printf("Error closing RabbitMQ connection: %v", err)
 		}
 	}
 }

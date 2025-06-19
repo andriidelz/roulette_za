@@ -2,8 +2,8 @@ package bot
 
 import (
 	"fmt"
-	"log"
 	"roulette/internal/data"
+	"roulette/internal/logger"
 
 	"github.com/mymmrac/telego"
 )
@@ -52,7 +52,7 @@ func (b *Bot) createSettingsKeyboard(language string, userID int64) *telego.Inli
 	// Получаем текущие данные пользователя
 	user, err := b.service.GetUser(userID)
 	if err != nil {
-		log.Printf("Error getting user for settings keyboard: %v", err)
+		logger.Error.Printf("Error getting user for settings keyboard: %v", err)
 		// Возвращаем клавиатуру без текущих значений в случае ошибки
 		return b.createBasicSettingsKeyboard(language)
 	}

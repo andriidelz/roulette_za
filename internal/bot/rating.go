@@ -2,7 +2,7 @@ package bot
 
 import (
 	"fmt"
-	"log"
+	"roulette/internal/logger"
 	"time"
 
 	"github.com/mymmrac/telego"
@@ -59,7 +59,7 @@ func (b *Bot) getWeeklyRating(telegramID int64) (string, string) {
 	// Получаем текущий недельный рейтинг (топ 100)
 	ratings, err := b.service.GetWeeklyTopRating(100)
 	if err != nil {
-		log.Printf("Error getting weekly rating: %v", err)
+		logger.Error.Printf("Error getting weekly rating: %v", err)
 		return b.service.GetText("rating_error", language), language
 	}
 
@@ -135,7 +135,7 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 	// Получаем позицию пользователя и его соседей в рейтинге
 	neighbors, position, err := b.service.GetUserRatingPosition(user.ID, 2)
 	if err != nil {
-		log.Printf("Error getting user position: %v", err)
+		logger.Error.Printf("Error getting user position: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
 			Text: b.service.GetText("rating_error", language),
 		})
@@ -159,7 +159,7 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 		// Получаем количество баллов, необходимое для входа в призовую зону
 		pointsNeeded, err := b.service.GetPointsNeededForUser(user.ID)
 		if err != nil {
-			log.Printf("Error getting points needed: %v", err)
+			logger.Error.Printf("Error getting points needed: %v", err)
 			pointsNeeded = 0
 		}
 

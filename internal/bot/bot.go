@@ -3,13 +3,13 @@ package bot
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"roulette/internal/config"
+	"roulette/internal/logger"
 	"roulette/internal/models"
 	"roulette/internal/service"
 	"roulette/internal/utils"
@@ -112,11 +112,11 @@ func (b *Bot) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to get bot info: %w", err)
 	}
-	log.Printf("Bot started: https://t.me/%s", me.Username)
+	logger.Info.Printf("Bot started: https://t.me/%s", me.Username)
 
 	// Настраиваем обработчик уведомлений
 	if err := b.setupNotificationHandler(); err != nil {
-		log.Printf("Warning: Failed to setup notification handler: %v", err)
+		logger.Warning.Printf("Warning: Failed to setup notification handler: %v", err)
 		// Продолжаем работу, так как это не критическая ошибка
 	}
 
@@ -164,7 +164,7 @@ func (b *Bot) Stop() {
 	b.gameHandler.Stop()
 
 	b.initialized = false
-	log.Println("Bot stopped")
+	logger.Info.Println("Bot stopped")
 }
 
 // processUpdates обрабатывает обновления от телеграма
@@ -194,7 +194,7 @@ func (b *Bot) handleNicknamePrompt(chatID int64, userID int64, language string) 
 	// Получаем пользователя
 	user, err := b.service.GetUser(userID)
 	if err != nil {
-		log.Printf("Error getting user for nickname prompt: %v", err)
+		logger.Error.Printf("Error getting user for nickname prompt: %v", err)
 		return
 	}
 
@@ -236,7 +236,7 @@ func (b *Bot) handleNicknamePrompt(chatID int64, userID int64, language string) 
 	})
 
 	if err != nil {
-		log.Printf("Error sending nickname prompt: %v", err)
+		logger.Error.Printf("Error sending nickname prompt: %v", err)
 	}
 }
 
@@ -246,7 +246,7 @@ func (b *Bot) checkChannelSubscription(userID int64, channelUsername string) (bo
 		channelUsername = "@" + channelUsername
 	}
 
-	log.Printf("Checking subscription for user %d to channel %s", userID, channelUsername)
+	logger.Info.Printf("Checking subscription for user %d to channel %s", userID, channelUsername)
 
 	// Получаем статус подписки пользователя
 	chatMember, err := b.bot.GetChatMember(&telego.GetChatMemberParams{
@@ -257,7 +257,7 @@ func (b *Bot) checkChannelSubscription(userID int64, channelUsername string) (bo
 	})
 
 	if err != nil {
-		log.Printf("Error checking subscription for user %d: %v", userID, err)
+		logger.Error.Printf("Error checking subscription for user %d: %v", userID, err)
 		return false, err
 	}
 
@@ -282,7 +282,7 @@ func (b *Bot) checkChannelSubscription(userID int64, channelUsername string) (bo
 		// Забанен в канале
 		return false, nil
 	default:
-		log.Printf("Unknown chat member type for user %d: %T", userID, member)
+		logger.Error.Printf("Unknown chat member type for user %d: %T", userID, member)
 		return false, nil
 	}
 }
@@ -291,7 +291,7 @@ func (b *Bot) checkChannelSubscription(userID int64, channelUsername string) (bo
 func (b *Bot) handlePrivacyCommand(message *telego.Message) {
 	dbUser, err := b.service.GetUser(message.From.ID)
 	if err != nil {
-		log.Printf("Error getting user for privacy policy: %v", err)
+		logger.Error.Printf("Error getting user for privacy policy: %v", err)
 		return
 	}
 
@@ -314,7 +314,7 @@ func (b *Bot) handlePrivacyCommand(message *telego.Message) {
 func (b *Bot) handleContactCommand(message *telego.Message) {
 	dbUser, err := b.service.GetUser(message.From.ID)
 	if err != nil {
-		log.Printf("Error getting user for contact: %v", err)
+		logger.Error.Printf("Error getting user for contact: %v", err)
 		return
 	}
 
@@ -372,7 +372,7 @@ func (b *Bot) handleReserveSubscriptionCheck(query *telego.CallbackQuery) {
 	// Проверяем подписку
 	isSubscribed, err := b.checkChannelSubscription(user.ID, ReserveChannelID)
 	if err != nil {
-		log.Printf("Error checking subscription: %v", err)
+		logger.Error.Printf("Error checking subscription: %v", err)
 		// В случае ошибки считаем, что пользователь не подписан
 		isSubscribed = false
 	}
@@ -417,7 +417,7 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 	// Получаем пользователя для определения языка
 	user, userErr := b.service.GetUser(userID)
 	if userErr != nil {
-		log.Printf("Error getting user %d: %v", userID, userErr)
+		logger.Error.Printf("Error getting user %d: %v", userID, userErr)
 		return
 	}
 
@@ -429,7 +429,7 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 	// Получаем доступное количество ставок
 	betsBalance, err := b.service.GetUserRemainingBets(userID)
 	if err != nil {
-		log.Printf("Error getting user remaining bets: %v", err)
+		logger.Error.Printf("Error getting user remaining bets: %v", err)
 		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 	}
 
@@ -456,7 +456,7 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 		} else {
 			// Общая ошибка ставки
 
-			log.Println("bet_error", err)
+			logger.Error.Println("bet_error", err)
 			errorText = b.service.GetText("bet_error", language)
 		}
 
@@ -501,7 +501,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		}
 		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, userSource, user.LanguageCode)
 		if err != nil {
-			log.Printf("Error registering user: %v", err)
+			logger.Error.Printf("Error registering user: %v", err)
 		}
 	}
 	if err == nil && dbUser.Banned {
@@ -686,7 +686,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			// Получаем доступное количество ставок
 			betsBalance, err := b.service.GetUserRemainingBets(user.ID)
 			if err != nil {
-				log.Printf("Error getting user remaining bets: %v", err)
+				logger.Error.Printf("Error getting user remaining bets: %v", err)
 				betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 			}
 
@@ -699,7 +699,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		// Получаем доступное количество ставок
 		betsBalance, err := b.service.GetUserRemainingBets(user.ID)
 		if err != nil {
-			log.Printf("Error getting user remaining bets: %v", err)
+			logger.Error.Printf("Error getting user remaining bets: %v", err)
 			betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 		}
 
@@ -792,7 +792,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Регистрация пользователя, если он не найден
 		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
 		if err != nil {
-			log.Printf("Error registering user: %v", err)
+			logger.Error.Printf("Error registering user: %v", err)
 			return
 		}
 	}
@@ -826,7 +826,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		pageStr := strings.TrimPrefix(callbackData, "country_page:")
 		page, err := strconv.Atoi(pageStr)
 		if err != nil {
-			log.Printf("Error parsing page number: %v", err)
+			logger.Error.Printf("Error parsing page number: %v", err)
 			b.answerCallbackQuery(query.ID, "Error", true)
 			return
 		}
@@ -853,7 +853,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Получаем пользователя
 		dbUser, err := b.service.GetUser(user.ID)
 		if err != nil {
-			log.Printf("Error getting user: %v", err)
+			logger.Error.Printf("Error getting user: %v", err)
 			b.answerCallbackQuery(query.ID, "Error getting user info", true)
 			return
 		}
@@ -883,7 +883,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			dbUser.Country = countryCode
 			dbUser.Banned = true
 			if err := b.service.UpdateUser(dbUser); err != nil {
-				log.Printf("Error updating user: %v", err)
+				logger.Error.Printf("Error updating user: %v", err)
 			}
 
 			return
@@ -892,7 +892,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Для других стран - просто сохраняем выбор
 		dbUser.Country = countryCode
 		if err := b.service.UpdateUser(dbUser); err != nil {
-			log.Printf("Error updating user country: %v", err)
+			logger.Error.Printf("Error updating user country: %v", err)
 			if query.Message != nil {
 				b.SendMessage(query.Message.Chat.ID, MessageOptions{
 					Text: "Произошла ошибка при сохранении страны. Пожалуйста, попробуйте еще раз.",
@@ -912,7 +912,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 				})
 
 				if err != nil {
-					log.Printf("Error deleting country selection message: %v", err)
+					logger.Error.Printf("Error deleting country selection message: %v", err)
 				}
 
 				// Переходим к следующему шагу регистрации (выбор никнейма или проверка подписки)
@@ -1224,7 +1224,7 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 	// Регистрируем пользователя или обновляем информацию
 	dbUser, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, userSource, user.LanguageCode)
 	if err != nil {
-		log.Printf("Error registering user: %v", err)
+		logger.Error.Printf("Error registering user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
 			Text: b.service.GetText("error_while_registering", user.LanguageCode),
 		})
@@ -1329,7 +1329,7 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 	// Получаем пользователя из базы данных
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		log.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user: %v", err)
 		return
 	}
 
@@ -1337,7 +1337,7 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 	dbUser.AgeVerified = &isAdult
 	err = b.service.UpdateUser(dbUser)
 	if err != nil {
-		log.Printf("Error updating user age verification: %v", err)
+		logger.Error.Printf("Error updating user age verification: %v", err)
 		return
 	}
 
@@ -1349,7 +1349,7 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 		dbUser.Banned = true
 		err = b.service.UpdateUser(dbUser)
 		if err != nil {
-			log.Printf("Error banning underage user: %v", err)
+			logger.Error.Printf("Error banning underage user: %v", err)
 		}
 
 		// Сообщаем пользователю, что сервис недоступен
@@ -1416,7 +1416,7 @@ func (b *Bot) handleChangeNameNo(query *telego.CallbackQuery) {
 	// Получаем пользователя
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
-		log.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user: %v", err)
 		return
 	}
 
@@ -1434,7 +1434,7 @@ func (b *Bot) handleChangeNameNo(query *telego.CallbackQuery) {
 		// Сохраняем никнейм
 		dbUser.Nickname = profileName
 		if err := b.service.UpdateUser(dbUser); err != nil {
-			log.Printf("Error updating user nickname: %v", err)
+			logger.Error.Printf("Error updating user nickname: %v", err)
 		}
 	}
 
@@ -1638,7 +1638,7 @@ func (b *Bot) showStatisticsForPeriod(message *telego.Message, period string) {
 	// Получаем подробную статистику пользователя
 	detailedStats, err := b.service.GetDetailedUserStats(user.ID, period)
 	if err != nil {
-		log.Printf("Error getting detailed stats: %v", err)
+		logger.Error.Printf("Error getting detailed stats: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
 			Text: "Error retrieving statistics. Please try again.",
 		})
@@ -1702,7 +1702,7 @@ func (b *Bot) answerCallbackQuery(queryID string, text string, showAlert bool) {
 		ShowAlert:       showAlert,
 	})
 	if err != nil {
-		log.Printf("Error answering callback query: %v", err)
+		logger.Error.Printf("Error answering callback query: %v", err)
 	}
 }
 
@@ -1755,8 +1755,6 @@ func (b *Bot) SendMessage(chatID int64, options MessageOptions) (*telego.Message
 
 	// Проверка на наличие шаблонов эмодзи в тексте
 	if strings.Contains(options.Text, "{{emoji:") {
-		log.Printf("Found emoji template in text: %s", options.Text)
-
 		// Обрабатываем кастомные эмодзи в формате {{emoji:id}}
 		emojiText, emojiEntities := utils.BuildMessageWithCustomEmojis(options.Text)
 		options.Text = emojiText
@@ -1830,11 +1828,6 @@ func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, e
 
 	// Добавляем сущности, если они есть
 	if len(options.Entities) > 0 {
-		log.Printf("Adding %d entities to message", len(options.Entities))
-		for i, entity := range options.Entities {
-			log.Printf("Entity %d: Type=%s, Offset=%d, Length=%d, CustomEmojiID=%s",
-				i, entity.Type, entity.Offset, entity.Length, entity.CustomEmojiID)
-		}
 		params.Entities = options.Entities
 	}
 
@@ -1845,7 +1838,7 @@ func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, e
 
 	msg, err := b.bot.SendMessage(params)
 	if err != nil {
-		log.Printf("Error sending message: %v", err)
+		logger.Error.Printf("Error sending message: %v", err)
 		return nil, fmt.Errorf("failed to send message: %w", err)
 	}
 
@@ -2082,7 +2075,7 @@ func (b *Bot) handleInputNicknameState(message *telego.Message) {
 		// Обновляем никнейм пользователя
 		dbUser, err := b.service.GetUser(user.ID)
 		if err != nil {
-			log.Printf("Error getting user: %v", err)
+			logger.Error.Printf("Error getting user: %v", err)
 			b.stateManager.ClearState(user.ID)
 			return
 		}
@@ -2090,7 +2083,7 @@ func (b *Bot) handleInputNicknameState(message *telego.Message) {
 		// Сохраняем никнейм в отдельное поле Nickname
 		dbUser.Nickname = nickname
 		if err := b.service.UpdateUser(dbUser); err != nil {
-			log.Printf("Error updating user nickname: %v", err)
+			logger.Error.Printf("Error updating user nickname: %v", err)
 		}
 
 		// Отправляем сообщение об успешном обновлении
@@ -2139,14 +2132,14 @@ func (b *Bot) handleInputNameState(message *telego.Message, messageID int) {
 		// Обновляем имя пользователя
 		dbUser, err := b.service.GetUser(user.ID)
 		if err != nil {
-			log.Printf("Error getting user: %v", err)
+			logger.Error.Printf("Error getting user: %v", err)
 			b.stateManager.ClearState(user.ID)
 			return
 		}
 
 		dbUser.FirstName = name
 		if err := b.service.UpdateUser(dbUser); err != nil {
-			log.Printf("Error updating user name: %v", err)
+			logger.Error.Printf("Error updating user name: %v", err)
 
 			// Отправляем сообщение об ошибке
 			errorText := b.service.GetText("update_error", language)
@@ -2190,7 +2183,7 @@ func (b *Bot) handleInputUpNicknameState(message *telego.Message, messageID int)
 		// Обновляем никнейм пользователя
 		dbUser, err := b.service.GetUser(user.ID)
 		if err != nil {
-			log.Printf("Error getting user: %v", err)
+			logger.Error.Printf("Error getting user: %v", err)
 			b.stateManager.ClearState(user.ID)
 			return
 		}
@@ -2222,7 +2215,7 @@ func (b *Bot) handleInputUpNicknameState(message *telego.Message, messageID int)
 		// Обновляем никнейм пользователя
 		dbUser.Nickname = nickname
 		if err := b.service.UpdateUser(dbUser); err != nil {
-			log.Printf("Error updating user nickname: %v", err)
+			logger.Error.Printf("Error updating user nickname: %v", err)
 
 			// Отправляем сообщение об ошибке
 			errorText := b.service.GetText("update_error", language)
@@ -2288,14 +2281,14 @@ func (b *Bot) handleInputWalletState(message *telego.Message, messageID int) {
 		// Обновляем адрес кошелька пользователя
 		dbUser, err := b.service.GetUser(user.ID)
 		if err != nil {
-			log.Printf("Error getting user: %v", err)
+			logger.Error.Printf("Error getting user: %v", err)
 			b.stateManager.ClearState(user.ID)
 			return
 		}
 
 		dbUser.WalletAddress = walletAddress
 		if err := b.service.UpdateUser(dbUser); err != nil {
-			log.Printf("Error updating user wallet address: %v", err)
+			logger.Error.Printf("Error updating user wallet address: %v", err)
 
 			// Отправляем сообщение об ошибке
 			errorText := b.service.GetText("update_error", language)
