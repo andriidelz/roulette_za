@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"log"
+	"roulette/internal/logger"
 	"roulette/internal/payment"
 	"roulette/internal/payment/providers/oxapay"
 
@@ -26,7 +26,7 @@ type OxaPayConfig struct {
 // InitPaymentProviders инициализирует провайдеры платежей
 func InitPaymentProviders(db *gorm.DB) (*payment.Factory, string, error) {
 	paymentConfig := getPaymentConfig()
-	log.Printf("Initializing payment providers with default: %s", paymentConfig.DefaultProvider)
+	logger.Info.Printf("Initializing payment providers with default: %s", paymentConfig.DefaultProvider)
 
 	// Создаем фабрику провайдеров
 	factory := payment.NewFactory()
@@ -34,7 +34,6 @@ func InitPaymentProviders(db *gorm.DB) (*payment.Factory, string, error) {
 	// Инициализируем мок-провайдер по умолчанию
 	mockProvider := payment.NewMockProvider()
 	factory.RegisterProvider("mock", mockProvider)
-	log.Printf("Registered mock payment provider")
 
 	defaultProvider := paymentConfig.DefaultProvider
 
@@ -45,7 +44,7 @@ func InitPaymentProviders(db *gorm.DB) (*payment.Factory, string, error) {
 
 	// Инициализируем OxaPay только если есть API ключ
 	if paymentConfig.OxaPay.APIKey != "" {
-		log.Printf("Found OxaPay API key, initializing OxaPay provider")
+		logger.Info.Printf("Found OxaPay API key, initializing OxaPay provider")
 
 		oxaClient := oxapayclient.NewClient(oxapayclient.Config{
 			APIKey: paymentConfig.OxaPay.APIKey,
@@ -54,7 +53,7 @@ func InitPaymentProviders(db *gorm.DB) (*payment.Factory, string, error) {
 
 		// Инициализируем таблицы для OxaPay
 		if err := oxaClient.InitializeTables(); err != nil {
-			log.Printf("Failed to initialize OxaPay tables: %v", err)
+			logger.Error.Printf("Failed to initialize OxaPay tables: %v", err)
 			return nil, defaultProvider, fmt.Errorf("failed to initialize OxaPay tables: %w", err)
 		}
 
@@ -65,7 +64,7 @@ func InitPaymentProviders(db *gorm.DB) (*payment.Factory, string, error) {
 		)
 
 		factory.RegisterProvider("oxapay", oxaProvider)
-		log.Printf("Registered OxaPay payment provider")
+		logger.Info.Printf("Registered OxaPay payment provider")
 
 		// Если defaultProvider не установлен или установлен в "oxapay",
 		// и OxaPay успешно инициализирован - используем его по умолчанию
@@ -74,7 +73,7 @@ func InitPaymentProviders(db *gorm.DB) (*payment.Factory, string, error) {
 		}
 	}
 
-	log.Printf("Payment providers initialized, using default provider: %s", defaultProvider)
+	logger.Info.Printf("Payment providers initialized, using default provider: %s", defaultProvider)
 	return factory, defaultProvider, nil
 }
 

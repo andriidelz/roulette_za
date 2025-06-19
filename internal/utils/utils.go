@@ -167,8 +167,6 @@ func ReplaceMacrosInTexts(title, message, buttonText string, params map[string]i
 			strValue = fmt.Sprintf("%v", v)
 		}
 
-		log.Printf("Replacing macro '%s' with value '%s'", placeholder, strValue)
-
 		title = strings.Replace(title, placeholder, strValue, -1)
 		message = strings.Replace(message, placeholder, strValue, -1)
 		if buttonText != "" {

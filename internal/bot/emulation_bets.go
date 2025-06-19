@@ -1,7 +1,7 @@
 package bot
 
 import (
-	"log"
+	"roulette/internal/logger"
 	"roulette/internal/models"
 	"time"
 )
@@ -60,7 +60,7 @@ func (h *GameHandler) gameHandlerEmulate(telegramID, remainingSeconds int64) {
 	}
 	// Если кол-во нажатий выполнено то остановка игры
 	if task.taskCount <= task.createdCount {
-		log.Println("Total emulate bets: ", task.createdCount, telegramID)
+		logger.Info.Println("Total emulate bets: ", task.createdCount, telegramID)
 
 		h.HandleStopGameButton(telegramID)
 		return
@@ -69,7 +69,7 @@ func (h *GameHandler) gameHandlerEmulate(telegramID, remainingSeconds int64) {
 	// Обновляем счетчик
 	task.createdCount++
 	if task.createdCount%100 == 0 {
-		log.Println("emulate bet: ", task.createdCount, telegramID)
+		logger.Info.Println("emulate bet: ", task.createdCount, telegramID)
 	}
 	gameDebugTaskMap[telegramID] = task
 

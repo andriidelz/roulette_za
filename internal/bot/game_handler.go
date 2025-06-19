@@ -2,10 +2,10 @@ package bot
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
+	"roulette/internal/logger"
 	"roulette/internal/messaging"
 	"roulette/internal/models"
 	"roulette/internal/service"
@@ -94,12 +94,12 @@ func NewGameHandler(bot *Bot, service service.Service, rabbitmqURL string) (*Gam
 }
 
 func (h *GameHandler) processMessagesWorker() {
-	log.Println("Starting message processing worker")
+	logger.Info.Println("Starting message processing worker")
 
 	for {
 		select {
 		case <-h.stopWorker:
-			log.Println("Message processing worker stopped")
+			logger.Info.Println("Message processing worker stopped")
 			return
 		case msg := <-h.roundMsgChan:
 			// Блокируем на время обработки сообщения
@@ -107,7 +107,7 @@ func (h *GameHandler) processMessagesWorker() {
 
 			switch msg.Type {
 			case RoundCompletedMessage:
-				log.Printf("Processing RoundCompletedMessage for round #%d", msg.RoundID)
+				logger.Info.Printf("Processing RoundCompletedMessage for round #%d", msg.RoundID)
 				// Обрабатываем завершение раунда
 				if msg.Round != nil {
 					// Вызываем обработчик завершения раунда
@@ -115,7 +115,7 @@ func (h *GameHandler) processMessagesWorker() {
 
 					// Если доступны дополнительные данные, логируем их
 					if msg.Data != nil {
-						log.Printf("Round #%d completed with result: %s", msg.RoundID, msg.Data.Result)
+						logger.Info.Printf("Round #%d completed with result: %s", msg.RoundID, msg.Data.Result)
 
 						// Здесь можно использовать данные для дополнительной обработки,
 						// например, для верификации результата или отображения доп. информации
@@ -127,7 +127,7 @@ func (h *GameHandler) processMessagesWorker() {
 					h.processMutex.Unlock()
 				}
 			case RoundStartedMessage:
-				log.Printf("Processing RoundStartedMessage for round #%d", msg.RoundID)
+				logger.Info.Printf("Processing RoundStartedMessage for round #%d", msg.RoundID)
 				// Обрабатываем новый раунд только после обработки всех сообщений о завершении раунда
 				if msg.Round != nil {
 					// Обновляем текущий раунд
@@ -140,7 +140,7 @@ func (h *GameHandler) processMessagesWorker() {
 
 					// Если есть дополнительные данные о раунде, можно использовать их
 					if msg.Data != nil && msg.Data.Hash != "" {
-						log.Printf("Round #%d started with hash: %s", msg.RoundID, msg.Data.Hash)
+						logger.Info.Printf("Round #%d started with hash: %s", msg.RoundID, msg.Data.Hash)
 					}
 
 					// Помечаем раунд как обработанный
@@ -181,8 +181,6 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 		// Отправляем уведомление за 5 секунд до конца раунда
 		if timeToFive > 0 {
 			time.Sleep(timeToFive)
-			// Отправляем только одно уведомление - о 5 секундах до конца раунда
-			log.Printf("Sending 5 seconds remaining notification for round #%d", round.ID)
 			h.notifyTimeRemaining(round, 5)
 		}
 	}()
@@ -190,7 +188,7 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 	for _, userID := range players {
 		user, err := h.service.GetUser(userID)
 		if err != nil {
-			log.Printf("Error getting user %d: %v", userID, err)
+			logger.Error.Printf("Error getting user %d: %v", userID, err)
 			continue
 		}
 
@@ -215,7 +213,7 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 		// Получаем доступное количество ставок
 		betsBalance, err := h.service.GetUserRemainingBets(userID)
 		if err != nil {
-			log.Printf("Error getting user remaining bets: %v", err)
+			logger.Error.Printf("Error getting user remaining bets: %v", err)
 			betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 		}
 
@@ -242,7 +240,7 @@ func (h *GameHandler) notifyTimeRemaining(round *models.HashEntry, seconds int) 
 		// Проверяем, сделал ли игрок уже ставку в текущем раунде
 		bets, err := h.service.GetUserBetsForRound(userID, round.ID)
 		if err != nil {
-			log.Printf("Error getting user bets: %v", err)
+			logger.Error.Printf("Error getting user bets: %v", err)
 			continue
 		}
 
@@ -253,7 +251,7 @@ func (h *GameHandler) notifyTimeRemaining(round *models.HashEntry, seconds int) 
 
 		user, err := h.service.GetUser(userID)
 		if err != nil {
-			log.Printf("Error getting user %d: %v", userID, err)
+			logger.Error.Printf("Error getting user %d: %v", userID, err)
 			continue
 		}
 
@@ -276,7 +274,7 @@ func (h *GameHandler) notifyTimeRemaining(round *models.HashEntry, seconds int) 
 		// Узнаем доступное количество ставок
 		betsBalance, err := h.service.GetUserRemainingBets(userID)
 		if err != nil {
-			log.Printf("Error getting user remaining bets: %v", err)
+			logger.Error.Printf("Error getting user remaining bets: %v", err)
 			betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 		}
 
@@ -308,7 +306,7 @@ func (h *GameHandler) handleRabbitMQMessage(message messaging.RouletteMessage) e
 		h.processMutex.Lock()
 		if processed, exists := h.processedRounds[roundID]; exists && processed {
 			h.processMutex.Unlock()
-			log.Printf("Round #%d already processed, skipping duplicate message", roundID)
+			logger.Info.Printf("Round #%d already processed, skipping duplicate message", roundID)
 			return nil
 		}
 		h.processMutex.Unlock()
@@ -365,7 +363,7 @@ func (h *GameHandler) handleRabbitMQMessage(message messaging.RouletteMessage) e
 
 	switch message.Type {
 	case messaging.EventRoundCompleted:
-		log.Printf("Processing round completed message for round #%d", roundID)
+		logger.Info.Printf("Processing round completed message for round #%d", roundID)
 
 		// Получаем данные о раунде
 		round, err := h.service.GetHashEntryByID(roundID)
@@ -390,7 +388,7 @@ func (h *GameHandler) handleRabbitMQMessage(message messaging.RouletteMessage) e
 		}
 
 		// Отправляем сообщение в канал для синхронной обработки
-		log.Printf("Sending round started message to processing queue for round #%d", roundID)
+		logger.Info.Printf("Sending round started message to processing queue for round #%d", roundID)
 		h.roundMsgChan <- RoundMessage{
 			Type:    RoundStartedMessage,
 			RoundID: roundID,
@@ -404,28 +402,25 @@ func (h *GameHandler) handleRabbitMQMessage(message messaging.RouletteMessage) e
 
 // handleRoundCompletion обрабатывает завершение раунда
 func (h *GameHandler) handleRoundCompletion(round *models.HashEntry) {
-	log.Printf("Handling round #%d completion", round.ID)
-
 	// Получаем всех пользователей, которые сделали ставки в этом раунде
 	bets, err := h.service.ProcessAndGetBets(round.ID)
 	if err != nil {
-		log.Printf("Error processing bets for round #%d: %v", round.ID, err)
+		logger.Error.Printf("Error processing bets for round #%d: %v", round.ID, err)
 		return
 	}
 
 	if len(bets) == 0 {
-		log.Printf("No bets found for round #%d", round.ID)
 		return
 	}
 
 	// Получаем результат раунда
 	result, err := h.service.GetRoundResult(round.ID)
 	if err != nil {
-		log.Printf("Error getting result for round #%d: %v", round.ID, err)
+		logger.Error.Printf("Error getting result for round #%d: %v", round.ID, err)
 		return
 	}
 
-	log.Printf("Round #%d result: %s (number: %d)", round.ID, result, round.Number)
+	logger.Info.Printf("Round #%d result: %s (number: %d)", round.ID, result, round.Number)
 
 	// Группируем ставки по пользователям
 	userBets := make(map[int64]models.Bet)
@@ -444,26 +439,26 @@ func (h *GameHandler) handleRoundCompletion(round *models.HashEntry) {
 
 			// Отправляем уведомления о результатах синхронно
 			if err := h.notifyPlayerAboutResult(uid, round.ID, round, result, b.Option); err != nil {
-				log.Printf("Error notifying player %d: %v", uid, err)
+				logger.Error.Printf("Error notifying player %d: %v", uid, err)
 			} else {
-				log.Printf("Successfully notified player %d about round #%d results", uid, round.ID)
+				logger.Info.Printf("Successfully notified player %d about round #%d results", uid, round.ID)
 			}
 		}(userID, bet)
 	}
 
 	// Ожидаем завершения всех уведомлений
 	wg.Wait()
-	log.Printf("All players have been notified about round #%d results", round.ID)
+	logger.Info.Printf("All players have been notified about round #%d results", round.ID)
 }
 
 // notifyPlayerAboutResult уведомляет игрока о результате раунда
 func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round *models.HashEntry, result models.BetOption, userBet models.BetOption) error {
-	log.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, roundID)
+	logger.Info.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, roundID)
 
 	// Получаем пользователя
 	userInfo, err := h.service.GetUser(userID)
 	if err != nil {
-		log.Printf("Error getting user %d: %v", userID, err)
+		logger.Error.Printf("Error getting user %d: %v", userID, err)
 		return fmt.Errorf("error getting user: %w", err)
 	}
 
@@ -562,14 +557,14 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	// Пересчитываем балы и эффективность пользователя и
 	// обновляем позиции всех пользователей
 	if err := h.service.GetRepo().UpdateWeeklyRatingForUser(userInfo.ID); err != nil {
-		log.Printf("Error refreshing ratings before getting position: %v", err)
+		logger.Error.Printf("Error refreshing ratings before getting position: %v", err)
 	}
 
 	// Получаем текущий рейтинг пользователя
 	year, week := time.Now().ISOWeek()
 	rating, err := h.service.GetRepo().GetUserWeeklyRating(userInfo.ID, year, week)
 	if err != nil {
-		log.Printf("Error get rating: %v", err)
+		logger.Error.Printf("Error get rating: %v", err)
 	}
 
 	// Получаем информацию о призовом фонде
@@ -592,7 +587,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 			userShare = prizeFundAmount / float64(topCount) * (float64(topCount-rating.Position+1) / float64(topCount))
 		}
 	} else {
-		log.Printf("Error getting prize fund: %v", err)
+		logger.Error.Printf("Error getting prize fund: %v", err)
 
 		// Если не удалось получить данные о призовом фонде, используем значения по умолчанию
 		if rating.Position > 0 && rating.Position <= 100 {
@@ -608,7 +603,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	// Часть проверки баланса ставок
 	betsBalance, err := h.service.GetUserRemainingBets(userID)
 	if err != nil {
-		log.Printf("Error getting user remaining bets: %v", err)
+		logger.Error.Printf("Error getting user remaining bets: %v", err)
 		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 	}
 
@@ -680,7 +675,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 
 // MakeBet делает ставку в текущем раунде
 func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
-	log.Printf("MakeBet called for user %d with option %s", userID, option)
+	logger.Info.Printf("MakeBet called for user %d with option %s", userID, option)
 
 	// Получаем пользователя
 	user, err := h.service.GetUser(userID)
@@ -711,12 +706,12 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	// Проверяем, не делал ли пользователь уже ставку в этом раунде
 	existingBets, err := h.service.GetUserBetsForRound(userID, currentRound.ID)
 	if err != nil {
-		log.Printf("Error checking existing bets: %v", err)
+		logger.Error.Printf("Error checking existing bets: %v", err)
 		return fmt.Errorf("error checking existing bets: %w", err)
 	}
 
 	if len(existingBets) > 0 {
-		log.Printf("User %d already made a bet in round %d", userID, currentRound.ID)
+		logger.Info.Printf("User %d already made a bet in round %d", userID, currentRound.ID)
 		return fmt.Errorf("user has already made a bet in this round")
 	}
 
@@ -724,7 +719,7 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	if option == models.Zero {
 		canBetZero, _, err := h.service.CanBetZero(userID)
 		if err != nil {
-			log.Printf("Error checking zero bet: %v", err)
+			logger.Error.Printf("Error checking zero bet: %v", err)
 			return fmt.Errorf("error checking zero bet: %w", err)
 		}
 
@@ -736,7 +731,7 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	// Проверяем доступное количество ставок
 	betsRemaining, err := h.service.GetUserRemainingBets(userID)
 	if err != nil {
-		log.Printf("Error checking remaining bets: %v", err)
+		logger.Error.Printf("Error checking remaining bets: %v", err)
 		// Не возвращаем ошибку, так как это не критично
 	} else if betsRemaining == 0 {
 		return fmt.Errorf("no bets left for today")
@@ -744,7 +739,7 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 
 	// Делаем ставку через сервис
 	if err := h.service.MakeBet(userID, option); err != nil {
-		log.Printf("Error making bet: %v", err)
+		logger.Error.Printf("Error making bet: %v", err)
 		return fmt.Errorf("error making bet: %w", err)
 	}
 
@@ -760,7 +755,7 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	h.activeBets[userID] = option
 	h.mutex.Unlock()
 
-	log.Printf("Bet created successfully for user %d in round %d (waitingPlayers count: %d)", userID, currentRound.ID, len(h.waitingPlayers))
+	logger.Info.Printf("Bet created successfully for user %d in round %d (waitingPlayers count: %d)", userID, currentRound.ID, len(h.waitingPlayers))
 
 	// Сразу отправляем стикер "Ставки больше не принимаются"
 	h.bot.SendSticker(userID, StickerNoBids)
@@ -810,18 +805,16 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	h.activePlayers[user.ID] = true
 	h.mutex.Unlock()
 
-	log.Printf("Added user %d to active players", user.ID)
-
 	// Пытаемся получить текущий раунд
 	currentRound, err := h.service.GetCurrentRound()
 	if err != nil {
-		log.Printf("Error getting current round: %v", err)
+		logger.Error.Printf("Error getting current round: %v", err)
 		return
 	}
 
 	// Проверяем, что раунд существует
 	if currentRound == nil {
-		log.Printf("Current round is nil, waiting for a new round")
+		logger.Warning.Printf("Current round is nil, waiting for a new round")
 		waitingText := h.service.GetText("waiting_for_round", language)
 		h.bot.SendMessage(message.Chat.ID, MessageOptions{
 			Text: waitingText,
@@ -859,7 +852,7 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	// Получаем доступное количество ставок
 	betsBalance, err := h.service.GetUserRemainingBets(user.ID)
 	if err != nil {
-		log.Printf("Error getting user remaining bets: %v", err)
+		logger.Error.Printf("Error getting user remaining bets: %v", err)
 		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 	}
 
@@ -872,22 +865,16 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 
 // HandleBackButton обрабатывает нажатие кнопки "Назад"
 func (h *GameHandler) HandleBackButton(userID int64) {
-	// Удаляем пользователя из списка активных игроков
 	h.mutex.Lock()
 	delete(h.activePlayers, userID)
 	h.mutex.Unlock()
-
-	log.Printf("Removed user %d from active players", userID)
 }
 
 // HandleStopGameButton обрабатывает нажатие кнопки "Стоп игра"
 func (h *GameHandler) HandleStopGameButton(userID int64) {
-	// Удаляем пользователя из списка активных игроков
 	h.mutex.Lock()
 	delete(h.activePlayers, userID)
 	h.mutex.Unlock()
-
-	log.Printf("User %d stopped the game", userID)
 }
 
 // Stop останавливает обработчик игры
@@ -898,11 +885,11 @@ func (h *GameHandler) Stop() {
 	// Закрываем соединение с RabbitMQ
 	if h.rabbitmq != nil {
 		if err := h.rabbitmq.Close(); err != nil {
-			log.Printf("Error closing RabbitMQ connection: %v", err)
+			logger.Error.Printf("Error closing RabbitMQ connection: %v", err)
 		}
 	}
 
-	log.Println("Game handler stopped")
+	logger.Info.Println("Game handler stopped")
 }
 
 // createDetailedBetKeyboard создает расширенную клавиатуру для ставок с дополнительной информацией
@@ -918,7 +905,7 @@ func (h *GameHandler) createDetailedBetKeyboard(language string, userID int64, b
 	// Проверяем, может ли пользователь ставить на Zero
 	canBetZero, _, err := h.service.CanBetZero(userID)
 	if err != nil {
-		log.Printf("Error checking zero bet: %v", err)
+		logger.Error.Printf("Error checking zero bet: %v", err)
 		canBetZero = false
 	}
 

@@ -2,9 +2,9 @@ package admin
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"roulette/internal/data"
+	"roulette/internal/logger"
 	"roulette/internal/models"
 	"strconv"
 	"time"
@@ -137,40 +137,40 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	// Получаем статистику пользователя напрямую из таблицы bets
 	totalBets, err := a.repo.GetUserTotalBets(user.ID)
 	if err != nil {
-		log.Printf("Error getting user total bets: %v", err)
+		logger.Error.Printf("Error getting user total bets: %v", err)
 		totalBets = 0
 	}
 
 	wonBets, err := a.repo.GetUserWonBets(user.ID)
 	if err != nil {
-		log.Printf("Error getting user won bets: %v", err)
+		logger.Error.Printf("Error getting user won bets: %v", err)
 		wonBets = 0
 	}
 
 	totalPoints, err := a.repo.GetUserTotalPoints(user.ID)
 	if err != nil {
-		log.Printf("Error getting user total points: %v", err)
+		logger.Error.Printf("Error getting user total points: %v", err)
 		totalPoints = 0
 	}
 
 	// Получаем количество дневных ставок
 	dailyBets, err := a.repo.GetUserDailyBets(user.ID)
 	if err != nil {
-		log.Printf("Error getting user daily bets: %v", err)
+		logger.Error.Printf("Error getting user daily bets: %v", err)
 		dailyBets = 0
 	}
 
 	// Получаем количество ставок и очков за неделю
 	weeklyBets, weeklyPoints, err := a.repo.GetUserWeeklyStats(user.ID)
 	if err != nil {
-		log.Printf("Error getting user weekly stats: %v", err)
+		logger.Error.Printf("Error getting user weekly stats: %v", err)
 		weeklyBets, weeklyPoints = 0, 0
 	}
 
 	// Получаем количество ставок и очков за месяц
 	monthlyBets, monthlyPoints, err := a.repo.GetUserMonthlyStats(user.ID)
 	if err != nil {
-		log.Printf("Error getting user monthly stats: %v", err)
+		logger.Error.Printf("Error getting user monthly stats: %v", err)
 		monthlyBets, monthlyPoints = 0, 0
 	}
 
@@ -184,7 +184,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	year, week := a.service.GetCurrentYearWeek()
 	rating, err := a.repo.GetUserWeeklyRating(user.ID, year, week)
 	if err != nil {
-		log.Printf("Error getting user rating: %v", err)
+		logger.Error.Printf("Error getting user rating: %v", err)
 		rating = nil
 	}
 
@@ -232,14 +232,14 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	// Получаем последние ставки пользователя
 	bets, err := a.repo.GetUserBets(user.ID, 20)
 	if err != nil {
-		log.Printf("Error getting user bets: %v", err)
+		logger.Error.Printf("Error getting user bets: %v", err)
 		bets = []models.Bet{}
 	}
 
 	// Получаем историю выводов средств пользователя
 	withdrawals, err := a.repo.GetUserWithdrawals(user.ID, 10)
 	if err != nil {
-		log.Printf("Error getting user withdrawals: %v", err)
+		logger.Error.Printf("Error getting user withdrawals: %v", err)
 		withdrawals = []models.Withdrawal{}
 	}
 

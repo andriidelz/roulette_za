@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"log"
 	"time"
 
+	"roulette/internal/logger"
 	"roulette/internal/models"
 
 	"gorm.io/gorm"
@@ -82,7 +82,7 @@ func (r *PostgresRepository) GetActiveHashEntry() (*models.HashEntry, error) {
 
 	if err != nil {
 		// Логируем только реальные ошибки БД
-		log.Printf("Error getting active hash entry: %v", err)
+		logger.Error.Printf("Error getting active hash entry: %v", err)
 		return nil, err
 	}
 

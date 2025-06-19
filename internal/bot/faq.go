@@ -1,7 +1,7 @@
 package bot
 
 import (
-	"log"
+	"roulette/internal/logger"
 	"time"
 
 	"github.com/mymmrac/telego"
@@ -11,7 +11,7 @@ import (
 func (b *Bot) handleFAQCommand(message *telego.Message) {
 	dbUser, err := b.service.GetUser(message.From.ID)
 	if err != nil {
-		log.Printf("Error getting user for FAQ menu: %v", err)
+		logger.Error.Printf("Error getting user for FAQ menu: %v", err)
 		return
 	}
 
@@ -73,7 +73,7 @@ func (b *Bot) createFAQKeyboard(language string) *telego.ReplyKeyboardMarkup {
 func (b *Bot) handleFAQRules(message *telego.Message) {
 	dbUser, err := b.service.GetUser(message.From.ID)
 	if err != nil {
-		log.Printf("Error getting user for FAQ rules: %v", err)
+		logger.Error.Printf("Error getting user for FAQ rules: %v", err)
 		return
 	}
 
@@ -99,7 +99,7 @@ func (b *Bot) handleFAQRules(message *telego.Message) {
 func (b *Bot) handleFAQAwards(message *telego.Message) {
 	dbUser, err := b.service.GetUser(message.From.ID)
 	if err != nil {
-		log.Printf("Error getting user for FAQ awards: %v", err)
+		logger.Error.Printf("Error getting user for FAQ awards: %v", err)
 		return
 	}
 
@@ -125,7 +125,7 @@ func (b *Bot) handleFAQAwards(message *telego.Message) {
 func (b *Bot) handleFAQPayments(message *telego.Message) {
 	dbUser, err := b.service.GetUser(message.From.ID)
 	if err != nil {
-		log.Printf("Error getting user for FAQ payments: %v", err)
+		logger.Error.Printf("Error getting user for FAQ payments: %v", err)
 		return
 	}
 
@@ -151,7 +151,7 @@ func (b *Bot) handleFAQPayments(message *telego.Message) {
 func (b *Bot) handleFAQFairPlay(message *telego.Message) {
 	dbUser, err := b.service.GetUser(message.From.ID)
 	if err != nil {
-		log.Printf("Error getting user for FAQ fair play: %v", err)
+		logger.Error.Printf("Error getting user for FAQ fair play: %v", err)
 		return
 	}
 
@@ -177,7 +177,7 @@ func (b *Bot) handleFAQFairPlay(message *telego.Message) {
 func (b *Bot) handleFAQPrivacyPolicy(message *telego.Message) {
 	dbUser, err := b.service.GetUser(message.From.ID)
 	if err != nil {
-		log.Printf("Error getting user for FAQ privacy policy: %v", err)
+		logger.Error.Printf("Error getting user for FAQ privacy policy: %v", err)
 		return
 	}
 
@@ -203,7 +203,7 @@ func (b *Bot) handleFAQPrivacyPolicy(message *telego.Message) {
 func (b *Bot) handleFAQContact(message *telego.Message) {
 	dbUser, err := b.service.GetUser(message.From.ID)
 	if err != nil {
-		log.Printf("Error getting user for FAQ contact: %v", err)
+		logger.Error.Printf("Error getting user for FAQ contact: %v", err)
 		return
 	}
 
@@ -240,6 +240,6 @@ func (b *Bot) sendFAQNextPrompt(chatID int64, language string) {
 	})
 
 	if err != nil {
-		log.Printf("Error sending FAQ next prompt: %v", err)
+		logger.Error.Printf("Error sending FAQ next prompt: %v", err)
 	}
 }

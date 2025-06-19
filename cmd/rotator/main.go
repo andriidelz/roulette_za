@@ -1,12 +1,12 @@
 package main
 
 import (
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"roulette/internal/config"
+	"roulette/internal/logger"
 	"roulette/internal/repository"
 	"roulette/internal/rotator"
 	"roulette/internal/service"
@@ -19,7 +19,7 @@ import (
 func main() {
 	// Завантажуємо змінні оточення
 	if err := godotenv.Load(); err != nil {
-		log.Printf("Error loading .env file: %v", err)
+		logger.Error.Printf("Error loading .env file: %v", err)
 	}
 
 	// Ініціалізуємо конфігурацію
@@ -28,7 +28,7 @@ func main() {
 	// Підключаємося до бази даних
 	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logger.Error.Fatalf("Failed to connect to database: %v", err)
 	}
 
 	// Створюємо репозиторій
@@ -40,14 +40,14 @@ func main() {
 	// Створюємо ротатор з налаштуваннями інтервалу та RabbitMQ
 	hashRotator, err := rotator.NewRotator(svc, cfg.RotationInterval, cfg.RabbitMQURL)
 	if err != nil {
-		log.Fatalf("Failed to create rotator: %v", err)
+		logger.Error.Fatalf("Failed to create rotator: %v", err)
 	}
 
 	// Запускаємо ротатор у фоновому режимі
 	go hashRotator.Start()
 
 	// Виводимо повідомлення про запуск
-	log.Printf("Rotator started with interval: %s, connected to RabbitMQ: %s",
+	logger.Info.Printf("Rotator started with interval: %s, connected to RabbitMQ: %s",
 		cfg.RotationInterval, cfg.RabbitMQURL)
 
 	// Очікуємо сигнал для завершення
@@ -55,17 +55,17 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down rotator...")
+	logger.Info.Println("Shutting down rotator...")
 
 	// Зупиняємо ротатор
 	hashRotator.Stop()
 
 	// Закриваємо з'єднання з базою даних
 	if err := repo.Close(); err != nil {
-		log.Printf("Error closing database connection: %v", err)
+		logger.Error.Printf("Error closing database connection: %v", err)
 	} else {
-		log.Println("Database connection closed")
+		logger.Info.Println("Database connection closed")
 	}
 
-	log.Println("Rotator shutdown complete")
+	logger.Info.Println("Rotator shutdown complete")
 }
