@@ -135,6 +135,9 @@ func (b *Bot) Start() error {
 	// Запускаем планировщик для обновления рейтингов
 	b.StartRatingScheduler()
 
+	// Запускам емуляцию ставок по заданиям для пользователей
+	b.gameHandler.initEmulate()
+
 	b.initialized = true
 	return nil
 }
