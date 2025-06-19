@@ -62,6 +62,7 @@ func (r *PostgresRepository) GetHashEntryByID(id uint) (*models.HashEntry, error
 	return &entry, nil
 }
 
+// unused
 // GetBetsByHashEntryID получает все ставки для указанного хеша (раунда)
 func (r *PostgresRepository) GetBetsByHashEntryID(hashEntryID uint) ([]models.Bet, error) {
 	var bets []models.Bet
