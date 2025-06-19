@@ -27,7 +27,7 @@ type Service interface {
 	CanBetZero(telegramID int64) (bool, int, error)
 	GetUserRemainingBets(telegramID int64) (int, error) // Добавленный метод для проверки доступных ставок
 	GetCurrentRound() (*models.HashEntry, error)
-	StartNewRound() (*models.HashEntry, error)
+	// StartNewRound() (*models.HashEntry, error)
 	StartNewRoundFromRotator() (*models.HashEntry, error)
 	CompleteRound(hashEntryID uint) error
 	GetRoundResult(hashEntryID uint) (models.BetOption, error)
@@ -298,6 +298,7 @@ func (s *ServiceImpl) GetCurrentRound() (*models.HashEntry, error) {
 	return s.repo.GetActiveHashEntry()
 }
 
+// unused
 // StartNewRound создает новый раунд и завершает предыдущий
 func (s *ServiceImpl) StartNewRound() (*models.HashEntry, error) {
 	return s.repo.GetActiveHashEntry()
@@ -308,6 +309,7 @@ func (s *ServiceImpl) StartNewRoundFromRotator() (*models.HashEntry, error) {
 	// Проверяем, есть ли активный раунд
 	currentRound, err := s.repo.GetActiveHashEntry()
 	if err != nil {
+		log.Println(err)
 		// Если ошибка - это не "запись не найдена", возвращаем её
 		return nil, err
 	}
@@ -450,6 +452,7 @@ func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
 	// Получаем текущий раунд
 	currentRound, err := s.repo.GetActiveHashEntry()
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 

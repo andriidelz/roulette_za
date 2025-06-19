@@ -114,7 +114,7 @@ type Repository interface {
 	CreateHashEntry(entry *models.HashEntry) error
 	CompleteHashEntry(id uint, revealedAt time.Time) error
 	GetHashEntryByID(id uint) (*models.HashEntry, error)
-	GetBetsByHashEntryID(hashEntryID uint) ([]models.Bet, error)
+	// GetBetsByHashEntryID(hashEntryID uint) ([]models.Bet, error)
 	GetActiveHashEntry() (*models.HashEntry, error)
 	GetUserBetsForHashEntry(userID, hashEntryID uint) ([]models.Bet, error)
 

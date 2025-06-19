@@ -451,6 +451,8 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 			errorText = b.service.GetText("betsbalancelow", language)
 		} else {
 			// Общая ошибка ставки
+
+			log.Println("bet_error", err)
 			errorText = b.service.GetText("bet_error", language)
 		}
 
