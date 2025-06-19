@@ -457,6 +457,10 @@ func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
 		return err
 	}
 
+	if currentRound == nil {
+		return fmt.Errorf("cannot find hash")
+	}
+
 	// Проверяем, может ли пользователь делать ставку на Zero
 	if option == models.Zero {
 		canBetZero, _, err := s.CanBetZero(telegramID)
