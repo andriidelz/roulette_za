@@ -455,6 +455,14 @@ func (h *GameHandler) handleRoundCompletion(round *models.HashEntry) {
 func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round *models.HashEntry, result models.BetOption, userBet models.BetOption) error {
 	logger.Info.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, roundID)
 
+	// Не отправляем результаты если пользователя нет в списке активных игроков
+	h.mutex.RLock()
+	isActive, exists := h.activePlayers[userID]
+	h.mutex.RUnlock()
+	if !exists || !isActive {
+		return nil
+	}
+
 	// Получаем пользователя
 	userInfo, err := h.service.GetUser(userID)
 	if err != nil {
