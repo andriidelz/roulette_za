@@ -1,0 +1,26 @@
+{{- define "footer" -}}
+<footer class="bg-light py-3 mt-auto">
+    <div class="container text-center">
+        <p class="mb-0">© 2025 "Roulette" Telegram Bot</p>
+    </div>
+</footer>
+
+<!-- JavaScript для адаптивных таблиц -->
+<script src="/static/admin/js/adaptive-styles.js"></script>
+
+</body>
+
+{{if eq .activeTab "users"}}
+  {{template "additionalScripts_users" .}}
+{{else if eq .activeTab "withdrawals"}}
+  {{template "additionalScripts_withdrawals" .}}
+{{else if eq .activeTab "notifications"}}
+  {{template "additionalScripts_notifications" .}}
+{{else if eq .activeTab "ratings"}}
+  {{template "additionalScripts_rating_details" .}}
+{{else if eq .activeTab "settings"}}
+  {{template "additionalScripts_settings" .}}
+{{end}}
+
+</html>
+{{end}}
