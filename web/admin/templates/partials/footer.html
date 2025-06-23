@@ -1,4 +1,4 @@
-{{define "footer"}}
+{{- define "footer" -}}
 <footer class="bg-light py-3 mt-auto">
     <div class="container text-center">
         <p class="mb-0">© 2025 "Roulette" Telegram Bot</p>
@@ -6,172 +6,7 @@
 </footer>
 
 <!-- JavaScript для адаптивных таблиц -->
-<script>
-// Функция для адаптации таблиц на мобильных устройствах
-function makeTablesResponsive() {
-  // Проверяем размер экрана
-  const isMobile = window.innerWidth < 768;
-  
-  // Находим все таблицы с классом .mobile-responsive
-  const tables = document.querySelectorAll('.mobile-responsive');
-  
-  tables.forEach(table => {
-    // Получаем заголовки таблицы
-    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-    
-    // Обрабатываем все строки в теле таблицы
-    const rows = table.querySelectorAll('tbody tr');
-    
-    rows.forEach(row => {
-      // Очищаем существующие мобильные метки, если они есть
-      const existingLabels = row.querySelectorAll('.mobile-label');
-      existingLabels.forEach(label => label.remove());
-      
-      // На мобильных устройствах добавляем метки в ячейки
-      if (isMobile) {
-        const cells = row.querySelectorAll('td');
-        cells.forEach((cell, index) => {
-          if (index < headers.length && !cell.classList.contains('no-label')) {
-            // Создаем метку
-            const label = document.createElement('span');
-            label.className = 'mobile-label d-inline-block d-md-none';
-            label.textContent = headers[index] + ': ';
-            
-            // Добавляем метку в ячейку
-            cell.insertBefore(label, cell.firstChild);
-          }
-        });
-      }
-    });
-    
-    // Добавляем или удаляем класс для мобильного вида
-    if (isMobile) {
-      table.classList.add('mobile-table-view');
-    } else {
-      table.classList.remove('mobile-table-view');
-    }
-  });
-}
-
-// Функция для создания карточного вида таблицы на мобильных устройствах
-function createCardViewForTables() {
-  // Проверяем размер экрана
-  const isMobile = window.innerWidth < 768;
-  
-  // Находим все таблицы с классом .card-view-on-mobile
-  const tables = document.querySelectorAll('.card-view-on-mobile');
-  
-  tables.forEach(table => {
-    // Получаем родительский элемент таблицы
-    const tableParent = table.parentNode;
-    
-    // Проверяем, существует ли уже мобильное представление
-    let mobileView = tableParent.querySelector('.mobile-cards-container');
-    
-    // Если мы на мобильном устройстве
-    if (isMobile) {
-      // Если мобильное представление ещё не создано, создаем его
-      if (!mobileView) {
-        // Скрываем таблицу
-        table.classList.add('d-none', 'd-md-table');
-        
-        // Получаем заголовки таблицы
-        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-        
-        // Создаем контейнер для карточек
-        mobileView = document.createElement('div');
-        mobileView.className = 'mobile-cards-container d-md-none';
-        
-        // Обрабатываем все строки в теле таблицы
-        const rows = table.querySelectorAll('tbody tr');
-        
-        rows.forEach(row => {
-          // Создаем карточку для каждой строки
-          const card = document.createElement('div');
-          card.className = 'card mb-3';
-          
-          // Получаем данные ячеек
-          const cells = row.querySelectorAll('td');
-          
-          // Создаем тело карточки
-          const cardBody = document.createElement('div');
-          cardBody.className = 'card-body';
-          
-          // Заполняем карточку данными
-          cells.forEach((cell, index) => {
-            if (index < headers.length) {
-              const field = document.createElement('div');
-              field.className = 'mb-2';
-              
-              // Если это ячейка с действиями, добавляем их в подвал карточки
-              if (cell.querySelector('.btn') || cell.querySelector('.btn-group')) {
-                // Эту часть обработаем отдельно
-              } else {
-                // Создаем метку
-                const label = document.createElement('strong');
-                label.className = 'me-2';
-                label.textContent = headers[index] + ': ';
-                
-                // Копируем содержимое ячейки
-                const content = document.createElement('span');
-                content.innerHTML = cell.innerHTML;
-                
-                // Добавляем в карточку
-                field.appendChild(label);
-                field.appendChild(content);
-                cardBody.appendChild(field);
-              }
-            }
-          });
-          
-          // Добавляем тело в карточку
-          card.appendChild(cardBody);
-          
-          // Проверяем, есть ли ячейка с действиями, и добавляем их в подвал карточки
-          const actionsCell = row.querySelector('td:last-child');
-          if (actionsCell && (actionsCell.querySelector('.btn') || actionsCell.querySelector('.btn-group'))) {
-            const cardFooter = document.createElement('div');
-            cardFooter.className = 'card-footer d-flex justify-content-center';
-            cardFooter.innerHTML = actionsCell.innerHTML;
-            card.appendChild(cardFooter);
-          }
-          
-          // Добавляем карточку в контейнер
-          mobileView.appendChild(card);
-        });
-        
-        // Вставляем мобильное представление после таблицы
-        tableParent.appendChild(mobileView);
-      } else {
-        // Если мобильное представление уже существует, показываем его и скрываем таблицу
-        table.classList.add('d-none', 'd-md-table');
-        mobileView.classList.remove('d-none');
-      }
-    } else {
-      // На десктопе показываем таблицу и скрываем мобильное представление
-      table.classList.remove('d-none', 'd-md-table');
-      if (mobileView) {
-        mobileView.classList.add('d-none');
-      }
-    }
-  });
-}
-
-// Функция инициализации адаптивного UI
-function initResponsiveUI() {
-  makeTablesResponsive();
-  createCardViewForTables();
-  
-  // Обновляем при изменении размера окна
-  window.addEventListener('resize', function() {
-    makeTablesResponsive();
-    createCardViewForTables();
-  });
-}
-
-// Вызываем инициализацию когда DOM загружен
-document.addEventListener('DOMContentLoaded', initResponsiveUI);
-</script>
+<script src="/static/admin/js/adaptive-styles.js"></script>
 
 </body>
 
@@ -181,6 +16,10 @@ document.addEventListener('DOMContentLoaded', initResponsiveUI);
   {{template "additionalScripts_withdrawals" .}}
 {{else if eq .activeTab "notifications"}}
   {{template "additionalScripts_notifications" .}}
+{{else if eq .activeTab "ratings"}}
+  {{template "additionalScripts_rating_details" .}}
+{{else if eq .activeTab "settings"}}
+  {{template "additionalScripts_settings" .}}
 {{end}}
 
 </html>
