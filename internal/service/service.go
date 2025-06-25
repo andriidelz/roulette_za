@@ -17,6 +17,7 @@ type Service interface {
 	// Пользователи
 	RegisterUser(telegramID int64, username, firstName, lastName, source, languageCode string) (*models.User, error)
 	GetUser(telegramID int64) (*models.User, error)
+	UpdateUserActivity(telegramID int64) error
 	// GetUserStats(telegramID int64) (map[string]int, error)
 	GetDetailedUserStats(telegramID int64, period string) (map[string]int, error)
 
@@ -219,6 +220,16 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 
 func (s *ServiceImpl) GetUser(telegramID int64) (*models.User, error) {
 	return s.repo.GetUserByTelegramID(telegramID)
+}
+
+// UpdateUserActivity обновляет время последней активности пользователя
+func (s *ServiceImpl) UpdateUserActivity(telegramID int64) error {
+	user, err := s.repo.GetUserByTelegramID(telegramID)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.UpdateUserActivity(user.ID)
 }
 
 // unused

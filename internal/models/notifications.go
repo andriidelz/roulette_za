@@ -26,13 +26,13 @@ type NotificationTemplate struct {
 
 // NotificationTargetParams представляет параметры таргетинга для уведомлений
 type NotificationTargetParams struct {
-	Countries       []string               `json:"countries,omitempty"`        // Список стран для таргетинга
-	ActivityFilters []string               `json:"activity_filters,omitempty"` // Фильтры по активности (последняя игра)
-	UserIDs         []uint                 `json:"user_ids,omitempty"`         // Конкретные ID пользователей
-	TimeZone        string                 `json:"time_zone,omitempty"`        // Часовой пояс для отправки
-	SendTimeStart   string                 `json:"send_time_start,omitempty"`  // Начало периода отправки (по местному времени)
-	SendTimeEnd     string                 `json:"send_time_end,omitempty"`    // Конец периода отправки (по местному времени)
-	Macros          map[string]interface{} `json:"macros,omitempty"`           // Макросы для замены в тексте
+	Countries       []string               `json:"countries,omitempty"`       // Список стран для таргетинга
+	ActivityFilters []string               `json:"activityFilters,omitempty"` // Фильтры по активности (последняя игра)
+	UserIDs         []uint                 `json:"userIds,omitempty"`         // Конкретные ID пользователей
+	TimeZone        string                 `json:"timeZone,omitempty"`        // Часовой пояс для отправки
+	SendTimeStart   string                 `json:"sendTimeStart,omitempty"`   // Начало периода отправки (по местному времени)
+	SendTimeEnd     string                 `json:"sendTimeEnd,omitempty"`     // Конец периода отправки (по местному времени)
+	Macros          map[string]interface{} `json:"macros,omitempty"`          // Макросы для замены в тексте
 }
 
 // Value реализует интерфейс driver.Valuer для сохранения в БД

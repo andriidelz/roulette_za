@@ -217,58 +217,78 @@ func (r *PostgresRepository) MarkNotificationAsSent(id uint) error {
 // GetUsersForNotificationTask находит пользователей, соответствующих параметрам таргетинга
 func (r *PostgresRepository) GetUsersForNotificationTask(task *models.NotificationTask) ([]models.User, error) {
 	var users []models.User
+
+	// Базовый запрос: пользователи не заблокированы
 	query := r.db.Model(&models.User{}).Where("banned = ?", false)
 
 	// Применяем фильтры в зависимости от типа таргетинга
 	switch task.TargetType {
 	case "all":
-		// Не применяем дополнительные фильтры
+		// Все пользователи, не нужны дополнительные фильтры
 
 	case "country":
+		// Таргетинг по странам
 		if len(task.TargetParams.Countries) > 0 {
 			query = query.Where("country IN ?", task.TargetParams.Countries)
 		}
 
 	case "activity":
+		// Таргетинг по активности
 		if len(task.TargetParams.ActivityFilters) > 0 {
-			// Обрабатываем каждый фильтр активности
+			// Временные границы для разных фильтров
+			now := time.Now()
+			threeDay := now.Add(-3 * 24 * time.Hour)
+			twelveHour := now.Add(-12 * time.Hour)
+			sevenDay := now.Add(-7 * 24 * time.Hour)
+			fourteenDay := now.Add(-14 * 24 * time.Hour)
+
+			// Множественные условия WHERE
 			var conditions []string
 			var values []interface{}
 
 			for _, filter := range task.TargetParams.ActivityFilters {
 				switch filter {
 				case "inactive_3days":
-					// Не играл от 3 дней до 12 часов
-					conditions = append(conditions, "(last_activity_at < ? AND last_activity_at > ?)")
-					values = append(values, time.Now().Add(-3*24*time.Hour), time.Now().Add(-12*time.Hour))
+					// Пользователи, активные от 12 часов до 3 дней назад
+					conditions = append(conditions, "(last_activity_at >= ? AND last_activity_at <= ?)")
+					values = append(values, threeDay, twelveHour)
+
 				case "inactive_7days":
-					// Не играл более 3 дней и менее 7 дней
-					conditions = append(conditions, "(last_activity_at < ? AND last_activity_at > ?)")
-					values = append(values, time.Now().Add(-7*24*time.Hour), time.Now().Add(-3*24*time.Hour))
+					// Пользователи, активные от 3 до 7 дней назад
+					conditions = append(conditions, "(last_activity_at >= ? AND last_activity_at <= ?)")
+					values = append(values, sevenDay, threeDay)
+
 				case "inactive_14days":
-					// Не играл более 7 дней и менее 14 дней
-					conditions = append(conditions, "(last_activity_at < ? AND last_activity_at > ?)")
-					values = append(values, time.Now().Add(-14*24*time.Hour), time.Now().Add(-7*24*time.Hour))
+					// Пользователи, активные от 7 до 14 дней назад
+					conditions = append(conditions, "(last_activity_at >= ? AND last_activity_at <= ?)")
+					values = append(values, fourteenDay, sevenDay)
+
 				case "inactive_more_14days":
-					// Не играл более 14 дней
-					conditions = append(conditions, "last_activity_at < ?")
-					values = append(values, time.Now().Add(-14*24*time.Hour))
+					// Пользователи, активные более 14 дней назад
+					conditions = append(conditions, "last_activity_at <= ?")
+					values = append(values, fourteenDay)
 				}
 			}
 
 			if len(conditions) > 0 {
-				query = query.Where(strings.Join(conditions, " OR "), values...)
+				// Объединяем условия через OR
+				whereClause := "(" + strings.Join(conditions, " OR ") + ")"
+
+				// Применяем условие к запросу
+				query = query.Where(whereClause, values...)
 			}
 		}
 
 	case "custom":
+		// Таргетинг по конкретным пользователям
 		if len(task.TargetParams.UserIDs) > 0 {
 			query = query.Where("id IN ?", task.TargetParams.UserIDs)
 		}
 	}
 
-	// Получаем пользователей
+	// Выполняем запрос
 	err := query.Find(&users).Error
+
 	return users, err
 }
 
