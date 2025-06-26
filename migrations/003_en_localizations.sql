@@ -287,3 +287,5 @@ INSERT INTO localizations (key, language, value) VALUES
 
 INSERT INTO localizations (key, language, value) VALUES
     ('rating_error', 'en', 'Error retrieving rating data. Please try again later.');
+    ('send_error', 'en', 'Unfortunately you are interacting with the bot too often, please wait.');
+    ('send_queue_error', 'en', 'Unfortunately, due to performance issues, %d messages have accumulated that are waiting to be sent to you, please wait until they are processed.');

@@ -287,3 +287,5 @@ INSERT INTO localizations (key, language, value) VALUES
 
 INSERT INTO localizations (key, language, value) VALUES
     ('rating_error', 'uk', 'Помилка при отриманні рейтингу. Будь ласка, спробуйте пізніше.');
+    ('send_error', 'uk', 'На жаль, Ви занадто часто взаємодієте з ботом, будь ласка зачекайте.');
+    ('send_queue_error', 'uk', 'На жаль, через проблеми з продуктивністю накопичилося %d повідомлень, які чекають відправки до Вас, будь ласка, зачекайте.');
