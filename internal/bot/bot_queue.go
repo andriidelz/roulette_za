@@ -2,7 +2,6 @@ package bot
 
 import (
 	"fmt"
-	"log"
 	"roulette/internal/logger"
 	"strconv"
 	"strings"
@@ -65,7 +64,7 @@ func (b *Bot) MakeRequestDeferred(chatID int64, param MessageOptions) error {
 	// Превышение очереди на отправку
 	data, ok := b.deferredMessages[chatID]
 	if !ok {
-		log.Printf("%d No user to read\n", chatID)
+		logger.Error.Printf("%d No user to read\n", chatID)
 	} else if len(data.importantMessages) == 0 {
 
 		// Получаем пользователя для определения языка
@@ -90,7 +89,7 @@ func (b *Bot) MakeRequestDeferred(chatID int64, param MessageOptions) error {
 		b.deferredMessages[chatID] = data
 	}
 
-	log.Printf("user %d More than 100 messages are waiting", chatID)
+	logger.Error.Printf("user %d More than 100 messages are waiting", chatID)
 	return fmt.Errorf("user %d More than 100 messages are waiting", chatID)
 }
 
@@ -118,7 +117,7 @@ func (b *Bot) sendBotQueue() {
 					b.deferredMU.Lock()
 					d, ok := b.deferredMessages[chatID]
 					if !ok || len(d.importantMessages) == 0 {
-						log.Printf("%d No user to read\n", chatID)
+						logger.Error.Printf("%d No user to read\n", chatID)
 					} else {
 						options = d.importantMessages[0]
 						d.importantMessages = d.importantMessages[1:]
@@ -141,7 +140,7 @@ func (b *Bot) sendBotQueue() {
 				}
 			}
 		}
-		log.Println("End im: ", im, ", all: ", all)
+		logger.Info.Println("End im: ", im, ", all: ", all)
 	}
 }
 
@@ -171,7 +170,7 @@ func (b *Bot) checkDeferredMessages() {
 					b.deferredMU.Lock()
 					d, ok := b.deferredMessages[chatID]
 					if !ok {
-						log.Printf("%d No user to read\n", chatID)
+						logger.Error.Printf("%d No user to read\n", chatID)
 					} else {
 
 						// Ставим в приоритетные уведомление об ошибке
@@ -187,7 +186,7 @@ func (b *Bot) checkDeferredMessages() {
 					}
 					b.deferredMU.Unlock()
 				}
-				log.Printf("User %d More than 50 messages are waiting", chatID)
+				logger.Error.Printf("User %d More than 50 messages are waiting", chatID)
 			}
 		}
 	}
@@ -224,7 +223,7 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 			if sleep <= 0 {
 				// Не удалось получить время задержки
 				sleep = coolDownIntervalErr429
-				log.Printf("Parse 429 error: %v", err)
+				logger.Error.Printf("Parse 429 error: %v", err)
 			}
 
 			// Получаем пользователя для определения языка
@@ -241,7 +240,7 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 			b.deferredMU.Lock()
 			d, ok := b.deferredMessages[chatID]
 			if !ok {
-				log.Printf("%d No user to read\n", chatID)
+				logger.Error.Printf("%d No user to read\n", chatID)
 			} else {
 
 				// Отправляем уведомление об ошибке при первой возможности
@@ -278,7 +277,7 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 
 	d, ok := b.deferredMessages[chatID]
 	if !ok {
-		log.Printf("%d No user to read\n", chatID)
+		logger.Error.Printf("%d No user to read\n", chatID)
 		return
 	}
 
@@ -286,5 +285,5 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 	d.LastMessageTime = time.Now().Unix()
 	b.deferredMessages[chatID] = d
 
-	log.Println("SendMessage ", chatID, options)
+	logger.Info.Println("SendMessage ", chatID, options)
 }
