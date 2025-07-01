@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"context"
 	"fmt"
 	"roulette/internal/logger"
 	"strconv"
@@ -13,8 +14,6 @@ import (
 type deferredUsers struct {
 	channel           chan MessageOptions // буферный канал с сообщениями для пользователя
 	importantMessages []MessageOptions    // массив с приоритетными сообщениями которые будут отправлены в первую очередь
-	LastMessageTime   int64               // время последней отправки сообщения (Unix)
-	SleepTime         int64               // время задержки отправки сообщения (Unix)
 }
 
 // https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
@@ -37,10 +36,25 @@ const (
 	coolDownInterval       int64 = 1           // Время задержки отправки
 	coolDownIntervalErr    int64 = 5           // Время задержки отправки при ошибке
 	coolDownIntervalErr429 int64 = 60          // Время задержки отправки при ошибке 429 - Too Many Requests
+
+	// Redis key для получения информации по пользователю - время следующей отправки(Unix timestamp)
+	userNextSendTimeKeyPrefix = "user:%d:next_send_time"
+	// Pattern чтобы найти всех пользователей
+	userNextSendTimeKeyPattern = "user:*:next_send_time"
 )
 
 // MakeRequestDeferred Постановка сообщения в очередь на отправку
 func (b *Bot) MakeRequestDeferred(chatID int64, param MessageOptions) error {
+
+	// Создание активного юзера если его не существует и установка немедленной отправки
+	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	nextTimeKey := fmt.Sprintf(userNextSendTimeKeyPrefix, chatID)
+	err := b.redisDB.SetNX(cont, nextTimeKey, time.Now().Unix(), 0).Err() // Текущее время
+	if err != nil {
+		logger.Error.Printf("Error update user %d: %v", chatID, err)
+	}
 
 	b.deferredMU.Lock()
 	defer b.deferredMU.Unlock()
@@ -50,8 +64,6 @@ func (b *Bot) MakeRequestDeferred(chatID int64, param MessageOptions) error {
 		b.deferredMessages[chatID] = deferredUsers{
 			channel:           make(chan MessageOptions, 100), // Буферный канал с возможностью принять до 100 сообщений
 			importantMessages: []MessageOptions{},
-			LastMessageTime:   time.Now().Unix(), // Текущее время
-			SleepTime:         0,                 // Первое сообщение - немедленная отправка
 		}
 	}
 
@@ -102,12 +114,27 @@ func (b *Bot) sendBotQueue() {
 		im := 0
 		all := 0
 
-		for chatID, data := range b.deferredMessages {
+		activeUsers, err := b.getUsersFromRedis()
+		if err != nil {
+			logger.Error.Printf("Error refreshing active user IDs: %v\n", err)
+			continue
+		}
+
+		for chatID, nextSend := range activeUsers {
+			logger.Error.Println(chatID, nextSend)
 			// Проверяем кол-во отправленных сообщений и
 			// проверяем пользователя и
 			// если пришло время то отправляем сообщение из канала
-			if all <= limitMessPerInterval &&
-				data.LastMessageTime+data.SleepTime <= time.Now().Unix() {
+			if all <= limitMessPerInterval && nextSend <= time.Now().Unix() {
+
+				b.deferredMU.Lock()
+				data, ok := b.deferredMessages[chatID]
+				b.deferredMU.Unlock()
+
+				if !ok {
+					logger.Error.Printf("%d No user to read\n", chatID)
+					continue
+				}
 
 				// В первую очередь обрабатываем приоритетные
 				if len(data.importantMessages) > 0 {
@@ -141,54 +168,6 @@ func (b *Bot) sendBotQueue() {
 			}
 		}
 		logger.Info.Println("End im: ", im, ", all: ", all)
-	}
-}
-
-// Раз в 5 минут проверяем очередь сообщений для каждого юзера
-func (b *Bot) checkDeferredMessages() {
-
-	ticker := time.NewTicker(time.Minute * 5)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		for chatID, data := range b.deferredMessages {
-			l := len(data.channel) + len(data.importantMessages)
-			if l > 50 {
-
-				// Получаем пользователя для определения языка
-				user, userErr := b.service.GetUser(chatID)
-				if userErr != nil {
-					logger.Error.Printf("Error getting user %d: %v", chatID, userErr)
-					continue
-				}
-				language := user.LanguageCode
-				if language == "" {
-					language = "en"
-				}
-
-				if len(data.importantMessages) == 0 {
-					b.deferredMU.Lock()
-					d, ok := b.deferredMessages[chatID]
-					if !ok {
-						logger.Error.Printf("%d No user to read\n", chatID)
-					} else {
-
-						// Ставим в приоритетные уведомление об ошибке
-						errSendText := b.service.GetText("send_queue_error", language)
-
-						params := MessageOptions{
-							Text:      fmt.Sprintf(errSendText, l),
-							ParseMode: telego.ModeHTML,
-						}
-
-						d.importantMessages = append(d.importantMessages, params)
-						b.deferredMessages[chatID] = d
-					}
-					b.deferredMU.Unlock()
-				}
-				logger.Error.Printf("User %d More than 50 messages are waiting", chatID)
-			}
-		}
 	}
 }
 
@@ -271,19 +250,60 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 		sleep = coolDownInterval
 	}
 
-	// обновляем данные
-	b.deferredMU.Lock()
-	defer b.deferredMU.Unlock()
+	// обновляем данные - время следующей отправки
+	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	d, ok := b.deferredMessages[chatID]
-	if !ok {
-		logger.Error.Printf("%d No user to read\n", chatID)
-		return
+	nextTimeKey := fmt.Sprintf(userNextSendTimeKeyPrefix, chatID)
+	err = b.redisDB.Set(cont, nextTimeKey, time.Now().Unix()+sleep, 0).Err()
+	if err != nil {
+		logger.Error.Printf("Error update user %d: %v", chatID, err)
 	}
 
-	d.SleepTime = sleep
-	d.LastMessageTime = time.Now().Unix()
-	b.deferredMessages[chatID] = d
-
 	logger.Info.Println("SendMessage ", chatID, options)
+}
+
+// Получение информации по пользователям
+func (b *Bot) getUsersFromRedis() (map[int64]int64, error) {
+	var cursor uint64
+	var keys []string
+	var err error
+
+	usersData := make(map[int64]int64)
+
+	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Scan for keys matching "user:*:name"
+	for {
+		keys, cursor, err = b.redisDB.Scan(cont, cursor, userNextSendTimeKeyPattern, 10).Result() // 10 is the COUNT argument
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan keys: %w", err)
+		}
+
+		for _, key := range keys {
+
+			val, err := b.redisDB.Get(cont, key).Int64()
+			if err != nil {
+				logger.Error.Printf("Error getting value for key %s: %v", key, err)
+				continue
+			}
+
+			parts := strings.Split(key, ":") // e.g., "user:123:next_send_time"
+			if len(parts) == 3 && parts[0] == "user" && parts[2] == "next_send_time" {
+				userID, err := strconv.ParseInt(parts[1], 10, 64)
+				if err != nil {
+					logger.Error.Printf("Warning: Could not parse user ID from key '%s': %v\n", key, err)
+					continue
+				}
+				usersData[userID] = val
+			}
+		}
+
+		if cursor == 0 { // No more keys to scan
+			break
+		}
+	}
+
+	return usersData, nil
 }

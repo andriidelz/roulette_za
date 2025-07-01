@@ -169,6 +169,7 @@ func (b *Bot) Start() error {
 	go b.processUpdates()
 
 	// Запускаем отправку сообщений
+	b.deferredMessages = map[int64]deferredUsers{}
 	go b.sendBotQueue()
 
 	// Запускаем планировщик для обновления рейтингов
