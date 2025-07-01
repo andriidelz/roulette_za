@@ -40,7 +40,7 @@ func main() {
 	svc := service.NewService(repo, cfg.TelegramToken)
 
 	// Создаем бота с URL для RabbitMQ
-	telegramBot, err := bot.NewBot(cfg.TelegramToken, svc, cfg.RabbitMQURL)
+	telegramBot, err := bot.NewBot(cfg.TelegramToken, svc, cfg)
 	if err != nil {
 		logger.Error.Fatalf("Failed to create bot: %v", err)
 	}

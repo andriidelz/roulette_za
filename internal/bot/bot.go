@@ -17,6 +17,7 @@ import (
 
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/redis/go-redis/v9"
 )
 
 // Структура бота
@@ -31,6 +32,7 @@ type Bot struct {
 	stateManager      *StateManager      // Менеджер состояний
 	subscriptionCache *SubscriptionCache // Кеш подписок на каналы
 
+	redisDB          *redis.Client           // Клиент Redis
 	deferredMessages map[int64]deferredUsers // Очередь отправки сообщений
 	deferredMU       sync.Mutex
 }
@@ -77,7 +79,7 @@ func init() {
 }
 
 // NewBot создает новый экземпляр бота
-func NewBot(token string, service service.Service, rabbitmqURL string) (*Bot, error) {
+func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, error) {
 	bot, err := telego.NewBot(token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %w", err)
@@ -91,10 +93,11 @@ func NewBot(token string, service service.Service, rabbitmqURL string) (*Bot, er
 		ctx:          ctx,
 		cancel:       cancel,
 		stateManager: NewStateManager(),
+		redisDB:      NewRedisClient(cfg),
 	}
 
 	// Инициализируем обработчик игры после создания бота с поддержкой RabbitMQ
-	gameHandler, err := NewGameHandler(b, service, rabbitmqURL)
+	gameHandler, err := NewGameHandler(b, service, cfg.RabbitMQURL)
 	if err != nil {
 		cancel() // Освобождаем ресурсы в случае ошибки
 		return nil, fmt.Errorf("failed to create game handler: %w", err)
@@ -103,6 +106,34 @@ func NewBot(token string, service service.Service, rabbitmqURL string) (*Bot, er
 	b.gameHandler = gameHandler
 
 	return b, nil
+}
+
+func NewRedisClient(cfg *config.Config) *redis.Client {
+
+	// Create Redis client with options
+	rdb := redis.NewClient(&redis.Options{
+		Addr:         fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort),
+		Password:     cfg.RedisPass,
+		DB:           cfg.RedisDB,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+		PoolSize:     10,
+		PoolTimeout:  30 * time.Second,
+	})
+
+	// Test connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := rdb.Ping(ctx).Result()
+	if err != nil {
+		logger.Error.Printf("failed to connect to Redis: %v", err)
+	}
+
+	logger.Info.Printf("Successfully connected to Redis at %s:%s", cfg.RedisHost, cfg.RedisPort)
+
+	return rdb
 }
 
 // Start запускает бота
@@ -138,9 +169,7 @@ func (b *Bot) Start() error {
 	go b.processUpdates()
 
 	// Запускаем отправку сообщений
-	b.deferredMessages = map[int64]deferredUsers{}
 	go b.sendBotQueue()
-	go b.checkDeferredMessages()
 
 	// Запускаем планировщик для обновления рейтингов
 	b.StartRatingScheduler()
