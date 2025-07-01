@@ -6,7 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"roulette/internal/config"
@@ -31,10 +30,7 @@ type Bot struct {
 	gameHandler       *GameHandler       // Обработчик игры
 	stateManager      *StateManager      // Менеджер состояний
 	subscriptionCache *SubscriptionCache // Кеш подписок на каналы
-
-	redisDB          *redis.Client           // Клиент Redis
-	deferredMessages map[int64]deferredUsers // Очередь отправки сообщений
-	deferredMU       sync.Mutex
+	redisDB           *redis.Client      // Клиент Redis
 }
 
 // Константы для команд и callback-запитов
@@ -169,7 +165,6 @@ func (b *Bot) Start() error {
 	go b.processUpdates()
 
 	// Запускаем отправку сообщений
-	b.deferredMessages = map[int64]deferredUsers{}
 	go b.sendBotQueue()
 
 	// Запускаем планировщик для обновления рейтингов
@@ -1829,7 +1824,7 @@ func (b *Bot) SendMessage(chatID int64, options MessageOptions) error {
 	}
 
 	// Устанавливаем в очередь на отправку
-	return b.MakeRequestDeferred(chatID, options)
+	return b.MakeRequestDeferred(chatID, false, options)
 }
 
 // UpdateMessage обновляет существующее сообщение с указанными опциями
@@ -1851,7 +1846,7 @@ func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions)
 		options.MethodName = editMessageMedia
 		options.MessageID = messageID
 		// Устанавливаем в очередь на отправку
-		return b.MakeRequestDeferred(chatID, options)
+		return b.MakeRequestDeferred(chatID, false, options)
 
 	} else if options.ReplyKeyboard != nil || options.RemoveKeyboard {
 		// Для ReplyKeyboard необходимо удалить старое сообщение и отправить новое
@@ -1869,7 +1864,7 @@ func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions)
 		options.MessageID = messageID
 
 		// Устанавливаем в очередь на отправку
-		return b.MakeRequestDeferred(chatID, options)
+		return b.MakeRequestDeferred(chatID, false, options)
 	}
 }
 

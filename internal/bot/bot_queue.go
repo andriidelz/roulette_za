@@ -13,10 +13,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type deferredUsers struct {
-	importantMessages []MessageOptions // массив с приоритетными сообщениями которые будут отправлены в первую очередь
-}
-
 // https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
 // Лимиты приблизительные, настоящие отличаются по времени, кол-ву и от типа сообщения
 // Около 30 сообщений на секунду, и не больше 1 сообщения пользователю в секунду
@@ -44,10 +40,13 @@ const (
 	userNextSendTimeKeyPattern = "user:*:next_send_time"
 	// Redis key для очереди
 	userQueueKeyPrefix = "user:%d:queue"
+	// Redis key для времени отправки ошибок
+	userErrorKeyPrefix  = "user:%d:error"
+	userErrorExpiration = 40 * time.Second // Redis key для времени отправки ошибок
 )
 
 // MakeRequestDeferred Постановка сообщения в очередь на отправку
-func (b *Bot) MakeRequestDeferred(chatID int64, param MessageOptions) error {
+func (b *Bot) MakeRequestDeferred(chatID int64, firstInOrder bool, param MessageOptions) error {
 
 	// Создание активного юзера если его не существует и установка немедленной отправки
 	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -68,31 +67,39 @@ func (b *Bot) MakeRequestDeferred(chatID int64, param MessageOptions) error {
 		return err
 	}
 
-	// Добавляем в очередь на отправку в конец list
-	length, err := b.redisDB.RPush(cont, queueKey, message).Result()
+	// Добавляем в очередь на отправку
+	var length int64
+	if firstInOrder {
+		// Поставка впереди очереди
+		length, err = b.redisDB.LPush(cont, queueKey, message).Result()
+	} else {
+		// По дефолту в конец list
+		length, err = b.redisDB.RPush(cont, queueKey, message).Result()
+	}
 	if err != nil {
-		logger.Error.Printf("Error RPush message for user %d: %v", chatID, err)
+		logger.Error.Printf("Error Push message for user %d: %v", chatID, err)
+		return err
 	}
 
-	b.deferredMU.Lock()
-	defer b.deferredMU.Unlock()
+	if length > 100 {
+		b.MakeRequestDeferredErr(chatID, "send_queue_error")
 
-	// Проверка и если нужно то добавление пользователя в очередь
-	if _, exists := b.deferredMessages[chatID]; !exists {
-		b.deferredMessages[chatID] = deferredUsers{
-			importantMessages: []MessageOptions{},
-		}
+		logger.Error.Printf("user %d More than 100 messages are waiting", chatID)
+		return fmt.Errorf("user %d More than 100 messages are waiting", chatID)
 	}
 
-	if length < 100 {
-		return nil
-	}
+	return nil
+}
 
-	// Превышение очереди на отправку
-	data, ok := b.deferredMessages[chatID]
-	if !ok {
-		logger.Error.Printf("%d No user to read\n", chatID)
-	} else if len(data.importantMessages) == 0 {
+func (b *Bot) MakeRequestDeferredErr(chatID int64, errText string) {
+
+	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// Проверяем была ли отправка за период указанный в userErrorExpiration сообщений об ошибке
+	errKey := fmt.Sprintf(userErrorKeyPrefix, chatID)
+	_, err := b.redisDB.Get(cont, errKey).Result()
+	if err == redis.Nil {
+		// Если не было таких сообщений то создаем сообщение об ошибке и ставим ключ
 
 		// Получаем пользователя для определения языка
 		user, userErr := b.service.GetUser(chatID)
@@ -105,19 +112,21 @@ func (b *Bot) MakeRequestDeferred(chatID int64, param MessageOptions) error {
 			language = "en"
 		}
 
-		// Ставим в приоритетные уведомление об ошибке
-		errSendText := b.service.GetText("send_queue_error", language)
-		params := MessageOptions{
+		errSendText := b.service.GetText(errText, language)
+		options := MessageOptions{
 			Text:      fmt.Sprintf(errSendText, 100),
 			ParseMode: telego.ModeHTML,
 		}
 
-		data.importantMessages = append(data.importantMessages, params)
-		b.deferredMessages[chatID] = data
+		// Устанавливаем ключ отправки сообщения об ошибке
+		// value не важно, проверка идет по наличию ключа
+		err = b.redisDB.Set(cont, errKey, "value", userErrorExpiration).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set userErrorExpiration %d: %v", chatID, err)
+		}
+		// Ставим в приоритетные уведомление об ошибке
+		b.MakeRequestDeferred(chatID, true, options)
 	}
-
-	logger.Error.Printf("user %d More than 100 messages are waiting", chatID)
-	return fmt.Errorf("user %d More than 100 messages are waiting", chatID)
 }
 
 // sendBotQueue цикл для равномерной отправки сообщений пользователям
@@ -128,8 +137,7 @@ func (b *Bot) sendBotQueue() {
 	cont := context.Background()
 
 	for range ticker.C {
-		im := 0
-		all := 0
+		countMess := 0
 
 		activeUsers, err := b.getUsersFromRedis()
 		if err != nil {
@@ -141,62 +149,32 @@ func (b *Bot) sendBotQueue() {
 			logger.Error.Println(chatID, nextSend)
 			// Проверяем кол-во отправленных сообщений и
 			// проверяем пользователя и
-			// если пришло время то отправляем сообщение из канала
-			if all <= limitMessPerInterval && nextSend <= time.Now().Unix() {
+			// если пришло время то отправляем сообщение из очереди
+			if countMess <= limitMessPerInterval && nextSend <= time.Now().Unix() {
 
-				b.deferredMU.Lock()
-				data, ok := b.deferredMessages[chatID]
-				b.deferredMU.Unlock()
-
-				if !ok {
-					logger.Error.Printf("%d No user to read\n", chatID)
+				// Пробуем получить сообщение для пользователя из очереди
+				queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
+				mesByte, err := b.redisDB.LPop(cont, queueKey).Bytes()
+				if err != nil {
+					if err != redis.Nil {
+						logger.Error.Printf("Error LPop for %s: %v\n", queueKey, err)
+					}
+					// Нет сообщений или ошибка при получении
+					continue
+				}
+				// Если сообщение есть превращаем его в структуру
+				options := MessageOptions{}
+				err = json.Unmarshal(mesByte, &options)
+				if err != nil {
+					logger.Error.Printf("Error Unmarshal for %s: %v\n", queueKey, err)
 					continue
 				}
 
-				// В первую очередь обрабатываем приоритетные
-				if len(data.importantMessages) > 0 {
-
-					options := MessageOptions{}
-
-					b.deferredMU.Lock()
-					d, ok := b.deferredMessages[chatID]
-					if !ok || len(d.importantMessages) == 0 {
-						logger.Error.Printf("%d No user to read\n", chatID)
-					} else {
-						options = d.importantMessages[0]
-						d.importantMessages = d.importantMessages[1:]
-						b.deferredMessages[chatID] = d
-					}
-					b.deferredMU.Unlock()
-					im++
-					all++
-					b.sendDeferredMessage(chatID, options)
-
-				} else {
-
-					// Пробуем получить сообщение для пользователя из очереди
-					queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
-					mesByte, err := b.redisDB.LPop(cont, queueKey).Bytes()
-					if err != nil {
-						if err == redis.Nil {
-							// Нет сообщений
-							continue
-						}
-						logger.Error.Printf("Error LPop for %s: %v\n", queueKey, err)
-					}
-					// Если сообщение есть превращаем его в структуру
-					options := MessageOptions{}
-					err = json.Unmarshal(mesByte, &options)
-					if err != nil {
-						logger.Error.Printf("Error Unmarshal for %s: %v\n", queueKey, err)
-					}
-
-					all++
-					b.sendDeferredMessage(chatID, options)
-				}
+				countMess++
+				b.sendDeferredMessage(chatID, options)
 			}
 		}
-		logger.Info.Println("End im: ", im, ", all: ", all)
+		logger.Info.Println("End countMess: ", countMess)
 	}
 }
 
@@ -234,40 +212,10 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 				logger.Error.Printf("Parse 429 error: %v", err)
 			}
 
-			// Получаем пользователя для определения языка
-			user, userErr := b.service.GetUser(chatID)
-			if userErr != nil {
-				logger.Error.Printf("Error getting user %d: %v", chatID, userErr)
-				return
-			}
-			language := user.LanguageCode
-			if language == "" {
-				language = "en"
-			}
+			// Добавляем в начало очереди сообщений то сообщение которое не получилось доставить
+			b.MakeRequestDeferred(chatID, true, options)
 
-			b.deferredMU.Lock()
-			d, ok := b.deferredMessages[chatID]
-			if !ok {
-				logger.Error.Printf("%d No user to read\n", chatID)
-			} else {
-
-				// Отправляем уведомление об ошибке при первой возможности
-				errSendText := b.service.GetText("send_error", language)
-
-				// Добавляем в начало списка приоритетных сообщений уведомление
-				d.importantMessages = append([]MessageOptions{
-					{
-						Text:      errSendText,
-						ParseMode: telego.ModeHTML,
-					}},
-					d.importantMessages...)
-
-				// Добавляем в конец списка приоритетных сообщений то сообщение которое не получилось доставить
-				d.importantMessages = append(d.importantMessages, options)
-				b.deferredMessages[chatID] = d
-			}
-			b.deferredMU.Unlock()
-
+			b.MakeRequestDeferredErr(chatID, "send_error")
 		} else {
 			logger.Error.Printf("Error %d sending message: %v", chatID, err)
 			sleep = coolDownIntervalErr // Если была другая ошибка отправки то немного подождем
@@ -322,7 +270,7 @@ func (b *Bot) getUsersFromRedis() (map[int64]int64, error) {
 			if len(parts) == 3 && parts[0] == "user" && parts[2] == "next_send_time" {
 				userID, err := strconv.ParseInt(parts[1], 10, 64)
 				if err != nil {
-					logger.Error.Printf("Warning: Could not parse user ID from key '%s': %v\n", key, err)
+					logger.Error.Printf("Could not parse user ID from key '%s': %v\n", key, err)
 					continue
 				}
 				usersData[userID] = val
