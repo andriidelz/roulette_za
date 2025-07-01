@@ -19,6 +19,14 @@ x-database-config: &database-config
 x-rabbitmq-config: &rabbitmq-config
   RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
 
+# Redis configuration
+x-redis-config: &redis-config
+  REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/${REDIS_DB:-0}
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_PASSWORD: ${REDIS_PASSWORD}
+  REDIS_DB: ${REDIS_DB:-0}
+
 # Telegram configuration
 x-telegram-config: &telegram-config
   TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
@@ -40,6 +48,10 @@ x-postgres-env: &postgres-env
 x-rabbitmq-env: &rabbitmq-env
   RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
   RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+
+# Redis environment variables
+x-redis-env: &redis-env
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
 
 # PgAdmin configuration
 x-pgadmin-config: &pgadmin-config
@@ -96,6 +108,41 @@ services:
     logging:
       driver: "none"
 
+  redis:
+    image: redis:7-alpine
+    container_name: roulette-redis
+    environment:
+      <<: *redis-env
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123} --appendonly yes
+    volumes:
+      - ./shared-data/redis:/data
+    # ports:
+    #   - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging: *infrastructure-logging
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: roulette-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379:${REDIS_DB:-0}:${REDIS_PASSWORD:-redis123}
+      HTTP_USER: ${REDIS_COMMANDER_USER:-admin}
+      HTTP_PASSWORD: ${REDIS_COMMANDER_PASSWORD:-admin}
+      URL_PREFIX: /redis
+    ports:
+      - "8282:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    logging:
+      driver: "none"
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: roulette-rabbitmq
@@ -121,11 +168,13 @@ services:
     container_name: roulette-bot
     command: ./roulette-bot
     environment:
-      <<: [*database-config, *rabbitmq-config, *telegram-config, *payment-config]
+      <<: [*database-config, *rabbitmq-config, *telegram-config, *payment-config, *redis-config]
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     logging: *default-logging
@@ -137,11 +186,13 @@ services:
     container_name: roulette-rotator
     command: ./roulette-rotator
     environment:
-      <<: [*database-config, *rabbitmq-config]
+      <<: [*database-config, *rabbitmq-config, *redis-config]
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     logging: *default-logging
@@ -153,11 +204,13 @@ services:
     container_name: roulette-admin
     command: ./roulette-admin
     environment:
-      <<: [*database-config, *telegram-config, *admin-config, *payment-config]
+      <<: [*database-config, *telegram-config, *admin-config, *payment-config, *redis-config]
     ports:
       - "8080:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     logging: *default-logging
