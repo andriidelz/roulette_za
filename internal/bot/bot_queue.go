@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"roulette/internal/logger"
 	"strconv"
@@ -9,11 +10,11 @@ import (
 	"time"
 
 	"github.com/mymmrac/telego"
+	"github.com/redis/go-redis/v9"
 )
 
 type deferredUsers struct {
-	channel           chan MessageOptions // буферный канал с сообщениями для пользователя
-	importantMessages []MessageOptions    // массив с приоритетными сообщениями которые будут отправлены в первую очередь
+	importantMessages []MessageOptions // массив с приоритетными сообщениями которые будут отправлены в первую очередь
 }
 
 // https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
@@ -41,6 +42,8 @@ const (
 	userNextSendTimeKeyPrefix = "user:%d:next_send_time"
 	// Pattern чтобы найти всех пользователей
 	userNextSendTimeKeyPattern = "user:*:next_send_time"
+	// Redis key для очереди
+	userQueueKeyPrefix = "user:%d:queue"
 )
 
 // MakeRequestDeferred Постановка сообщения в очередь на отправку
@@ -56,20 +59,32 @@ func (b *Bot) MakeRequestDeferred(chatID int64, param MessageOptions) error {
 		logger.Error.Printf("Error update user %d: %v", chatID, err)
 	}
 
+	// Отправка сообщения в очередь
+	// Превращаем структуру
+	queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
+	message, err := json.Marshal(param)
+	if err != nil {
+		logger.Error.Println("Error Marshal:", err, chatID)
+		return err
+	}
+
+	// Добавляем в очередь на отправку в конец list
+	length, err := b.redisDB.RPush(cont, queueKey, message).Result()
+	if err != nil {
+		logger.Error.Printf("Error RPush message for user %d: %v", chatID, err)
+	}
+
 	b.deferredMU.Lock()
 	defer b.deferredMU.Unlock()
 
 	// Проверка и если нужно то добавление пользователя в очередь
 	if _, exists := b.deferredMessages[chatID]; !exists {
 		b.deferredMessages[chatID] = deferredUsers{
-			channel:           make(chan MessageOptions, 100), // Буферный канал с возможностью принять до 100 сообщений
 			importantMessages: []MessageOptions{},
 		}
 	}
 
-	if len(b.deferredMessages[chatID].channel) < 100 {
-		// Добавляем сообщение пользователю в очередь на отправку
-		b.deferredMessages[chatID].channel <- param
+	if length < 100 {
 		return nil
 	}
 
@@ -109,6 +124,8 @@ func (b *Bot) MakeRequestDeferred(chatID int64, param MessageOptions) error {
 func (b *Bot) sendBotQueue() {
 	ticker := time.NewTicker(sendInterval)
 	defer ticker.Stop()
+
+	cont := context.Background()
 
 	for range ticker.C {
 		im := 0
@@ -157,13 +174,25 @@ func (b *Bot) sendBotQueue() {
 
 				} else {
 
-					select {
-					case options := <-data.channel:
-						all++
-						b.sendDeferredMessage(chatID, options)
-					default:
-						// Нет сообщений
+					// Пробуем получить сообщение для пользователя из очереди
+					queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
+					mesByte, err := b.redisDB.LPop(cont, queueKey).Bytes()
+					if err != nil {
+						if err == redis.Nil {
+							// Нет сообщений
+							continue
+						}
+						logger.Error.Printf("Error LPop for %s: %v\n", queueKey, err)
 					}
+					// Если сообщение есть превращаем его в структуру
+					options := MessageOptions{}
+					err = json.Unmarshal(mesByte, &options)
+					if err != nil {
+						logger.Error.Printf("Error Unmarshal for %s: %v\n", queueKey, err)
+					}
+
+					all++
+					b.sendDeferredMessage(chatID, options)
 				}
 			}
 		}
