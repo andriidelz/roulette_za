@@ -13,6 +13,7 @@ type CaptchaOptions struct {
 	Width      int
 	Height     int
 	TextLength int
+	ImagePath  string
 	FontPath   string
 	FontSize   float64
 
@@ -42,7 +43,8 @@ var captchaFonts = []string{
 	"VT323/VT323-Regular.ttf",
 }
 
-func randomText(n int) string {
+// RandomText - вспомогательная, генерация рандомного текста
+func RandomText(n int) string {
 	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	rand.Seed(time.Now().UnixNano())
 	text := make([]byte, n)
@@ -52,7 +54,8 @@ func randomText(n int) string {
 	return string(text)
 }
 
-func generateCaptcha(text string, filepath string, opt CaptchaOptions) error {
+// GenerateCaptcha - генерация переданного текста в картинку по пути filepath
+func GenerateCaptcha(text string, filename string, opt CaptchaOptions) error {
 	dc := gg.NewContext(opt.Width, opt.Height)
 
 	// Background
@@ -107,18 +110,17 @@ func generateCaptcha(text string, filepath string, opt CaptchaOptions) error {
 		dc.Pop()
 	}
 
-	return dc.SavePNG(filepath)
+	return dc.SavePNG(opt.ImagePath + filename)
 }
 
-func main() {
-	text := randomText(6)
-	fmt.Println("CAPTCHA text:", text)
-
-	options := CaptchaOptions{
+// DefaultOption - Создание дефолтных опций для генерации
+func DefaultOption(imagePath, fontPath string) CaptchaOptions {
+	return CaptchaOptions{
 		Width:           200,
 		Height:          70,
 		TextLength:      6,
-		FontPath:        getRandomFont(),
+		ImagePath:       imagePath,
+		FontPath:        GetRandomFont(fontPath),
 		FontSize:        36,
 		NoiseLines:      10,
 		NoiseDots:       60,
@@ -126,12 +128,9 @@ func main() {
 		MaxYOffset:      10, // пикселей
 		RandomTextColor: true,
 	}
-
-	if err := generateCaptcha(text, "captcha.png", options); err != nil {
-		fmt.Println("Error:", err)
-	}
 }
 
-func getRandomFont() string {
-	return "./fonts/" + captchaFonts[rand.Intn(len(captchaFonts))]
+// GetRandomFont - Использование рандомного шрифта из slice
+func GetRandomFont(fontPath string) string {
+	return fontPath + captchaFonts[rand.Intn(len(captchaFonts))]
 }
