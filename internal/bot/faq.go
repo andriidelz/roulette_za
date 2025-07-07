@@ -234,7 +234,7 @@ func (b *Bot) sendFAQNextPrompt(chatID int64, language string) {
 	nextText := b.service.GetText("faqnext", language)
 
 	// Отправляем сообщение
-	_, err := b.SendMessage(chatID, MessageOptions{
+	err := b.SendMessage(chatID, MessageOptions{
 		Text:          nextText,
 		ReplyKeyboard: b.createFAQKeyboard(language),
 	})

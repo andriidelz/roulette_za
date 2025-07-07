@@ -156,7 +156,7 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 	// Отправляем уведомление пользователю
 	if notificationData.ImageURL != "" {
 		// Отправляем сообщение с изображением
-		_, err := b.SendMessage(notificationData.TelegramID, MessageOptions{
+		err := b.SendMessage(notificationData.TelegramID, MessageOptions{
 			Text:           fmt.Sprintf("<b>%s</b>\n\n%s", notificationData.Title, notificationData.Message),
 			PhotoFileID:    notificationData.ImageURL, // или PhotoPath, если это локальный путь
 			InlineKeyboard: inlineKeyboard,
@@ -167,7 +167,7 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 		}
 	} else {
 		// Отправляем текстовое сообщение
-		_, err := b.SendMessage(notificationData.TelegramID, MessageOptions{
+		err := b.SendMessage(notificationData.TelegramID, MessageOptions{
 			Text:           fmt.Sprintf("<b>%s</b>\n\n%s", notificationData.Title, notificationData.Message),
 			InlineKeyboard: inlineKeyboard,
 			ParseMode:      "HTML",

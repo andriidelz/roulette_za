@@ -16,6 +16,7 @@ import (
 
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/redis/go-redis/v9"
 )
 
 // Структура бота
@@ -29,6 +30,7 @@ type Bot struct {
 	gameHandler       *GameHandler       // Обработчик игры
 	stateManager      *StateManager      // Менеджер состояний
 	subscriptionCache *SubscriptionCache // Кеш подписок на каналы
+	redisDB           *redis.Client      // Клиент Redis
 }
 
 // Константы для команд и callback-запитов
@@ -73,7 +75,7 @@ func init() {
 }
 
 // NewBot создает новый экземпляр бота
-func NewBot(token string, service service.Service, rabbitmqURL string) (*Bot, error) {
+func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, error) {
 	bot, err := telego.NewBot(token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %w", err)
@@ -87,10 +89,11 @@ func NewBot(token string, service service.Service, rabbitmqURL string) (*Bot, er
 		ctx:          ctx,
 		cancel:       cancel,
 		stateManager: NewStateManager(),
+		redisDB:      NewRedisClient(cfg),
 	}
 
 	// Инициализируем обработчик игры после создания бота с поддержкой RabbitMQ
-	gameHandler, err := NewGameHandler(b, service, rabbitmqURL)
+	gameHandler, err := NewGameHandler(b, service, cfg.RabbitMQURL)
 	if err != nil {
 		cancel() // Освобождаем ресурсы в случае ошибки
 		return nil, fmt.Errorf("failed to create game handler: %w", err)
@@ -99,6 +102,35 @@ func NewBot(token string, service service.Service, rabbitmqURL string) (*Bot, er
 	b.gameHandler = gameHandler
 
 	return b, nil
+}
+
+func NewRedisClient(cfg *config.Config) *redis.Client {
+
+	// Create Redis client with options
+	rdb := redis.NewClient(&redis.Options{
+		Addr:         fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort),
+		Password:     cfg.RedisPass,
+		DB:           cfg.RedisDB,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+		PoolSize:     50,
+		PoolTimeout:  30 * time.Second,
+		MinIdleConns: 10,
+	})
+
+	// Test connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := rdb.Ping(ctx).Result()
+	if err != nil {
+		logger.Error.Printf("failed to connect to Redis: %v", err)
+	}
+
+	logger.Info.Printf("Successfully connected to Redis at %s:%s", cfg.RedisHost, cfg.RedisPort)
+
+	return rdb
 }
 
 // Start запускает бота
@@ -132,6 +164,9 @@ func (b *Bot) Start() error {
 
 	// Запускаем обработку обновлений в фоновом режиме
 	go b.processUpdates()
+
+	// Запускаем отправку сообщений
+	go b.sendBotQueue()
 
 	// Запускаем планировщик для обновления рейтингов
 	b.StartRatingScheduler()
@@ -230,7 +265,7 @@ func (b *Bot) handleNicknamePrompt(chatID int64, userID int64, language string) 
 	}
 
 	// Отправляем сообщение с вопросом
-	_, err = b.SendMessage(chatID, MessageOptions{
+	err = b.SendMessage(chatID, MessageOptions{
 		Text:           namePromptText,
 		InlineKeyboard: nicknameKeyboard,
 	})
@@ -1706,8 +1741,21 @@ func (b *Bot) answerCallbackQuery(queryID string, text string, showAlert bool) {
 	}
 }
 
+const (
+	sendMessage      = "sendMessage"
+	editMessageText  = "editMessageText"
+	sendPhoto        = "sendPhoto"
+	editMessageMedia = "editMessageMedia"
+)
+
 // MessageOptions содержит опции для отправки или обновления сообщения
 type MessageOptions struct {
+	// MethodName - Метод телеграма
+	MethodName string
+
+	// MessageID - ID сообщения для изменения или удаления
+	MessageID int
+
 	// Text - текст сообщения
 	Text string
 
@@ -1746,7 +1794,7 @@ type MessageOptions struct {
 }
 
 // SendMessage отправляет новое сообщение с указанными опциями
-func (b *Bot) SendMessage(chatID int64, options MessageOptions) (*telego.Message, error) {
+func (b *Bot) SendMessage(chatID int64, options MessageOptions) error {
 	// Обрабатываем текст, заменяя литеральные \r\n на реальные переносы строк
 	// Используем двойной проход для избежания проблем с экранированием
 	processedText := strings.ReplaceAll(options.Text, "\\r\\n", "\n")
@@ -1771,15 +1819,17 @@ func (b *Bot) SendMessage(chatID int64, options MessageOptions) (*telego.Message
 
 	// Если указан путь к фото или FileID
 	if options.PhotoPath != "" || options.PhotoFileID != "" {
-		return b.sendPhoto(chatID, options)
+		options.MethodName = sendPhoto
+	} else {
+		options.MethodName = sendMessage
 	}
 
-	// Иначе отправляем текстовое сообщение
-	return b.sendText(chatID, options)
+	// Устанавливаем в очередь на отправку
+	return b.MakeRequestDeferred(chatID, false, options)
 }
 
 // UpdateMessage обновляет существующее сообщение с указанными опциями
-func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions) (*telego.Message, error) {
+func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions) error {
 	// Если указан путь к фото
 	if options.PhotoPath != "" {
 		// Для фото с локального источника необходимо удалить старое сообщение и отправить новое
@@ -1788,13 +1838,17 @@ func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions)
 			MessageID: messageID,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to delete message: %w", err)
+			return fmt.Errorf("failed to delete message: %w", err)
 		}
 
 		return b.SendMessage(chatID, options)
 	} else if options.PhotoFileID != "" {
 		// Обновление фото по FileID
-		return b.updatePhotoByFileID(chatID, messageID, options)
+		options.MethodName = editMessageMedia
+		options.MessageID = messageID
+		// Устанавливаем в очередь на отправку
+		return b.MakeRequestDeferred(chatID, false, options)
+
 	} else if options.ReplyKeyboard != nil || options.RemoveKeyboard {
 		// Для ReplyKeyboard необходимо удалить старое сообщение и отправить новое
 		err := b.bot.DeleteMessage(&telego.DeleteMessageParams{
@@ -1802,13 +1856,16 @@ func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions)
 			MessageID: messageID,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to delete message: %w", err)
+			return fmt.Errorf("failed to delete message: %w", err)
 		}
 
 		return b.SendMessage(chatID, options)
 	} else {
-		// Обновляем текстовое сообщение
-		return b.updateText(chatID, messageID, options)
+		options.MethodName = editMessageText
+		options.MessageID = messageID
+
+		// Устанавливаем в очередь на отправку
+		return b.MakeRequestDeferred(chatID, false, options)
 	}
 }
 
