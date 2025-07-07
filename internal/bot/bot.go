@@ -114,8 +114,9 @@ func NewRedisClient(cfg *config.Config) *redis.Client {
 		DialTimeout:  5 * time.Second,
 		ReadTimeout:  3 * time.Second,
 		WriteTimeout: 3 * time.Second,
-		PoolSize:     10,
+		PoolSize:     50,
 		PoolTimeout:  30 * time.Second,
+		MinIdleConns: 10,
 	})
 
 	// Test connection

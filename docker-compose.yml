@@ -113,7 +113,15 @@ services:
     container_name: roulette-redis
     environment:
       <<: *redis-env
-    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123} --appendonly yes
+    command: >
+      redis-server 
+      --requirepass ${REDIS_PASSWORD:-redis123} 
+      --appendonly yes
+      --maxclients 10000
+      --tcp-backlog 511
+      --tcp-keepalive 300
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
     volumes:
       - ./shared-data/redis:/data
     # ports:
