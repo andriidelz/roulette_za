@@ -39,8 +39,8 @@ const (
 
 	// Redis key для получения информации по пользователю - время следующей отправки(Unix timestamp)
 	userNextSendTimeKeyPrefix = "user:%d:next_send_time"
-	// Pattern чтобы найти всех пользователей
-	userNextSendTimeKeyPattern = "user:*:next_send_time"
+	// Redis key для задач на отправку в sorted set
+	userSendTaskKey = "telegram:ready_users"
 	// Redis key для очереди
 	userQueueKeyPrefix = "user:%d:queue"
 	// Redis key для времени отправки ошибок
@@ -62,39 +62,69 @@ const (
 
 // MakeRequestDeferred Постановка сообщения в очередь на отправку
 func (b *Bot) MakeRequestDeferred(chatID int64, firstInOrder bool, param MessageOptions) error {
-
-	// Создание активного юзера если его не существует и установка немедленной отправки
-	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	nextTimeKey := fmt.Sprintf(userNextSendTimeKeyPrefix, chatID)
-	err := b.redisDB.SetNX(cont, nextTimeKey, time.Now().Unix(), 0).Err() // Текущее время
-	if err != nil {
-		logger.Error.Printf("Error update user %d: %v", chatID, err)
-	}
-
-	// Отправка сообщения в очередь
-	// Превращаем структуру
-	queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
+	// Маршалим сообщение заранее
 	message, err := json.Marshal(param)
 	if err != nil {
 		logger.Error.Println("Error Marshal:", err, chatID)
 		return err
 	}
 
-	// Добавляем в очередь на отправку
-	var length int64
+	// Используем Redis Pipeline для выполнения нескольких команд за один сетевой запрос
+	pipe := b.redisDB.Pipeline()
+
+	// Подготавливаем команды
+	nextTimeKey := fmt.Sprintf(userNextSendTimeKeyPrefix, chatID)
+	getCmd := pipe.Get(ctx, nextTimeKey)
+
+	queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
+	var pushCmd *redis.IntCmd
 	if firstInOrder {
-		// Поставка впереди очереди
-		length, err = b.redisDB.LPush(cont, queueKey, message).Result()
+		pushCmd = pipe.LPush(ctx, queueKey, message)
 	} else {
-		// По дефолту в конец list
-		length, err = b.redisDB.RPush(cont, queueKey, message).Result()
+		pushCmd = pipe.RPush(ctx, queueKey, message)
 	}
+
+	// Выполняем команды
+	_, err = pipe.Exec(ctx)
+	if err != nil && err != redis.Nil {
+		logger.Error.Printf("Pipeline execution error: %v", err)
+		return err
+	}
+
+	// Обрабатываем результаты
+	var sleep int64
+	val, err := getCmd.Result()
+	if err == redis.Nil {
+		sleep = time.Now().Unix()
+		// Создание активного юзера если его не существует и установка немедленной отправки
+		err := b.redisDB.Set(ctx, nextTimeKey, sleep, 0).Err() // Текущее время
+		if err != nil {
+			logger.Error.Printf("Error update user %d: %v", chatID, err)
+		}
+	} else if err != nil {
+		logger.Error.Println(err)
+	} else {
+		// Получаем время следующей отправки
+		nextTime, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			logger.Error.Printf("Could not parse '%s': %v\n", val, err)
+		} else {
+			sleep = nextTime
+		}
+	}
+
+	// Получаем длину очереди
+	length, err := pushCmd.Result()
 	if err != nil {
 		logger.Error.Printf("Error Push message for user %d: %v", chatID, err)
 		return err
 	}
+
+	// Создание задачи на отправку
+	b.createTaskToSend(chatID, sleep)
 
 	if length > 100 {
 		b.MakeRequestDeferredErr(chatID, "send_queue_error")
@@ -149,48 +179,73 @@ func (b *Bot) sendBotQueue() {
 	ticker := time.NewTicker(sendInterval)
 	defer ticker.Stop()
 
-	cont := context.Background()
-
 	for range ticker.C {
 		countMess := 0
+		maxMessages := limitMessPerInterval
 
-		activeUsers, err := b.getUsersFromRedis()
-		if err != nil {
-			logger.Error.Printf("Error refreshing active user IDs: %v\n", err)
+		readyUsers := b.getReadyUsers()
+		if len(readyUsers) == 0 {
 			continue
 		}
 
-		for chatID, nextSend := range activeUsers {
-			// Проверяем кол-во отправленных сообщений и
-			// проверяем пользователя и
-			// если пришло время то отправляем сообщение из очереди
-			if countMess <= limitMessPerInterval && nextSend <= time.Now().Unix() {
+		logger.Info.Printf("Found %d ready users", len(readyUsers))
 
-				// Пробуем получить сообщение для пользователя из очереди
-				queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
-				mesByte, err := b.redisDB.LPop(cont, queueKey).Bytes()
-				if err != nil {
-					if err != redis.Nil {
-						logger.Error.Printf("Error LPop for %s: %v\n", queueKey, err)
+		// Создаем worker pool для параллельной обработки
+		const workerCount = 5 // Оптимальное количество воркеров
+		jobs := make(chan int64, len(readyUsers))
+		results := make(chan bool, len(readyUsers))
+
+		// Запускаем воркеры
+		for w := 1; w <= workerCount; w++ {
+			go func(workerId int) {
+				for chatID := range jobs {
+					ctx := context.Background()
+
+					// Пробуем получить сообщение для пользователя из очереди
+					queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
+					mesByte, err := b.redisDB.LPop(ctx, queueKey).Bytes()
+					if err != nil {
+						if err != redis.Nil {
+							logger.Error.Printf("Worker %d: Error LPop for %s: %v\n", workerId, queueKey, err)
+						}
+						results <- false
+						continue
 					}
-					// Нет сообщений или ошибка при получении
-					continue
-				}
-				// Если сообщение есть превращаем его в структуру
-				options := MessageOptions{}
-				err = json.Unmarshal(mesByte, &options)
-				if err != nil {
-					logger.Error.Printf("Error Unmarshal for %s: %v\n", queueKey, err)
-					continue
-				}
 
-				countMess++
-				b.sendDeferredMessage(chatID, options)
+					// Если сообщение есть превращаем его в структуру
+					options := MessageOptions{}
+					if err = json.Unmarshal(mesByte, &options); err != nil {
+						logger.Error.Printf("Worker %d: Error Unmarshal for %s: %v\n", workerId, queueKey, err)
+						results <- false
+						continue
+					}
+
+					// Отправляем сообщение
+					b.sendDeferredMessage(chatID, options)
+					results <- true
+				}
+			}(w)
+		}
+
+		// Отправляем задания
+		for _, chatID := range readyUsers {
+			if countMess >= maxMessages {
+				break
+			}
+			jobs <- chatID
+			countMess++
+		}
+		close(jobs)
+
+		// Собираем результаты
+		successCount := 0
+		for i := 0; i < countMess; i++ {
+			if <-results {
+				successCount++
 			}
 		}
-		if countMess > 0 {
-			logger.Info.Println("End countMess: ", countMess)
-		}
+
+		logger.Info.Printf("Processed messages: %d/%d", successCount, countMess)
 	}
 }
 
@@ -243,60 +298,121 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 		sleep = coolDownInterval
 	}
 
-	// обновляем данные - время следующей отправки
-	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Обновляем данные в Redis без глобальной блокировки
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// Используем Redis Pipeline для атомарного выполнения обновлений
+	pipe := b.redisDB.Pipeline()
+
+	// Подготавливаем операции в pipeline
 	nextTimeKey := fmt.Sprintf(userNextSendTimeKeyPrefix, chatID)
-	err = b.redisDB.Set(cont, nextTimeKey, time.Now().Unix()+sleep, 0).Err()
-	if err != nil {
-		logger.Error.Printf("Error update user %d: %v", chatID, err)
+	pipe.Set(ctx, nextTimeKey, time.Now().Unix()+sleep, 0)
+
+	// Проверяем длину очереди
+	queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
+	llenCmd := pipe.LLen(ctx, queueKey)
+
+	// Выполняем все операции за один запрос
+	_, pipeErr := pipe.Exec(ctx)
+	if pipeErr != nil {
+		logger.Error.Printf("Error in pipeline execution: %v", pipeErr)
+	}
+
+	// Получаем результат LLen
+	hasMore, llenErr := llenCmd.Result()
+	if llenErr != nil {
+		logger.Error.Printf("Error getting queue length: %v", llenErr)
+	} else {
+		// На основе результата делаем соответствующее действие
+		if hasMore > 0 {
+			// Если есть еще сообщения, планируем следующую отправку
+			err := b.redisDB.ZAddNX(ctx, userSendTaskKey, redis.Z{
+				Score:  float64(time.Now().Unix() + sleep),
+				Member: fmt.Sprint(chatID),
+			}).Err()
+			if err != nil {
+				logger.Error.Printf("Error ZAdd for user %d: %v", chatID, err)
+			}
+		} else {
+			// Если сообщений больше нет, удаляем из очереди задач
+			err := b.redisDB.ZRem(ctx, userSendTaskKey, chatID).Err()
+			if err != nil {
+				logger.Error.Printf("Error ZRem for user %d: %v", chatID, err)
+			}
+		}
 	}
 
 	logger.Info.Println("SendMessage ", chatID, options)
 }
 
-// Получение информации по пользователям
-func (b *Bot) getUsersFromRedis() (map[int64]int64, error) {
-	var cursor uint64
-	var keys []string
-	var err error
-
-	usersData := make(map[int64]int64)
-
-	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+func (b *Bot) createTaskToSend(chatID, nextSendTime int64) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Scan for keys matching "user:*:name"
-	for {
-		keys, cursor, err = b.redisDB.Scan(cont, cursor, userNextSendTimeKeyPattern, 10).Result() // 10 is the COUNT argument
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan keys: %w", err)
-		}
+	// Используем Redis Pipeline для выполнения обеих операций в одном запросе
+	pipe := b.redisDB.Pipeline()
 
-		for _, key := range keys {
+	// Подготавливаем запрос на получение длины очереди
+	queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
+	llenCmd := pipe.LLen(ctx, queueKey)
 
-			val, err := b.redisDB.Get(cont, key).Int64()
-			if err != nil {
-				logger.Error.Printf("Error getting value for key %s: %v", key, err)
-				continue
-			}
-
-			parts := strings.Split(key, ":") // e.g., "user:123:next_send_time"
-			if len(parts) == 3 && parts[0] == "user" && parts[2] == "next_send_time" {
-				userID, err := strconv.ParseInt(parts[1], 10, 64)
-				if err != nil {
-					logger.Error.Printf("Could not parse user ID from key '%s': %v\n", key, err)
-					continue
-				}
-				usersData[userID] = val
-			}
-		}
-
-		if cursor == 0 { // No more keys to scan
-			break
-		}
+	// Выполняем запрос
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		logger.Error.Printf("Error in pipeline execution: %v", err)
+		return
 	}
 
-	return usersData, nil
+	// Получаем результат LLen
+	hasMore, err := llenCmd.Result()
+	if err != nil {
+		logger.Error.Printf("Error getting queue length for user %d: %v", chatID, err)
+		return
+	}
+
+	// Выполняем следующую операцию на основе результата
+	if hasMore > 0 {
+		// Используем ZADD с опцией NX (добавлять только если элемента нет)
+		// для оптимизации при высоких нагрузках
+		err := b.redisDB.ZAddNX(ctx, userSendTaskKey, redis.Z{
+			Score:  float64(nextSendTime),
+			Member: fmt.Sprint(chatID),
+		}).Err()
+		if err != nil {
+			logger.Error.Printf("Error ZAdd %d: %v", chatID, err)
+		}
+	} else {
+		// Сообщений нет - удаляем из задач
+		err := b.redisDB.ZRem(ctx, userSendTaskKey, chatID).Err()
+		if err != nil {
+			logger.Error.Printf("Error ZRem %d: %v", chatID, err)
+		}
+	}
+}
+
+// Получение информации по пользователям
+func (b *Bot) getReadyUsers() []int64 {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	now := time.Now().Unix()
+	members, err := b.redisDB.ZRangeByScore(ctx, userSendTaskKey, &redis.ZRangeBy{
+		Min:   "0",
+		Max:   fmt.Sprintf("%d", now),
+		Count: int64(limitMessPerInterval),
+	}).Result()
+	if err != nil {
+		logger.Error.Println(err)
+	}
+
+	userIDs := make([]int64, 0, len(members))
+	for _, member := range members {
+		if userID, err := strconv.ParseInt(member, 10, 64); err == nil {
+			userIDs = append(userIDs, userID)
+		} else {
+			logger.Error.Printf("Could not parse '%s': %v\n", member, err)
+		}
+	}
+	return userIDs
 }
