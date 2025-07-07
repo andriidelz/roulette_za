@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -23,6 +23,8 @@ COPY --from=builder /app/roulette-rotator /app/roulette-rotator
 
 # Copy web directories
 COPY --from=builder /app/web /app/web
+# Copy captcha directory (for fonts and images)
+COPY --from=builder /app/internal/captcha-go /app/internal/captcha-go
 
 # Change access rights
 RUN chmod +x /app/roulette-bot /app/roulette-admin /app/roulette-rotator

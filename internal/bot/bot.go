@@ -3,11 +3,13 @@ package bot
 import (
 	"context"
 	"fmt"
+	"math/rand/v2"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"roulette/internal/captcha-go"
 	"roulette/internal/config"
 	"roulette/internal/logger"
 	"roulette/internal/models"
@@ -54,6 +56,8 @@ const (
 	CallbackBetBlack            = "bet_black"
 	CallbackBetZero             = "bet_zero"
 	CallbackBack                = "back"
+	CallbackCaptchaCorrect      = "captcha_correct"
+	CallbackCaptchaIncorrect    = "captcha_incorrect"
 
 	StickerNoBids    = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
 	StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
@@ -554,6 +558,17 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			language = "en"
 		}
 	}
+
+	// Проверка на повышенную активность пользователя
+	captchaStatus, captchaMess := b.checkUserActivity(user.ID, language)
+	switch captchaStatus {
+	case "wait":
+		return
+	case "needCaptcha":
+		b.SendMessage(message.Chat.ID, captchaMess)
+		return
+	}
+
 	// Обновляем язык пользователя из API, если он отличается
 	if user.LanguageCode != language {
 		user.LanguageCode = language
@@ -854,6 +869,27 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	}
 
 	callbackData := query.Data
+
+	// Обработка прохождения капчи
+	switch callbackData {
+	case CallbackCaptchaIncorrect:
+		// ничего не отправляем пока капча не будет пройдена.
+		// Слишком большое кол-во сообщений к пользователю повышает риск бана бота
+		return
+	case CallbackCaptchaCorrect:
+		b.captchaCorrect(query)
+		return
+	}
+
+	// Проверка на повышенную активность пользователя
+	captchaStatus, captchaMess := b.checkUserActivity(user.ID, language)
+	switch captchaStatus {
+	case "wait":
+		return
+	case "needCaptcha":
+		b.SendMessage(query.Message.Chat.ID, captchaMess)
+		return
+	}
 
 	// Обработка нажатия на кнопку пагинации стран
 	if strings.HasPrefix(callbackData, "country_page:") {
@@ -1761,6 +1797,7 @@ type MessageOptions struct {
 
 	// PhotoPath - путь к фото (если установлен, будет отправлено фото с подписью Text)
 	PhotoPath string
+	DelPhoto  bool // true для временных фото, после отправки запускается удаление через какое то время после отправки
 
 	// PhotoFileID - FileID фото (если установлен, будет отправлено фото с подписью Text)
 	PhotoFileID string
@@ -1966,20 +2003,33 @@ func (b *Bot) sendPhoto(chatID int64, options MessageOptions) (*telego.Message, 
 		return b.bot.SendPhoto(params)
 	} else if options.PhotoPath != "" {
 		// Для файла используем метод Upload
-		return b.sendPhotoFile(chatID, options.PhotoPath, params)
+		return b.sendPhotoFile(chatID, options.PhotoPath, options.DelPhoto, params)
 	}
 
 	return nil, fmt.Errorf("no photo source specified")
 }
 
 // sendPhotoFile отправляет фото с локального файла
-func (b *Bot) sendPhotoFile(chatID int64, photoPath string, params *telego.SendPhotoParams) (*telego.Message, error) {
+func (b *Bot) sendPhotoFile(chatID int64, photoPath string, delPhoto bool, params *telego.SendPhotoParams) (*telego.Message, error) {
 	// Открываем файл
 	file, err := os.Open(photoPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open photo file: %w", err)
 	}
 	defer file.Close()
+
+	if delPhoto {
+		// Если был передан параметр на удаление
+		// то через какое то время запускаем функцию удаления фото
+		go func() {
+			time.Sleep(20 * time.Second)
+			e := os.Remove(photoPath)
+			logger.Error.Println("Remove photo file")
+			if e != nil {
+				logger.Error.Println("failed to remove photo file: %w", err)
+			}
+		}()
+	}
 
 	// Устанавливаем загруженный файл
 	params.Photo = tu.File(file)
@@ -2374,4 +2424,146 @@ func (b *Bot) handleInputWalletState(message *telego.Message, messageID int) {
 		// Очищаем состояние
 		b.stateManager.ClearState(user.ID)
 	}
+}
+
+// checkUserActivity - Проверка активности и если она слишком высокая - вывод капчи
+func (b *Bot) checkUserActivity(telegramID int64, language string) (string, MessageOptions) {
+
+	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Если пользователь в списке на прохожение капчи то никак не реагируем до прохождения капчи
+	captchaKey := fmt.Sprintf(userCaptchaKeyPrefix, telegramID)
+	count, err := b.redisDB.Exists(cont, captchaKey).Result()
+
+	if err != nil {
+		logger.Error.Printf("Error check captchaKey %d: %v", telegramID, err)
+		return "wait", MessageOptions{}
+	}
+	if count > 0 {
+		return "wait", MessageOptions{}
+	}
+
+	// Проверяем активность пользователя за период
+	userActivityKey := fmt.Sprintf(userActivityKeyPrefix, telegramID)
+	val, err := b.redisDB.Get(cont, userActivityKey).Int64()
+	if err == redis.Nil {
+		// За текущий период еще не было активности пользователя, создаем запись
+		err = b.redisDB.Set(cont, userActivityKey, 1, userActivityExpiration).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set userActivityKey %d: %v", telegramID, err)
+		}
+		return "", MessageOptions{}
+	}
+
+	val++
+
+	if val <= userActivityLimit {
+
+		// Пользователь не превышает активность
+		// Обновляем активность пользователя за минуту
+		// с указанием redis.KeepTTL для того чтобы не обновлялось время expiration
+		err = b.redisDB.Set(cont, userActivityKey, val, redis.KeepTTL).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set userActivityKey %d: %v", telegramID, err)
+		}
+		return "", MessageOptions{}
+	}
+
+	// Превышение активности за период выше лимита - необходимо пройти капчу
+
+	// Добавляем пользователя в список ожидающих на подтверждения капчи
+	// value не важно, проверка идет по наличию ключа
+	err = b.redisDB.Set(cont, captchaKey, "value", userCaptchaExpiration).Err()
+	if err != nil {
+		logger.Error.Printf("Error Set userCaptchaExpiration %d: %v", telegramID, err)
+	}
+
+	textLen := 4
+	correctText := captcha.RandomText(textLen)
+
+	// Создаем линию кнопок
+	lines := []telego.InlineKeyboardButton{
+		{Text: correctText, CallbackData: CallbackCaptchaCorrect},
+		{Text: captcha.RandomText(textLen), CallbackData: CallbackCaptchaIncorrect},
+		{Text: captcha.RandomText(textLen), CallbackData: CallbackCaptchaIncorrect},
+		{Text: captcha.RandomText(textLen), CallbackData: CallbackCaptchaIncorrect},
+	}
+	// Перемешиваем кнопки
+	rand.Shuffle(len(lines), func(i, j int) {
+		lines[i], lines[j] = lines[j], lines[i]
+	})
+	// Создаем inline-клавиатуру для выбора
+	nicknameKeyboard := &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{lines},
+	}
+	captchaText := b.service.GetText("captcha_text", language)
+	mess := MessageOptions{
+		Text:           captchaText,
+		InlineKeyboard: nicknameKeyboard,
+	}
+	filepath := "./internal/captcha-go/"
+	filename := correctText + ".png"
+
+	// Генерируем капчу как картинку
+	if err := captcha.GenerateCaptcha(correctText, filename,
+		captcha.DefaultOption(
+			filepath,
+			filepath+"fonts/")); err != nil {
+		logger.Error.Println("Error GenerateCaptcha:", err)
+		// Если была ошибка генерации вставляем как текст в сообщение
+		mess.Text += "\n " + correctText
+	} else {
+		mess.PhotoPath = filepath + filename
+		mess.DelPhoto = true
+		logger.Info.Println("CAPTCHA successful:", filepath+filename, telegramID)
+	}
+
+	return "needCaptcha", mess
+}
+
+// captchaCorrect - Отправка уведомления об успешном прохождении капчи
+func (b *Bot) captchaCorrect(query *telego.CallbackQuery) {
+	// Отвечаем на callback, чтобы убрать индикатор загрузки
+	b.answerCallbackQuery(query.ID, "", false)
+
+	user := query.From
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		// Регистрация пользователя, если он не найден
+		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
+		if err != nil {
+			logger.Error.Printf("Error registering user: %v", err)
+			return
+		}
+	}
+
+	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Убираем пользователя из списка ожидающих на подтверждения капчи
+	captchaKey := fmt.Sprintf(userCaptchaKeyPrefix, user.ID)
+	_, err = b.redisDB.Del(cont, captchaKey).Result()
+	if err != nil {
+		logger.Error.Printf("Error del captchaKey %d: %v", user.ID, err)
+		return
+	}
+
+	// Удаляем активность пользователя
+	userActivityKey := fmt.Sprintf(userActivityKeyPrefix, user.ID)
+	_, err = b.redisDB.Del(cont, userActivityKey).Result()
+	if err != nil {
+		logger.Error.Printf("Error del userActivityKey %d: %v", user.ID, err)
+	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	correctText := b.service.GetText("captcha_correct", language)
+	b.SendMessage(query.From.ID, MessageOptions{
+		Text: correctText,
+	})
 }
