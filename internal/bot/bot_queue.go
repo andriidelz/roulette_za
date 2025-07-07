@@ -28,11 +28,14 @@ import (
 // **********
 
 const (
+	// Интервалы отправки сообщений
 	sendInterval                 = time.Second // Интервал срабатывания отправки
 	limitMessPerInterval         = 30          // Максимум сообщений которые могут быть отправлены за интервал
 	coolDownInterval       int64 = 1           // Время задержки отправки
 	coolDownIntervalErr    int64 = 5           // Время задержки отправки при ошибке
 	coolDownIntervalErr429 int64 = 60          // Время задержки отправки при ошибке 429 - Too Many Requests
+
+	// Ключи для Redis
 
 	// Redis key для получения информации по пользователю - время следующей отправки(Unix timestamp)
 	userNextSendTimeKeyPrefix = "user:%d:next_send_time"
@@ -43,6 +46,18 @@ const (
 	// Redis key для времени отправки ошибок
 	userErrorKeyPrefix  = "user:%d:error"
 	userErrorExpiration = 40 * time.Second // Redis key для времени отправки ошибок
+
+	// Redis key для измерения активности пользователей за период userActivityExpiration
+	// В случае превышения пользователем кол-ва действий выше userActivityLimit
+	// он будет записан в userCaptchaKeyPrefix и ему будет отправлена капча
+	userActivityKeyPrefix  = "user:%d:activity"
+	userActivityExpiration = time.Minute // Время периода
+	userActivityLimit      = 20          // Лимит действий за период
+	// Redis key для пользователей которые ожидают на проверку капчи
+	// В случае нахождения пользователя все дальнейшие действия будут заблокированы
+	// до прохождения капчи или истечения userCaptchaExpiration
+	userCaptchaKeyPrefix  = "user:%d:captcha"
+	userCaptchaExpiration = time.Hour // Время удаления проверки капчи
 )
 
 // MakeRequestDeferred Постановка сообщения в очередь на отправку
@@ -146,7 +161,6 @@ func (b *Bot) sendBotQueue() {
 		}
 
 		for chatID, nextSend := range activeUsers {
-			logger.Error.Println(chatID, nextSend)
 			// Проверяем кол-во отправленных сообщений и
 			// проверяем пользователя и
 			// если пришло время то отправляем сообщение из очереди
@@ -174,7 +188,9 @@ func (b *Bot) sendBotQueue() {
 				b.sendDeferredMessage(chatID, options)
 			}
 		}
-		logger.Info.Println("End countMess: ", countMess)
+		if countMess > 0 {
+			logger.Info.Println("End countMess: ", countMess)
+		}
 	}
 }
 

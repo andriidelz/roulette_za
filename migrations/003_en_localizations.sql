@@ -286,6 +286,8 @@ INSERT INTO localizations (key, language, value) VALUES
     ('player_nickname_template', 'en', 'Nickname%d');
 
 INSERT INTO localizations (key, language, value) VALUES
-    ('rating_error', 'en', 'Error retrieving rating data. Please try again later.');
-    ('send_error', 'en', 'Unfortunately you are interacting with the bot too often, please wait.');
-    ('send_queue_error', 'en', 'Unfortunately, due to performance issues, %d messages have accumulated that are waiting to be sent to you, please wait until they are processed.');
+    ('rating_error', 'en', 'Error retrieving rating data. Please try again later.'),
+    ('send_error', 'en', 'Unfortunately you are interacting with the bot too often, please wait.'),
+    ('send_queue_error', 'en', 'Unfortunately, due to performance issues, %d messages have accumulated that are waiting to be sent to you, please wait until they are processed.'),
+    ('captcha_text', 'en', 'Your activity is very high. Please confirm that you are not a robot.'),
+    ('captcha_correct', 'en', 'Congratulations on successfully passing the captcha! In the future, try to interact with the bot more carefully');
