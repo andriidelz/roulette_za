@@ -14,7 +14,6 @@ x-infrastructure-logging: &infrastructure-logging
 # Database configuration
 x-database-config: &database-config
   DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-roulette}?sslmode=disable
-  DOCKER_ENV: ${DOCKER_ENV:-true}
 
 # RabbitMQ configuration  
 x-rabbitmq-config: &rabbitmq-config

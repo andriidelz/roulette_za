@@ -2456,7 +2456,7 @@ func (b *Bot) checkUserActivity(telegramID int64, language string) (string, Mess
 	}
 
 	val++
-	logger.Error.Println(val, val <= userActivityLimit)
+
 	if val <= userActivityLimit {
 
 		// Пользователь не превышает активность
@@ -2515,7 +2515,7 @@ func (b *Bot) checkUserActivity(telegramID int64, language string) (string, Mess
 	} else {
 		mess.PhotoPath = filepath + filename
 		mess.DelPhoto = true
-		logger.Error.Println("CAPTCHA successful:", filepath+filename)
+		logger.Info.Println("CAPTCHA successful:", filepath+filename, telegramID)
 	}
 
 	return "needCaptcha", mess
