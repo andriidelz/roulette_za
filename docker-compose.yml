@@ -212,7 +212,7 @@ services:
     container_name: roulette-admin
     command: ./roulette-admin
     environment:
-      <<: [*database-config, *telegram-config, *admin-config, *payment-config, *redis-config]
+      <<: [*database-config, *rabbitmq-config, *telegram-config, *admin-config, *payment-config, *redis-config]
     ports:
       - "8080:8080"
     depends_on:
