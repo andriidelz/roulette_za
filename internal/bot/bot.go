@@ -1786,6 +1786,8 @@ const (
 
 // MessageOptions содержит опции для отправки или обновления сообщения
 type MessageOptions struct {
+	// Время создания сообщения Unix (Нужно чтобы sorted set не перезаписывал сообщение)
+	CreatedAt int64
 	// MethodName - Метод телеграма
 	MethodName string
 
@@ -1862,7 +1864,7 @@ func (b *Bot) SendMessage(chatID int64, options MessageOptions) error {
 	}
 
 	// Устанавливаем в очередь на отправку
-	return b.MakeRequestDeferred(chatID, false, options)
+	return b.MakeRequestDeferred(chatID, 0, options)
 }
 
 // UpdateMessage обновляет существующее сообщение с указанными опциями
@@ -1884,7 +1886,7 @@ func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions)
 		options.MethodName = editMessageMedia
 		options.MessageID = messageID
 		// Устанавливаем в очередь на отправку
-		return b.MakeRequestDeferred(chatID, false, options)
+		return b.MakeRequestDeferred(chatID, 0, options)
 
 	} else if options.ReplyKeyboard != nil || options.RemoveKeyboard {
 		// Для ReplyKeyboard необходимо удалить старое сообщение и отправить новое
@@ -1902,7 +1904,7 @@ func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions)
 		options.MessageID = messageID
 
 		// Устанавливаем в очередь на отправку
-		return b.MakeRequestDeferred(chatID, false, options)
+		return b.MakeRequestDeferred(chatID, 0, options)
 	}
 }
 

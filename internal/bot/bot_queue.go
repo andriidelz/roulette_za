@@ -41,8 +41,11 @@ const (
 	userNextSendTimeKeyPrefix = "user:%d:next_send_time"
 	// Redis key для задач на отправку в sorted set
 	userSendTaskKey = "telegram:ready_users"
-	// Redis key для очереди
-	userQueueKeyPrefix = "user:%d:queue"
+	// Redis key для sort set очереди
+	userQueueKeyPrefix = "user:%d:set_queue"
+	// Время жизни сообщения
+	// (если не будет доставлено до указанного времени то удаляем сообщение)
+	userQueueExpiration = time.Hour
 	// Redis key для времени отправки ошибок
 	userErrorKeyPrefix  = "user:%d:error"
 	userErrorExpiration = 40 * time.Second // Redis key для времени отправки ошибок
@@ -61,9 +64,10 @@ const (
 )
 
 // MakeRequestDeferred Постановка сообщения в очередь на отправку
-func (b *Bot) MakeRequestDeferred(chatID int64, firstInOrder bool, param MessageOptions) error {
+func (b *Bot) MakeRequestDeferred(chatID, order int64, param MessageOptions) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
+	param.CreatedAt = time.Now().UnixNano()
 
 	// Маршалим сообщение заранее
 	message, err := json.Marshal(param)
@@ -80,11 +84,18 @@ func (b *Bot) MakeRequestDeferred(chatID int64, firstInOrder bool, param Message
 	getCmd := pipe.Get(ctx, nextTimeKey)
 
 	queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
-	var pushCmd *redis.IntCmd
-	if firstInOrder {
-		pushCmd = pipe.LPush(ctx, queueKey, message)
+	score := float64(time.Now().Add(userQueueExpiration).UnixNano()) // TTL
+	if order > 0 && order < 10 {
+		score = float64(order) //  если указана очередность то идет как приоритетное сообщение. Оно не удаляется и будет отправлено в первую очередь
+	}
+
+	// Записываем в виде Sorted Sets для контроля времени жизни сообщения
+	err = pipe.ZAdd(ctx, queueKey, redis.Z{Score: score, Member: string(message)}).Err()
+	if err != nil {
+		logger.Error.Println("Error adding element", queueKey, message, err)
 	} else {
-		pushCmd = pipe.RPush(ctx, queueKey, message)
+		logger.Error.Printf("Added '%s' to sorted set with expiration in %s\n",
+			queueKey, userQueueExpiration)
 	}
 
 	// Выполняем команды
@@ -117,9 +128,9 @@ func (b *Bot) MakeRequestDeferred(chatID int64, firstInOrder bool, param Message
 	}
 
 	// Получаем длину очереди
-	length, err := pushCmd.Result()
+	length, err := b.redisDB.ZCard(ctx, queueKey).Result()
 	if err != nil {
-		logger.Error.Printf("Error Push message for user %d: %v", chatID, err)
+		logger.Error.Printf("Error getting sorted set cardinality for user %d: %v", chatID, err)
 		return err
 	}
 
@@ -170,7 +181,7 @@ func (b *Bot) MakeRequestDeferredErr(chatID int64, errText string) {
 			logger.Error.Printf("Error Set userErrorExpiration %d: %v", chatID, err)
 		}
 		// Ставим в приоритетные уведомление об ошибке
-		b.MakeRequestDeferred(chatID, true, options)
+		b.MakeRequestDeferred(chatID, 1, options)
 	}
 }
 
@@ -199,22 +210,47 @@ func (b *Bot) sendBotQueue() {
 		for w := 1; w <= workerCount; w++ {
 			go func(workerId int) {
 				for chatID := range jobs {
-					ctx := context.Background()
+
+					// Очищаем старые сообщения которые не получилось отправить
+					now := time.Now().UnixNano()
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
+					// Минимальное 10, с score 0 идут приоритетные сообщения. Они не удаляется и будут отправлены в первую очередь
+					removedCount, err := b.redisDB.ZRemRangeByScore(ctx, userQueueKeyPrefix, "10", fmt.Sprintf("%d", now)).Result()
+					if err != nil {
+						logger.Error.Println("Error removing expired elements:", err)
+					} else if removedCount > 0 {
+						logger.Error.Printf("Removed %d expired elements from sorted set.\n", removedCount)
+					}
+
+					ctx = context.Background()
 
 					// Пробуем получить сообщение для пользователя из очереди
 					queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
-					mesByte, err := b.redisDB.LPop(ctx, queueKey).Bytes()
+					msgs, err := b.redisDB.ZRangeByScore(ctx, queueKey, &redis.ZRangeBy{
+						Min:   "0",
+						Max:   "+inf",
+						Count: 1, // Получаем одно сообщение
+					}).Result()
 					if err != nil {
-						if err != redis.Nil {
-							logger.Error.Printf("Worker %d: Error LPop for %s: %v\n", workerId, queueKey, err)
-						}
+						logger.Error.Println("Error ZRangeByScore:", err)
+						results <- false
+						continue
+					} else if len(msgs) == 0 {
+						logger.Error.Println("There is no messages", queueKey)
 						results <- false
 						continue
 					}
 
+					// Удаляем сообщение из очереди
+					err = b.redisDB.ZRem(ctx, queueKey, msgs[0]).Err()
+					if err != nil {
+						logger.Error.Printf("Error ZRem %s: %v", queueKey, err)
+					}
+
 					// Если сообщение есть превращаем его в структуру
 					options := MessageOptions{}
-					if err = json.Unmarshal(mesByte, &options); err != nil {
+					if err = json.Unmarshal([]byte(msgs[0]), &options); err != nil {
 						logger.Error.Printf("Worker %d: Error Unmarshal for %s: %v\n", workerId, queueKey, err)
 						results <- false
 						continue
@@ -284,7 +320,7 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 			}
 
 			// Добавляем в начало очереди сообщений то сообщение которое не получилось доставить
-			b.MakeRequestDeferred(chatID, true, options)
+			b.MakeRequestDeferred(chatID, 2, options)
 
 			b.MakeRequestDeferredErr(chatID, "send_error")
 		} else {
@@ -311,7 +347,7 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 
 	// Проверяем длину очереди
 	queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
-	llenCmd := pipe.LLen(ctx, queueKey)
+	llenCmd := pipe.ZCard(ctx, queueKey)
 
 	// Выполняем все операции за один запрос
 	_, pipeErr := pipe.Exec(ctx)
@@ -319,10 +355,10 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 		logger.Error.Printf("Error in pipeline execution: %v", pipeErr)
 	}
 
-	// Получаем результат LLen
+	// Подготавливаем запрос на получение длины очереди
 	hasMore, llenErr := llenCmd.Result()
 	if llenErr != nil {
-		logger.Error.Printf("Error getting queue length: %v", llenErr)
+		logger.Error.Printf("Error getting sorted set cardinality for user %d: %v", chatID, err)
 	} else {
 		// На основе результата делаем соответствующее действие
 		if hasMore > 0 {
@@ -350,24 +386,11 @@ func (b *Bot) createTaskToSend(chatID, nextSendTime int64) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Используем Redis Pipeline для выполнения обеих операций в одном запросе
-	pipe := b.redisDB.Pipeline()
-
 	// Подготавливаем запрос на получение длины очереди
 	queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
-	llenCmd := pipe.LLen(ctx, queueKey)
-
-	// Выполняем запрос
-	_, err := pipe.Exec(ctx)
+	hasMore, err := b.redisDB.ZCard(ctx, queueKey).Result()
 	if err != nil {
-		logger.Error.Printf("Error in pipeline execution: %v", err)
-		return
-	}
-
-	// Получаем результат LLen
-	hasMore, err := llenCmd.Result()
-	if err != nil {
-		logger.Error.Printf("Error getting queue length for user %d: %v", chatID, err)
+		logger.Error.Printf("Error getting sorted set cardinality for user %d: %v", chatID, err)
 		return
 	}
 
