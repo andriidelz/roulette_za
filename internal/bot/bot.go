@@ -68,6 +68,8 @@ const (
 	StickerRedRes2   = "CAACAgUAAxkBAAEORMpn9lEiRobEQnz4qg6GFSmfZQmjbwACiRgAAhuTqVdgysjb-Y-sLTYE" // redresult (вариант 2)
 	StickerZeroRes1  = "CAACAgUAAxkBAAEORMRn9lEar58eDwvent8Lp3TvMRvF5AACtxEAAlRRsFdySRXPzXyVqzYE" // zeroresult (вариант 1)
 	StickerZeroRes2  = "CAACAgUAAxkBAAEORMZn9lEd12gNsWFFxGXLAZoeJbSEsgACCxYAAmDwqVdsE7WC-rayWDYE" // zeroresult (вариант 2)
+	// Стикер ошибки отправки сообщения, если словили 429 ошибку
+	StickerError = "CAACAgUAAxkBAAEO5upob-zRQ5ptM0PmCYlvTra-KSbbiQACEBYAAkV9qVf5P89H45HU5zYE" // error
 )
 
 var ReserveChannelID = "@socialroulette_dev" // https://t.me/socialroulette_dev
@@ -1782,6 +1784,7 @@ const (
 	editMessageText  = "editMessageText"
 	sendPhoto        = "sendPhoto"
 	editMessageMedia = "editMessageMedia"
+	sendSticker      = "sendSticker"
 )
 
 // MessageOptions содержит опции для отправки или обновления сообщения
