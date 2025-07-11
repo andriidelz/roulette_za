@@ -513,7 +513,10 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		resultSticker = getRandomSticker(StickerZeroRes1, StickerZeroRes2)
 	}
 	// Отправляем стикер результата
-	h.bot.SendSticker(userID, resultSticker)
+	h.bot.MakeRequestDeferred(userID, 0, MessageOptions{
+		Text:       resultSticker,
+		MethodName: sendSticker,
+	})
 
 	// 2. Отправляем сообщение о результате на 18 секунде (через 1 секунду)
 	time.Sleep(1 * time.Second)
@@ -540,10 +543,16 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 
 	if won {
 		// Отправляем стикер выигрыша
-		h.bot.SendSticker(userID, StickerWin)
+		h.bot.MakeRequestDeferred(userID, 0, MessageOptions{
+			Text:       StickerWin,
+			MethodName: sendSticker,
+		})
 	} else {
 		// Отправляем стикер проигрыша
-		h.bot.SendSticker(userID, StickerLose)
+		h.bot.MakeRequestDeferred(userID, 0, MessageOptions{
+			Text:       StickerLose,
+			MethodName: sendSticker,
+		})
 	}
 
 	// 4. Отправляем полное сообщение о выигрыше/проигрыше на 20 секунде (через 1 секунду)
@@ -766,7 +775,10 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	logger.Info.Printf("Bet created successfully for user %d in round %d (waitingPlayers count: %d)", userID, currentRound.ID, len(h.waitingPlayers))
 
 	// Сразу отправляем стикер "Ставки больше не принимаются"
-	h.bot.SendSticker(userID, StickerNoBids)
+	h.bot.MakeRequestDeferred(userID, 0, MessageOptions{
+		Text:       StickerNoBids,
+		MethodName: sendSticker,
+	})
 
 	// После короткой паузы отправляем сообщение о принятии ставки
 	go func() {

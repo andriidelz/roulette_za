@@ -23,14 +23,14 @@ import (
 // При превышении лимитов отправки конкретному пользователю бан на отправку может быть 20 мин - 3 часа и больше
 
 // **********
-// TODO Возможно удаление сообщений и отправка стикеров тоже стоит сюда перенести
+// TODO Возможно удаление сообщений тоже стоит сюда перенести
 // точные лимиты на них не понятны
 // **********
 
 const (
 	// Интервалы отправки сообщений
 	sendInterval                 = time.Second // Интервал срабатывания отправки
-	limitMessPerInterval         = 30          // Максимум сообщений которые могут быть отправлены за интервал
+	limitMessPerInterval         = 10000       // Максимум сообщений которые могут быть отправлены за интервал
 	coolDownInterval       int64 = 1           // Время задержки отправки
 	coolDownIntervalErr    int64 = 5           // Время задержки отправки при ошибке
 	coolDownIntervalErr429 int64 = 60          // Время задержки отправки при ошибке 429 - Too Many Requests
@@ -55,7 +55,7 @@ const (
 	// он будет записан в userCaptchaKeyPrefix и ему будет отправлена капча
 	userActivityKeyPrefix  = "user:%d:activity"
 	userActivityExpiration = time.Minute // Время периода
-	userActivityLimit      = 20          // Лимит действий за период
+	userActivityLimit      = 15          // Лимит действий за период userActivityExpiration
 	// Redis key для пользователей которые ожидают на проверку капчи
 	// В случае нахождения пользователя все дальнейшие действия будут заблокированы
 	// до прохождения капчи или истечения userCaptchaExpiration
@@ -297,6 +297,8 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 		_, err = b.sendPhoto(chatID, options)
 	case editMessageMedia:
 		_, err = b.updatePhotoByFileID(chatID, options.MessageID, options)
+	case sendSticker:
+		err = b.SendSticker(chatID, options.Text)
 	default:
 		_, err = b.sendText(chatID, options)
 	}
@@ -320,6 +322,10 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 				sleep = coolDownIntervalErr429
 				logger.Error.Printf("Parse 429 error: %v", err)
 			}
+
+			// Немедленно отправляем стикер об ошибке
+			// На стикеры свои лимиты и он дойдет даже если отправка сообщений забанена
+			b.SendSticker(chatID, StickerError)
 
 			// Добавляем в начало очереди сообщений то сообщение которое не получилось доставить
 			b.MakeRequestDeferred(chatID, 2, options)
