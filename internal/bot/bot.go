@@ -1788,6 +1788,9 @@ const (
 type MessageOptions struct {
 	// Время создания сообщения Unix (Нужно чтобы sorted set не перезаписывал сообщение)
 	CreatedAt int64
+	// Время жизни сообщения, если не указано будет взято из const userQueueExpiration
+	TTL time.Duration
+
 	// MethodName - Метод телеграма
 	MethodName string
 

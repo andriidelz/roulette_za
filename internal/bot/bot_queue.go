@@ -43,7 +43,7 @@ const (
 	userSendTaskKey = "telegram:ready_users"
 	// Redis key для sort set очереди
 	userQueueKeyPrefix = "user:%d:set_queue"
-	// Время жизни сообщения
+	// Время жизни сообщения по дефолту
 	// (если не будет доставлено до указанного времени то удаляем сообщение)
 	userQueueExpiration = time.Hour
 	// Redis key для времени отправки ошибок
@@ -67,7 +67,12 @@ const (
 func (b *Bot) MakeRequestDeferred(chatID, order int64, param MessageOptions) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
+
 	param.CreatedAt = time.Now().UnixNano()
+	ttl := param.TTL
+	if ttl == 0 {
+		ttl = userQueueExpiration
+	}
 
 	// Маршалим сообщение заранее
 	message, err := json.Marshal(param)
@@ -84,7 +89,7 @@ func (b *Bot) MakeRequestDeferred(chatID, order int64, param MessageOptions) err
 	getCmd := pipe.Get(ctx, nextTimeKey)
 
 	queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
-	score := float64(time.Now().Add(userQueueExpiration).UnixNano()) // TTL
+	score := float64(time.Now().Add(ttl).UnixNano()) // TTL
 	if order > 0 && order < 10 {
 		score = float64(order) //  если указана очередность то идет как приоритетное сообщение. Оно не удаляется и будет отправлено в первую очередь
 	}
@@ -93,9 +98,6 @@ func (b *Bot) MakeRequestDeferred(chatID, order int64, param MessageOptions) err
 	err = pipe.ZAdd(ctx, queueKey, redis.Z{Score: score, Member: string(message)}).Err()
 	if err != nil {
 		logger.Error.Println("Error adding element", queueKey, message, err)
-	} else {
-		logger.Error.Printf("Added '%s' to sorted set with expiration in %s\n",
-			queueKey, userQueueExpiration)
 	}
 
 	// Выполняем команды
