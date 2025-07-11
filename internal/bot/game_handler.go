@@ -14,7 +14,7 @@ import (
 	"github.com/mymmrac/telego"
 )
 
-const webPage = "https://roulette.myapps.vip"
+const webPage = "https://games.sprut.net"
 
 // Типы сообщений для внутренней обработки
 type MessageType int
