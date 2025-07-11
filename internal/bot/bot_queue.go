@@ -45,7 +45,7 @@ const (
 	userQueueKeyPrefix = "user:%d:set_queue"
 	// Время жизни сообщения по дефолту
 	// (если не будет доставлено до указанного времени то удаляем сообщение)
-	userQueueExpiration = time.Hour
+	userQueueExpiration = 15 * time.Minute
 	// Redis key для времени отправки ошибок
 	userErrorKeyPrefix  = "user:%d:error"
 	userErrorExpiration = 40 * time.Second // Redis key для времени отправки ошибок
