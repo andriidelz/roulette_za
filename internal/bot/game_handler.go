@@ -51,7 +51,7 @@ type GameHandler struct {
 	mutex           sync.RWMutex
 	waitingPlayers  map[int64]bool             // Карта игроков, ожидающих результатов
 	activeBets      map[int64]models.BetOption // Карта активных ставок игроков
-	activePlayers   map[int64]bool             // Карта активных игроков в режиме /play
+	activePlayers   map[int64]int              // Карта активных игроков в режиме /play
 	rabbitmq        *messaging.RabbitMQ        // Клиент RabbitMQ
 	processedRounds map[uint]bool              // Хранит ID обработанных раундов для избежания дублирования
 	processMutex    sync.Mutex                 // Мьютекс для доступа к processedRounds
@@ -74,7 +74,7 @@ func NewGameHandler(bot *Bot, service service.Service, rabbitmqURL string) (*Gam
 		service:         service,
 		waitingPlayers:  make(map[int64]bool),
 		activeBets:      make(map[int64]models.BetOption),
-		activePlayers:   make(map[int64]bool),
+		activePlayers:   make(map[int64]int),
 		rabbitmq:        rmq,
 		processedRounds: make(map[uint]bool),
 		roundMsgChan:    make(chan RoundMessage, 100), // Буфер для сообщений
@@ -157,12 +157,41 @@ func (h *GameHandler) processMessagesWorker() {
 
 // notifyActivePlayers уведомляет всех активных игроков о новом раунде
 func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
+	stopPlayers := []int64{}
 	h.mutex.RLock()
 	players := make([]int64, 0, len(h.activePlayers))
-	for userID := range h.activePlayers {
-		players = append(players, userID)
+	for userID, val := range h.activePlayers {
+		// Перед отправлением раунда проверяем активный ли юзер
+		// Если юзер пропустил 10 раундов останавливаем для него игру
+		if val >= 10 {
+			stopPlayers = append(stopPlayers, userID)
+		} else {
+			// Инкрементим ему кол-во раундов. В случае если он сделает ставку это число обнулится
+			h.activePlayers[userID] = val + 1
+			players = append(players, userID)
+		}
 	}
 	h.mutex.RUnlock()
+
+	// Останавливаем всех неактивных игроков
+	for i := range stopPlayers {
+		userID := stopPlayers[i]
+
+		user, err := h.service.GetUser(userID)
+		if err != nil {
+			logger.Error.Printf("Error getting user %d: %v", userID, err)
+			continue
+		}
+
+		language := user.LanguageCode
+		if language == "" {
+			language = "en"
+		}
+		logger.Error.Println("Stop user ", userID)
+		// Остановка игры и возврат в главное меню
+		h.HandleStopGameButton(userID)
+		h.bot.sendMainMenu(userID, language)
+	}
 
 	roundIDBase62 := utils.ToBase62(uint(round.ID))
 
@@ -457,9 +486,9 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 
 	// Не отправляем результаты если пользователя нет в списке активных игроков
 	h.mutex.RLock()
-	isActive, exists := h.activePlayers[userID]
+	_, exists := h.activePlayers[userID]
 	h.mutex.RUnlock()
-	if !exists || !isActive {
+	if !exists {
 		return nil
 	}
 
@@ -770,6 +799,7 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	h.mutex.Lock()
 	h.waitingPlayers[userID] = true
 	h.activeBets[userID] = option
+	h.activePlayers[userID] = 1 // обнуляем кол-во пропущенных раундов
 	h.mutex.Unlock()
 
 	logger.Info.Printf("Bet created successfully for user %d in round %d (waitingPlayers count: %d)", userID, currentRound.ID, len(h.waitingPlayers))
@@ -822,7 +852,7 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 
 	// Добавляем пользователя в список активных игроков
 	h.mutex.Lock()
-	h.activePlayers[user.ID] = true
+	h.activePlayers[user.ID] = 1
 	h.mutex.Unlock()
 
 	// Пытаемся получить текущий раунд

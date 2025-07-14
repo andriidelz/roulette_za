@@ -1792,7 +1792,7 @@ type MessageOptions struct {
 	// Время создания сообщения Unix (Нужно чтобы sorted set не перезаписывал сообщение)
 	CreatedAt int64
 	// Время жизни сообщения, если не указано будет взято из const userQueueExpiration
-	// Используется для определения очередности доставки сообщения! 
+	// Используется для определения очередности доставки сообщения!
 	// Если указать время то внутри очереди пользователя на отправку оно переместися
 	// ORDER отправки == TTL
 	TTL time.Duration
@@ -2483,6 +2483,10 @@ func (b *Bot) checkUserActivity(telegramID int64, language string) (string, Mess
 
 	// Превышение активности за период выше лимита - необходимо пройти капчу
 
+	// Остановка игры и возврат в главное меню
+	b.gameHandler.HandleStopGameButton(telegramID)
+	b.sendMainMenu(telegramID, language)
+
 	// Добавляем пользователя в список ожидающих на подтверждения капчи
 	// value не важно, проверка идет по наличию ключа
 	err = b.redisDB.Set(cont, captchaKey, "value", userCaptchaExpiration).Err()
@@ -2535,8 +2539,6 @@ func (b *Bot) checkUserActivity(telegramID int64, language string) (string, Mess
 
 // captchaCorrect - Отправка уведомления об успешном прохождении капчи
 func (b *Bot) captchaCorrect(query *telego.CallbackQuery) {
-	// Отвечаем на callback, чтобы убрать индикатор загрузки
-	b.answerCallbackQuery(query.ID, "", false)
 
 	user := query.From
 	dbUser, err := b.service.GetUser(user.ID)
@@ -2574,7 +2576,7 @@ func (b *Bot) captchaCorrect(query *telego.CallbackQuery) {
 	}
 
 	correctText := b.service.GetText("captcha_correct", language)
-	b.SendMessage(query.From.ID, MessageOptions{
-		Text: correctText,
-	})
+	
+	// Отвечаем на callback c текстом что капча успешно решена
+	b.answerCallbackQuery(query.ID, correctText, true)
 }
