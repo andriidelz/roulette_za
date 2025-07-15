@@ -190,6 +190,9 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 		logger.Error.Println("Stop user ", userID)
 		// Остановка игры и возврат в главное меню
 		h.HandleStopGameButton(userID)
+		h.bot.SendMessage(userID, MessageOptions{
+			Text: h.service.GetText("bet_inactive", language),
+		})
 		h.bot.sendMainMenu(userID, language)
 	}
 
