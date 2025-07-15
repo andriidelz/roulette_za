@@ -14,18 +14,13 @@ type GameDebugTask struct {
 }
 
 var gameDebugTaskMap = map[int64]GameDebugTask{
-	291591440: {
+	1: {
 		debug:        true,
-		telegramID:   291591440,
+		telegramID:   1,
 		createdCount: 0,
 		taskCount:    10000,
 	},
-	1108851809: {
-		debug:        true,
-		telegramID:   1108851809,
-		createdCount: 0,
-		taskCount:    10000,
-	}}
+	}
 
 func (h *GameHandler) initEmulate() {
 	go func() {
@@ -49,7 +44,7 @@ func (h *GameHandler) initEmulate() {
 // gameHandlerEmulate эмулирует нажатие кнопки сделать ставку
 func (h *GameHandler) gameHandlerEmulate(telegramID, remainingSeconds int64) {
 	// Проверяем вошел ли пользователь в игру
-	if ok := h.activePlayers[telegramID]; !ok {
+	if _, ok := h.activePlayers[telegramID]; !ok {
 		return
 	}
 
