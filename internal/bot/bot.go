@@ -560,12 +560,11 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	}
 
 	// Проверка на повышенную активность пользователя
-	captchaStatus, captchaMess := b.checkUserActivity(user.ID, language)
-	switch captchaStatus {
+	switch b.captchaUserActivity(user.ID) {
 	case "wait":
 		return
 	case "needCaptcha":
-		b.SendMessage(message.Chat.ID, captchaMess)
+		b.SendMessage(message.Chat.ID, b.captchaMessage(user.ID, language))
 		return
 	}
 
@@ -882,12 +881,11 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	}
 
 	// Проверка на повышенную активность пользователя
-	captchaStatus, captchaMess := b.checkUserActivity(user.ID, language)
-	switch captchaStatus {
+	switch b.captchaUserActivity(user.ID) {
 	case "wait":
 		return
 	case "needCaptcha":
-		b.SendMessage(query.Message.Chat.ID, captchaMess)
+		b.SendMessage(query.Message.Chat.ID, b.captchaMessage(user.ID, language))
 		return
 	}
 

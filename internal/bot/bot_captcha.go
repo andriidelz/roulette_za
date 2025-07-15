@@ -26,8 +26,8 @@ const (
 	userCaptchaExpiration = time.Hour // Время удаления проверки капчи
 )
 
-// checkUserActivity - Проверка активности и если она слишком высокая - вывод капчи
-func (b *Bot) checkUserActivity(telegramID int64, language string) (string, MessageOptions) {
+// captchaUserActivity - Проверка активности и если она слишком высокая - вывод капчи
+func (b *Bot) captchaUserActivity(telegramID int64) string {
 
 	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -38,10 +38,10 @@ func (b *Bot) checkUserActivity(telegramID int64, language string) (string, Mess
 
 	if err != nil {
 		logger.Error.Printf("Error check captchaKey %d: %v", telegramID, err)
-		return "wait", MessageOptions{}
+		return "wait"
 	}
 	if count > 0 {
-		return "wait", MessageOptions{}
+		return "wait"
 	}
 
 	// Проверяем активность пользователя за период
@@ -53,7 +53,7 @@ func (b *Bot) checkUserActivity(telegramID int64, language string) (string, Mess
 		if err != nil {
 			logger.Error.Printf("Error Set userActivityKey %d: %v", telegramID, err)
 		}
-		return "", MessageOptions{}
+		return ""
 	}
 
 	val++
@@ -67,18 +67,26 @@ func (b *Bot) checkUserActivity(telegramID int64, language string) (string, Mess
 		if err != nil {
 			logger.Error.Printf("Error Set userActivityKey %d: %v", telegramID, err)
 		}
-		return "", MessageOptions{}
+		return ""
 	}
 
 	// Превышение активности за период выше лимита - необходимо пройти капчу
+	return "needCaptcha"
+}
 
+func (b *Bot) captchaMessage(telegramID int64, language string) MessageOptions {
 	// Остановка игры и возврат в главное меню
 	b.gameHandler.HandleStopGameButton(telegramID)
 	b.sendMainMenu(telegramID, language)
 
+	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	captchaKey := fmt.Sprintf(userCaptchaKeyPrefix, telegramID)
+
 	// Добавляем пользователя в список ожидающих на подтверждения капчи
 	// value не важно, проверка идет по наличию ключа
-	err = b.redisDB.Set(cont, captchaKey, "value", userCaptchaExpiration).Err()
+	err := b.redisDB.Set(cont, captchaKey, "value", userCaptchaExpiration).Err()
 	if err != nil {
 		logger.Error.Printf("Error Set userCaptchaExpiration %d: %v", telegramID, err)
 	}
@@ -123,7 +131,7 @@ func (b *Bot) checkUserActivity(telegramID int64, language string) (string, Mess
 		logger.Info.Println("CAPTCHA successful:", filepath+filename, telegramID)
 	}
 
-	return "needCaptcha", mess
+	return mess
 }
 
 // captchaCorrect - Отправка уведомления об успешном прохождении капчи
