@@ -19,6 +19,24 @@ const (
 	userActivityKeyPrefix  = "user:%d:activity"
 	userActivityExpiration = time.Minute // Время периода
 	userActivityLimit      = 15          // Лимит действий за период userActivityExpiration
+
+	// Redis key для измерения ставок пользователей за период betActivityExpiration
+	// В случае превышения пользователем кол-ва ставок выше betActivityLimit
+	// он будет записан в userCaptchaKeyPrefix и ему будет отправлена капча
+	betActivityKeyPrefix  = "user:%d:bet_activity"
+	betActivityExpiration = 3 * time.Minute // Время периода
+	betActivityLimit      = 9               // Лимит ставок за период betActivityExpiration
+
+	// Redis key для проверки одинаковости ставок за период betDuplicateExpiration
+	// В случае превышения если все время betDuplicateExpiration пользователь делает ставки только на 1 опцию
+	// он будет записан в userCaptchaKeyPrefix и ему будет отправлена капча
+	betDuplicateKeyPrefix  = "user:%d:bet_duplicate"
+	betDuplicateExpiration = 30 * time.Minute // Время периода
+
+	// Redis key для проверки через каждые userBetPointsLimit набранных баллов
+	userBetPointsPrefix = "user:%d:bet_points"
+	userBetPointsLimit  = 50 // Лимит баллов для запуска капчи
+
 	// Redis key для пользователей которые ожидают на проверку капчи
 	// В случае нахождения пользователя все дальнейшие действия будут заблокированы
 	// до прохождения капчи или истечения userCaptchaExpiration
@@ -51,7 +69,7 @@ func (b *Bot) captchaUserActivity(telegramID int64) string {
 		// За текущий период еще не было активности пользователя, создаем запись
 		err = b.redisDB.Set(cont, userActivityKey, 1, userActivityExpiration).Err()
 		if err != nil {
-			logger.Error.Printf("Error Set userActivityKey %d: %v", telegramID, err)
+			logger.Error.Printf("Error Set %d: %v", telegramID, err)
 		}
 		return ""
 	}
@@ -65,11 +83,129 @@ func (b *Bot) captchaUserActivity(telegramID int64) string {
 		// с указанием redis.KeepTTL для того чтобы не обновлялось время expiration
 		err = b.redisDB.Set(cont, userActivityKey, val, redis.KeepTTL).Err()
 		if err != nil {
-			logger.Error.Printf("Error Set userActivityKey %d: %v", telegramID, err)
+			logger.Error.Printf("Error Set %d: %v", telegramID, err)
+		}
+		return ""
+	}
+	logger.Error.Println(telegramID, " captchaUserActivity")
+	// Превышение активности за период выше лимита - необходимо пройти капчу
+	return "needCaptcha"
+}
+
+// captchaBetActivity - Проверка активности - беспрерывная игра
+func (b *Bot) captchaBetActivity(telegramID int64) string {
+
+	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Проверяем ставки пользователя за период
+	betActivityKey := fmt.Sprintf(betActivityKeyPrefix, telegramID)
+	val, err := b.redisDB.Get(cont, betActivityKey).Int64()
+	if err == redis.Nil {
+		// За текущий период еще не было ставок пользователя, создаем запись
+		err = b.redisDB.Set(cont, betActivityKey, 1, betActivityExpiration).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set %d: %v", telegramID, err)
 		}
 		return ""
 	}
 
+	val++
+
+	if val <= betActivityLimit {
+
+		// Пользователь не превышает активность
+		// Обновляем активность пользователя за период
+		// с указанием redis.KeepTTL для того чтобы не обновлялось время expiration
+		err = b.redisDB.Set(cont, betActivityKey, val, redis.KeepTTL).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set %d: %v", telegramID, err)
+		}
+		return ""
+	}
+
+	logger.Error.Println(telegramID, " captchaBetActivity")
+	// Превышение ставок за период выше лимита - необходимо пройти капчу
+	return "needCaptcha"
+}
+
+// captchaBetDuplicate - Проверка активности - ставка на одну и ту же опцию
+func (b *Bot) captchaBetDuplicate(telegramID int64, option string) string {
+
+	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	userBetKey := fmt.Sprintf(betDuplicateKeyPrefix, telegramID)
+	val, err := b.redisDB.Get(cont, userBetKey).Result()
+	if err == redis.Nil {
+		// За период еще не было ставок пользователя, создаем запись
+		err = b.redisDB.Set(cont, userBetKey, option, betDuplicateExpiration).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set %d: %v", telegramID, err)
+		}
+		return ""
+	}
+
+	// Ставка не повторилась с последней
+	if val != option {
+		// Создаем новую проверку с отсчетом времени сначала
+		err = b.redisDB.Set(cont, userBetKey, option, betDuplicateExpiration).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set %d: %v", telegramID, err)
+		}
+		return ""
+	}
+
+	// Ставка повторилась, проверяем время истечения.
+	ttl, err := b.redisDB.TTL(cont, userBetKey).Result()
+	if err != nil {
+		logger.Error.Printf("Error TTL %d: %v", telegramID, err)
+		return ""
+	}
+	if ttl.Seconds() < 20 {
+		// Если время подходит к указанному expiration то он делал ставки все последнее время одинаковые.
+		// Удаляем ключ
+		_, err = b.redisDB.Del(cont, userBetKey).Result()
+		if err != nil {
+			logger.Error.Printf("Error del %d: %v", telegramID, err)
+			return ""
+		}
+		logger.Error.Println(telegramID, " captchaBetDuplicate")
+		// Выводим капчу
+		return "needCaptcha"
+	}
+
+	return ""
+}
+
+// captchaBetPoints - Проверка активности - кол-во набранных баллов
+func (b *Bot) captchaBetPoints(telegramID int64, point int) string {
+
+	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	userBetPointKey := fmt.Sprintf(userBetPointsPrefix, telegramID)
+	val, err := b.redisDB.Get(cont, userBetPointKey).Int()
+	if err == redis.Nil {
+		// За период еще не было получено баллов пользователя, создаем запись
+		err = b.redisDB.Set(cont, userBetPointKey, point, 0).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set %d: %v", telegramID, err)
+		}
+		return ""
+	}
+
+	val += point
+
+	if val <= userBetPointsLimit {
+
+		// Пользователь не превышает лимит балов для запуска капчи
+		// Обновляем кол-во балов
+		err = b.redisDB.Set(cont, userBetPointKey, val, 0).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set %d: %v", telegramID, err)
+		}
+		return ""
+	}
+	logger.Error.Println(telegramID, " captchaBetPoints")
 	// Превышение активности за период выше лимита - необходимо пройти капчу
 	return "needCaptcha"
 }
@@ -128,7 +264,6 @@ func (b *Bot) captchaMessage(telegramID int64, language string) MessageOptions {
 	} else {
 		mess.PhotoPath = filepath + filename
 		mess.DelPhoto = true
-		logger.Info.Println("CAPTCHA successful:", filepath+filename, telegramID)
 	}
 
 	return mess
@@ -148,22 +283,29 @@ func (b *Bot) captchaCorrect(query *telego.CallbackQuery) {
 		}
 	}
 
-	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	// Убираем пользователя из списка ожидающих на подтверждения капчи
-	captchaKey := fmt.Sprintf(userCaptchaKeyPrefix, user.ID)
-	_, err = b.redisDB.Del(cont, captchaKey).Result()
-	if err != nil {
-		logger.Error.Printf("Error del captchaKey %d: %v", user.ID, err)
-		return
-	}
+	// Используем Redis Pipeline для выполнения нескольких команд за один сетевой запрос
+	pipe := b.redisDB.Pipeline()
 
+	// Убираем пользователя из списка ожидающих на подтверждения капчи
+	pipe.Del(cont, fmt.Sprintf(userCaptchaKeyPrefix, user.ID))
+
+	// Очищаем все условия
 	// Удаляем активность пользователя
-	userActivityKey := fmt.Sprintf(userActivityKeyPrefix, user.ID)
-	_, err = b.redisDB.Del(cont, userActivityKey).Result()
-	if err != nil {
-		logger.Error.Printf("Error del userActivityKey %d: %v", user.ID, err)
+	pipe.Del(cont, fmt.Sprintf(userActivityKeyPrefix, user.ID))
+	// Удаляем ставки пользователя
+	pipe.Del(cont, fmt.Sprintf(betActivityKeyPrefix, user.ID))
+	// Удаляем ставки на одну и ту же опцию
+	pipe.Del(cont, fmt.Sprintf(betDuplicateKeyPrefix, user.ID))
+	// Удаляем кол-во набранных баллов
+	pipe.Del(cont, fmt.Sprintf(userBetPointsPrefix, user.ID))
+
+	// Выполняем все операции за один запрос
+	_, pipeErr := pipe.Exec(cont)
+	if pipeErr != nil {
+		logger.Error.Printf("Error in pipeline execution: %v", pipeErr)
 	}
 
 	// Всегда используем язык из базы данных, т.к. он может быть обновлен

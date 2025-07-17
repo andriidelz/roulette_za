@@ -472,6 +472,20 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 	}
 
+	// Проверяем активность пользователя
+	// - беспрерывная игра
+	// - ставка на одну и ту же опцию
+	switch b.captchaBetActivity(userID) {
+	case "needCaptcha":
+		b.SendMessage(userID, b.captchaMessage(userID, language))
+		return
+	}
+	switch b.captchaBetDuplicate(userID, string(option)) {
+	case "needCaptcha":
+		b.SendMessage(userID, b.captchaMessage(userID, language))
+		return
+	}
+
 	// Вызываем MakeBet и обрабатываем возможные ошибки
 	err = b.gameHandler.MakeBet(userID, option)
 	if err != nil {
