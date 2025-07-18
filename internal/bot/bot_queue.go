@@ -50,17 +50,6 @@ const (
 	userErrorKeyPrefix  = "user:%d:error"
 	userErrorExpiration = 40 * time.Second // Redis key для времени отправки ошибок
 
-	// Redis key для измерения активности пользователей за период userActivityExpiration
-	// В случае превышения пользователем кол-ва действий выше userActivityLimit
-	// он будет записан в userCaptchaKeyPrefix и ему будет отправлена капча
-	userActivityKeyPrefix  = "user:%d:activity"
-	userActivityExpiration = time.Minute // Время периода
-	userActivityLimit      = 15          // Лимит действий за период userActivityExpiration
-	// Redis key для пользователей которые ожидают на проверку капчи
-	// В случае нахождения пользователя все дальнейшие действия будут заблокированы
-	// до прохождения капчи или истечения userCaptchaExpiration
-	userCaptchaKeyPrefix  = "user:%d:captcha"
-	userCaptchaExpiration = time.Hour // Время удаления проверки капчи
 )
 
 // MakeRequestDeferred Постановка сообщения в очередь на отправку

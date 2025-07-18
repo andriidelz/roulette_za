@@ -719,6 +719,15 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		InlineKeyboard: inlineKeyboard,
 	})
 
+	// Проверяем активность пользователя - кол-во набранных баллов
+	if won {
+		switch h.bot.captchaBetPoints(userID, points) {
+		case "needCaptcha":
+			h.bot.SendMessage(userID, h.bot.captchaMessage(userID, language))
+			return nil
+		}
+	}
+
 	return nil
 }
 
