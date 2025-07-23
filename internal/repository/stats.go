@@ -352,20 +352,20 @@ func (r *PostgresRepository) GetTopPlayersByAttempts(limit int) ([]map[string]in
 	return result, nil
 }
 
-// GetSource возвращает кол-во регистраций по источникам
-func (r *PostgresRepository) GetSource(dateFrom, dateTo string) ([]map[string]interface{}, error) {
+// GetSourceByDate возвращает кол-во регистраций по источникам и по дням
+func (r *PostgresRepository) GetSourceByDate(dateFrom, dateTo string) ([]map[string]interface{}, error) {
 	var result []map[string]interface{}
 
 	// SQL запрос для получения кол-ва регистраций по источнику
 	// ::date скорочена нотація Postgres для приведення значення в формат
 	// WHERE source = ref_key
 	rows, err := r.db.Raw(`
-SELECT u.created_at::date, COALESCE(k.name, u.source) AS source, COUNT(u.id)
+SELECT u.source AS source_key, u.created_at::date, COALESCE(k.name, u.source) AS source, COUNT(u.id)
 FROM public.users u LEFT OUTER JOIN "source_keys" k
 ON u.source = k.key
 WHERE u.created_at >= ? and u.created_at <= ?
-GROUP BY u.created_at::date, source, k.name
-ORDER BY created_at DESC, source DESC;
+GROUP BY u.created_at::date, source, source_key, k.name
+ORDER BY created_at DESC, source_key DESC;
 	`, dateFrom, dateTo).Rows()
 
 	if err != nil {
@@ -374,15 +374,54 @@ ORDER BY created_at DESC, source DESC;
 	defer rows.Close()
 
 	for rows.Next() {
-		var created_at, source string
+		var created_at, source_key, source string
 		var count int
 
-		if err := rows.Scan(&created_at, &source, &count); err != nil {
+		if err := rows.Scan(&source_key, &created_at, &source, &count); err != nil {
 			return nil, err
 		}
 
 		player := map[string]interface{}{
 			"created_at": created_at,
+			"source_key": source_key,
+			"source":     source,
+			"count":      count,
+		}
+		result = append(result, player)
+	}
+
+	return result, nil
+}
+
+// GetSource возвращает кол-во регистраций по источникам
+func (r *PostgresRepository) GetSource() ([]map[string]interface{}, error) {
+	var result []map[string]interface{}
+
+	// SQL запрос для получения кол-ва регистраций по источнику
+	// WHERE source = ref_key
+	rows, err := r.db.Raw(`
+SELECT u.source AS source_key, COALESCE(k.name, u.source) AS source, COUNT(u.id) 
+FROM public.users u LEFT OUTER JOIN "source_keys" k
+ON u.source = k.key
+GROUP BY source, k.name, source_key
+ORDER BY source DESC;
+	`).Rows()
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var source_key, source string
+		var count int
+
+		if err := rows.Scan(&source_key, &source, &count); err != nil {
+			return nil, err
+		}
+
+		player := map[string]interface{}{
+			"source_key": source_key,
 			"source":     source,
 			"count":      count,
 		}
