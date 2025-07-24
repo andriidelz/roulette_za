@@ -34,7 +34,8 @@ type Repository interface {
 	GetTopPlayersByAttempts(limit int) ([]map[string]interface{}, error)
 
 	// Источники
-	GetSource(dateFrom, dateTo string) ([]map[string]interface{}, error)
+	GetSource() ([]map[string]interface{}, error)
+	GetSourceByDate(dateFrom, dateTo string) ([]map[string]interface{}, error)
 	SetSourceKey(key string, name string) error
 	CheckSourceKeyExists(key string) (bool, error)
 	GetAllSourceKeys() ([]models.SourceKey, error)
