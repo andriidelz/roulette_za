@@ -209,7 +209,7 @@ func (a *AdminPanel) getSuperRatingsHistory() ([]gin.H, error) {
 	return result, nil
 }
 
-// Деталі рейтингу
+// Деталі рейтингу - по незавершеним відображаємо теперішню ситуацію з приблизним розподілом нагород
 func (a *AdminPanel) ratingDetails(c *gin.Context) {
 	// Получаем параметры из URL
 	year, err := strconv.Atoi(c.Param("year"))
@@ -230,16 +230,6 @@ func (a *AdminPanel) ratingDetails(c *gin.Context) {
 		return
 	}
 
-	// Получаем участников рейтинга
-	ratings, err := a.repo.GetWeeklyRating(year, week, 100)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Ошибка",
-			"error": err.Error(),
-		})
-		return
-	}
-
 	// Получаем призовой фонд
 	prizeFund, err := a.repo.GetPrizeFund(year, week)
 	if err != nil {
@@ -255,6 +245,35 @@ func (a *AdminPanel) ratingDetails(c *gin.Context) {
 	prizeStatus, err := a.service.GetPrizeDistributionStatus(year, week)
 	if err != nil {
 		prizeStatus = "PENDING"
+	}
+
+	// Отримуємо рейтинг
+	ratings, err := a.repo.GetWeeklyRating(year, week, prizeFund.TopCount)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title": "Ошибка",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// Якщо фонд не розподілений то виводимо приблизні призи які отримають учасники
+	// по тим балам що вони мають на данний момент
+	// Логіка аналогічна розподілу призів в (s *ServiceImpl) DistributePrizes
+	if prizeStatus == "PENDING" {
+		// Рахуємо загальну кількість балів у топі
+		totalPoints := 0
+		for _, rating := range ratings {
+			totalPoints += rating.Points
+		}
+
+		if totalPoints > 0 {
+			// Розподіляємо потенційний! призовий фонд пропорційно балам
+			for i := range ratings {
+				prize := (float64(ratings[i].Points) / float64(totalPoints)) * prizeFund.Amount
+				ratings[i].Prize = prize
+			}
+		}
 	}
 
 	// Парсим дату начала и конца недели
