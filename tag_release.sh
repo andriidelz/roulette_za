@@ -4,24 +4,32 @@ set -e
 
 # 1. Получаем текущую дату и номер недели
 YEAR=$(date +%Y)
-WEEK=$(date +%V)  # ISO неделя (01–53)
+WEEK=$(date +%V)
 
-# 2. Предлагаем версию
-DEFAULT_TAG="v0.${YEAR}.${WEEK}"
+PREFIX="v0.${YEAR}.${WEEK}"
+TAG="$PREFIX"
 
-echo "🔧 Default tag: $DEFAULT_TAG"
-read -p "Edit tag or press Enter to accept [$DEFAULT_TAG]: " CUSTOM_TAG
-TAG=${CUSTOM_TAG:-$DEFAULT_TAG}
+# 2. Ищем свободный тег (если основной занят — добавляем .1, .2, ...)
+i=0
+while git rev-parse "$TAG" >/dev/null 2>&1; do
+  i=$((i + 1))
+  TAG="${PREFIX}.${i}"
+done
 
-# 3. Проверка — существует ли уже такой тег
+echo "🔧 Suggested tag: $TAG"
+read -p "Edit tag or press Enter to accept [$TAG]: " CUSTOM_TAG
+TAG=${CUSTOM_TAG:-$TAG}
+
+# 3. Проверка — не занят ли вручную введённый тег
 if git rev-parse "$TAG" >/dev/null 2>&1; then
   echo "❌ Tag '$TAG' already exists!"
   exit 1
 fi
 
-# 4. Комментарий к тегу
-read -p "Enter tag message (annotated tag): " TAG_MSG
-TAG_MSG=${TAG_MSG:-"Release $TAG"}
+# 4. Предзаполненный комментарий к тегу
+DEFAULT_MSG="Release version ${TAG}."
+read -p "Edit tag message or press Enter to accept [$DEFAULT_MSG]: " CUSTOM_MSG
+TAG_MSG=${CUSTOM_MSG:-$DEFAULT_MSG}
 
 # 5. Подтверждение
 echo ""
