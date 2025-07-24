@@ -1,15 +1,24 @@
 package admin
 
 import (
+	"fmt"
 	"net/http"
+	"roulette/internal/logger"
 	"roulette/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
 
+type (
+	sourcesKeysStruct struct {
+		SourceKey models.SourceKey
+		Count     interface{}
+	}
+)
+
 // Обработчик списка источников
 func (a *AdminPanel) sourcesKeysPage(c *gin.Context) {
-	sources, err := a.getAllSourceKeys()
+	sources, err := a.repo.GetAllSourceKeys()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
@@ -18,11 +27,40 @@ func (a *AdminPanel) sourcesKeysPage(c *gin.Context) {
 		return
 	}
 
+	// Получаем статистику с разбивкой по источникам
+	stat, err := a.service.GetSource()
+	if err != nil {
+		logger.Error.Println(err)
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	statMap := map[string]interface{}{}
+	statData := []sourcesKeysStruct{}
+	for i := range stat {
+		if key, ok := stat[i]["source_key"]; ok {
+			if count, ok1 := stat[i]["count"]; ok1 {
+				statMap[fmt.Sprint(key)] = count
+			}
+		}
+	}
+
+	for i := range sources {
+		data := sourcesKeysStruct{SourceKey: sources[i]}
+		if count, ok := statMap[sources[i].Key]; ok {
+			data.Count = count
+		}
+		statData = append(statData, data)
+	}
+
+	logger.Error.Println(sources)
+	logger.Error.Println(statData)
+
 	c.HTML(http.StatusOK, "sources_keys", gin.H{
 		"title":        "Admin-panel - Referral Link",
 		"activeTab":    "sources",
 		"activeSubTab": "keys",
-		"sources":      sources,
+		"sources":      statData,
 		"botName":      a.settings.BotName,
 	})
 }
@@ -75,16 +113,6 @@ func (a *AdminPanel) sourceKeysAdd(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
-}
-
-// Получить все источники
-func (a *AdminPanel) getAllSourceKeys() ([]models.SourceKey, error) {
-	result, err := a.repo.GetAllSourceKeys()
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
 }
 
 // Проверка валидности ключа источника
