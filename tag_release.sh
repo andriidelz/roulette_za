@@ -7,7 +7,7 @@ YEAR=$(date +%Y)
 WEEK=$(date +%V)  # ISO неделя (01–53)
 
 # 2. Предлагаем версию
-DEFAULT_TAG="v1.${YEAR}.${WEEK}"
+DEFAULT_TAG="v0.${YEAR}.${WEEK}"
 
 echo "🔧 Default tag: $DEFAULT_TAG"
 read -p "Edit tag or press Enter to accept [$DEFAULT_TAG]: " CUSTOM_TAG
