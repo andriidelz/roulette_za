@@ -1859,6 +1859,16 @@ func (b *Bot) SendMessage(chatID int64, options MessageOptions) error {
 	processedText = strings.ReplaceAll(processedText, "\r\n", "\n")
 	options.Text = processedText
 
+	// Собираем параметры для замены макросов
+	params := make(map[string]interface{})
+
+	// Добавляем глобальные макросы
+	for key, value := range b.service.GetGlobalMacros() {
+		params[key] = value
+	}
+	// Заменяем макросы в текстах с помощью общей функции
+	_, options.Text, _ = utils.ReplaceMacrosInTexts("", options.Text, "", params)
+
 	// Проверка на наличие шаблонов эмодзи в тексте
 	if strings.Contains(options.Text, "{{emoji:") {
 		// Обрабатываем кастомные эмодзи в формате {{emoji:id}}

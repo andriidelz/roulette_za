@@ -715,7 +715,7 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 	params := make(map[string]interface{})
 
 	// Добавляем глобальные макросы
-	for key, value := range s.getGlobalMacros() {
+	for key, value := range s.GetGlobalMacros() {
 		params[key] = value
 	}
 
@@ -879,8 +879,8 @@ func (s *ServiceImpl) CheckTopRatingEntries() error {
 	return nil
 }
 
-// getGlobalMacros получает глобальные макросы из настроек системы
-func (s *ServiceImpl) getGlobalMacros() map[string]interface{} {
+// GetGlobalMacros получает глобальные макросы из настроек системы
+func (s *ServiceImpl) GetGlobalMacros() map[string]interface{} {
 	// Получаем настройки системы
 	settings, err := s.GetSettings()
 	if err != nil {
