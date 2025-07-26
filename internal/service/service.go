@@ -106,7 +106,7 @@ type Service interface {
 	GetNotificationTasksStats(period string) (*models.NotificationStatistics, error)
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)
 	CheckTopRatingEntries() error
-
+	GetGlobalMacros() map[string]interface{}
 	// Вспомогательный метод для доступа к репозиторию
 	GetRepo() repository.Repository
 }

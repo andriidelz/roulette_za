@@ -44,6 +44,66 @@
           </div>
         </div>
 
+        <div class="card mb-3">
+          <div class="card-header bg-info text-white">
+            <h6 class="mb-0">
+              <i class="bi bi-info-circle me-1"></i> Доступные макросы
+              <button class="btn btn-sm btn-link text-white float-end" type="button" data-bs-toggle="collapse" data-bs-target="#macrosHelp" aria-expanded="false">
+                <i class="bi bi-chevron-down"></i>
+              </button>
+            </h6>
+          </div>
+          <div class="collapse" id="macrosHelp">
+            <div class="card-body">
+              <p class="small">Макросы вставляются в текст в формате <code>{имя_макроса}</code> и автоматически заменяются при отправке уведомления.</p>
+              
+              <!-- Содержимое табов -->
+              <div class="tab-content pt-2" id="macrosTabContent">
+                <!-- Глобальные макросы -->
+                <div class="tab-pane fade show active" id="global-macros" role="tabpanel">
+                  <h6 class="mb-2">Глобальные макросы, доступные во всех типах уведомлений:</h6>
+                  <table class="table table-sm table-striped">
+                    <thead>
+                      <tr>
+                        <th>Макрос</th>
+                        <th>Описание</th>
+                        <th>Пример</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code>{daily_bets_limit}</code></td>
+                        <td>Лимит ставок за день</td>
+                        <td>2880</td>
+                      </tr>
+                      <tr>
+                        <td><code>{daily_bets_zero_limit}</code></td>
+                        <td>Лимит ставок для Zero</td>
+                        <td>100</td>
+                      </tr>
+                      <tr>
+                        <td><code>{minimum_withdrawal}</code></td>
+                        <td>Минимальная сумма для вывода</td>
+                        <td>10.00</td>
+                      </tr>
+                      <tr>
+                        <td><code>{prize_fund}</code></td>
+                        <td>Сумма недельного призового фонда</td>
+                        <td>1000.00</td>
+                      </tr>
+                      <tr>
+                        <td><code>{prize_top}</code></td>
+                        <td>Количество призовых мест</td>
+                        <td>100</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+             </div>
+            </div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-header">
             <ul class="nav nav-tabs card-header-tabs" id="localization-tabs" role="tablist">
