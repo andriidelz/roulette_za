@@ -287,6 +287,7 @@
               <div class="form-text">Используйте только латинские буквы, цифры и нижнее подчеркивание. Например: welcome_message</div>
             </div>
             
+            <!-- Сообщение -->
             <div class="mb-3">
               <label for="en-value" class="form-label">Английский</label>
               <textarea class="form-control" id="en-value" rows="3" required></textarea>
@@ -463,6 +464,8 @@
       // Add new localization
       $('#save-new-localization').click(function() {
         const key = $('#localization-key').val();
+
+        // Собираем локализации сообщения
         const ukValue = $('#uk-value').val();
         const enValue = $('#en-value').val();
         const ruValue = $('#ru-value').val();
@@ -480,12 +483,16 @@
         $.ajax({
           url: '/admin/localization/add',
           type: 'POST',
-          data: {
+          dataType: 'json',
+          contentType: 'application/json',
+          data: JSON.stringify({
             key: key,
-            uk: ukValue,
-            en: enValue,
-            ru: ruValue
-          },
+            message: {
+              uk: ukValue,
+              en: enValue,
+              ru: ruValue
+            },
+          }),
           success: function(response) {
             if (response.success) {
               addLocalizationRow('uk', key, ukValue);

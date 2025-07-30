@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"roulette/internal/models"
 	"roulette/internal/utils"
 	"strings"
 	"time"
@@ -146,44 +147,41 @@ func (a *AdminPanel) localizationDelete(c *gin.Context) {
 // Обработчик добавления новой локализации
 func (a *AdminPanel) localizationAdd(c *gin.Context) {
 	// Получаем данные из формы
-	key := c.PostForm("key")
-	enValue := c.PostForm("en")
-	ruValue := c.PostForm("ru")
-	ukValue := c.PostForm("uk")
+	var request struct {
+		Key     string            `json:"key"`
+		Message map[string]string `json:"message"` // Локализации сообщения
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	// Проверяем, существует ли уже такая локализация
-	exists, _ := a.repo.CheckLocalizationExists(key)
+	exists, _ := a.repo.CheckLocalizationExists(request.Key)
 	if exists {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Ключ уже существует"})
 		return
 	}
 
 	// Проверяем, что все необходимые данные предоставлены
-	if key == "" || ukValue == "" || enValue == "" || ruValue == "" {
+	if request.Key == "" || len(request.Message) != 3 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Все поля должны быть заполнены"})
 		return
 	}
 
 	// Проверяем, что ключ имеет допустимый формат
-	if !a.isValidKey(key) {
+	if !a.isValidKey(request.Key) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Ключ может содержать только латинские буквы, цифры и нижнее подчеркивание"})
 		return
 	}
 
 	// Сохраняем локализации для каждого языка
-	if err := a.clearAndSaveLocalization(key, "en", enValue); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := a.clearAndSaveLocalization(key, "ru", ruValue); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := a.clearAndSaveLocalization(key, "uk", ukValue); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+	for lang, val := range request.Message {
+		if err := a.clearAndSaveLocalization(request.Key, lang, val); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
@@ -516,7 +514,11 @@ func (a *AdminPanel) clearAndSaveLocalization(key, lang, val string) error {
 		return err
 	}
 
-	return a.repo.SetLocalization(key, lang, newVal)
+	return a.repo.SetLocalization(models.Localization{
+		Key:      key,
+		Language: lang,
+		Value:    newVal,
+	})
 }
 
 // Валидация языка
