@@ -133,6 +133,7 @@ type Localization struct {
 	Key      string `gorm:"size:255;index"`
 	Language string `gorm:"size:10;index"`
 	Value    string `gorm:"type:text"`
+	Image    string `gorm:"type:text"`
 }
 
 // Источники

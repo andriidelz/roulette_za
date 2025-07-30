@@ -302,6 +302,32 @@
               <label for="uk-value" class="form-label">Украинский</label>
               <textarea class="form-control" id="uk-value" rows="3" required></textarea>
             </div>
+
+            <!-- Изображения -->
+            <div class="card mb-3">
+              <div class="card-header">
+                <h6 class="mb-0">Изображения</h6>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-4">
+                    <label for="edit-image-en-input" class="form-label">English</label>
+                    <input type="url" class="form-control" id="edit-image-en-input" name="image[en]" placeholder="https://example.com/image_en.jpg">
+                    <div class="form-text">URL изображения для английской версии</div>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="edit-image-ru-input" class="form-label">Русский</label>
+                    <input type="url" class="form-control" id="edit-image-ru-input" name="image[ru]" placeholder="https://example.com/image_ru.jpg">
+                    <div class="form-text">URL изображения для русской версии</div>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="edit-image-uk-input" class="form-label">Українська</label>
+                    <input type="url" class="form-control" id="edit-image-uk-input" name="image[uk]" placeholder="https://example.com/image_uk.jpg">
+                    <div class="form-text">URL изображения для украинской версии</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </form>
         </div>
         <div class="modal-footer">
@@ -480,6 +506,13 @@
           return;
         }
         
+        // Собираем URL изображений для разных языков
+        const image = {
+          en:document.getElementById('edit-image-en-input').value,
+          ru:document.getElementById('edit-image-ru-input').value,
+          uk:document.getElementById('edit-image-uk-input').value,
+        };
+        
         $.ajax({
           url: '/admin/localization/add',
           type: 'POST',
@@ -492,6 +525,7 @@
               en: enValue,
               ru: ruValue
             },
+            image: image,
           }),
           success: function(response) {
             if (response.success) {
