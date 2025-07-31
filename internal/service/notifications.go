@@ -666,37 +666,16 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 		language = "en" // По умолчанию английский
 	}
 
-	title, err := s.repo.GetLocalization(template.TitleKey, language)
-	if err != nil {
-		// Если локализация не найдена, пробуем английскую
-		title, err = s.repo.GetLocalization(template.TitleKey, "en")
-		if err != nil {
-			title = template.TitleKey // Используем ключ как текст
-		}
-	}
-
-	message, err := s.repo.GetLocalization(template.MessageKey, language)
-	if err != nil {
-		// Если локализация не найдена, пробуем английскую
-		message, err = s.repo.GetLocalization(template.MessageKey, "en")
-		if err != nil {
-			message = template.MessageKey // Используем ключ как текст
-		}
-	}
+	title := s.GetText(template.TitleKey, language)
+	message := s.GetText(template.MessageKey, language)
 
 	var buttonText string
 	var buttonURL string
 	var buttonCallback string
 
 	if template.ButtonTextKey != "" {
-		buttonText, err = s.repo.GetLocalization(template.ButtonTextKey, language)
-		if err != nil {
-			// Если локализация не найдена, пробуем английскую
-			buttonText, err = s.repo.GetLocalization(template.ButtonTextKey, "en")
-			if err != nil {
-				buttonText = template.ButtonTextKey // Используем ключ как текст
-			}
-		}
+		buttonText = s.GetText(template.ButtonTextKey, language)
+
 		buttonURL = template.ButtonURL
 		buttonCallback = template.ButtonCallback
 	}

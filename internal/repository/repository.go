@@ -73,7 +73,7 @@ type Repository interface {
 	GetSettingWithDefault(key string) (*models.Setting, error)
 
 	// Локализации
-	GetLocalization(key string, language string) (string, error)
+	GetLocalization(key string, language string) (models.Localization, error)
 	SetLocalization(value models.Localization) error
 	GetAllLocalizationsForLanguage(language string) ([]models.Localization, error)
 	GetAllLocalizationsByKey(key string) ([]models.Localization, error) // ДОБАВЛЕН НЕДОСТАЮЩИЙ МЕТОД
