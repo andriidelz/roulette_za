@@ -1851,6 +1851,16 @@ type MessageOptions struct {
 	DisableNotification bool
 }
 
+func (b *Bot) prepareMessage(key, languageCode string) (options MessageOptions) {
+
+	res, _ := b.service.GetRepo().GetLocalization(key, languageCode)
+
+	return MessageOptions{
+		Text:        res.Value,
+		PhotoFileID: res.Image,
+	}
+}
+
 // SendMessage отправляет новое сообщение с указанными опциями
 func (b *Bot) SendMessage(chatID int64, options MessageOptions) error {
 	// Обрабатываем текст, заменяя литеральные \r\n на реальные переносы строк
