@@ -8,6 +8,7 @@ import (
 	"roulette/internal/bot"
 	"roulette/internal/config"
 	"roulette/internal/logger"
+	"roulette/internal/metrics"
 	"roulette/internal/repository"
 	"roulette/internal/service"
 
@@ -26,6 +27,12 @@ func main() {
 	cfg := config.NewConfig()
 
 	logger.Info.Printf("Starting bot with Telegram token: %s...", cfg.TelegramToken[:5])
+
+	// Инициализируем сервер метрик
+	appMetrics := metrics.NewMetrics("roulette-bot", 9101)
+	if err := appMetrics.Start(); err != nil {
+		logger.Error.Fatalf("Failed to start metrics server: %v", err)
+	}
 
 	// Подключаемся к базе данных
 	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{})
@@ -59,6 +66,11 @@ func main() {
 
 	// Останавливаем бота
 	telegramBot.Stop()
+
+	// Останавливаем сервер метрик
+	if err := appMetrics.Stop(); err != nil {
+		logger.Error.Printf("Error stopping metrics server: %v", err)
+	}
 
 	logger.Info.Println("Bot stopped gracefully")
 }
