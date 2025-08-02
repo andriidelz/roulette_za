@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"roulette/internal/utils"
 	"strings"
 	"time"
 
@@ -105,21 +106,21 @@ func (a *AdminPanel) localizationSave(c *gin.Context) {
 
 	// Сохраняем локализации для каждого языка, если они предоставлены
 	if enValue != "" {
-		if err := a.repo.SetLocalization(key, "en", enValue); err != nil {
+		if err := a.clearAndSaveLocalization(key, "en", enValue); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 	}
 
 	if ruValue != "" {
-		if err := a.repo.SetLocalization(key, "ru", ruValue); err != nil {
+		if err := a.clearAndSaveLocalization(key, "ru", ruValue); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 	}
 
 	if ukValue != "" {
-		if err := a.repo.SetLocalization(key, "uk", ukValue); err != nil {
+		if err := a.clearAndSaveLocalization(key, "uk", ukValue); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -170,17 +171,17 @@ func (a *AdminPanel) localizationAdd(c *gin.Context) {
 	}
 
 	// Сохраняем локализации для каждого языка
-	if err := a.repo.SetLocalization(key, "en", enValue); err != nil {
+	if err := a.clearAndSaveLocalization(key, "en", enValue); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := a.repo.SetLocalization(key, "ru", ruValue); err != nil {
+	if err := a.clearAndSaveLocalization(key, "ru", ruValue); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := a.repo.SetLocalization(key, "uk", ukValue); err != nil {
+	if err := a.clearAndSaveLocalization(key, "uk", ukValue); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -384,7 +385,7 @@ func (a *AdminPanel) importSingleLanguage(c *gin.Context, importData Localizatio
 			return
 		}
 
-		if err := a.repo.SetLocalization(key, importData.Language, value); err != nil {
+		if err := a.clearAndSaveLocalization(key, importData.Language, value); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save localization: " + err.Error()})
 			return
 		}
@@ -446,7 +447,7 @@ func (a *AdminPanel) importMultipleLanguages(c *gin.Context, multiImport map[str
 				return
 			}
 
-			if err := a.repo.SetLocalization(key, language, value); err != nil {
+			if err := a.clearAndSaveLocalization(key, language, value); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": fmt.Sprintf("Failed to save localization for %s: %s", language, err.Error()),
 				})
@@ -506,6 +507,16 @@ func (a *AdminPanel) isValidKey(key string) bool {
 		}
 	}
 	return true
+}
+
+// clearAndSaveLocalization очищаем и сохраняем локализацию
+func (a *AdminPanel) clearAndSaveLocalization(key, lang, val string) error {
+	newVal, err := utils.ParseNode(val, true)
+	if err != nil {
+		return err
+	}
+
+	return a.repo.SetLocalization(key, lang, newVal)
 }
 
 // Валидация языка

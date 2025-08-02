@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"roulette/internal/config"
 	"roulette/internal/data"
 	"roulette/internal/logger"
 	"roulette/internal/messaging"
@@ -827,17 +828,9 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 
 // getRabbitMQURL возвращает URL для подключения к RabbitMQ
 func (s *ServiceImpl) getRabbitMQURL() string {
-	// Получаем URL из настроек
-	settings, err := s.GetSettings()
-	if err != nil {
-		return "amqp://guest:guest@rabbitmq:5672/" // Значение по умолчанию
-	}
-
-	if url, ok := settings["RABBITMQ_URL"]; ok && url != "" {
-		return url
-	}
-
-	return "amqp://guest:guest@rabbitmq:5672/" // Значение по умолчанию
+	// Получаем URL из конфигурации
+	cfg := config.NewConfig()
+	return cfg.RabbitMQURL
 }
 
 // CheckTopRatingEntries проверяет пользователей, вошедших в топ рейтинга и отправляет им уведомления

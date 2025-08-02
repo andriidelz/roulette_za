@@ -95,7 +95,7 @@
                                       <th>Баллы</th>
                                       <th>Ставок</th>
                                       <th>Эффективность</th>
-                                      <th>Приз</th>
+                                      <th>{{if eq .prizeStatus "PENDING"}}Потенциальный приз{{else}}Приз{{end}}</th>
                                       <th>Действия</th>
                                   </tr>
                               </thead>

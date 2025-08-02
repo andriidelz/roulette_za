@@ -53,27 +53,29 @@
                                 <tr>
                                     <th width="30%">Ключ</th>
                                     <th>Название</th>
+                                    <th>Кол-во регистраций</th>
                                     <th width="120px">Действия</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {{ $botName := .botName}}
                                 {{range .sources}}
-                                <tr data-key="{{.Key}}">
-                                    <td>{{.Key}}</td>
+                                <tr data-key="{{.SourceKey.Key}}">
+                                    <td>{{.SourceKey.Key}}</td>
                                     <td>
-                                        <div class="source-value">{{.Name}}</div>
+                                        <div class="source-value">{{.SourceKey.Name}}</div>
                                         <div class="source-editor d-none">
-                                            <input type="text" class="form-control" id="name" value="{{.Name}}">
+                                            <input type="text" class="form-control" id="name" value="{{.SourceKey.Name}}">
                                         </div>
                                     </td>
+                                    <td>{{.Count}}</td>
                                     <td>
                                         <div class="btn-group">
                                             <button class="btn btn-sm btn-outline-primary edit-source">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-primary copy-referral-btn"
-                                                data-clipboard-text="https://t.me/{{ $botName}}?start={{ .Key }}"
+                                                data-clipboard-text="https://t.me/{{ $botName}}?start={{ .SourceKey.Key }}"
                                                 title="Копировать ссылку">
                                                 <i class="bi bi-clipboard"></i>
                                             </button>
@@ -259,6 +261,7 @@
                 <input type="text" class="form-control" id="name" value="${name}">
               </div>
             </td>
+            <td></td>
             <td>
               <div class="btn-group">
                 <button class="btn btn-sm btn-outline-primary edit-source">

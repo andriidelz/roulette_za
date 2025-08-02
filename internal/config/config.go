@@ -30,6 +30,12 @@ type Config struct {
 
 	// RabbitMQ
 	RabbitMQURL string
+
+	// Redis
+	RedisHost string
+	RedisPort string
+	RedisPass string
+	RedisDB   int
 }
 
 // NewConfig створює новий екземпляр конфігурації
@@ -59,6 +65,12 @@ func NewConfig() *Config {
 
 		// RabbitMQ
 		RabbitMQURL: getEnv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/"),
+
+		// Redis
+		RedisHost: getEnv("REDIS_HOST", "localhost"),
+		RedisPort: getEnv("REDIS_PORT", "6379"),
+		RedisPass: getEnv("REDIS_PASSWORD", ""),
+		RedisDB:   getEnvInt("REDIS_DB", 0),
 	}
 }
 
@@ -76,6 +88,17 @@ func getEnvBool(key string, defaultValue bool) bool {
 		boolValue, err := strconv.ParseBool(value)
 		if err == nil {
 			return boolValue
+		}
+	}
+	return defaultValue
+}
+
+// getEnvInt отримує int значення змінної оточення або повертає значення за замовчуванням
+func getEnvInt(key string, defaultValue int) int {
+	if value, exists := os.LookupEnv(key); exists {
+		intValue, err := strconv.Atoi(value)
+		if err == nil {
+			return intValue
 		}
 	}
 	return defaultValue
