@@ -60,6 +60,12 @@ x-admin-config: &admin-config
   ALLOWED_IPS: ${ALLOWED_IPS:-127.0.0.1,::1}
   DISABLE_IP_FILTERS: ${DISABLE_IP_FILTERS:-true}
 
+# Grafana configuration
+x-grafana-config: &grafana-config
+  GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+  GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+  GF_USERS_ALLOW_SIGN_UP: "false"
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -89,7 +95,7 @@ services:
       - ./shared-data/pgadmin:/var/lib/pgadmin
       - "./pgadmin4.config.json:/pgadmin4/servers.json"
     ports:
-      - "8181:80"
+      - "127.0.0.1:8181:80"
     depends_on:
       postgres:
         condition: service_healthy
@@ -101,7 +107,7 @@ services:
     container_name: roulette-rabbitmq
     ports:
       # - "5672:5672"
-      - "15672:15672"
+      - "127.0.0.1:15672:15672"
     volumes:
       - ./shared-data/rabbitmq:/var/lib/rabbitmq
     environment:
@@ -128,6 +134,8 @@ services:
       rabbitmq:
         condition: service_healthy
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:9101:9101" # for Prometheus metrics
     logging: *default-logging
 
   rotator:
@@ -144,6 +152,8 @@ services:
       rabbitmq:
         condition: service_healthy
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:9102:9102" # for Prometheus metrics
     logging: *default-logging
 
   admin:
@@ -155,9 +165,87 @@ services:
     environment:
       <<: [*database-config, *telegram-config, *admin-config, *payment-config]
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9103:9103" # for Prometheus metrics
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
     logging: *default-logging
+
+  # Monitoring services
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: roulette-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./shared-data/prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=90d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    ports:
+      - "127.0.0.1:9090:9090"
+    restart: unless-stopped
+    logging: *infrastructure-logging
+
+  grafana:
+    image: grafana/grafana:10.1.4
+    container_name: roulette-grafana
+    volumes:
+      - ./shared-data/grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      <<: *grafana-config
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+    logging: *infrastructure-logging
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.14.0
+    container_name: roulette-postgres-exporter
+    env_file:
+      - postgres_exporter.env
+    ports:
+      - "127.0.0.1:9187:9187"
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    logging: *infrastructure-logging
+
+  rabbitmq-exporter:
+    image: kbudde/rabbitmq-exporter:1.0.0
+    container_name: roulette-rabbitmq-exporter
+    environment:
+      - RABBIT_URL=http://rabbitmq:15672
+      - RABBIT_USER=${RABBITMQ_USER:-guest}
+      - RABBIT_PASSWORD=${RABBITMQ_PASS:-guest}
+    ports:
+      - "127.0.0.1:9419:9419"
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+    logging: *infrastructure-logging
+
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    container_name: roulette-node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "127.0.0.1:9100:9100"
+    restart: unless-stopped
+    logging: *infrastructure-logging
+    

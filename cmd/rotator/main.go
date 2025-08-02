@@ -7,6 +7,7 @@ import (
 
 	"roulette/internal/config"
 	"roulette/internal/logger"
+	"roulette/internal/metrics"
 	"roulette/internal/repository"
 	"roulette/internal/rotator"
 	"roulette/internal/service"
@@ -24,6 +25,12 @@ func main() {
 
 	// Ініціалізуємо конфігурацію
 	cfg := config.NewConfig()
+
+	// Инициализируем сервер метрик
+	appMetrics := metrics.NewMetrics("roulette-rotator", 9102)
+	if err := appMetrics.Start(); err != nil {
+		logger.Error.Fatalf("Failed to start metrics server: %v", err)
+	}
 
 	// Підключаємося до бази даних
 	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{})
@@ -67,5 +74,10 @@ func main() {
 		logger.Info.Println("Database connection closed")
 	}
 
-	logger.Info.Println("Rotator shutdown complete")
+	// Останавливаем сервер метрик
+	if err := appMetrics.Stop(); err != nil {
+		logger.Error.Printf("Error stopping metrics server: %v", err)
+	}
+
+	logger.Info.Println("Rotator stopped gracefully")
 }
