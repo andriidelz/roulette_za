@@ -10,6 +10,7 @@ import (
 
 	"roulette/internal/config"
 	"roulette/internal/logger"
+	"roulette/internal/metrics"
 	"roulette/internal/models"
 	"roulette/internal/service"
 	"roulette/internal/utils"
@@ -31,6 +32,7 @@ type Bot struct {
 	stateManager      *StateManager      // Менеджер состояний
 	subscriptionCache *SubscriptionCache // Кеш подписок на каналы
 	redisDB           *redis.Client      // Клиент Redis
+	metrics           *metrics.Metrics
 }
 
 // Константы для команд и callback-запитов
@@ -78,6 +80,13 @@ func init() {
 	ReserveChannelID = cfg.TelegramReserveChannelID
 }
 
+func (b *Bot) getMetrics() *metrics.Metrics {
+	if b == nil || b.metrics == nil {
+		return nil
+	}
+	return b.metrics
+}
+
 // NewBot создает новый экземпляр бота
 func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, error) {
 	bot, err := telego.NewBot(token)
@@ -94,6 +103,7 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 		cancel:       cancel,
 		stateManager: NewStateManager(),
 		redisDB:      NewRedisClient(cfg),
+		metrics:      nil,
 	}
 
 	// Инициализируем обработчик игры после создания бота с поддержкой RabbitMQ
@@ -142,6 +152,14 @@ func (b *Bot) Start() error {
 	if b.initialized {
 		return fmt.Errorf("bot already started")
 	}
+
+	// Инициализируем метрики
+	b.metrics = metrics.NewMetrics("roulette-bot", 9101, metrics.AppTypeBot)
+	go func() {
+		if err := b.metrics.Start(); err != nil {
+			logger.Error.Printf("Failed to start metrics server: %v", err)
+		}
+	}()
 
 	// Получаем информацию о боте
 	me, err := b.bot.GetMe()
@@ -201,6 +219,13 @@ func (b *Bot) Stop() {
 
 	// Останавливаем игровой обработчик
 	b.gameHandler.Stop()
+
+	// Останавливаем метрики
+	if b.metrics != nil {
+		if err := b.metrics.Stop(); err != nil {
+			logger.Error.Printf("Error stopping metrics server: %v", err)
+		}
+	}
 
 	b.initialized = false
 	logger.Info.Println("Bot stopped")
@@ -523,6 +548,24 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 
 // handleMessage обрабатывает сообщения
 func (b *Bot) handleMessage(message *telego.Message) {
+
+	startTime := time.Now()
+	defer func() {
+		// Записываем латентность команды
+		if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+			duration := time.Since(startTime).Seconds()
+			command := "message" // дефолтный тип
+
+			text := message.Text
+			if len(text) > 0 && text[0] == '/' {
+				command = strings.Split(text[1:], " ")[0]
+				command = strings.ToLower(command)
+			}
+
+			metrics.Bot.RecordCommandLatency(command, duration)
+		}
+	}()
+
 	user := message.From
 	go b.service.UpdateUserActivity(user.ID)
 
@@ -555,6 +598,11 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, userSource, user.LanguageCode)
 		if err != nil {
 			logger.Error.Printf("Error registering user: %v", err)
+		} else {
+			// Записываем метрику регистрации нового пользователя
+			if metrics := b.getMetrics(); metrics != nil && metrics.Business != nil {
+				metrics.Business.RecordUserRegistration()
+			}
 		}
 	}
 	if err == nil && dbUser.Banned {
