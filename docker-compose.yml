@@ -314,3 +314,17 @@ services:
     restart: unless-stopped
     logging: *infrastructure-logging
     
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.55.0
+    container_name: roulette-redis-exporter
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      REDIS_EXPORTER_LOG_FORMAT: txt
+    ports:
+      - "127.0.0.1:9121:9121"
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    logging: *infrastructure-logging
