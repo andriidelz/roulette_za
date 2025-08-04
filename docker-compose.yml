@@ -80,6 +80,8 @@ x-grafana-config: &grafana-config
   GF_SERVER_ROOT_URL: /grafana/
   GF_SERVER_SERVE_FROM_SUB_PATH: "true"
   GF_LOG_LEVEL: error
+  GF_DATABASE_QUERY_TIMEOUT: 60s
+  GF_DATABASE_CONNECTION_MAX_IDLE_TIME: 60s
 
 services:
   postgres:
@@ -269,6 +271,12 @@ services:
       <<: *grafana-config
     ports:
       - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+      - postgres-exporter  
+      - rabbitmq-exporter
+      - redis-exporter
+      - node-exporter
     restart: unless-stopped
     logging: *infrastructure-logging
 
