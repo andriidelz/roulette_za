@@ -30,9 +30,9 @@ mkdir -p "$SHARED_DATA_DIR/rabbitmq"
 mkdir -p "$SHARED_DATA_DIR/redis"
 
 # Check and create nobody group if needed (Ubuntu fix)
-if ! getent group nobody &>/dev/null; then
+if ! getent group nobody &>/dev/null && ! grep -q "^nobody:" /etc/group; then
     echo "🔧 Creating nobody group for Ubuntu compatibility..."
-    sudo groupadd nobody
+    sudo groupadd nobody 2>/dev/null || echo "  Group nobody already exists"
     sudo usermod -aG nobody nobody 2>/dev/null || true
 fi
 
@@ -84,4 +84,3 @@ echo "🎉 Done! All services should now have correct permissions."
 # Check service status
 echo "📊 Service status:"
 docker compose ps
-
