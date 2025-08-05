@@ -79,6 +79,9 @@ x-grafana-config: &grafana-config
   GF_USERS_ALLOW_SIGN_UP: "false"
   GF_SERVER_ROOT_URL: /grafana/
   GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+  GF_LOG_LEVEL: error
+  GF_DATABASE_QUERY_TIMEOUT: 60s
+  GF_DATABASE_CONNECTION_MAX_IDLE_TIME: 60s
 
 services:
   postgres:
@@ -268,6 +271,12 @@ services:
       <<: *grafana-config
     ports:
       - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+      - postgres-exporter  
+      - rabbitmq-exporter
+      - redis-exporter
+      - node-exporter
     restart: unless-stopped
     logging: *infrastructure-logging
 
@@ -314,3 +323,17 @@ services:
     restart: unless-stopped
     logging: *infrastructure-logging
     
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.55.0
+    container_name: roulette-redis-exporter
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      REDIS_EXPORTER_LOG_FORMAT: txt
+    ports:
+      - "127.0.0.1:9121:9121"
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    logging: *infrastructure-logging

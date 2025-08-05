@@ -21,7 +21,20 @@ docker compose down
 
 # Create directories if they don't exist
 echo "📁 Creating directories..."
-sudo mkdir -p "$SHARED_DATA_DIR"/{grafana,pgadmin,postgresql,prometheus,rabbitmq,redis}
+mkdir -p "$SHARED_DATA_DIR"
+mkdir -p "$SHARED_DATA_DIR/grafana"
+mkdir -p "$SHARED_DATA_DIR/pgadmin"
+mkdir -p "$SHARED_DATA_DIR/postgresql"
+mkdir -p "$SHARED_DATA_DIR/prometheus"
+mkdir -p "$SHARED_DATA_DIR/rabbitmq"
+mkdir -p "$SHARED_DATA_DIR/redis"
+
+# Check and create nobody group if needed (Ubuntu fix)
+if ! getent group nobody &>/dev/null && ! grep -q "^nobody:" /etc/group; then
+    echo "🔧 Creating nobody group for Ubuntu compatibility..."
+    sudo groupadd nobody 2>/dev/null || echo "  Group nobody already exists"
+    sudo usermod -aG nobody nobody 2>/dev/null || true
+fi
 
 # Set permissions for each service
 echo "🔐 Setting permissions..."
@@ -71,4 +84,3 @@ echo "🎉 Done! All services should now have correct permissions."
 # Check service status
 echo "📊 Service status:"
 docker compose ps
-

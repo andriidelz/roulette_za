@@ -27,10 +27,13 @@ func main() {
 	cfg := config.NewConfig()
 
 	// Инициализируем сервер метрик
-	appMetrics := metrics.NewMetrics("roulette-rotator", 9102)
-	if err := appMetrics.Start(); err != nil {
-		logger.Error.Fatalf("Failed to start metrics server: %v", err)
-	}
+	appMetrics := metrics.NewMetrics("roulette-rotator", 9102, metrics.AppTypeRotator)
+	go func() {
+		if err := appMetrics.Start(); err != nil {
+			logger.Error.Printf("Failed to start metrics server: %v", err)
+			// НЕ используем Fatalf - просто логируем ошибку
+		}
+	}()
 
 	// Підключаємося до бази даних
 	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{})
@@ -75,8 +78,10 @@ func main() {
 	}
 
 	// Останавливаем сервер метрик
-	if err := appMetrics.Stop(); err != nil {
-		logger.Error.Printf("Error stopping metrics server: %v", err)
+	if appMetrics != nil {
+		if err := appMetrics.Stop(); err != nil {
+			logger.Error.Printf("Error stopping metrics server: %v", err)
+		}
 	}
 
 	logger.Info.Println("Rotator stopped gracefully")
