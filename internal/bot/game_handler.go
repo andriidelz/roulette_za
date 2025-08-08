@@ -514,6 +514,15 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	won := bet.Won
 	points := bet.Points
 
+	// Записываем метрику результата ставки
+	if metrics := h.bot.getMetrics(); metrics != nil && metrics.Bot != nil {
+		if won {
+			metrics.Bot.RecordBetResult("won")
+		} else {
+			metrics.Bot.RecordBetResult("lost")
+		}
+	}
+
 	// Задержка для соблюдения правильного таймирования сообщений
 	// Разница между завершением раунда и первым стикером (результат)
 	// должна составлять примерно 2 секунды (17 секунда раунда)
@@ -786,6 +795,11 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 		return fmt.Errorf("error making bet: %w", err)
 	}
 
+	// Записываем метрику ставки
+	if metrics := h.bot.getMetrics(); metrics != nil && metrics.Bot != nil {
+		metrics.Bot.RecordBet(string(option))
+	}
+
 	// Получаем язык пользователя
 	language := user.LanguageCode
 	if language == "" {
@@ -846,6 +860,11 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	// Добавляем пользователя в список активных игроков
 	h.mutex.Lock()
 	h.activePlayers[user.ID] = 1
+
+	// Обновляем метрику активных игроков
+	if metrics := h.bot.getMetrics(); metrics != nil && metrics.Bot != nil {
+		metrics.Bot.SetActivePlayers(float64(len(h.activePlayers)))
+	}
 	h.mutex.Unlock()
 
 	// Пытаемся получить текущий раунд
@@ -902,6 +921,11 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 func (h *GameHandler) HandleBackButton(userID int64) {
 	h.mutex.Lock()
 	delete(h.activePlayers, userID)
+
+	// Обновляем метрику активных игроков
+	if metrics := h.bot.getMetrics(); metrics != nil && metrics.Bot != nil {
+		metrics.Bot.SetActivePlayers(float64(len(h.activePlayers)))
+	}
 	h.mutex.Unlock()
 }
 
@@ -909,6 +933,11 @@ func (h *GameHandler) HandleBackButton(userID int64) {
 func (h *GameHandler) HandleStopGameButton(userID int64) {
 	h.mutex.Lock()
 	delete(h.activePlayers, userID)
+
+	// Обновляем метрику активных игроков
+	if metrics := h.bot.getMetrics(); metrics != nil && metrics.Bot != nil {
+		metrics.Bot.SetActivePlayers(float64(len(h.activePlayers)))
+	}
 	h.mutex.Unlock()
 }
 

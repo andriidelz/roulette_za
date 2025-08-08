@@ -39,7 +39,7 @@ func main() {
 	// Создаем сервис
 	svc := service.NewService(repo, cfg.TelegramToken)
 
-	// Создаем бота с URL для RabbitMQ
+	// Создаем бота с URL для RabbitMQ (метрики инициализируются внутри бота)
 	telegramBot, err := bot.NewBot(cfg.TelegramToken, svc, cfg)
 	if err != nil {
 		logger.Error.Fatalf("Failed to create bot: %v", err)
@@ -57,7 +57,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	// Останавливаем бота
+	// Останавливаем бота (метрики остановятся автоматически)
 	telegramBot.Stop()
 
 	logger.Info.Println("Bot stopped gracefully")

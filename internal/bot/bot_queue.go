@@ -135,6 +135,11 @@ func (b *Bot) MakeRequestDeferred(chatID, order int64, param MessageOptions) err
 		return fmt.Errorf("user %d More than 100 messages are waiting", chatID)
 	}
 
+	// Обновляем метрику размера очереди
+	if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+		metrics.Bot.UpdateQueueSize(float64(length))
+	}
+
 	return nil
 }
 
@@ -279,17 +284,53 @@ func (b *Bot) sendBotQueue() {
 func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 
 	var err error
+	var messageType string
+
 	switch options.MethodName {
 	case editMessageText:
+		messageType = "text"
 		_, err = b.updateText(chatID, options.MessageID, options)
 	case sendPhoto:
+		messageType = "photo"
 		_, err = b.sendPhoto(chatID, options)
 	case editMessageMedia:
+		messageType = "photo"
 		_, err = b.updatePhotoByFileID(chatID, options.MessageID, options)
 	case sendSticker:
+		messageType = "sticker"
 		err = b.SendSticker(chatID, options.Text)
 	default:
+		messageType = "text"
 		_, err = b.sendText(chatID, options)
+	}
+
+	// Записываем метрики после отправки
+	if err == nil {
+		// Успешная отправка
+		// Рассчитываем время в очереди
+		queueTime := time.Since(time.Unix(0, options.CreatedAt)).Seconds()
+		priority := "normal"
+		if options.TTL > 0 && options.TTL < userQueueExpiration/2 {
+			priority = "high"
+		}
+
+		// Записываем метрики
+		if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+			metrics.Bot.RecordMessageSent(messageType)
+			metrics.Bot.RecordQueueTime(priority, queueTime)
+		}
+	} else {
+		// Ошибка отправки
+		errorType := "other"
+		if strings.Contains(err.Error(), "retry after") {
+			errorType = "429"
+		} else if strings.Contains(err.Error(), "timeout") {
+			errorType = "timeout"
+		}
+
+		if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+			metrics.Bot.RecordTelegramError(errorType)
+		}
 	}
 
 	var sleep int64
