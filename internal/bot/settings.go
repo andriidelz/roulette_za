@@ -36,15 +36,12 @@ func (b *Bot) handleSettingsCommand(message *telego.Message) {
 	}
 
 	// Получаем локализованный текст для настроек
-	settingsText := b.service.GetText("settings_message", language)
+	options := b.prepareMessage("settings_message", language)
 
 	// Создаем inline клавиатуру для настроек с отображением текущих значений
-	inlineKeyboard := b.createSettingsKeyboard(language, user.ID)
+	options.InlineKeyboard = b.createSettingsKeyboard(language, user.ID)
 
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:           settingsText,
-		InlineKeyboard: inlineKeyboard,
-	})
+	b.SendMessage(message.Chat.ID, options)
 }
 
 // Создает клавиатуру настроек

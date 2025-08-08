@@ -88,9 +88,7 @@ func (b *Bot) handleStartCommandNewUser(message *telego.Message) {
 	_, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, userSource, user.LanguageCode)
 	if err != nil {
 		logger.Error.Printf("Error registering user: %v", err)
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: b.service.GetText("error_while_registering", user.LanguageCode),
-		})
+		b.SendMessage(message.Chat.ID, b.prepareMessage("error_while_registering", user.LanguageCode))
 		return
 	}
 	language := user.LanguageCode
@@ -105,17 +103,14 @@ func (b *Bot) handleStartCommandNewUser(message *telego.Message) {
 	}
 
 	// Создаем inline клавиатуру для первого сообщения
-	inlineKeyboard := &telego.InlineKeyboardMarkup{
+	options := b.prepareMessage("startmessage1_new", language)
+	options.InlineKeyboard = &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{regButton},
 		},
 	}
-
 	// Отправляем первое приветственное сообщение с inline клавиатурой
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:           b.service.GetText("startmessage1_new", language),
-		InlineKeyboard: inlineKeyboard,
-	})
+	b.SendMessage(message.Chat.ID, options)
 }
 
 // 2. handleAgeVerifyCallback обрабатывает запуск запроса возраста
@@ -135,14 +130,14 @@ func (b *Bot) handleAgeVerifyCallback(query *telego.CallbackQuery) {
 // 2.1 sendAgeVerificationRequest отправляет запрос на подтверждение возраста
 func (b *Bot) sendAgeVerificationRequest(chatID int64, language string) {
 	// Получаем локализированный текст запроса возраста
-	ageVerificationText := b.service.GetText("agemes", language)
+	options := b.prepareMessage("agemes", language)
 
 	// Получаем локализированные тексты для кнопок
 	yesText := b.service.GetText("yes18", language)
 	noText := b.service.GetText("no18", language)
 
 	// Создаем inline клавиатуру с кнопками Да/Нет
-	ageVerificationKeyboard := &telego.InlineKeyboardMarkup{
+	options.InlineKeyboard = &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
 				{Text: yesText, CallbackData: CallbackAgeVerifiedYes},
@@ -152,10 +147,7 @@ func (b *Bot) sendAgeVerificationRequest(chatID int64, language string) {
 	}
 
 	// Отправляем сообщение с запросом на подтверждение возраста
-	b.SendMessage(chatID, MessageOptions{
-		Text:           ageVerificationText,
-		InlineKeyboard: ageVerificationKeyboard,
-	})
+	b.SendMessage(chatID, options)
 }
 
 // 3. handleAgeVerificationCallback обрабатывает ответ пользователя на запрос возраста
@@ -251,15 +243,15 @@ func (b *Bot) handleNicknamePrompt(chatID int64, userID int64, language string) 
 	}
 
 	// Получаем локализованный текст сообщения
-	namePromptText := b.service.GetText("name_mes", language)
+	options := b.prepareMessage("name_mes", language)
 	// Заменяем placeholder profile_name на настоящее имя
-	namePromptText = strings.Replace(namePromptText, "{profile_name}", profileName, -1)
+	options.Text = strings.Replace(options.Text, "{profile_name}", profileName, -1)
 
 	// Создаем inline-клавиатуру для выбора
 	yesText := b.service.GetText("name_changeyes", language)
 	noText := b.service.GetText("name_changeno", language)
 
-	nicknameKeyboard := &telego.InlineKeyboardMarkup{
+	options.InlineKeyboard = &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
 				{Text: yesText, CallbackData: CallbackChangeNameYes},
@@ -269,10 +261,7 @@ func (b *Bot) handleNicknamePrompt(chatID int64, userID int64, language string) 
 	}
 
 	// Отправляем сообщение с вопросом
-	err = b.SendMessage(chatID, MessageOptions{
-		Text:           namePromptText,
-		InlineKeyboard: nicknameKeyboard,
-	})
+	err = b.SendMessage(chatID, options)
 
 	if err != nil {
 		logger.Error.Printf("Error sending nickname prompt: %v", err)
@@ -361,15 +350,16 @@ func (b *Bot) sendSubscriptionRequest(chatID int64, language, textKey string) {
 	if textKey == "" {
 		textKey = "startmessage2"
 	}
-	b.SendMessage(chatID, MessageOptions{
-		Text: b.service.GetText(textKey, language),
-		InlineKeyboard: &telego.InlineKeyboardMarkup{
-			InlineKeyboard: [][]telego.InlineKeyboardButton{
-				{channelButton},
-				{subscribeButton},
-			},
+
+	options := b.prepareMessage(textKey, language)
+	options.InlineKeyboard = &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{channelButton},
+			{subscribeButton},
 		},
-	})
+	}
+
+	b.SendMessage(chatID, options)
 }
 
 // 8. handleReserveSubscriptionCheck обрабатывает нажатие кнопки проверки подписки
@@ -486,21 +476,16 @@ func (b *Bot) RequireCompleteRegistration(chatID int64, userID int64) bool {
 
 		if dbUser.AgeVerified != nil && !*dbUser.AgeVerified {
 			// Пользователь не подтвердил совершеннолетие - показываем сообщение о блокировке
-			stopAgeText := b.service.GetText("stopage", language)
-			b.SendMessage(chatID, MessageOptions{
-				Text: stopAgeText,
-			})
+
+			b.SendMessage(chatID, b.prepareMessage("stopage", language))
 			return false
 		}
 
 		if dbUser.Country == "" {
 			// Нужно выбрать страну
-			countryText := b.service.GetText("countrymes", language)
-			countriesKeyboard := b.createCountriesKeyboard(1)
-			b.SendMessage(chatID, MessageOptions{
-				Text:           countryText,
-				InlineKeyboard: countriesKeyboard,
-			})
+			options := b.prepareMessage("countrymes", language)
+			options.InlineKeyboard = b.createCountriesKeyboard(1)
+			b.SendMessage(chatID, options)
 			return false
 		}
 
@@ -520,15 +505,10 @@ func (b *Bot) RequireCompleteRegistration(chatID int64, userID int64) bool {
 		if dbUser.Banned {
 			// Пользователь забанен (RU/BY или несовершеннолетний)
 			if dbUser.Country == "RU" || dbUser.Country == "BY" {
-				banText := b.service.GetText("stopcountry", language)
-				b.SendMessage(chatID, MessageOptions{
-					Text: banText,
-				})
+				b.SendMessage(chatID, b.prepareMessage("stopcountry", language))
 			} else {
-				stopAgeText := b.service.GetText("stopage", language)
-				b.SendMessage(chatID, MessageOptions{
-					Text: stopAgeText,
-				})
+
+				b.SendMessage(chatID, b.prepareMessage("stopage", language))
 			}
 			return false
 		}
