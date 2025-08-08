@@ -273,9 +273,9 @@ INSERT INTO localizations (key, language, value) VALUES
     ('name_mes', 'en', 'Your name that will be displayed in the general rating is {profile_name} and will be publicly visible to all players. Do you want to change it?'),
     ('name_changeyes', 'en', 'Yes, I want to change'),
     ('name_changeno', 'en', 'No, I don''t want to change'),
-    ('name_changeno_msg', 'en', 'Your game name has been fixed'),
+    ('name_changeno_msg_start', 'en', '✅ <b>Your in-game name has been saved!</b> To participate in the weekly prize pool draw for free, subscribe to our backup channel. It is used only in case of problems with access to the main bot - so that we always stay in touch.'),
     ('name_changeok', 'en', 'Enter the desired name for public display in the rating. Only Latin alphabet, numbers and underscore are allowed. The name must be 3-20 characters long.'),
-    ('name_changesave', 'en', 'New game name for rating has been saved.'),
+    ('name_changesave_msg_start', 'en', '✅ <b>New in-game name for the ranking has been saved!</b> To participate in the fight for the weekly prize pool for free, subscribe to our backup channel to stay in touch. It is used only in case of problems with access to the main bot - so that we always stay in touch.'),
     ('invalid_nickname', 'en', 'Invalid nickname. The nickname should contain only Latin letters, numbers, and underscores, and be 3-20 characters long. Please try again.'),
     ('stopcountry', 'en', 'Service is not available for residents of Russia or Belarus.');
 
@@ -291,4 +291,22 @@ INSERT INTO localizations (key, language, value) VALUES
     ('send_queue_error', 'en', 'Unfortunately, due to performance issues, %d messages have accumulated that are waiting to be sent to you, please wait until they are processed.'),
     ('captcha_text', 'en', 'Your activity is very high. Please confirm that you are not a robot.'),
     ('captcha_correct', 'en', 'Congratulations on successfully passing the captcha! In the future, try to interact with the bot more carefully'),
+    ('startmessage1_new', 'en', 'Welcome to 🐙 <b> Sprut Black & Red </b>
+This is a free game in the Telegram bot, which allows you to win <b><i>💵real financial prizes</i></b> every week for virtual guesses!
+
+1️⃣ Register in the bot
+2️⃣ Guess what will fall out on the roulette wheel - 🔴red, ⚫️black or 🟢Zero
+3️⃣ Get points in the rating for correct guesses to get a bigger $ reward
+
+📢<b> Sprut Black & Red has unique advantages:</b>
+▪️<i>Weekly prize pool, payments every Monday;</i>
+▪️<i>No verification;</i>
+▪️<i>No deposits or any payment for participation</i>
+▪️ <i>The possibility of instant withdrawal of the reward - no airdrops, tokens and long waits;</i>
+▪️ <i>A transparent draw system, with the ability to independently verify each guess.</i>
+
+❗️This is not a joke or clickbait. Just spin the roulette wheel in 🐙 <b> Sprut Black & Red </b> — no investment, no risk, with a chance to share 💰prize fund of {prize_fund}$ every week!
+
+👇 <b>To get started — click the <u>"Register"</u> button to confirm your age</b>'),
+    ('btn_reg', 'en', '🐙 Complete registration'),
     ('bet_inactive', 'en', 'Acceptance of bets has been stopped due to your inactivity. To start playing - click the Play button in the menu.');
