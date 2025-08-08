@@ -22,16 +22,11 @@ func (b *Bot) handleFAQCommand(message *telego.Message) {
 	}
 
 	// Получаем локализированный текст для стартового сообщения FAQ
-	faqStartText := b.service.GetText("faqstart", language)
-
-	// Создаем клавиатуру разделов FAQ
-	faqKeyboard := b.createFAQKeyboard(language)
+	options := b.prepareMessage("faqstart", language)
+	options.ReplyKeyboard = b.createFAQKeyboard(language)
 
 	// Отправляем сообщение с клавиатурой для выбора раздела FAQ
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          faqStartText,
-		ReplyKeyboard: faqKeyboard,
-	})
+	b.SendMessage(message.Chat.ID, options)
 }
 
 // createFAQKeyboard создает клавиатуру для меню FAQ
@@ -83,13 +78,11 @@ func (b *Bot) handleFAQRules(message *telego.Message) {
 	}
 
 	// Получаем локализированный текст для раздела "Правила"
-	rulesText := b.service.GetText("faqrulesm", language)
+	options := b.prepareMessage("faqrulesm", language)
+	options.ReplyKeyboard = b.createFAQKeyboard(language)
 
 	// Отправляем текст правил
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          rulesText,
-		ReplyKeyboard: b.createFAQKeyboard(language),
-	})
+	b.SendMessage(message.Chat.ID, options)
 
 	// Отправляем последующее сообщение для продолжения навигации после небольшой задержки
 	go b.sendFAQNextPrompt(message.Chat.ID, language)
@@ -109,13 +102,11 @@ func (b *Bot) handleFAQAwards(message *telego.Message) {
 	}
 
 	// Получаем локализированный текст для раздела "Распределение наград"
-	awardsText := b.service.GetText("faqawardsm", language)
+	options := b.prepareMessage("faqawardsm", language)
+	options.ReplyKeyboard = b.createFAQKeyboard(language)
 
 	// Отправляем текст о распределении наград
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          awardsText,
-		ReplyKeyboard: b.createFAQKeyboard(language),
-	})
+	b.SendMessage(message.Chat.ID, options)
 
 	// Отправляем последующее сообщение для продолжения навигации после небольшой задержки
 	go b.sendFAQNextPrompt(message.Chat.ID, language)
@@ -135,13 +126,11 @@ func (b *Bot) handleFAQPayments(message *telego.Message) {
 	}
 
 	// Получаем локализированный текст для раздела "Выплаты наград"
-	paymentsText := b.service.GetText("faqpaymentsm", language)
+	options := b.prepareMessage("faqpaymentsm", language)
+	options.ReplyKeyboard = b.createFAQKeyboard(language)
 
 	// Отправляем текст о выплатах наград
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          paymentsText,
-		ReplyKeyboard: b.createFAQKeyboard(language),
-	})
+	b.SendMessage(message.Chat.ID, options)
 
 	// Отправляем последующее сообщение для продолжения навигации после небольшой задержки
 	go b.sendFAQNextPrompt(message.Chat.ID, language)
@@ -161,13 +150,11 @@ func (b *Bot) handleFAQFairPlay(message *telego.Message) {
 	}
 
 	// Получаем локализированный текст для раздела "Принципы честной игры"
-	fairPlayText := b.service.GetText("faqfairplaym", language)
+	options := b.prepareMessage("faqfairplaym", language)
+	options.ReplyKeyboard = b.createFAQKeyboard(language)
 
 	// Отправляем текст о принципах честной игры
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          fairPlayText,
-		ReplyKeyboard: b.createFAQKeyboard(language),
-	})
+	b.SendMessage(message.Chat.ID, options)
 
 	// Отправляем последующее сообщение для продолжения навигации после небольшой задержки
 	go b.sendFAQNextPrompt(message.Chat.ID, language)
@@ -187,13 +174,11 @@ func (b *Bot) handleFAQPrivacyPolicy(message *telego.Message) {
 	}
 
 	// Получаем локализированный текст для раздела "Privacy policy"
-	privacyPolicyText := b.service.GetText("privacypolicym", language)
+	options := b.prepareMessage("privacypolicym", language)
+	options.ReplyKeyboard = b.createFAQKeyboard(language)
 
 	// Отправляем текст privacy policy
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          privacyPolicyText,
-		ReplyKeyboard: b.createFAQKeyboard(language),
-	})
+	b.SendMessage(message.Chat.ID, options)
 
 	// Отправляем последующее сообщение для продолжения навигации после небольшой задержки
 	go b.sendFAQNextPrompt(message.Chat.ID, language)
@@ -213,13 +198,11 @@ func (b *Bot) handleFAQContact(message *telego.Message) {
 	}
 
 	// Получаем локализированный текст для раздела "Контакт с админом"
-	contactText := b.service.GetText("contactm", language)
+	options := b.prepareMessage("contactm", language)
+	options.ReplyKeyboard = b.createFAQKeyboard(language)
 
 	// Отправляем текст о контакте с админом
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          contactText,
-		ReplyKeyboard: b.createFAQKeyboard(language),
-	})
+	b.SendMessage(message.Chat.ID, options)
 
 	// Отправляем последующее сообщение для продолжения навигации после небольшой задержки
 	go b.sendFAQNextPrompt(message.Chat.ID, language)
@@ -231,13 +214,11 @@ func (b *Bot) sendFAQNextPrompt(chatID int64, language string) {
 	time.Sleep(5 * time.Second)
 
 	// Получаем локализированный текст для сообщения
-	nextText := b.service.GetText("faqnext", language)
+	options := b.prepareMessage("faqnext", language)
+	options.ReplyKeyboard = b.createFAQKeyboard(language)
 
 	// Отправляем сообщение
-	err := b.SendMessage(chatID, MessageOptions{
-		Text:          nextText,
-		ReplyKeyboard: b.createFAQKeyboard(language),
-	})
+	err := b.SendMessage(chatID, options)
 
 	if err != nil {
 		logger.Error.Printf("Error sending FAQ next prompt: %v", err)

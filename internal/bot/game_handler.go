@@ -190,9 +190,7 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 		logger.Error.Println("Stop user ", userID)
 		// Остановка игры и возврат в главное меню
 		h.HandleStopGameButton(userID)
-		h.bot.SendMessage(userID, MessageOptions{
-			Text: h.service.GetText("bet_inactive", language),
-		})
+		h.bot.SendMessage(userID, h.bot.prepareMessage("bet_inactive", language))
 		h.bot.sendMainMenu(userID, language)
 	}
 
@@ -239,8 +237,8 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 		}
 
 		// Получаем локализированный шаблон для нового раунда с обратным отсчетом
-		roundInfoTemplate := h.service.GetText("round_info_countdown", language)
-		roundInfoText := fmt.Sprintf(roundInfoTemplate, roundIDBase62, round.Hash, remainingSeconds)
+		options := h.bot.prepareMessage("round_info_countdown", language)
+		options.Text = fmt.Sprintf(options.Text, roundIDBase62, round.Hash, remainingSeconds)
 
 		// Получаем доступное количество ставок
 		betsBalance, err := h.service.GetUserRemainingBets(userID)
@@ -248,11 +246,8 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 			logger.Error.Printf("Error getting user remaining bets: %v", err)
 			betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 		}
-
-		h.bot.SendMessage(userID, MessageOptions{
-			Text:          roundInfoText,
-			ReplyKeyboard: h.createDetailedBetKeyboard(language, userID, betsBalance),
-		})
+		options.ReplyKeyboard = h.createDetailedBetKeyboard(language, userID, betsBalance)
+		h.bot.SendMessage(userID, options)
 	}
 }
 
@@ -293,15 +288,15 @@ func (h *GameHandler) notifyTimeRemaining(round *models.HashEntry, seconds int) 
 		}
 
 		// Получаем локализированный шаблон для времени
-		var timeTemplate string
+		var options MessageOptions
 		if seconds == 15 {
-			timeTemplate = h.service.GetText("nextbid15", language)
+			options = h.bot.prepareMessage("nextbid15", language)
 		} else {
-			timeTemplate = h.service.GetText("nextbid5", language)
+			options = h.bot.prepareMessage("nextbid5", language)
 		}
 
 		// Формируем текст в новом формате
-		timeText := fmt.Sprintf(timeTemplate, roundIDBase62)
+		options.Text = fmt.Sprintf(options.Text, roundIDBase62)
 
 		// Узнаем доступное количество ставок
 		betsBalance, err := h.service.GetUserRemainingBets(userID)
@@ -309,11 +304,9 @@ func (h *GameHandler) notifyTimeRemaining(round *models.HashEntry, seconds int) 
 			logger.Error.Printf("Error getting user remaining bets: %v", err)
 			betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 		}
+		options.ReplyKeyboard = h.createDetailedBetKeyboard(language, userID, betsBalance)
 
-		h.bot.SendMessage(userID, MessageOptions{
-			Text:          timeText,
-			ReplyKeyboard: h.createDetailedBetKeyboard(language, userID, betsBalance),
-		})
+		h.bot.SendMessage(userID, options)
 	}
 }
 
@@ -563,12 +556,8 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	case models.Zero:
 		resultLangKey = "zeroresult"
 	}
-	resultText := h.service.GetText(resultLangKey, language)
-
 	// Отправляем текст результата
-	h.bot.SendMessage(userID, MessageOptions{
-		Text: resultText,
-	})
+	h.bot.SendMessage(userID, h.bot.prepareMessage(resultLangKey, language))
 
 	// 3. Отправляем стикер выигрыша/проигрыша на 19 секунде (через 1 секунду)
 	time.Sleep(1 * time.Second)
@@ -591,13 +580,12 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	time.Sleep(1 * time.Second)
 
 	// Формируем сообщение о выигрыше/проигрыше
-	var winLoseText string
+	var options MessageOptions
 	if won {
-		winMessageTemplate := h.service.GetText("winmessage", language)
-		winLoseText = fmt.Sprintf(winMessageTemplate, points)
+		options = h.bot.prepareMessage("winmessage", language)
+		options.Text = fmt.Sprintf(options.Text, points)
 	} else {
-		loseMsgText := h.service.GetText("losemessage", language)
-		winLoseText = loseMsgText
+		options = h.bot.prepareMessage("losemessage", language)
 	}
 
 	// Формируем часть о рейтинге
@@ -670,11 +658,11 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	}
 
 	// Объединяем части сообщения
-	combinedMessage := winLoseText + "\n\n" + ratingText + "\n\n" + betsBalanceText
+	options.Text = options.Text + "\n\n" + ratingText + "\n\n" + betsBalanceText
 
 	// Если есть дополнительное сообщение для недостаточного баланса, добавляем его
 	if additionalMessage != "" {
-		combinedMessage += "\n\n" + additionalMessage
+		options.Text += "\n\n" + additionalMessage
 	}
 
 	// Создаем кнопки
@@ -709,15 +697,12 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	}
 
 	// Создаем inline клавиатуру с кнопками
-	inlineKeyboard := &telego.InlineKeyboardMarkup{
+	options.InlineKeyboard = &telego.InlineKeyboardMarkup{
 		InlineKeyboard: inlineButtons,
 	}
 
 	// Отправляем объединенное сообщение с клавиатурой
-	h.bot.SendMessage(userID, MessageOptions{
-		Text:           combinedMessage,
-		InlineKeyboard: inlineKeyboard,
-	})
+	h.bot.SendMessage(userID, options)
 
 	// Проверяем активность пользователя - кол-во набранных баллов
 	if won {
@@ -825,11 +810,10 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	// После короткой паузы отправляем сообщение о принятии ставки
 	go func() {
 		time.Sleep(1000 * time.Millisecond)
-		nomorebidsText := h.service.GetText("nomorebids", language)
-		h.bot.SendMessage(userID, MessageOptions{
-			Text:          nomorebidsText,
-			ReplyKeyboard: h.createDetailedBetKeyboard(language, userID, betsRemaining),
-		})
+		options := h.bot.prepareMessage("nomorebids", language)
+		options.ReplyKeyboard = h.createDetailedBetKeyboard(language, userID, betsRemaining)
+
+		h.bot.SendMessage(userID, options)
 	}()
 
 	return nil
@@ -844,11 +828,11 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	}
 
 	// Сначала отправляем сообщение с описанием игры
-	playStartText := h.service.GetText("playstart1", language)
+	options := h.bot.prepareMessage("playstart1", language)
 
 	// Создаем inline клавиатуру с кнопкой "Детальные правила"
 	rulesButtonText := h.service.GetText("rulesstart", language)
-	inlineKeyboard := &telego.InlineKeyboardMarkup{
+	options.InlineKeyboard = &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
 				{Text: rulesButtonText, URL: webPage + "/faq#gameplay"},
@@ -857,10 +841,7 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	}
 
 	// Отправляем первое сообщение с описанием игры и кнопкой на правила
-	h.bot.SendMessage(message.Chat.ID, MessageOptions{
-		Text:           playStartText,
-		InlineKeyboard: inlineKeyboard,
-	})
+	h.bot.SendMessage(message.Chat.ID, options)
 
 	// Добавляем пользователя в список активных игроков
 	h.mutex.Lock()
@@ -877,10 +858,7 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	// Проверяем, что раунд существует
 	if currentRound == nil {
 		logger.Warning.Printf("Current round is nil, waiting for a new round")
-		waitingText := h.service.GetText("waiting_for_round", language)
-		h.bot.SendMessage(message.Chat.ID, MessageOptions{
-			Text: waitingText,
-		})
+		h.bot.SendMessage(message.Chat.ID, h.bot.prepareMessage("waiting_for_round", language))
 		return
 	}
 
@@ -899,17 +877,14 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 
 	// Если осталось меньше 0 секунд, ждем следующий раунд
 	if remainingTime < 0 {
-		waitingText := h.service.GetText("waiting_for_round", language)
-		h.bot.SendMessage(message.Chat.ID, MessageOptions{
-			Text: waitingText,
-		})
+		h.bot.SendMessage(message.Chat.ID, h.bot.prepareMessage("waiting_for_round", language))
 		return
 	}
 
 	// Формируем текст в новом формате
 	remainingSeconds := int(remainingTime.Seconds())
-	roundInfoTemplate := h.service.GetText("round_info_countdown", language)
-	roundInfoText := fmt.Sprintf(roundInfoTemplate, roundIDBase62, currentRound.Hash, remainingSeconds)
+	options = h.bot.prepareMessage("round_info_countdown", language)
+	options.Text = fmt.Sprintf(options.Text, roundIDBase62, currentRound.Hash, remainingSeconds)
 
 	// Получаем доступное количество ставок
 	betsBalance, err := h.service.GetUserRemainingBets(user.ID)
@@ -917,12 +892,10 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 		logger.Error.Printf("Error getting user remaining bets: %v", err)
 		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 	}
+	options.ReplyKeyboard = h.createDetailedBetKeyboard(language, user.ID, betsBalance)
 
 	// Отправляем сообщение с информацией о раунде и клавиатурой для ставок
-	h.bot.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          roundInfoText,
-		ReplyKeyboard: h.createDetailedBetKeyboard(language, user.ID, betsBalance),
-	})
+	h.bot.SendMessage(message.Chat.ID, options)
 }
 
 // HandleBackButton обрабатывает нажатие кнопки "Назад"
