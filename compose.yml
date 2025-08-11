@@ -21,10 +21,10 @@ x-rabbitmq-config: &rabbitmq-config
 
 # Redis configuration
 x-redis-config: &redis-config
-  REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/${REDIS_DB:-0}
+  REDIS_URL: redis://:${REDIS_PASSWORD:-redis123}@redis:6379/${REDIS_DB:-0}
   REDIS_HOST: redis
   REDIS_PORT: 6379
-  REDIS_PASSWORD: ${REDIS_PASSWORD}
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
   REDIS_DB: ${REDIS_DB:-0}
 
 # Telegram configuration
@@ -124,6 +124,7 @@ services:
     logging: *infrastructure-logging
 
   pgadmin:
+    profiles: ["tools"]
     image: dpage/pgadmin4
     container_name: roulette-pgadmin
     environment:
@@ -167,6 +168,7 @@ services:
     logging: *infrastructure-logging
 
   redis-commander:
+    profiles: ["tools"]
     image: rediscommander/redis-commander:latest
     container_name: roulette-redis-commander
     environment:
@@ -175,7 +177,7 @@ services:
       HTTP_PASSWORD: ${REDIS_COMMANDER_PASSWORD:-admin}
       URL_PREFIX: /redis
     ports:
-      - "8282:8081"
+      - "127.0.0.1:8282:8081"
     depends_on:
       redis:
         condition: service_healthy
@@ -201,9 +203,7 @@ services:
     logging: *infrastructure-logging
 
   bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${IMAGE_NAME:-local/roulette-apps}:${IMAGE_TAG:-dev}
     container_name: roulette-bot
     command: ./roulette-bot
     environment:
@@ -212,20 +212,18 @@ services:
       postgres:
         condition: service_healthy
       migrations:
-        condition: service_completed_successfully  # waiting migrations
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
     ports:
-      - "127.0.0.1:9101:9101" # for Prometheus metrics
+      - "127.0.0.1:9101:9101"
     logging: *default-logging
 
   rotator:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${IMAGE_NAME:-local/roulette-apps}:${IMAGE_TAG:-dev}
     container_name: roulette-rotator
     command: ./roulette-rotator
     environment:
@@ -234,32 +232,30 @@ services:
       postgres:
         condition: service_healthy
       migrations:
-        condition: service_completed_successfully  # waiting migrations
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
     ports:
-      - "127.0.0.1:9102:9102" # for Prometheus metrics
+      - "127.0.0.1:9102:9102"
     logging: *default-logging
 
   admin:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${IMAGE_NAME:-local/roulette-apps}:${IMAGE_TAG:-dev}
     container_name: roulette-admin
     command: ./roulette-admin
     environment:
       <<: [*database-config, *rabbitmq-config, *telegram-config, *admin-config, *payment-config, *redis-config]
     ports:
       - "127.0.0.1:8080:8080"
-      - "127.0.0.1:9103:9103" # for Prometheus metrics
+      - "127.0.0.1:9103:9103"
     depends_on:
       postgres:
         condition: service_healthy
       migrations:
-        condition: service_completed_successfully  # waiting migrations
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -267,6 +263,7 @@ services:
 
   # Monitoring services
   prometheus:
+    profiles: ["monitoring"]
     image: prom/prometheus:v2.47.0
     container_name: roulette-prometheus
     volumes:
@@ -287,6 +284,7 @@ services:
     logging: *infrastructure-logging
 
   grafana:
+    profiles: ["monitoring"]
     image: grafana/grafana:10.1.4
     container_name: roulette-grafana
     volumes:
@@ -307,6 +305,7 @@ services:
     logging: *infrastructure-logging
 
   postgres-exporter:
+    profiles: ["monitoring"]
     image: prometheuscommunity/postgres-exporter:v0.14.0
     container_name: roulette-postgres-exporter
     env_file:
@@ -319,6 +318,7 @@ services:
     logging: *infrastructure-logging
 
   rabbitmq-exporter:
+    profiles: ["monitoring"]
     image: kbudde/rabbitmq-exporter:1.0.0
     container_name: roulette-rabbitmq-exporter
     environment:
@@ -333,6 +333,7 @@ services:
     logging: *infrastructure-logging
 
   node-exporter:
+    profiles: ["monitoring"]
     image: prom/node-exporter:v1.6.1
     container_name: roulette-node-exporter
     volumes:
@@ -350,6 +351,7 @@ services:
     logging: *infrastructure-logging
     
   redis-exporter:
+    profiles: ["monitoring"]
     image: oliver006/redis_exporter:v1.55.0
     container_name: roulette-redis-exporter
     environment:

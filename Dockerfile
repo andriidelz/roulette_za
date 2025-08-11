@@ -1,36 +1,43 @@
-FROM golang:1.23-alpine AS builder
+# syntax=docker/dockerfile:1.7
 
+FROM golang:1.24-alpine AS builder
 WORKDIR /app
+
+RUN apk add --no-cache git build-base
+
+# Кеш модулей
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+# Исходники
 COPY . .
 
-# Build apps
-RUN CGO_ENABLED=0 GOOS=linux go build -o roulette-bot ./cmd/bot/main.go
-RUN CGO_ENABLED=0 GOOS=linux go build -o roulette-admin ./cmd/admin/main.go
-RUN CGO_ENABLED=0 GOOS=linux go build -o roulette-rotator ./cmd/rotator/main.go
+# Общие флаги
+ENV CGO_ENABLED=0 GOOS=linux
+ARG VERSION
+ARG COMMIT
+ARG BUILT_AT
+ENV LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.builtAt=${BUILT_AT}"
 
-# Final image
-FROM alpine:latest
+# Параллельная сборка (BuildKit кеш для компиляции)
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    ( go build -trimpath -ldflags "$LDFLAGS" -o roulette-bot      ./cmd/bot      & \
+    go build -trimpath -ldflags "$LDFLAGS" -o roulette-admin    ./cmd/admin    & \
+    go build -trimpath -ldflags "$LDFLAGS" -o roulette-rotator  ./cmd/rotator  & \
+    wait )
 
-RUN apk --no-cache add ca-certificates tzdata
+# Runtime: alpine (root по умолчанию)
+FROM alpine:3.20
+RUN apk --no-cache add ca-certificates tzdata wget
 WORKDIR /app
 
-# Copy builds
 COPY --from=builder /app/roulette-bot /app/roulette-bot
 COPY --from=builder /app/roulette-admin /app/roulette-admin
 COPY --from=builder /app/roulette-rotator /app/roulette-rotator
-
-# Copy web directories
 COPY --from=builder /app/web /app/web
-# Copy captcha directory (for fonts and images)
 COPY --from=builder /app/internal/captcha-go /app/internal/captcha-go
 
-# Change access rights
 RUN chmod +x /app/roulette-bot /app/roulette-admin /app/roulette-rotator
-
-# Port for web interface
 EXPOSE 8080
-
-# Run bot
 CMD ["./roulette-bot"]

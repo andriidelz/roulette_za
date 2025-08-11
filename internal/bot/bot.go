@@ -47,12 +47,12 @@ const (
 	CommandFAQ      = "faq"
 	CommandSettings = "settings"
 
-	CallbackBetRed              = "bet_red"
-	CallbackBetBlack            = "bet_black"
-	CallbackBetZero             = "bet_zero"
-	CallbackBack                = "back"
-	CallbackCaptchaCorrect      = "captcha_correct"
-	CallbackCaptchaIncorrect    = "captcha_incorrect"
+	CallbackBetRed           = "bet_red"
+	CallbackBetBlack         = "bet_black"
+	CallbackBetZero          = "bet_zero"
+	CallbackBack             = "back"
+	CallbackCaptchaCorrect   = "captcha_correct"
+	CallbackCaptchaIncorrect = "captcha_incorrect"
 
 	StickerNoBids    = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
 	StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
@@ -866,13 +866,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 				}
 
 				// Переходим к следующему шагу регистрации (выбор никнейма или проверка подписки)
-				if b.handleNicknamePrompt != nil {
-					// Если у вас есть функция для выбора никнейма
-					b.handleNicknamePrompt(query.Message.Chat.ID, user.ID, language)
-				} else {
-					// Иначе сразу переходим к проверке подписки
-					b.sendSubscriptionRequest(query.Message.Chat.ID, language, "")
-				}
+				b.handleNicknamePrompt(query.Message.Chat.ID, user.ID, language)
 				return
 			} else {
 				// Если страна была установлена ранее:
