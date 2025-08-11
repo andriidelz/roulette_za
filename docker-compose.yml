@@ -91,7 +91,7 @@ services:
       <<: *postgres-env
     volumes:
       - ./shared-data/postgresql:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
+      # - ./migrations:/docker-entrypoint-initdb.d
     # ports:
     #   - "5432:5432"
     restart: unless-stopped
@@ -101,6 +101,26 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+    logging: *infrastructure-logging
+
+  # Сервис для миграций - запускается каждый раз
+  migrations:
+    image: migrate/migrate:v4.16.2
+    container_name: roulette-migrations
+    volumes:
+      - ./migrations:/migrations:ro
+    environment:
+      <<: *database-config
+    command: [
+      "-path", "/migrations",
+      "-database", "postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-roulette}?sslmode=disable",
+      "-verbose",
+      "up"
+    ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"  # Запускается один раз при старте
     logging: *infrastructure-logging
 
   pgadmin:
@@ -191,6 +211,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrations:
+        condition: service_completed_successfully  # waiting migrations
       rabbitmq:
         condition: service_healthy
       redis:
@@ -211,6 +233,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrations:
+        condition: service_completed_successfully  # waiting migrations
       rabbitmq:
         condition: service_healthy
       redis:
@@ -234,6 +258,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrations:
+        condition: service_completed_successfully  # waiting migrations
       redis:
         condition: service_healthy
     restart: unless-stopped
