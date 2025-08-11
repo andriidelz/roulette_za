@@ -1,9 +1,6 @@
--- Legacy migration - already applied via initdb
--- Original file: 009_add_notification_macros.sql
+-- Добавляем поле для хранения макросов в таблицу notification_recipients
+ALTER TABLE notification_recipients ADD COLUMN IF NOT EXISTS macros JSONB DEFAULT '{}'::jsonb;
 
-BEGIN;
-
--- This migration was already applied during database initialization
--- Content will be added here for reference after transition
-
-COMMIT;
+-- Удаление поля user_id в таблице notification_tasks
+ALTER TABLE notification_tasks 
+DROP COLUMN IF EXISTS user_id;

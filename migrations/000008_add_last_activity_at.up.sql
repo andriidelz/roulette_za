@@ -1,9 +1,8 @@
--- Legacy migration - already applied via initdb
--- Original file: 008_add_last_activity_at.sql
+-- Добавляем столбец last_activity_at в таблицу users
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMP;
 
-BEGIN;
+-- Устанавливаем значение по умолчанию для существующих записей
+UPDATE users SET last_activity_at = COALESCE(updated_at, created_at) WHERE last_activity_at IS NULL;
 
--- This migration was already applied during database initialization
--- Content will be added here for reference after transition
-
-COMMIT;
+-- Добавляем индекс для быстрого поиска
+CREATE INDEX IF NOT EXISTS idx_users_last_activity_at ON users(last_activity_at);
