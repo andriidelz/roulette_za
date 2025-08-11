@@ -260,13 +260,11 @@ func (b *Bot) handlePrivacyCommand(message *telego.Message) {
 	}
 
 	// Получаем локализированный текст privacy policy
-	privacyPolicyText := b.service.GetText("privacypolicym", language)
+	options := b.prepareMessage("privacypolicym", language)
+	options.ReplyKeyboard = b.createMainReplyKeyboard(language)
 
 	// Отправляем текст privacy policy
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          privacyPolicyText,
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
-	})
+	b.SendMessage(message.Chat.ID, options)
 }
 
 // handleContactCommand обрабатывает команду /contact
@@ -283,13 +281,10 @@ func (b *Bot) handleContactCommand(message *telego.Message) {
 	}
 
 	// Получаем локализированный текст для раздела "Контакт с админом"
-	contactText := b.service.GetText("contactm", language)
-
+	options := b.prepareMessage("contactm", language)
+	options.ReplyKeyboard = b.createMainReplyKeyboard(language)
 	// Отправляем текст о контакте с админом
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          contactText,
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
-	})
+	b.SendMessage(message.Chat.ID, options)
 }
 
 // MakeBet делает ставку в текущем раунде
@@ -331,33 +326,37 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 	err = b.gameHandler.MakeBet(userID, option)
 	if err != nil {
 		// Определяем тип ошибки и отправляем соответствующее сообщение
-		var errorText string
+		var errorKey string
+		var remain int
+
 		if strings.Contains(err.Error(), "already made a bet") {
 			// Пользователь уже сделал ставку в этом раунде
-			errorText = b.service.GetText("bet_already_made", language)
+			errorKey = "bet_already_made"
 		} else if strings.Contains(err.Error(), "cannot bet on zero") {
 			// Пользователь не может ставить на Zero
 			canBetZero, remaining, _ := b.service.CanBetZero(userID)
 			if !canBetZero {
-				zeroLimitText := b.service.GetText("zero_limit", language)
-				errorText = fmt.Sprintf(zeroLimitText, remaining)
+				errorKey = "zero_limit"
+				remain = remaining
 			} else {
-				errorText = b.service.GetText("bet_error", language)
+				errorKey = "bet_error"
 			}
 		} else if strings.Contains(err.Error(), "no bets left") {
 			// У пользователя закончились ставки на сегодня
-			errorText = b.service.GetText("betsbalancelow", language)
+			errorKey = "betsbalancelow"
 		} else {
 			// Общая ошибка ставки
 
 			logger.Error.Println("bet_error", err)
-			errorText = b.service.GetText("bet_error", language)
+			errorKey = "bet_error"
+		}
+		options := b.prepareMessage(errorKey, language)
+		if errorKey == "zero_limit" {
+			options.Text = fmt.Sprintf(options.Text, remain)
 		}
 
-		b.SendMessage(userID, MessageOptions{
-			Text:          errorText,
-			ReplyKeyboard: b.gameHandler.createDetailedBetKeyboard(language, userID, betsBalance),
-		})
+		options.ReplyKeyboard = b.gameHandler.createDetailedBetKeyboard(language, userID, betsBalance)
+		b.SendMessage(userID, options)
 		return
 	}
 }
@@ -610,8 +609,8 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		// Обработка нажатия на заблокированную кнопку Zero
 		canBetZero, remaining, _ := b.service.CanBetZero(user.ID)
 		if !canBetZero {
-			zeroLimitText := b.service.GetText("zero_limit", language)
-			zeroLimitText = fmt.Sprintf(zeroLimitText, remaining)
+			options := b.prepareMessage("zero_limit", language)
+			options.Text = fmt.Sprintf(options.Text, remaining)
 
 			// Получаем доступное количество ставок
 			betsBalance, err := b.service.GetUserRemainingBets(user.ID)
@@ -619,11 +618,8 @@ func (b *Bot) handleMessage(message *telego.Message) {
 				logger.Error.Printf("Error getting user remaining bets: %v", err)
 				betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 			}
-
-			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text:          zeroLimitText,
-				ReplyKeyboard: b.gameHandler.createDetailedBetKeyboard(language, user.ID, betsBalance),
-			})
+			options.ReplyKeyboard = b.gameHandler.createDetailedBetKeyboard(language, user.ID, betsBalance)
+			b.SendMessage(message.Chat.ID, options)
 		}
 	case b.service.GetText("availablebets", language):
 		// Получаем доступное количество ставок
@@ -633,18 +629,16 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
 		}
 
-		var messageText string
+		var options MessageOptions
 		if betsBalance <= 0 {
-			messageText = b.service.GetText("betsbalancelow", language)
+			options = b.prepareMessage("betsbalancelow", language)
 		} else {
-			messageTemplate := b.service.GetText("betsbalanceok", language)
-			messageText = fmt.Sprintf(messageTemplate, betsBalance)
+			options = b.prepareMessage("betsbalanceok", language)
+			options.Text = fmt.Sprintf(options.Text, betsBalance)
 		}
+		options.ReplyKeyboard = b.gameHandler.createDetailedBetKeyboard(language, user.ID, betsBalance)
 
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text:          messageText,
-			ReplyKeyboard: b.gameHandler.createDetailedBetKeyboard(language, user.ID, betsBalance),
-		})
+		b.SendMessage(message.Chat.ID, options)
 	case btnBackText:
 		// Возврат в главное меню и удаление из активных игроков
 		b.gameHandler.HandleBackButton(user.ID)
@@ -818,9 +812,6 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		if countryCode == "RU" || countryCode == "BY" {
 			// Получаем локализованный текст сообщения о блокировке
 			banText := b.service.GetText("stopcountry", language)
-			if banText == "stopcountry" { // если локализация не найдена
-				banText = "Сервис не доступен для жителей россии или белларуси" // Запасной вариант
-			}
 
 			// Отправляем сообщение о недоступности сервиса
 			if query.Message != nil {
@@ -1099,43 +1090,35 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	case CallbackCheckWallet:
 		b.handleCheckWalletCallback(query)
 	case CallbackChangeWallet:
-		walletText := b.service.GetText("withdrawusdtchange", language)
+		options := b.prepareMessage("withdrawusdtchange", language)
 
 		// Обновляем сообщение и запрашиваем адрес кошелька
 		if query.Message != nil {
 			// Устанавливаем состояние ожидания адреса кошелька
 			b.stateManager.SetState(user.ID, StateInputWithdrawWallet, query.Message.MessageID)
-
-			b.SendMessage(query.Message.Chat.ID, MessageOptions{
-				Text:          walletText,
-				ReplyKeyboard: b.createAccountKeyboard(language),
-			})
+			options.ReplyKeyboard = b.createAccountKeyboard(language)
+			b.SendMessage(query.Message.Chat.ID, options)
 		}
 		return
 	case CallbackCancelInput:
 		b.stateManager.ClearState(user.ID)
 
 		// Получаем локализованный текст раздела аккаунта
-		accountStartText := b.service.GetText("accstart", language)
-		b.SendMessage(query.Message.Chat.ID, MessageOptions{
-			Text:          accountStartText,
-			ReplyKeyboard: b.createAccountKeyboard(language),
-		})
+		options := b.prepareMessage("accstart", language)
+		options.ReplyKeyboard = b.createAccountKeyboard(language)
+		b.SendMessage(query.Message.Chat.ID, options)
 		return
 	case CallbackCheckAmount:
 		b.handleCheckAmountCallback(query)
 	case CallbackSetAmount:
-		withdrawText := b.service.GetText("withdrawusdtsumam", language)
+		options := b.prepareMessage("withdrawusdtsumam", language)
 
 		// Посылаем сообщение и запрашиваем сумму для вывода
 		if query.Message != nil {
 			// Устанавливаем состояние ожидания суммы для вывода
 			b.stateManager.SetState(user.ID, StateInputWithdrawAmount, query.Message.MessageID)
-
-			b.SendMessage(query.Message.Chat.ID, MessageOptions{
-				Text:          withdrawText,
-				ReplyKeyboard: b.createAccountKeyboard(language),
-			})
+			options.ReplyKeyboard = b.createAccountKeyboard(language)
+			b.SendMessage(query.Message.Chat.ID, options)
 		}
 		return
 
@@ -1163,9 +1146,7 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 	dbUser, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
 	if err != nil {
 		logger.Error.Printf("Error registering user: %v", err)
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: b.service.GetText("error_while_registering", user.LanguageCode),
-		})
+		b.SendMessage(message.Chat.ID, b.prepareMessage("error_while_registering", user.LanguageCode))
 		return
 	}
 
@@ -1176,16 +1157,13 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 	}
 
 	// Получаем локализированный текст приветствия
-	welcomeText := b.service.GetText("startmessage1", language)
+	options := b.prepareMessage("startmessage1", language)
 
 	// Создаем inline клавиатуру для первого сообщения
-	inlineKeyboard := b.createStartInlineKeyboard(language)
+	options.InlineKeyboard = b.createStartInlineKeyboard(language)
 
 	// Отправляем первое приветственное сообщение с inline клавиатурой
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:           welcomeText,
-		InlineKeyboard: inlineKeyboard,
-	})
+	b.SendMessage(message.Chat.ID, options)
 
 	// Для нового пользователя или с неподтвержденным возрастом проверяем возраст
 	if dbUser.AgeVerified == nil {
@@ -1197,15 +1175,12 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 	// Если возраст подтвержден, но не установлена страна
 	if *dbUser.AgeVerified && (dbUser.Country == "") {
 		// Отправляем запрос на выбор страны
-		countryText := b.service.GetText("countrymes", language)
+		options := b.prepareMessage("countrymes", language)
 
 		// Создаем клавиатуру со странами - начинаем с первой страницы (1)
-		countriesKeyboard := b.createCountriesKeyboard(1)
+		options.InlineKeyboard = b.createCountriesKeyboard(1)
 
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text:           countryText,
-			InlineKeyboard: countriesKeyboard,
-		})
+		b.SendMessage(message.Chat.ID, options)
 	} else {
 		// Если у пользователя уже выбрана страна и возраст подтвержден, отправляем главное меню
 		b.sendMainMenu(message.Chat.ID, language)
@@ -1214,10 +1189,9 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 
 // Вспомогательный метод для отправки главного меню
 func (b *Bot) sendMainMenu(chatID int64, language string) {
-	b.SendMessage(chatID, MessageOptions{
-		Text:          b.service.GetText("main_menu", language),
-		ReplyKeyboard: b.createMainReplyKeyboard(language),
-	})
+	options := b.prepareMessage("main_menu", language)
+	options.ReplyKeyboard = b.createMainReplyKeyboard(language)
+	b.SendMessage(chatID, options)
 }
 
 // handleBackToStartMenu обработка callback для возврата к стартовому меню
@@ -1308,16 +1282,13 @@ func (b *Bot) handleStatsCommand(message *telego.Message) {
 	}
 
 	// Получаем локализированный текст для стартового сообщения статистики
-	statisticsStartText := b.service.GetText("statisticsstart", language)
+	options := b.prepareMessage("statisticsstart", language)
 
 	// Создаем клавиатуру выбора периода статистики
-	statsKeyboard := b.createStatsKeyboard(language)
+	options.ReplyKeyboard = b.createStatsKeyboard(language)
 
 	// Отправляем сообщение с клавиатурой для выбора периода
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          statisticsStartText,
-		ReplyKeyboard: statsKeyboard,
-	})
+	b.SendMessage(message.Chat.ID, options)
 }
 
 // handleUnknownCommand обрабатывает неизвестные команды
@@ -1329,11 +1300,7 @@ func (b *Bot) handleUnknownCommand(message *telego.Message) {
 	}
 
 	// Отправляем сообщение о неизвестной команде
-	unknownCommandText := b.service.GetText("unknown_command", language)
-
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text: unknownCommandText,
-	})
+	b.SendMessage(message.Chat.ID, b.prepareMessage("unknown_command", language))
 
 	// Отправляем главное меню
 	b.sendMainMenu(message.Chat.ID, language)
@@ -1412,7 +1379,7 @@ func (b *Bot) showStatisticsForPeriod(message *telego.Message, period string) {
 	statsMsgKey := period + "statm"
 
 	// Получаем шаблон для соответствующего периода
-	statsTemplate := b.service.GetText(statsMsgKey, language)
+	options := b.prepareMessage(statsMsgKey, language)
 
 	// Сформируем текст для вставки в шаблон
 	totalBets := detailedStats["totalBets"]
@@ -1433,26 +1400,22 @@ func (b *Bot) showStatisticsForPeriod(message *telego.Message, period string) {
 	totalPoints := detailedStats["totalPoints"]
 
 	// Заполняем шаблон данными
-	statsText := fmt.Sprintf(
-		statsTemplate,
+	options.Text = fmt.Sprintf(
+		options.Text,
 		totalBets, blackBets, redBets, zeroBets,
 		wonBets, wonBlackBets, wonRedBets, wonZeroBets,
 		lostBets, lostBlackBets, lostRedBets, lostZeroBets,
 		totalPoints,
 	)
+	options.ReplyKeyboard = b.createStatsKeyboard(language)
 
 	// Отправляем статистику пользователю
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          statsText,
-		ReplyKeyboard: b.createStatsKeyboard(language),
-	})
+	b.SendMessage(message.Chat.ID, options)
 
 	// Отправляем сообщение с предложением выбрать другой период
-	statisticsNextText := b.service.GetText("statistics_next", language)
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          statisticsNextText,
-		ReplyKeyboard: b.createStatsKeyboard(language),
-	})
+	options = b.prepareMessage("statistics_next", language)
+	options.ReplyKeyboard = b.createStatsKeyboard(language)
+	b.SendMessage(message.Chat.ID, options)
 }
 
 // Допоміжні методи
@@ -1531,6 +1494,7 @@ type MessageOptions struct {
 	DisableNotification bool
 }
 
+// prepareMessage - подготовка сообщения - установка текста и фото/видео если указаны
 func (b *Bot) prepareMessage(key, languageCode string) (options MessageOptions) {
 
 	res, _ := b.service.GetRepo().GetLocalization(key, languageCode)
@@ -1867,10 +1831,8 @@ func (b *Bot) handleInputNicknameState(message *telego.Message) {
 
 		if !isValid || len(nickname) < 3 || len(nickname) > 20 {
 			// Никнейм невалиден, отправляем сообщение об ошибке
-			invalidNicknameText := b.service.GetText("invalid_nickname", user.LanguageCode)
-			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text: invalidNicknameText,
-			})
+
+			b.SendMessage(message.Chat.ID, b.prepareMessage("invalid_nickname", user.LanguageCode))
 			return
 		}
 
@@ -1910,13 +1872,7 @@ func (b *Bot) handleInputNameState(message *telego.Message, messageID int) {
 		name := strings.TrimSpace(message.Text)
 		if len(name) == 0 || len(name) > 100 {
 			// Неверная длина имени
-			invalidNameText := b.service.GetText("invalid_name", language)
-			if invalidNameText == "invalid_name" {
-				invalidNameText = "Имя должно содержать от 1 до 100 символов"
-			}
-			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text: invalidNameText,
-			})
+			b.SendMessage(message.Chat.ID, b.prepareMessage("invalid_name", language))
 			return
 		}
 
@@ -1933,21 +1889,12 @@ func (b *Bot) handleInputNameState(message *telego.Message, messageID int) {
 			logger.Error.Printf("Error updating user name: %v", err)
 
 			// Отправляем сообщение об ошибке
-			errorText := b.service.GetText("update_error", language)
-			if errorText == "update_error" {
-				errorText = "Ошибка при обновлении данных. Попробуйте еще раз."
-			}
-			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text: errorText,
-			})
+			b.SendMessage(message.Chat.ID, b.prepareMessage("update_error", language))
 			return
 		}
 
 		// Отправляем сообщение об успешном обновлении
 		successText := b.service.GetText("name_saved", language)
-		if successText == "name_saved" {
-			successText = "Имя успешно сохранено!"
-		}
 
 		backBtn := b.createBackBtnKeyboard(language)
 
@@ -1993,13 +1940,7 @@ func (b *Bot) handleInputUpNicknameState(message *telego.Message, messageID int)
 
 		if !isValid || len(nickname) < 3 || len(nickname) > 20 {
 			// Никнейм невалиден, отправляем сообщение об ошибке
-			invalidNicknameText := b.service.GetText("invalid_nickname", language)
-			if invalidNicknameText == "invalid_nickname" {
-				invalidNicknameText = "Никнейм должен содержать от 3 до 20 символов и состоять только из латинских букв, цифр и знака подчеркивания"
-			}
-			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text: invalidNicknameText,
-			})
+			b.SendMessage(message.Chat.ID, b.prepareMessage("invalid_nickname", language))
 			return
 		}
 
@@ -2009,21 +1950,12 @@ func (b *Bot) handleInputUpNicknameState(message *telego.Message, messageID int)
 			logger.Error.Printf("Error updating user nickname: %v", err)
 
 			// Отправляем сообщение об ошибке
-			errorText := b.service.GetText("update_error", language)
-			if errorText == "update_error" {
-				errorText = "Ошибка при обновлении никнейма. Попробуйте еще раз."
-			}
-			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text: errorText,
-			})
+			b.SendMessage(message.Chat.ID, b.prepareMessage("update_error", language))
 			return
 		}
 
 		// Отправляем сообщение об успешном обновлении
 		successText := b.service.GetText("nickname_saved", language)
-		if successText == "nickname_saved" {
-			successText = "Никнейм успешно сохранен!"
-		}
 
 		backBtn := b.createBackBtnKeyboard(language)
 
@@ -2053,19 +1985,13 @@ func (b *Bot) handleInputWalletState(message *telego.Message, messageID int) {
 		// Базовая валидация адреса TRC20
 		if !strings.HasPrefix(walletAddress, "T") || len(walletAddress) < 30 {
 			// Неверный формат кошелька
-			invalidWalletText := b.service.GetText("withdrawusdtchangeerror", language)
-			if invalidWalletText == "withdrawusdtchangeerror" {
-				invalidWalletText = "Неверный формат адреса кошелька. Адрес TRC20 должен начинаться с 'T' и содержать не менее 30 символов."
-			}
+			options := b.prepareMessage("withdrawusdtchangeerror", language)
 
 			// Создаем клавиатуру с кнопкой назад
-			backBtn := b.createBackBtnKeyboard(language)
+			options.InlineKeyboard = b.createBackBtnKeyboard(language)
 
 			// Отправляем сообщение об ошибке
-			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text:           invalidWalletText,
-				InlineKeyboard: backBtn,
-			})
+			b.SendMessage(message.Chat.ID, options)
 			return
 		}
 
@@ -2082,21 +2008,12 @@ func (b *Bot) handleInputWalletState(message *telego.Message, messageID int) {
 			logger.Error.Printf("Error updating user wallet address: %v", err)
 
 			// Отправляем сообщение об ошибке
-			errorText := b.service.GetText("update_error", language)
-			if errorText == "update_error" {
-				errorText = "Ошибка при обновлении адреса кошелька. Попробуйте еще раз."
-			}
-			b.SendMessage(message.Chat.ID, MessageOptions{
-				Text: errorText,
-			})
+			b.SendMessage(message.Chat.ID, b.prepareMessage("update_error", language))
 			return
 		}
 
 		// Отправляем сообщение об успешном обновлении
 		successText := b.service.GetText("withdrawusdtchangeok", language)
-		if successText == "withdrawusdtchangeok" {
-			successText = "Адрес кошелька успешно обновлен!"
-		}
 
 		backBtn := b.createBackBtnKeyboard(language)
 
