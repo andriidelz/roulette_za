@@ -50,4 +50,9 @@ git tag -a "$TAG" -m "$TAG_MSG"
 # 7. Пушим тег
 git push origin "$TAG"
 
+# 8. Двигаем плавающий тег 'release' на этот же коммит и пушим его (с перезаписью)
+git tag -f release
+git push -f origin release
+
 echo "✅ Tag '$TAG' created and pushed."
+echo "✅ 'release' moved to this commit and pushed."
