@@ -80,6 +80,7 @@ func (a *AdminPanel) localizationSave(c *gin.Context) {
 		Key     string            `json:"key"`
 		Message map[string]string `json:"message"`         // Локализации сообщения
 		Image   map[string]string `json:"image,omitempty"` // Локализованные изображения
+		Video   map[string]string `json:"video,omitempty"` // Локализованные видео
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -113,7 +114,14 @@ func (a *AdminPanel) localizationSave(c *gin.Context) {
 			// картинка не знайдена
 			img = ""
 		}
-		if err := a.clearAndSaveLocalization(request.Key, lang, val, img); err != nil {
+
+		video, ok := request.Video[lang]
+		if !ok {
+			// відео не знайдено
+			video = ""
+		}
+
+		if err := a.clearAndSaveLocalization(request.Key, lang, val, img, video); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -143,6 +151,7 @@ func (a *AdminPanel) localizationAdd(c *gin.Context) {
 		Key     string            `json:"key"`
 		Message map[string]string `json:"message"`         // Локализации сообщения
 		Image   map[string]string `json:"image,omitempty"` // Локализованные изображения
+		Video   map[string]string `json:"video,omitempty"` // Локализованные видео
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -176,7 +185,13 @@ func (a *AdminPanel) localizationAdd(c *gin.Context) {
 			// картинка не знайдена
 			img = ""
 		}
-		if err := a.clearAndSaveLocalization(request.Key, lang, val, img); err != nil {
+		video, ok := request.Video[lang]
+		if !ok {
+			// відео не знайдено
+			video = ""
+		}
+
+		if err := a.clearAndSaveLocalization(request.Key, lang, val, img, video); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -386,7 +401,7 @@ func (a *AdminPanel) importSingleLanguage(c *gin.Context, importData Localizatio
 			return
 		}
 
-		if err := a.clearAndSaveLocalization(key, importData.Language, value, ""); err != nil {
+		if err := a.clearAndSaveLocalization(key, importData.Language, value, "", ""); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save localization: " + err.Error()})
 			return
 		}
@@ -448,7 +463,7 @@ func (a *AdminPanel) importMultipleLanguages(c *gin.Context, multiImport map[str
 				return
 			}
 
-			if err := a.clearAndSaveLocalization(key, language, value, ""); err != nil {
+			if err := a.clearAndSaveLocalization(key, language, value, "", ""); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": fmt.Sprintf("Failed to save localization for %s: %s", language, err.Error()),
 				})
@@ -511,7 +526,7 @@ func (a *AdminPanel) isValidKey(key string) bool {
 }
 
 // clearAndSaveLocalization очищаем и сохраняем локализацию
-func (a *AdminPanel) clearAndSaveLocalization(key, lang, val, image string) error {
+func (a *AdminPanel) clearAndSaveLocalization(key, lang, val, image, video string) error {
 	newVal, err := utils.ParseNode(val, true)
 	if err != nil {
 		return err
@@ -522,6 +537,7 @@ func (a *AdminPanel) clearAndSaveLocalization(key, lang, val, image string) erro
 		Language: lang,
 		Value:    newVal,
 		Image:    image,
+		Video:    video,
 	})
 }
 

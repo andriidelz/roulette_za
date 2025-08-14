@@ -1,3 +1,7 @@
+-- Добавляем столбец image в таблицу localizations
+ALTER TABLE localizations ADD COLUMN IF NOT EXISTS image TEXT;
+ALTER TABLE localizations ADD COLUMN IF NOT EXISTS video TEXT;
+
 INSERT INTO localizations (key, language, value) VALUES
     ('invalid_name', 'ru', 'Имя должно содержать от 1 до 100 символов'),
     ('update_error', 'ru', 'Ошибка при обновлении данных. Попробуйте еще раз.');

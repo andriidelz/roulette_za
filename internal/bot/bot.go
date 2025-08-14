@@ -47,12 +47,12 @@ const (
 	CommandFAQ      = "faq"
 	CommandSettings = "settings"
 
-	CallbackBetRed              = "bet_red"
-	CallbackBetBlack            = "bet_black"
-	CallbackBetZero             = "bet_zero"
-	CallbackBack                = "back"
-	CallbackCaptchaCorrect      = "captcha_correct"
-	CallbackCaptchaIncorrect    = "captcha_incorrect"
+	CallbackBetRed           = "bet_red"
+	CallbackBetBlack         = "bet_black"
+	CallbackBetZero          = "bet_zero"
+	CallbackBack             = "back"
+	CallbackCaptchaCorrect   = "captcha_correct"
+	CallbackCaptchaIncorrect = "captcha_incorrect"
 
 	StickerNoBids    = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
 	StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
@@ -1436,6 +1436,7 @@ const (
 	sendMessage      = "sendMessage"
 	editMessageText  = "editMessageText"
 	sendPhoto        = "sendPhoto"
+	sendVideo        = "sendVideo"
 	editMessageMedia = "editMessageMedia"
 	sendSticker      = "sendSticker"
 )
@@ -1462,9 +1463,13 @@ type MessageOptions struct {
 	// PhotoPath - путь к фото (если установлен, будет отправлено фото с подписью Text)
 	PhotoPath string
 	DelPhoto  bool // true для временных фото, после отправки запускается удаление через какое то время после отправки
-
 	// PhotoFileID - FileID фото (если установлен, будет отправлено фото с подписью Text)
 	PhotoFileID string
+
+	// VideoPath - путь к видео (если установлен, будет отправлено видео с подписью Text)
+	VideoPath string
+	// VideoFileID - FileID видео (если установлен, будет отправлено видео с подписью Text)
+	VideoFileID string
 
 	// InlineKeyboard - инлайн клавиатура (если установлена, будет добавлена к сообщению)
 	InlineKeyboard *telego.InlineKeyboardMarkup
@@ -1502,6 +1507,7 @@ func (b *Bot) prepareMessage(key, languageCode string) (options MessageOptions) 
 	return MessageOptions{
 		Text:        res.Value,
 		PhotoFileID: res.Image,
+		VideoFileID: res.Video,
 	}
 }
 
@@ -1539,9 +1545,11 @@ func (b *Bot) SendMessage(chatID int64, options MessageOptions) error {
 		}
 	}
 
-	// Если указан путь к фото или FileID
+	// Определяем тип сообщения
 	if options.PhotoPath != "" || options.PhotoFileID != "" {
 		options.MethodName = sendPhoto
+	} else if options.VideoPath != "" || options.VideoFileID != "" {
+		options.MethodName = sendVideo
 	} else {
 		options.MethodName = sendMessage
 	}
@@ -1656,6 +1664,44 @@ func (b *Bot) updateText(chatID int64, messageID int, options MessageOptions) (*
 	return msg, nil
 }
 
+// sendVideo отправляет видео с подписью
+func (b *Bot) sendVideo(chatID int64, options MessageOptions) (*telego.Message, error) {
+	if options.ParseMode == "" {
+		options.ParseMode = telego.ModeHTML
+	}
+
+	// Параметры для отправки
+	params := &telego.SendVideoParams{
+		ChatID:              telego.ChatID{ID: chatID},
+		Caption:             options.Text,
+		ParseMode:           options.ParseMode,
+		DisableNotification: options.DisableNotification,
+	}
+
+	// Добавляем сущности для подписи, если они есть
+	if len(options.Entities) > 0 {
+		params.CaptionEntities = options.Entities
+	}
+
+	// Устанавливаем соответствующую клавиатуру
+	if replyMarkup := b.getReplyMarkup(options); replyMarkup != nil {
+		params.ReplyMarkup = replyMarkup
+	}
+
+	// Выбираем источник видео
+	if options.VideoFileID != "" {
+		// Для FileID используем его непосредственно
+		// params.Video = telego.InputFile{FileID: options.VideoFileID}
+		params.Video = tu.FileFromID(options.VideoFileID)
+		return b.bot.SendVideo(params)
+	} else if options.VideoPath != "" {
+		// Для файла используем метод Upload
+		return b.sendVideoFile(chatID, options.VideoPath, params)
+	}
+
+	return nil, fmt.Errorf("no video source specified")
+}
+
 // sendPhoto отправляет фото с подписью
 func (b *Bot) sendPhoto(chatID int64, options MessageOptions) (*telego.Message, error) {
 	if options.ParseMode == "" {
@@ -1692,6 +1738,25 @@ func (b *Bot) sendPhoto(chatID int64, options MessageOptions) (*telego.Message, 
 	}
 
 	return nil, fmt.Errorf("no photo source specified")
+}
+
+// sendVideoFile отправляет видео с локального файла
+func (b *Bot) sendVideoFile(chatID int64, videoPath string, params *telego.SendVideoParams) (*telego.Message, error) {
+	// Открываем файл
+	file, err := os.Open(videoPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open video file: %w", err)
+	}
+	defer file.Close()
+	params.Video = tu.File(file)
+
+	// Отправляем фото
+	msg, err := b.bot.SendVideo(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send video: %w", err)
+	}
+
+	return msg, nil
 }
 
 // sendPhotoFile отправляет фото с локального файла

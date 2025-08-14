@@ -35,6 +35,7 @@ func (r *PostgresRepository) SetLocalization(value models.Localization) error {
 	// Оновлюємо існуючу локалізацію
 	loc.Value = value.Value
 	loc.Image = value.Image
+	loc.Video = value.Video
 	return r.db.Save(&loc).Error
 }
 

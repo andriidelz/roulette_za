@@ -320,6 +320,31 @@
                 </div>
               </div>
             </div>
+            <!-- Видео -->
+            <div class="card mb-3">
+              <div class="card-header">
+                <h6 class="mb-0">Видео</h6>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-4">
+                    <label for="edit-video-en-input" class="form-label">English</label>
+                    <input type="url" class="form-control" id="edit-video-en-input" name="video[en]" placeholder="https://example.com/video_en.jpg">
+                    <div class="form-text">URL видео для английской версии</div>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="edit-video-ru-input" class="form-label">Русский</label>
+                    <input type="url" class="form-control" id="edit-video-ru-input" name="video[ru]" placeholder="https://example.com/video_ru.jpg">
+                    <div class="form-text">URL видео для русской версии</div>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="edit-video-uk-input" class="form-label">Українська</label>
+                    <input type="url" class="form-control" id="edit-video-uk-input" name="video[uk]" placeholder="https://example.com/video_uk.jpg">
+                    <div class="form-text">URL видео для украинской версии</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </form>
         </div>
         <div class="modal-footer">
@@ -453,6 +478,11 @@
                 document.getElementById('edit-image-en-input').value = data.enData.Image || '';
                 document.getElementById('edit-image-ru-input').value = data.ruData.Image || '';
                 document.getElementById('edit-image-uk-input').value = data.ukData.Image || '';
+        
+            // Заполняем URL видео для разных языков
+                document.getElementById('edit-video-en-input').value = data.enData.Video || '';
+                document.getElementById('edit-video-ru-input').value = data.ruData.Video || '';
+                document.getElementById('edit-video-uk-input').value = data.ukData.Video || '';
         })
         .catch(error => {
             console.error('Error loading template for edit:', error);
@@ -524,6 +554,13 @@
           ru:document.getElementById('edit-image-ru-input').value,
           uk:document.getElementById('edit-image-uk-input').value,
         };
+        // Собираем URL видео для разных языков
+        const video = {
+          en:document.getElementById('edit-video-en-input').value,
+          ru:document.getElementById('edit-video-ru-input').value,
+          uk:document.getElementById('edit-video-uk-input').value,
+        };
+
         
         // Определяем URL и метод запроса
         const requestUrl = id ? `${id}` : 'add';
@@ -541,6 +578,7 @@
               ru: ruValue
             },
             image: image,
+            video: video,
           }),
           success: function(response) {
             if (response.success) {

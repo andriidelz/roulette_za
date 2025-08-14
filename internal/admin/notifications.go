@@ -227,7 +227,7 @@ func (a *AdminPanel) createNotificationTemplate(c *gin.Context) {
 
 	// Сохраняем локализации для заголовка
 	for lang, text := range request.Title {
-		if err := a.clearAndSaveLocalization(request.TitleKey, lang, text, ""); err != nil {
+		if err := a.clearAndSaveLocalization(request.TitleKey, lang, text, "", ""); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to save title localization: " + err.Error(),
 			})
@@ -237,7 +237,7 @@ func (a *AdminPanel) createNotificationTemplate(c *gin.Context) {
 
 	// Сохраняем локализации для сообщения
 	for lang, text := range request.Message {
-		if err := a.clearAndSaveLocalization(request.MessageKey, lang, text, ""); err != nil {
+		if err := a.clearAndSaveLocalization(request.MessageKey, lang, text, "", ""); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to save message localization: " + err.Error(),
 			})
@@ -249,7 +249,7 @@ func (a *AdminPanel) createNotificationTemplate(c *gin.Context) {
 	buttonTextKey := request.Button.TextKey
 	if buttonTextKey != "" && len(request.Button.Text) > 0 {
 		for lang, text := range request.Button.Text {
-			if err := a.clearAndSaveLocalization(buttonTextKey, lang, text, ""); err != nil {
+			if err := a.clearAndSaveLocalization(buttonTextKey, lang, text, "", ""); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "Failed to save button text localization: " + err.Error(),
 				})
@@ -351,7 +351,7 @@ func (a *AdminPanel) updateNotificationTemplate(c *gin.Context) {
 
 	// Обновляем локализации заголовка
 	for lang, text := range request.Title {
-		if err := a.clearAndSaveLocalization(newTitleKey, lang, text, ""); err != nil {
+		if err := a.clearAndSaveLocalization(newTitleKey, lang, text, "", ""); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to update title localization: " + err.Error(),
 			})
@@ -361,7 +361,7 @@ func (a *AdminPanel) updateNotificationTemplate(c *gin.Context) {
 
 	// Обновляем локализации сообщения
 	for lang, text := range request.Message {
-		if err := a.clearAndSaveLocalization(newMessageKey, lang, text, ""); err != nil {
+		if err := a.clearAndSaveLocalization(newMessageKey, lang, text, "", ""); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to update message localization: " + err.Error(),
 			})
@@ -372,7 +372,7 @@ func (a *AdminPanel) updateNotificationTemplate(c *gin.Context) {
 	// Обновляем локализации кнопки
 	if newButtonTextKey != "" && len(request.Button.Text) > 0 {
 		for lang, text := range request.Button.Text {
-			if err := a.clearAndSaveLocalization(newButtonTextKey, lang, text, ""); err != nil {
+			if err := a.clearAndSaveLocalization(newButtonTextKey, lang, text, "", ""); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "Failed to update button text localization: " + err.Error(),
 				})

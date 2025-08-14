@@ -290,6 +290,9 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 	case editMessageText:
 		messageType = "text"
 		_, err = b.updateText(chatID, options.MessageID, options)
+	case sendVideo:
+		messageType = "video"
+		_, err = b.sendVideo(chatID, options)
 	case sendPhoto:
 		messageType = "photo"
 		_, err = b.sendPhoto(chatID, options)
