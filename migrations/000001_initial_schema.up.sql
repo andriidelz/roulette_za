@@ -112,8 +112,6 @@ CREATE TABLE IF NOT EXISTS localizations (
     key VARCHAR(255) NOT NULL,
     language VARCHAR(10) NOT NULL,
     value TEXT,
-    image TEXT,
-    video TEXT,
     UNIQUE (key, language)
 );
 
