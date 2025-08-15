@@ -7,7 +7,7 @@ import (
 )
 
 // GetLocalization получает локализацию по ключу и языку
-func (r *PostgresRepository) GetLocalization(key string, language string) (string, error) {
+func (r *PostgresRepository) GetLocalization(key string, language string) (models.Localization, error) {
 	var loc models.Localization
 	err := r.db.Where("key = ? AND language = ?", key, language).First(&loc).Error
 	if err != nil {
@@ -15,30 +15,27 @@ func (r *PostgresRepository) GetLocalization(key string, language string) (strin
 		if language != "en" {
 			return r.GetLocalization(key, "en")
 		}
-		return "", err
+		return models.Localization{}, err
 	}
-	return loc.Value, nil
+	return loc, nil
 }
 
 // SetLocalization устанавливает локализацию по ключу и языку
-func (r *PostgresRepository) SetLocalization(key string, language string, value string) error {
+func (r *PostgresRepository) SetLocalization(value models.Localization) error {
 	var loc models.Localization
-	err := r.db.Where("key = ? AND language = ?", key, language).First(&loc).Error
+	err := r.db.Where("key = ? AND language = ?", value.Key, value.Language).First(&loc).Error
 
 	if err == gorm.ErrRecordNotFound {
 		// Створюємо нову локалізацію
-		loc = models.Localization{
-			Key:      key,
-			Language: language,
-			Value:    value,
-		}
-		return r.db.Create(&loc).Error
+		return r.db.Create(&value).Error
 	} else if err != nil {
 		return err
 	}
 
 	// Оновлюємо існуючу локалізацію
-	loc.Value = value
+	loc.Value = value.Value
+	loc.Image = value.Image
+	loc.Video = value.Video
 	return r.db.Save(&loc).Error
 }
 

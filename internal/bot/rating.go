@@ -17,32 +17,25 @@ func (b *Bot) handleRatingCommand(message *telego.Message) {
 	}
 
 	// Отправляем стартовое сообщение о рейтинге
-	ratingStartText := b.service.GetText("ratingstart", language)
-
-	// Создаем клавиатуру для выбора типа рейтинга
-	ratingKeyboard := b.createRatingKeyboard(language)
+	options := b.prepareMessage("ratingstart", language)
+	options.ReplyKeyboard = b.createRatingKeyboard(language)
 
 	// Отправляем сообщение с клавиатурой
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          ratingStartText,
-		ReplyKeyboard: ratingKeyboard,
-	})
+	b.SendMessage(message.Chat.ID, options)
 }
 
 func (b *Bot) handleRatingCallbackQuery(query *telego.CallbackQuery) {
 	user := query.From
 
-	resultText, _ := b.getWeeklyRating(user.ID)
+	options, _ := b.getWeeklyRating(user.ID)
 
 	if query.Message != nil {
-		b.SendMessage(query.Message.Chat.ID, MessageOptions{
-			Text: resultText,
-		})
+		b.SendMessage(query.Message.Chat.ID, options)
 	}
 }
 
 // getWeeklyRating используется для вывода рейтинга в меню и в игре
-func (b *Bot) getWeeklyRating(telegramID int64) (string, string) {
+func (b *Bot) getWeeklyRating(telegramID int64) (MessageOptions, string) {
 
 	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
 	dbUser, err := b.service.GetUser(telegramID)
@@ -60,18 +53,16 @@ func (b *Bot) getWeeklyRating(telegramID int64) (string, string) {
 	ratings, err := b.service.GetWeeklyTopRating(100)
 	if err != nil {
 		logger.Error.Printf("Error getting weekly rating: %v", err)
-		return b.service.GetText("rating_error", language), language
+		return b.prepareMessage("rating_error", language), language
 	}
 
-	var templateKey string
-	var resultText string
+	var options MessageOptions
 	// Ограничиваем количество отображаемых игроков
 	maxDisplayCount := 100
 
 	// Если рейтинг пуст
 	if len(ratings) == 0 {
-		templateKey = "weekly_rating_empty"
-		resultText = b.service.GetText(templateKey, language)
+		options = b.prepareMessage("weekly_rating_empty", language)
 	} else if len(ratings) > maxDisplayCount {
 		// Ограничиваем список
 		truncatedRatings := ratings
@@ -81,9 +72,9 @@ func (b *Bot) getWeeklyRating(telegramID int64) (string, string) {
 		formattedList := b.service.FormatRatingList(truncatedRatings, telegramID, language)
 
 		// Получаем шаблон с форматированием для топ-игроков
-		templateKey = "weekly_rating_top"
-		resultText = fmt.Sprintf(
-			b.service.GetText(templateKey, language),
+		options = b.prepareMessage("weekly_rating_top", language)
+		options.Text = fmt.Sprintf(
+			options.Text,
 			maxDisplayCount,
 			formattedList,
 		)
@@ -92,35 +83,31 @@ func (b *Bot) getWeeklyRating(telegramID int64) (string, string) {
 		formattedList := b.service.FormatRatingList(ratings, telegramID, language)
 
 		// Получаем шаблон для всего рейтинга
-		templateKey = "weekly_rating_all"
-		resultText = fmt.Sprintf(
-			b.service.GetText(templateKey, language),
+		options = b.prepareMessage("weekly_rating_all", language)
+		options.Text = fmt.Sprintf(
+			options.Text,
 			formattedList,
 		)
 	}
-	return resultText, language
+	return options, language
 }
 
 // handleWeeklyRating обрабатывает запрос на просмотр недельного рейтинга
 func (b *Bot) handleWeeklyRating(message *telego.Message) {
 	user := message.From
 
-	resultText, language := b.getWeeklyRating(user.ID)
+	options, language := b.getWeeklyRating(user.ID)
+	options.ReplyKeyboard = b.createRatingKeyboard(language)
 
 	// Отправляем сообщение с рейтингом
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          resultText,
-		ReplyKeyboard: b.createRatingKeyboard(language),
-	})
+	b.SendMessage(message.Chat.ID, options)
 
 	// Отправляем дополнительное сообщение через 5 секунд
 	go func() {
 		time.Sleep(5 * time.Second)
-		ratingNextText := b.service.GetText("ratingnext", language)
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text:          ratingNextText,
-			ReplyKeyboard: b.createRatingKeyboard(language),
-		})
+		options := b.prepareMessage("ratingnext", language)
+		options.ReplyKeyboard = b.createRatingKeyboard(language)
+		b.SendMessage(message.Chat.ID, options)
 	}()
 }
 
@@ -136,20 +123,17 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 	neighbors, position, err := b.service.GetUserRatingPosition(user.ID, 2)
 	if err != nil {
 		logger.Error.Printf("Error getting user position: %v", err)
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text: b.service.GetText("rating_error", language),
-		})
+		b.SendMessage(message.Chat.ID, b.prepareMessage("rating_error", language))
 		return
 	}
 
-	var templateKey string
-	var resultText string
+	var options MessageOptions
 
 	// Если рейтинг пуст
 	if len(neighbors) == 0 {
-		templateKey = "personal_rating_empty"
-		resultText = fmt.Sprintf(
-			b.service.GetText(templateKey, language),
+		options = b.prepareMessage("personal_rating_empty", language)
+		options.Text = fmt.Sprintf(
+			options.Text,
 			position,
 		)
 	} else {
@@ -165,18 +149,18 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 
 		if pointsNeeded > 0 {
 			// Пользователь не в призовой зоне
-			templateKey = "personal_rating_need_points"
-			resultText = fmt.Sprintf(
-				b.service.GetText(templateKey, language),
+			options = b.prepareMessage("personal_rating_need_points", language)
+			options.Text = fmt.Sprintf(
+				options.Text,
 				position,
 				formattedList,
 				pointsNeeded,
 			)
 		} else {
 			// Пользователь в призовой зоне
-			templateKey = "personal_rating_prize_zone"
-			resultText = fmt.Sprintf(
-				b.service.GetText(templateKey, language),
+			options = b.prepareMessage("personal_rating_prize_zone", language)
+			options.Text = fmt.Sprintf(
+				options.Text,
 				position,
 				formattedList,
 			)
@@ -184,19 +168,15 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 	}
 
 	// Отправляем сообщение
-	b.SendMessage(message.Chat.ID, MessageOptions{
-		Text:          resultText,
-		ReplyKeyboard: b.createRatingKeyboard(language),
-	})
+	options.ReplyKeyboard = b.createRatingKeyboard(language)
+	b.SendMessage(message.Chat.ID, options)
 
 	// Отправляем дополнительное сообщение через 5 секунд
 	go func() {
 		time.Sleep(5 * time.Second)
-		ratingNextText := b.service.GetText("ratingnext", language)
-		b.SendMessage(message.Chat.ID, MessageOptions{
-			Text:          ratingNextText,
-			ReplyKeyboard: b.createRatingKeyboard(language),
-		})
+		options := b.prepareMessage("ratingnext", language)
+		options.ReplyKeyboard = b.createRatingKeyboard(language)
+		b.SendMessage(message.Chat.ID, options)
 	}()
 }
 
