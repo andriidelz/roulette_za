@@ -1,0 +1,13 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+  rotator:
+    build:
+      context: .
+      dockerfile: Dockerfile

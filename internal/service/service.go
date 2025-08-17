@@ -699,12 +699,12 @@ func (s *ServiceImpl) GetPrizeFund(year, week int) (*models.PrizeFund, error) {
 // Реалізація методів для налаштувань та локалізації
 
 func (s *ServiceImpl) GetText(key string, languageCode string) string {
-	text, err := s.repo.GetLocalization(key, languageCode)
+	res, err := s.repo.GetLocalization(key, languageCode)
 	if err != nil {
 		// Повертаємо ключ, якщо локалізація не знайдена
 		return key
 	}
-	return text
+	return res.Value
 }
 
 func (s *ServiceImpl) UpdateSetting(key, value string) error {

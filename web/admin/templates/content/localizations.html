@@ -144,9 +144,6 @@
                         <td>{{.Key}}</td>
                         <td>
                           <div class="localization-value">{{.Value}}</div>
-                          <div class="localization-editor d-none">
-                            <textarea class="form-control" rows="3">{{.Value}}</textarea>
-                          </div>
                         </td>
                         <td>
                           <div class="btn-group">
@@ -190,9 +187,6 @@
                         <td>{{.Key}}</td>
                         <td>
                           <div class="localization-value">{{.Value}}</div>
-                          <div class="localization-editor d-none">
-                            <textarea class="form-control" rows="3">{{.Value}}</textarea>
-                          </div>
                         </td>
                         <td>
                           <div class="btn-group">
@@ -236,9 +230,6 @@
                         <td>{{.Key}}</td>
                         <td>
                           <div class="localization-value">{{.Value}}</div>
-                          <div class="localization-editor d-none">
-                            <textarea class="form-control" rows="3">{{.Value}}</textarea>
-                          </div>
                         </td>
                         <td>
                           <div class="btn-group">
@@ -271,7 +262,7 @@
     </main>
   </div>
 
-  <!-- Модальное окно добавления нового ключа локализации -->
+  <!-- Модальное окно для редактирования/создания нового ключа локализации -->
   <div class="modal fade" id="addKeyModal" tabindex="-1" aria-labelledby="addKeyModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
@@ -281,12 +272,14 @@
         </div>
         <div class="modal-body">
           <form id="add-localization-form">
+            <input type="hidden" id="localization-id" name="id" value="">
             <div class="mb-3">
               <label for="localization-key" class="form-label">Ключ</label>
               <input type="text" class="form-control" id="localization-key" required>
               <div class="form-text">Используйте только латинские буквы, цифры и нижнее подчеркивание. Например: welcome_message</div>
             </div>
             
+            <!-- Сообщение -->
             <div class="mb-3">
               <label for="en-value" class="form-label">Английский</label>
               <textarea class="form-control" id="en-value" rows="3" required></textarea>
@@ -301,11 +294,62 @@
               <label for="uk-value" class="form-label">Украинский</label>
               <textarea class="form-control" id="uk-value" rows="3" required></textarea>
             </div>
+
+            <!-- Изображения -->
+            <div class="card mb-3">
+              <div class="card-header">
+                <h6 class="mb-0">Изображения</h6>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-4">
+                    <label for="edit-image-en-input" class="form-label">English</label>
+                    <input type="url" class="form-control" id="edit-image-en-input" name="image[en]" placeholder="https://example.com/image_en.jpg">
+                    <div class="form-text">URL изображения для английской версии</div>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="edit-image-ru-input" class="form-label">Русский</label>
+                    <input type="url" class="form-control" id="edit-image-ru-input" name="image[ru]" placeholder="https://example.com/image_ru.jpg">
+                    <div class="form-text">URL изображения для русской версии</div>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="edit-image-uk-input" class="form-label">Українська</label>
+                    <input type="url" class="form-control" id="edit-image-uk-input" name="image[uk]" placeholder="https://example.com/image_uk.jpg">
+                    <div class="form-text">URL изображения для украинской версии</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Видео -->
+            <div class="card mb-3">
+              <div class="card-header">
+                <h6 class="mb-0">Видео</h6>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-4">
+                    <label for="edit-video-en-input" class="form-label">English</label>
+                    <input type="url" class="form-control" id="edit-video-en-input" name="video[en]" placeholder="https://example.com/video_en.jpg">
+                    <div class="form-text">URL видео для английской версии</div>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="edit-video-ru-input" class="form-label">Русский</label>
+                    <input type="url" class="form-control" id="edit-video-ru-input" name="video[ru]" placeholder="https://example.com/video_ru.jpg">
+                    <div class="form-text">URL видео для русской версии</div>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="edit-video-uk-input" class="form-label">Українська</label>
+                    <input type="url" class="form-control" id="edit-video-uk-input" name="video[uk]" placeholder="https://example.com/video_uk.jpg">
+                    <div class="form-text">URL видео для украинской версии</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </form>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-          <button type="button" class="btn btn-primary" id="save-new-localization">Сохранить</button>
+          <button type="button" class="btn btn-primary" id="save-localization">Сохранить</button>
         </div>
       </div>
     </div>
@@ -391,45 +435,69 @@
   <script>
     $(document).ready(function() {
       // Existing code for editing, deleting, and adding localizations
+
+/**
+ * Редактирование шаблона уведомления
+ * @param {string} id ID шаблона (если не указан, создается новый)
+*/
+  function editLocalization(id) {
+    // Сбрасываем форму
+    $('#add-localization-form')[0].reset();
+
+    // Открываем модальное окно
+    const addKeyModal = new bootstrap.Modal(document.getElementById('addKeyModal'));
+    
+    // Устанавливаем заголовок для редактирования
+    document.getElementById('addKeyModalLabel').textContent = 'Редактировать ключ локализации';
+    
+    // Показываем модальное окно перед загрузкой данных
+    addKeyModal.show();
+    
+    // Загружаем данные шаблона
+    fetch(`/admin/api/localizations/${id}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Заполняем базовые поля формы
+            document.getElementById('localization-id').value = id;
+            
+            // Устанавливаем значение, но блокируем взаимодействие
+            const key = document.getElementById('localization-key');
+            key.value = id;
+            key.setAttribute('disabled', 'disabled');
+            
+                document.getElementById('en-value').value = data.enData.Value || '';
+                document.getElementById('ru-value').value = data.ruData.Value || '';
+                document.getElementById('uk-value').value = data.ukData.Value || '';
+   
+            // Заполняем URL изображений для разных языков
+                document.getElementById('edit-image-en-input').value = data.enData.Image || '';
+                document.getElementById('edit-image-ru-input').value = data.ruData.Image || '';
+                document.getElementById('edit-image-uk-input').value = data.ukData.Image || '';
+        
+            // Заполняем URL видео для разных языков
+                document.getElementById('edit-video-en-input').value = data.enData.Video || '';
+                document.getElementById('edit-video-ru-input').value = data.ruData.Video || '';
+                document.getElementById('edit-video-uk-input').value = data.ukData.Video || '';
+        })
+        .catch(error => {
+            console.error('Error loading template for edit:', error);
+
+            // Показываем сообщение об ошибке
+            showNotification('Ошибка загрузки данных шаблона: ' + error.message, 'danger');
+        });
+      }
+
       $('.edit-localization').click(function() {
         const row = $(this).closest('tr');
-        const valueCell = row.find('td:nth-child(2)');
-        const valueDisplay = valueCell.find('.localization-value');
-        const valueEditor = valueCell.find('.localization-editor');
-        
-        if (valueEditor.hasClass('d-none')) {
-          valueDisplay.addClass('d-none');
-          valueEditor.removeClass('d-none');
-          $(this).html('<i class="bi bi-check-lg"></i>');
-        } else {
-          const key = row.data('key');
-          const value = valueEditor.find('textarea').val();
-          const language = $(this).closest('.tab-pane').attr('id');
-          
-          $.ajax({
-            url: '/admin/localization/' + key,
-            type: 'POST',
-            data: {
-              [language]: value
-            },
-            success: function(response) {
-              if (response.success) {
-                valueDisplay.text(value);
-                valueDisplay.removeClass('d-none');
-                valueEditor.addClass('d-none');
-                row.find('.edit-localization').html('<i class="bi bi-pencil"></i>');
-                showNotification('Локализация успешно сохранена', 'success');
-              } else {
-                showNotification('Ошибка при сохранении: ' + response.error, 'danger');
-              }
-            },
-            error: function() {
-              showNotification('Ошибка соединения с сервером', 'danger');
-            }
-          });
-        }
+        const id = row.data('key');
+        editLocalization(id);
       });
-      
+
       // Delete localization
       $('.delete-localization').click(function() {
         const key = $(this).closest('tr').data('key');
@@ -461,8 +529,11 @@
       });
       
       // Add new localization
-      $('#save-new-localization').click(function() {
+      $('#save-localization').click(function() {
+        const id = document.getElementById('localization-id').value;
         const key = $('#localization-key').val();
+
+        // Собираем локализации сообщения
         const ukValue = $('#uk-value').val();
         const enValue = $('#en-value').val();
         const ruValue = $('#ru-value').val();
@@ -477,26 +548,51 @@
           return;
         }
         
+        // Собираем URL изображений для разных языков
+        const image = {
+          en:document.getElementById('edit-image-en-input').value,
+          ru:document.getElementById('edit-image-ru-input').value,
+          uk:document.getElementById('edit-image-uk-input').value,
+        };
+        // Собираем URL видео для разных языков
+        const video = {
+          en:document.getElementById('edit-video-en-input').value,
+          ru:document.getElementById('edit-video-ru-input').value,
+          uk:document.getElementById('edit-video-uk-input').value,
+        };
+
+        
+        // Определяем URL и метод запроса
+        const requestUrl = id ? `${id}` : 'add';
+
         $.ajax({
-          url: '/admin/localization/add',
+          url: '/admin/localization/'+requestUrl,
           type: 'POST',
-          data: {
+          dataType: 'json',
+          contentType: 'application/json',
+          data: JSON.stringify({
             key: key,
-            uk: ukValue,
-            en: enValue,
-            ru: ruValue
-          },
+            message: {
+              uk: ukValue,
+              en: enValue,
+              ru: ruValue
+            },
+            image: image,
+            video: video,
+          }),
           success: function(response) {
             if (response.success) {
+
+              // Создаем или заменяем текст в строке
               addLocalizationRow('uk', key, ukValue);
               addLocalizationRow('en', key, enValue);
               addLocalizationRow('ru', key, ruValue);
               
               $('#add-localization-form')[0].reset();
               $('#addKeyModal').modal('hide');
-              showNotification('Локализация успешно добавлена', 'success');
+              showNotification('Локализация успешно сохранена', 'success');
             } else {
-              showNotification('Ошибка при добавлении: ' + response.error, 'danger');
+              showNotification('Ошибка при сохранении: ' + response.error, 'danger');
             }
           },
           error: function() {
@@ -686,7 +782,6 @@
         if ($('#' + language + '-table').find('tr[data-key="' + key + '"]').length > 0) {
           const row = $('#' + language + '-table').find('tr[data-key="' + key + '"]');
           row.find('.localization-value').text(value);
-          row.find('textarea').val(value);
           return;
         }
         
@@ -700,9 +795,6 @@
             <td>${key}</td>
             <td>
               <div class="localization-value">${value}</div>
-              <div class="localization-editor d-none">
-                <textarea class="form-control" rows="3">${value}</textarea>
-              </div>
             </td>
             <td>
               <div class="btn-group">
@@ -724,41 +816,8 @@
       function bindLocalizationEvents(row) {
         row.find('.edit-localization').click(function() {
           const row = $(this).closest('tr');
-          const valueCell = row.find('td:nth-child(2)');
-          const valueDisplay = valueCell.find('.localization-value');
-          const valueEditor = valueCell.find('.localization-editor');
-          
-          if (valueEditor.hasClass('d-none')) {
-            valueDisplay.addClass('d-none');
-            valueEditor.removeClass('d-none');
-            $(this).html('<i class="bi bi-check-lg"></i>');
-          } else {
-            const key = row.data('key');
-            const value = valueEditor.find('textarea').val();
-            const language = $(this).closest('.tab-pane').attr('id');
-            
-            $.ajax({
-              url: '/admin/localization/' + key,
-              type: 'POST',
-              data: {
-                [language]: value
-              },
-              success: function(response) {
-                if (response.success) {
-                  valueDisplay.text(value);
-                  valueDisplay.removeClass('d-none');
-                  valueEditor.addClass('d-none');
-                  row.find('.edit-localization').html('<i class="bi bi-pencil"></i>');
-                  showNotification('Локализация успешно сохранена', 'success');
-                } else {
-                  showNotification('Ошибка при сохранении: ' + response.error, 'danger');
-                }
-              },
-              error: function() {
-                showNotification('Ошибка соединения с сервером', 'danger');
-              }
-            });
-          }
+          const id = row.data('key');
+          editLocalization(id);
         });
         
         row.find('.delete-localization').click(function() {

@@ -138,7 +138,6 @@ func (a *AdminPanel) setupRoutes() {
 		admin.POST("/settings", a.saveSettings)
 
 		admin.GET("/localizations", a.localizationsList)
-		admin.GET("/localization/:key", a.localizationEdit)
 		admin.POST("/localization/:key", a.localizationSave)
 		admin.POST("/localization/:key/delete", a.localizationDelete)
 		admin.POST("/localization/add", a.localizationAdd)

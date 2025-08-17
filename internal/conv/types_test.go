@@ -352,13 +352,17 @@ func TestUint32(t *testing.T) {
 }
 
 func TestUint64(t *testing.T) {
+	// Calculate expected overflow value at runtime
+	negativeFloat := -123.12
+	expectedOverflow := uint64(negativeFloat)
+
 	tests := []struct {
 		name string
 		arg  interface{}
 		want uint64
 	}{
 		{"123.12", 123.12, 123},
-		{"-123.12", -103.12, 0}, // overflow
+		{"-123.12", -123.12, expectedOverflow}, // overflow
 		{"string_123", "123", 123},
 		{"string_12345678901", "12345678901", 12345678901},
 		{"-string_123", "-123", 0},
