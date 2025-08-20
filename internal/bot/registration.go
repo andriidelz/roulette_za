@@ -13,12 +13,15 @@ import (
 )
 
 const (
-	CallbackAgeVerify           = "age_verify"
-	CallbackAgeVerifiedYes      = "age_verified_yes"
-	CallbackAgeVerifiedNo       = "age_verified_no"
-	CallbackChangeNameYes       = "name_changeyes"
-	CallbackChangeNameNo        = "name_changeno"
-	CallbackReserveSubscription = "reservsubs"
+	CallbackAgeVerify        = "age_verify"
+	CallbackAgeVerifiedYes   = "age_verified_yes"
+	CallbackAgeVerifiedNo    = "age_verified_no"
+	CallbackCountry          = "country_change"
+	CallbackChangeName       = "name_change"
+	CallbackChangeNameYes    = "name_changeyes"
+	CallbackChangeNameNo     = "name_changeno"
+	CallbackReserveSubs      = "reserve_subs"
+	CallbackReserveSubsCheck = "reserve_subs_check"
 )
 
 // SubscriptionCache кеширует результаты проверки подписки
@@ -110,6 +113,38 @@ func (b *Bot) handleStartCommandNewUser(message *telego.Message) {
 		},
 	}
 	// Отправляем первое приветственное сообщение с inline клавиатурой
+	b.SendMessage(message.Chat.ID, options)
+}
+
+// handleStartCommand обрабатывает команду /start
+// сама регистрация пользователя выполняется в начале функции handleMessage
+// в этой функции только дозаполнение полей
+func (b *Bot) handleStartCommand(message *telego.Message) {
+	user := message.From
+
+	// Регистрируем пользователя или обновляем информацию
+	dbUser, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
+	if err != nil {
+		logger.Error.Printf("Error registering user: %v", err)
+		b.SendMessage(message.Chat.ID, b.prepareMessage("error_while_registering", user.LanguageCode))
+		return
+	}
+
+	// Проверка полностью ли завершена регистрация. Если нет то будет отправлено предложение завершить ее
+	if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "start") {
+		return
+	}
+
+	// Определяем язык пользователя из базы данных
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Если полностью завершена регистрация
+	// Отправляем текст приветствия и главное меню
+	options := b.prepareMessage("startmessage1", language)
+	options.ReplyKeyboard = b.createMainReplyKeyboard(language)
 	b.SendMessage(message.Chat.ID, options)
 }
 
@@ -218,9 +253,40 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 	}
 }
 
-// 4. обработка стран в handleCallbackQuery
+// 4. handleCountryCallback обрабатывает запуск запроса страны
+func (b *Bot) handleCountryCallback(query *telego.CallbackQuery) {
+	user := query.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
 
-// 5. handleNicknamePrompt отправляет запрос на подтверждение/изменение никнейма
+	// Отвечаем на callback, чтобы убрать индикатор загрузки
+	b.answerCallbackQuery(query.ID, "", false)
+
+	options := b.prepareMessage("countrymes", language)
+	options.InlineKeyboard = b.createCountriesKeyboard(1)
+	b.SendMessage(query.Message.Chat.ID, options)
+}
+
+// 4.1 обработка стран в handleCallbackQuery
+
+// 5. handleNicknamePrompt обрабатывает запуск запроса подтверждение/изменение никнейма
+func (b *Bot) handleNicknameCallback(query *telego.CallbackQuery) {
+
+	user := query.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Отвечаем на callback, чтобы убрать индикатор загрузки
+	b.answerCallbackQuery(query.ID, "", false)
+
+	b.handleNicknamePrompt(query.Message.Chat.ID, user.ID, language)
+}
+
+// 5.1 handleNicknamePrompt отправляет запрос на подтверждение/изменение никнейма
 func (b *Bot) handleNicknamePrompt(chatID int64, userID int64, language string) {
 	// Получаем пользователя
 	user, err := b.service.GetUser(userID)
@@ -334,7 +400,21 @@ func (b *Bot) handleChangeNameNo(query *telego.CallbackQuery) {
 	b.sendSubscriptionRequest(query.Message.Chat.ID, language, "name_changeno_msg_start")
 }
 
-// 7. sendSubscriptionRequest отправляет запрос на подписку на резервный канал
+// 7. handleReserveSubscription отправляет запрос на подписку на резервный канал
+func (b *Bot) handleReserveSubscription(query *telego.CallbackQuery) {
+
+	user := query.From
+	language := user.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Отвечаем на callback, чтобы убрать индикатор загрузки
+	b.answerCallbackQuery(query.ID, "", false)
+	b.sendSubscriptionRequest(query.Message.Chat.ID, language, "startmessage3_exist")
+}
+
+// 7.1 sendSubscriptionRequest отправляет запрос на подписку на резервный канал
 func (b *Bot) sendSubscriptionRequest(chatID int64, language, textKey string) {
 	// Формируем ссылку на канал в правильном формате
 	channelButton := telego.InlineKeyboardButton{
@@ -345,7 +425,7 @@ func (b *Bot) sendSubscriptionRequest(chatID int64, language, textKey string) {
 	// Создаем inline клавиатуру с кнопкой подтверждения
 	subscribeButton := telego.InlineKeyboardButton{
 		Text:         b.service.GetText("reservsubs", language),
-		CallbackData: CallbackReserveSubscription,
+		CallbackData: CallbackReserveSubsCheck,
 	}
 	if textKey == "" {
 		textKey = "startmessage2"
@@ -452,7 +532,7 @@ func (b *Bot) checkChannelSubscription(userID int64, channelUsername string) (bo
 
 // RequireCompleteRegistration проверяет завершенность регистрации пользователя
 // и перенаправляет на соответствующий шаг при необходимости
-func (b *Bot) RequireCompleteRegistration(chatID int64, userID int64) bool {
+func (b *Bot) RequireCompleteRegistration(chatID, userID int64, command string) bool {
 	// Получаем пользователя
 	dbUser, err := b.service.GetUser(userID)
 	if err != nil {
@@ -467,38 +547,11 @@ func (b *Bot) RequireCompleteRegistration(chatID int64, userID int64) bool {
 
 	// Проверяем полноту регистрации
 	if !b.isRegistrationComplete(dbUser) {
-		// Определяем, на каком этапе регистрации находится пользователь
-		if dbUser.AgeVerified == nil {
-			// Нужно подтвердить возраст
-			b.sendAgeVerificationRequest(chatID, language)
-			return false
-		}
 
 		if dbUser.AgeVerified != nil && !*dbUser.AgeVerified {
 			// Пользователь не подтвердил совершеннолетие - показываем сообщение о блокировке
 
 			b.SendMessage(chatID, b.prepareMessage("stopage", language))
-			return false
-		}
-
-		if dbUser.Country == "" {
-			// Нужно выбрать страну
-			options := b.prepareMessage("countrymes", language)
-			options.InlineKeyboard = b.createCountriesKeyboard(1)
-			b.SendMessage(chatID, options)
-			return false
-		}
-
-		if dbUser.Nickname == "" {
-			// Нужно выбрать никнейм
-			b.handleNicknamePrompt(chatID, userID, language)
-			return false
-		}
-
-		// Проверяем подписку на резервный канал
-		subscribed := b.checkSubscriptionWithCache(userID, ReserveChannelID)
-		if !subscribed {
-			b.sendSubscriptionRequest(chatID, language, "")
 			return false
 		}
 
@@ -512,12 +565,70 @@ func (b *Bot) RequireCompleteRegistration(chatID int64, userID int64) bool {
 			}
 			return false
 		}
+
+		// Пользователь не заполнил все данные
+		call := ""
+
+		switch {
+		case dbUser.AgeVerified == nil:
+			// Нужно подтвердить возраст
+			call = CallbackAgeVerify
+		case dbUser.Country == "":
+			// Нужно выбрать страну
+			call = CallbackCountry
+		case dbUser.Nickname == "":
+			// Нужно выбрать никнейм
+			call = CallbackChangeName
+		case b.checkSubscriptionWithCache(userID, ReserveChannelID):
+			// Не подписан на резервный канал
+			call = CallbackReserveSubs
+		default:
+			call = CallbackBack
+		}
+
+		regButton := telego.InlineKeyboardButton{
+			Text:         b.service.GetText("btn_reg_continue", language),
+			CallbackData: call,
+		}
+
+		// Создаем inline клавиатуру для первого сообщения
+		options := b.prepareMessage("startmessage1_continue", language)
+		options.InlineKeyboard = &telego.InlineKeyboardMarkup{
+			InlineKeyboard: [][]telego.InlineKeyboardButton{
+				{regButton},
+			},
+		}
+
+		// Отправляем сообщение с предложением завершить регистрацию
+		b.SendMessage(chatID, options)
+		return false
 	}
 
 	// Дополнительная проверка на подписку, даже если регистрация завершена
 	subscribed := b.checkSubscriptionWithCache(userID, ReserveChannelID)
 	if !subscribed {
-		b.sendSubscriptionRequest(chatID, language, "")
+
+		if command == "start" {
+
+			// Получаем локализированный текст приветствия
+			regButton := telego.InlineKeyboardButton{
+				Text:         b.service.GetText("play_exist", language),
+				CallbackData: CallbackReserveSubs,
+			}
+
+			// Создаем inline клавиатуру для первого сообщения
+			options := b.prepareMessage("startmessage1_exist", language)
+			options.InlineKeyboard = &telego.InlineKeyboardMarkup{
+				InlineKeyboard: [][]telego.InlineKeyboardButton{
+					{regButton},
+				},
+			}
+			// Отправляем первое приветственное сообщение с inline клавиатурой
+			b.SendMessage(chatID, options)
+
+		} else {
+			b.sendSubscriptionRequest(chatID, language, "startmessage3_exist")
+		}
 		return false
 	}
 
