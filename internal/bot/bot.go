@@ -465,9 +465,9 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		switch command {
 		case CommandStart:
 			if isNewUser {
-				b.handleStartCommandNewUser(message)
+				b.handleStartCommandNewUser(message) // регистрация нового пользователя
 			} else {
-				b.handleStartCommand(message)
+				b.handleStartCommand(message) // start от уже зарегистрированного пользователя
 			}
 			return
 		case CommandPrivacy:
@@ -478,29 +478,35 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			b.handleContactCommand(message)
 			return
 		case CommandPlay:
-			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "") {
 				return
 			}
 			b.gameHandler.HandlePlayCommand(message)
 			return
 		case CommandStats:
-			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "") {
 				return
 			}
 			b.handleStatsCommand(message)
 			return
 		case CommandRating:
-			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "") {
 				return
 			}
 			b.handleRatingCommand(message)
+			return
+		case CommandAccount:
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "") {
+				return
+			}
+			b.handleAccountCommand(message)
 			return
 		case CommandFAQ:
 			// FAQ доступен всегда
 			b.handleFAQCommand(message)
 			return
 		case CommandSettings:
-			if !b.RequireCompleteRegistration(message.Chat.ID, user.ID) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, user.ID, "") {
 				return
 			}
 			b.handleSettingsCommand(message)
@@ -535,7 +541,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			return
 		case StateInputUpNickname:
 			// Для обновления никнейма требуется завершенная регистрация
-			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "") {
 				b.stateManager.ClearState(user.ID)
 				return
 			}
@@ -543,7 +549,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			return
 		case StateInputWallet:
 			// Для ввода кошелька требуется завершенная регистрация
-			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "") {
 				b.stateManager.ClearState(user.ID)
 				return
 			}
@@ -551,7 +557,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			return
 		case StateInputWithdrawAmount:
 			// Для вывода средств требуется завершенная регистрация
-			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "") {
 				b.stateManager.ClearState(user.ID)
 				return
 			}
@@ -559,7 +565,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			return
 		case StateInputWithdrawWallet:
 			// Для вывода средств требуется завершенная регистрация
-			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "") {
 				b.stateManager.ClearState(user.ID)
 				return
 			}
@@ -569,7 +575,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	}
 
 	// Для всех остальных текстовых команд требуется завершенная регистрация
-	if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID) {
+	if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "") {
 		return
 	}
 
@@ -837,7 +843,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			logger.Error.Printf("Error updating user country: %v", err)
 			if query.Message != nil {
 				b.SendMessage(query.Message.Chat.ID, MessageOptions{
-					Text: "Произошла ошибка при сохранении страны. Пожалуйста, попробуйте еще раз.",
+					Text: b.service.GetText("error", language),
 				})
 			}
 			return
@@ -1033,13 +1039,19 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		return
 	}
 
-	// Обработка других callback data
 	switch callbackData {
+	// Обработка регистрации и заполнения данных пользователя
 	case CallbackAgeVerify:
 		b.handleAgeVerifyCallback(query)
 		return
 	case CallbackAgeVerifiedYes, CallbackAgeVerifiedNo:
 		b.handleAgeVerificationCallback(query)
+		return
+	case CallbackCountry:
+		b.handleCountryCallback(query)
+		return
+	case CallbackChangeName:
+		b.handleNicknameCallback(query)
 		return
 	case CallbackChangeNameYes:
 		// Обработка согласия на изменение никнейма
@@ -1049,9 +1061,17 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Обработка отказа от изменения никнейма
 		b.handleChangeNameNo(query)
 		return
-	case CallbackReserveSubscription:
+	case CallbackReserveSubs:
+		b.handleReserveSubscription(query)
+		return
+	case CallbackReserveSubsCheck:
 		b.handleReserveSubscriptionCheck(query)
 		return
+	case "back_to_start":
+		b.handleBackToStartMenu(query)
+		return
+
+	// Обработка других callback data
 	case "rules":
 		text := b.service.GetText("rules", language)
 		b.updateOrSendMessage(query, text)
@@ -1064,8 +1084,6 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	case "fairplay":
 		text := b.service.GetText("fairplay", language)
 		b.updateOrSendMessage(query, text)
-	case "back_to_start":
-		b.handleBackToStartMenu(query)
 	case CallbackBetRed:
 		b.handleMakeBet(user.ID, models.Red)
 		b.answerCallbackQuery(query.ID, "", false)
@@ -1130,57 +1148,6 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 }
 
 // Обработчики команд
-
-// handleStartCommand обрабатывает команду /start
-// сама регистрация пользователя выполняется в начале функции handleMessage
-// в этой функции только дозаполнение полей
-func (b *Bot) handleStartCommand(message *telego.Message) {
-	user := message.From
-
-	// Регистрируем пользователя или обновляем информацию
-	dbUser, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
-	if err != nil {
-		logger.Error.Printf("Error registering user: %v", err)
-		b.SendMessage(message.Chat.ID, b.prepareMessage("error_while_registering", user.LanguageCode))
-		return
-	}
-
-	// Определяем язык пользователя из базы данных
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
-
-	// Получаем локализированный текст приветствия
-	options := b.prepareMessage("startmessage1", language)
-
-	// Создаем inline клавиатуру для первого сообщения
-	options.InlineKeyboard = b.createStartInlineKeyboard(language)
-
-	// Отправляем первое приветственное сообщение с inline клавиатурой
-	b.SendMessage(message.Chat.ID, options)
-
-	// Для нового пользователя или с неподтвержденным возрастом проверяем возраст
-	if dbUser.AgeVerified == nil {
-		// Отправляем запрос на подтверждение возраста
-		b.sendAgeVerificationRequest(message.Chat.ID, language)
-		return
-	}
-
-	// Если возраст подтвержден, но не установлена страна
-	if *dbUser.AgeVerified && (dbUser.Country == "") {
-		// Отправляем запрос на выбор страны
-		options := b.prepareMessage("countrymes", language)
-
-		// Создаем клавиатуру со странами - начинаем с первой страницы (1)
-		options.InlineKeyboard = b.createCountriesKeyboard(1)
-
-		b.SendMessage(message.Chat.ID, options)
-	} else {
-		// Если у пользователя уже выбрана страна и возраст подтвержден, отправляем главное меню
-		b.sendMainMenu(message.Chat.ID, language)
-	}
-}
 
 // Вспомогательный метод для отправки главного меню
 func (b *Bot) sendMainMenu(chatID int64, language string) {
