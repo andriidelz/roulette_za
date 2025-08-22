@@ -3,11 +3,12 @@ package bot
 
 import (
 	"fmt"
-	"roulette/internal/logger"
-	"roulette/internal/models"
 	"strings"
 	"sync"
 	"time"
+
+	"roulette/internal/logger"
+	"roulette/internal/models"
 
 	"github.com/mymmrac/telego"
 )
@@ -159,7 +160,7 @@ func (b *Bot) handleAgeVerifyCallback(query *telego.CallbackQuery) {
 	// Отвечаем на callback, чтобы убрать индикатор загрузки
 	b.answerCallbackQuery(query.ID, "", false)
 
-	b.sendAgeVerificationRequest(query.Message.Chat.ID, language)
+	b.sendAgeVerificationRequest(query.Message.GetChat().ID, language)
 }
 
 // 2.1 sendAgeVerificationRequest отправляет запрос на подтверждение возраста
@@ -231,7 +232,7 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 
 		// Сообщаем пользователю, что сервис недоступен
 		if query.Message != nil {
-			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+			b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 				Text: stopAgeText,
 			})
 		}
@@ -246,7 +247,7 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 		countriesKeyboard := b.createCountriesKeyboard(1)
 
 		// Обновляем сообщение с запросом на выбор страны
-		b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+		b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 			Text:           countryText,
 			InlineKeyboard: countriesKeyboard,
 		})
@@ -266,14 +267,13 @@ func (b *Bot) handleCountryCallback(query *telego.CallbackQuery) {
 
 	options := b.prepareMessage("countrymes", language)
 	options.InlineKeyboard = b.createCountriesKeyboard(1)
-	b.SendMessage(query.Message.Chat.ID, options)
+	b.SendMessage(query.Message.GetChat().ID, options)
 }
 
 // 4.1 обработка стран в handleCallbackQuery
 
 // 5. handleNicknamePrompt обрабатывает запуск запроса подтверждение/изменение никнейма
 func (b *Bot) handleNicknameCallback(query *telego.CallbackQuery) {
-
 	user := query.From
 	language := user.LanguageCode
 	if language == "" {
@@ -283,7 +283,7 @@ func (b *Bot) handleNicknameCallback(query *telego.CallbackQuery) {
 	// Отвечаем на callback, чтобы убрать индикатор загрузки
 	b.answerCallbackQuery(query.ID, "", false)
 
-	b.handleNicknamePrompt(query.Message.Chat.ID, user.ID, language)
+	b.handleNicknamePrompt(query.Message.GetChat().ID, user.ID, language)
 }
 
 // 5.1 handleNicknamePrompt отправляет запрос на подтверждение/изменение никнейма
@@ -328,7 +328,6 @@ func (b *Bot) handleNicknamePrompt(chatID int64, userID int64, language string) 
 
 	// Отправляем сообщение с вопросом
 	err = b.SendMessage(chatID, options)
-
 	if err != nil {
 		logger.Error.Printf("Error sending nickname prompt: %v", err)
 	}
@@ -351,10 +350,10 @@ func (b *Bot) handleChangeNameYes(query *telego.CallbackQuery) {
 	// Обновляем сообщение
 	if query.Message != nil {
 		// Устанавливаем состояние ожидания никнейма
-		b.stateManager.SetState(user.ID, StateInputNickname, query.Message.MessageID)
+		b.stateManager.SetState(user.ID, StateInputNickname, query.Message.GetMessageID())
 
 		// Обновляем сообщение с инструкцией для ввода никнейма
-		b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+		b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 			Text: nameChangeOkText,
 		})
 	}
@@ -397,12 +396,11 @@ func (b *Bot) handleChangeNameNo(query *telego.CallbackQuery) {
 	}
 
 	// Отправляем запрос на подписку
-	b.sendSubscriptionRequest(query.Message.Chat.ID, language, "name_changeno_msg_start")
+	b.sendSubscriptionRequest(query.Message.GetChat().ID, language, "name_changeno_msg_start")
 }
 
 // 7. handleReserveSubscription отправляет запрос на подписку на резервный канал
 func (b *Bot) handleReserveSubscription(query *telego.CallbackQuery) {
-
 	user := query.From
 	language := user.LanguageCode
 	if language == "" {
@@ -411,7 +409,7 @@ func (b *Bot) handleReserveSubscription(query *telego.CallbackQuery) {
 
 	// Отвечаем на callback, чтобы убрать индикатор загрузки
 	b.answerCallbackQuery(query.ID, "", false)
-	b.sendSubscriptionRequest(query.Message.Chat.ID, language, "startmessage3_exist")
+	b.sendSubscriptionRequest(query.Message.GetChat().ID, language, "startmessage3_exist")
 }
 
 // 7.1 sendSubscriptionRequest отправляет запрос на подписку на резервный канал
@@ -467,7 +465,7 @@ func (b *Bot) handleReserveSubscriptionCheck(query *telego.CallbackQuery) {
 
 		// Обновляем сообщение успешной подпиской
 		if query.Message != nil {
-			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+			b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 				Text:          successText,
 				ReplyKeyboard: b.createMainReplyKeyboard(language),
 			})
@@ -477,14 +475,13 @@ func (b *Bot) handleReserveSubscriptionCheck(query *telego.CallbackQuery) {
 
 		// Отправляем сообщение с информацией о неудаче
 		if query.Message != nil {
-			b.sendSubscriptionRequest(query.Message.Chat.ID, language, "reservno")
+			b.sendSubscriptionRequest(query.Message.GetChat().ID, language, "reservno")
 		}
 	}
 }
 
 // 8.1 checkChannelSubscription отправляет запрос на проверку подписки
 func (b *Bot) checkChannelSubscription(userID int64, channelUsername string) (bool, error) {
-
 	if !strings.HasPrefix(channelUsername, "@") {
 		channelUsername = "@" + channelUsername
 	}
@@ -492,13 +489,12 @@ func (b *Bot) checkChannelSubscription(userID int64, channelUsername string) (bo
 	logger.Info.Printf("Checking subscription for user %d to channel %s", userID, channelUsername)
 
 	// Получаем статус подписки пользователя
-	chatMember, err := b.bot.GetChatMember(&telego.GetChatMemberParams{
+	chatMember, err := b.bot.GetChatMember(b.ctx, &telego.GetChatMemberParams{
 		ChatID: telego.ChatID{
 			Username: channelUsername, // с символом @
 		},
 		UserID: userID,
 	})
-
 	if err != nil {
 		logger.Error.Printf("Error checking subscription for user %d: %v", userID, err)
 		return false, err
@@ -560,7 +556,6 @@ func (b *Bot) RequireCompleteRegistration(chatID, userID int64, command string) 
 			if dbUser.Country == "RU" || dbUser.Country == "BY" {
 				b.SendMessage(chatID, b.prepareMessage("stopcountry", language))
 			} else {
-
 				b.SendMessage(chatID, b.prepareMessage("stopage", language))
 			}
 			return false
