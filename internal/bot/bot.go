@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -47,12 +48,11 @@ const (
 	CommandFAQ      = "faq"
 	CommandSettings = "settings"
 
-	CallbackBetRed           = "bet_red"
-	CallbackBetBlack         = "bet_black"
-	CallbackBetZero          = "bet_zero"
-	CallbackBack             = "back"
-	CallbackCaptchaCorrect   = "captcha_correct"
-	CallbackCaptchaIncorrect = "captcha_incorrect"
+	CallbackBetRed   = "bet_red"
+	CallbackBetBlack = "bet_black"
+	CallbackBetZero  = "bet_zero"
+	CallbackBack     = "back"
+	CallbackCaptcha  = "captcha_"
 
 	StickerNoBids    = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
 	StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
@@ -185,6 +185,8 @@ func (b *Bot) Start() error {
 
 	// Запускаем планировщик для обновления рейтингов
 	b.StartRatingScheduler()
+	// Запускаем планировщик для обновления капч
+	b.StartUpdateCaptcha()
 
 	// Запускам емуляцию ставок по заданиям для пользователей
 	b.gameHandler.initEmulate()
@@ -313,8 +315,12 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 	// - ставка на одну и ту же опцию
 	switch b.captchaBetActivity(userID) {
 	case "needCaptcha":
-		b.SendMessage(userID, b.captchaMessage(userID, language))
-		return
+
+		// виводимо капчу у рендомний час з першої секунди 4 хвилини по 59 секунду 5 хвилини
+		go func() {
+			time.Sleep(time.Duration(rand.Intn(120)) * time.Second)
+			b.SendMessage(userID, b.captchaMessage(userID, language))
+		}()
 	}
 	switch b.captchaBetDuplicate(userID, string(option)) {
 	case "needCaptcha":
@@ -745,13 +751,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	callbackData := query.Data
 
 	// Обработка прохождения капчи
-	switch callbackData {
-	case CallbackCaptchaIncorrect:
-		// ничего не отправляем пока капча не будет пройдена.
-		// Слишком большое кол-во сообщений к пользователю повышает риск бана бота
-		return
-	case CallbackCaptchaCorrect:
-		b.captchaCorrect(query)
+	if strings.HasPrefix(callbackData, CallbackCaptcha) {
+		b.captchaCheck(query)
 		return
 	}
 

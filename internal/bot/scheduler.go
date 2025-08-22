@@ -1,8 +1,13 @@
 package bot
 
 import (
+	"context"
+	"fmt"
 	"roulette/internal/logger"
+	"strconv"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // StartRatingScheduler запускает планировщик заданий для обновления рейтингов
@@ -82,6 +87,90 @@ func (b *Bot) StartRatingScheduler() {
 				// 			logger.Error.Printf("Error checking prize fund for current week on Monday: %v", err)
 				// 		}
 				// 	}
+			}
+		}
+	}()
+}
+
+// StartRatingScheduler запускает планировщик заданий для обновления капчи
+func (b *Bot) StartUpdateCaptcha() {
+	go func() {
+		ratingTicker := time.NewTicker(30 * time.Second)
+		defer ratingTicker.Stop()
+
+		for range ratingTicker.C {
+			cont, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+
+			// Список всіх користувачів що можуть отримати оновлення капчі через бездіяльність
+			allUsers, err := b.redisDB.LRange(cont, userCaptchaUpdateKey, 0, -1).Result()
+			if err != nil {
+				logger.Error.Printf("Failed to LRANGE all elements: %v", err)
+			}
+
+			if len(allUsers) == 0 {
+				continue
+			}
+
+			for i := range allUsers {
+				userID, err := strconv.ParseInt(allUsers[i], 10, 64)
+				if err != nil {
+					logger.Error.Printf("Could not parse '%s': %v\n", allUsers[i], err)
+					continue
+				}
+
+				// Якщо користувач в списку на приймання капчі і немає відповіді протягом 30 сек оновлюєм капчу (3 рази)
+				userUpdateKey := fmt.Sprintf(userCaptchaUpdateCountPrefix, userID)
+				val, err := b.redisDB.Get(cont, userUpdateKey).Int64()
+				if err == redis.Nil {
+					// Ще не було відправки, створюємо запис
+					err = b.redisDB.Set(cont, userUpdateKey, 1, 0).Err()
+					if err != nil {
+						logger.Error.Printf("Error Set %d: %v", userID, err)
+						continue
+					}
+				} else if err != nil {
+					logger.Error.Printf("Error Get %d: %v", userID, err)
+					continue
+				}
+				val++
+
+				if val > 3 {
+
+					// Было отправлено 3 одновления капчи. Прекращаем отправку.
+					// Удаляем из список пользователей которые ожидают капчу
+					_, err := b.redisDB.LRem(cont, userCaptchaUpdateKey, 0, userID).Result()
+					if err != nil {
+						logger.Error.Printf("Failed to LREM: %d: %v", userID, err)
+					}
+					// Удаляем ключ
+					_, err = b.redisDB.Del(cont, userUpdateKey).Result()
+					if err != nil {
+						logger.Error.Printf("Error Del %d: %v", userID, err)
+					}
+
+				} else {
+
+					// Пользователь не превышает активность
+					// Обновляем кол-во
+					err = b.redisDB.Set(cont, userUpdateKey, val, redis.KeepTTL).Err()
+					if err != nil {
+						logger.Error.Printf("Error Set %d: %v", userID, err)
+					}
+					dbUser, err := b.service.GetUser(userID)
+					if err != nil {
+						logger.Error.Printf("Error GetUser %d: %v", userID, err)
+						continue
+					}
+
+					// Всегда используем язык из базы данных, т.к. он может быть обновлен
+					language := dbUser.LanguageCode
+					if language == "" {
+						language = "en"
+					}
+					// Присилаємо нову капчу
+					b.SendMessage(userID, b.captchaMessage(userID, language))
+				}
 			}
 		}
 	}()
