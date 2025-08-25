@@ -40,11 +40,41 @@ const (
 
 	// Redis key для пользователей которые ожидают на проверку капчи
 	// В случае нахождения пользователя все дальнейшие действия будут заблокированы
-	// до прохождения капчи или истечения userCaptchaExpiration
+	// до прохождения капчи
 	userCaptchaKeyPrefix         = "user:%d:captcha"              // необходимо пройти капчу, значение - правильный ответ
 	userCaptchaUpdateKey         = "users:captcha_update"         // пользователи которым нужно обновить капчу
 	userCaptchaUpdateCountPrefix = "user:%d:captcha_update_count" // кол-во обновлений капчи если нет ответа
+
+	// Redis key для пользователей которые временно забанены
+	// В случае нахождения пользователя все дальнейшие действия будут заблокированы
+	// до прохождения истечения expiration
+	userBanKeyPrefix       = "user:%d:ban"  // користувачі в бані
+	userBanShortExpiration = time.Hour      // Время бана short
+	userBanLongExpiration  = 24 * time.Hour // Время бана long
+
+	userCaptchaWrongCountPrefix = "user:%d:captcha_wrong_count" // кол-во неправильных капч
+	userCaptchaWrongLimit       = 3                             // Лімит кількості неправильних відповідей
+	userCaptchaBanCountPrefix   = "user:%d:captcha_ban_count"   // кол-во полученых банов - если больше 3 то блокируем на больший термин
+	userCaptchaBanLimit         = 3                             // Лімит кількості банів
 )
+
+// captchaBan - перевірка на наявність в списку тимчасово забанених
+func (b *Bot) captchaBan(telegramID int64) bool {
+
+	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	banKey := fmt.Sprintf(userBanKeyPrefix, telegramID)
+	count, err := b.redisDB.Exists(cont, banKey).Result()
+
+	if err != nil {
+		logger.Error.Printf("Error check banKey %d: %v", telegramID, err)
+		return true
+	}
+	if count > 0 {
+		return true
+	}
+	return false
+}
 
 // captchaUserActivity - Проверка активности и если она слишком высокая - вывод капчи
 func (b *Bot) captchaUserActivity(telegramID int64) string {
@@ -317,6 +347,9 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 	}
 
 	captchaKey := fmt.Sprintf(userCaptchaKeyPrefix, user.ID)
+	banKey := fmt.Sprintf(userBanKeyPrefix, user.ID)
+	captchaWrongCountKey := fmt.Sprintf(userCaptchaWrongCountPrefix, user.ID)
+	captchaBanCountKey := fmt.Sprintf(userCaptchaBanCountPrefix, user.ID)
 
 	val, err := b.redisDB.Get(cont, captchaKey).Result()
 	if err != nil {
@@ -328,11 +361,94 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 	option := strings.TrimPrefix(query.Data, CallbackCaptcha)
 	if val != option {
 		// невірна відповідь на капчу
-		// Відповідаєм на callback текстом что капча невірна
-		b.answerCallbackQuery(query.ID, b.service.GetText("wrongcapcha_mes", language), true)
 
-		// присилаєм нову капчу
-		b.SendMessage(user.ID, b.captchaMessage(user.ID, language))
+		wrongCount, err := b.redisDB.Get(cont, captchaWrongCountKey).Int64()
+		if err == redis.Nil {
+			// За період ще не було невірних відповідей, створюємо запис
+			err = b.redisDB.Set(cont, captchaWrongCountKey, 0, 0).Err()
+			if err != nil {
+				logger.Error.Printf("Error Set %d: %v", user.ID, err)
+			}
+		}
+
+		wrongCount++
+
+		if wrongCount <= userCaptchaWrongLimit {
+
+			// Користувач не перевищує ліміт
+			// Оновлюєм кількість невірних відповідей
+			// з вказанням redis.KeepTTL для того щоб не оновлювався expiration
+			err = b.redisDB.Set(cont, captchaWrongCountKey, wrongCount, redis.KeepTTL).Err()
+			if err != nil {
+				logger.Error.Printf("Error Set %d: %v", user.ID, err)
+			}
+			// Відповідаєм на callback текстом что капча невірна
+			b.answerCallbackQuery(query.ID, b.service.GetText("wrongcapcha_mes", language), true)
+
+			// // присилаєм нову капчу
+			// b.SendMessage(user.ID, b.captchaMessage(user.ID, language))
+			return
+		}
+
+		// неправильна відповідь на капчу 3 рази підряд - бан
+
+		// Видаляємо зі списку користувачів які чекають на капчу
+		_, err = b.redisDB.LRem(cont, userCaptchaUpdateKey, 0, user.ID).Result()
+		if err != nil {
+			logger.Error.Printf("Failed to LREM: %d: %v", user.ID, err)
+		}
+
+		banCount, err := b.redisDB.Get(cont, captchaBanCountKey).Int64()
+		if err == redis.Nil {
+			// За період ще не було банів, створюємо запис
+			err = b.redisDB.Set(cont, captchaBanCountKey, 0, 24*time.Hour).Err()
+			if err != nil {
+				logger.Error.Printf("Error Set %d: %v", user.ID, err)
+			}
+		}
+
+		banCount++
+
+		if banCount <= userCaptchaBanLimit {
+			// якщо кількість банів за день менше userCaptchaBanLimit то бан на userBanShortExpiration
+
+			// збільшуєм кількість банів
+			// з вказанням redis.KeepTTL для того щоб не оновлювався expiration
+			err = b.redisDB.Set(cont, captchaBanCountKey, banCount, redis.KeepTTL).Err()
+			if err != nil {
+				logger.Error.Printf("Error Set %d: %v", user.ID, err)
+			}
+
+			// Додаємо користувача до списку забанених
+			// value не має значення, перевірка йде за наявністю ключа
+			err = b.redisDB.Set(cont, banKey, "value", userBanShortExpiration).Err()
+			if err != nil {
+				logger.Error.Printf("Error Set userBanShortExpiration %d: %v", user.ID, err)
+			}
+
+			// Капча невірна і користувач іде в бан
+			b.SendMessage(query.Message.GetChat().ID, b.prepareMessage("banactive_mes", language))
+
+			// Отвечаем на callback, чтобы убрать индикатор загрузки
+			b.answerCallbackQuery(query.ID, "", false)
+			return
+		}
+
+		// більше userCaptchaBanLimit банів на userBanShortExpiration за день
+		// - бан на userBanLongExpiration
+
+		// Додаємо користувача до списку забанених
+		// value не має значення, перевірка йде за наявністю ключа
+		err = b.redisDB.Set(cont, banKey, "value", userBanLongExpiration).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set userBanLongExpiration %d: %v", user.ID, err)
+		}
+
+		// Капча невірна і користувач іде в бан
+		b.SendMessage(query.Message.GetChat().ID, b.prepareMessage("banactive_mes3", language))
+
+		// Отвечаем на callback, чтобы убрать индикатор загрузки
+		b.answerCallbackQuery(query.ID, "", false)
 		return
 	}
 
@@ -346,6 +462,9 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 	pipe.Del(cont, fmt.Sprintf(userCaptchaUpdateCountPrefix, user.ID))
 	// Убираем пользователю правильный ответ капчи
 	pipe.Del(cont, captchaKey)
+	// Убираем пользователю баны
+	pipe.Del(cont, banKey)
+	pipe.Del(cont, captchaWrongCountKey)
 
 	// Очищаем все условия
 	// Удаляем активность пользователя

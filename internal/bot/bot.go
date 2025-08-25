@@ -439,6 +439,10 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		}
 	}
 
+	if b.captchaBan(user.ID) {
+		return
+	}
+
 	// Проверка на повышенную активность пользователя
 	switch b.captchaUserActivity(user.ID) {
 	case "wait":
@@ -750,6 +754,10 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	// Это обеспечит синхронизацию между API Telegram и нашей БД
 	if user.LanguageCode != "" && user.LanguageCode != dbUser.LanguageCode {
 		user.LanguageCode = dbUser.LanguageCode
+	}
+
+	if b.captchaBan(user.ID) {
+		return
 	}
 
 	callbackData := query.Data
