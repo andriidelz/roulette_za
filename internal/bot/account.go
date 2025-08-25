@@ -2,11 +2,12 @@ package bot
 
 import (
 	"fmt"
-	"roulette/internal/logger"
-	"roulette/internal/models"
 	"strconv"
 	"strings"
 	"time"
+
+	"roulette/internal/logger"
+	"roulette/internal/models"
 
 	"github.com/mymmrac/telego"
 )
@@ -220,7 +221,6 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 
 // handleInputWithdrawAmountCommand обрабатывает введение сумы на вывод
 func (b *Bot) handleInputWithdrawAmountCommand(message *telego.Message) {
-
 	user := message.From
 	language := user.LanguageCode
 	if language == "" {
@@ -353,7 +353,6 @@ func (b *Bot) handleInputWithdrawAmountCommand(message *telego.Message) {
 
 // handleInputWithdrawWalletCommand обрабатывает введение кошелька
 func (b *Bot) handleInputWithdrawWalletCommand(message *telego.Message) {
-
 	user := message.From
 	language := user.LanguageCode
 	if language == "" {
@@ -461,7 +460,7 @@ func (b *Bot) handleRequestWithdrawCallback(query *telego.CallbackQuery) {
 				Username:     query.From.Username,
 				LanguageCode: language,
 			},
-			Chat: query.Message.Chat,
+			Chat: query.Message.GetChat(),
 		})
 	}
 }
@@ -508,7 +507,7 @@ func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 		if query.Message != nil {
 			options.InlineKeyboard = inlineKeyboard
 			options.ReplyKeyboard = b.createAccountKeyboard(language)
-			b.SendMessage(query.Message.Chat.ID, options)
+			b.SendMessage(query.Message.GetChat().ID, options)
 		}
 		return
 	}
@@ -542,7 +541,7 @@ func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 	if query.Message != nil {
 		options.InlineKeyboard = inlineKeyboard
 		options.ReplyKeyboard = b.createAccountKeyboard(language)
-		b.SendMessage(query.Message.Chat.ID, options)
+		b.SendMessage(query.Message.GetChat().ID, options)
 	}
 }
 
@@ -597,7 +596,7 @@ func (b *Bot) handleCheckAmountCallback(query *telego.CallbackQuery) {
 		options.InlineKeyboard = inlineKeyboard
 		options.ReplyKeyboard = b.createAccountKeyboard(language)
 
-		b.SendMessage(query.Message.Chat.ID, options)
+		b.SendMessage(query.Message.GetChat().ID, options)
 	}
 }
 
@@ -641,7 +640,7 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 
 		if query.Message != nil {
 			options.ReplyKeyboard = b.createAccountKeyboard(language)
-			b.SendMessage(query.Message.Chat.ID, options)
+			b.SendMessage(query.Message.GetChat().ID, options)
 		}
 		return
 	}
@@ -662,7 +661,7 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 
 		if query.Message != nil {
 			options.ReplyKeyboard = b.createAccountKeyboard(language)
-			b.SendMessage(query.Message.Chat.ID, options)
+			b.SendMessage(query.Message.GetChat().ID, options)
 		}
 		return
 	}
@@ -679,13 +678,12 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 
 	if query.Message != nil {
 		options.ReplyKeyboard = b.createAccountKeyboard(language)
-		b.SendMessage(query.Message.Chat.ID, options)
+		b.SendMessage(query.Message.GetChat().ID, options)
 	}
 }
 
 // sendChancelMessage отправляет сообщение с предложением остановить вывод и вернуться в меню
 func (b *Bot) sendCancelMessage(chatID int64, language string) {
-
 	options := b.prepareMessage("withdrawusdtsumstop", language)
 
 	// Создаем кнопку для возврата в главное меню
