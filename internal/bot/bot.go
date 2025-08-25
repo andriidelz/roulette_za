@@ -79,7 +79,6 @@ func (b *Bot) getMetrics() *metrics.Metrics {
 
 // NewBot создает новый экземпляр бота
 func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, error) {
-
 	ReserveChannelID = cfg.TelegramReserveChannelID
 
 	bot, err := telego.NewBot(token)
@@ -112,7 +111,6 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 }
 
 func NewRedisClient(cfg *config.Config) *redis.Client {
-
 	// Create Redis client with options
 	rdb := redis.NewClient(&redis.Options{
 		Addr:         fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort),
@@ -155,7 +153,7 @@ func (b *Bot) Start() error {
 	}()
 
 	// Получаем информацию о боте
-	me, err := b.bot.GetMe()
+	me, err := b.bot.GetMe(b.ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get bot info: %w", err)
 	}
@@ -168,7 +166,7 @@ func (b *Bot) Start() error {
 	}
 
 	// Начало получения обновлений
-	updates, err := b.bot.UpdatesViaLongPolling(&telego.GetUpdatesParams{
+	updates, err := b.bot.UpdatesViaLongPolling(b.ctx, &telego.GetUpdatesParams{
 		Timeout: 60,
 		Offset:  0,
 	})
@@ -204,14 +202,15 @@ func (b *Bot) Stop() {
 		return
 	}
 
-	// Останавливаем длинный поллинг
-	b.bot.StopLongPolling()
-
-	// Отменяем контекст
-	b.cancel()
+	// Отменяем контекст - это остановит длинный поллинг
+	if b.cancel != nil {
+		b.cancel()
+	}
 
 	// Останавливаем игровой обработчик
-	b.gameHandler.Stop()
+	if b.gameHandler != nil {
+		b.gameHandler.Stop()
+	}
 
 	// Останавливаем метрики
 	if b.metrics != nil {
@@ -363,7 +362,6 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 
 // handleMessage обрабатывает сообщения
 func (b *Bot) handleMessage(message *telego.Message) {
-
 	startTime := time.Now()
 	defer func() {
 		// Записываем латентность команды
@@ -766,7 +764,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	case "wait":
 		return
 	case "needCaptcha":
-		b.SendMessage(query.Message.Chat.ID, b.captchaMessage(user.ID, language))
+		b.SendMessage(query.Message.GetChat().ID, b.captchaMessage(user.ID, language))
 		return
 	}
 
@@ -787,7 +785,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Обновляем сообщение с новой страницей стран
 		if query.Message != nil {
 			countryText := b.service.GetText("countrymes", language)
-			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+			b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 				Text:           countryText,
 				InlineKeyboard: b.createCountriesKeyboard(page),
 			})
@@ -821,7 +819,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 			// Отправляем сообщение о недоступности сервиса
 			if query.Message != nil {
-				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 					Text: banText,
 				})
 			}
@@ -841,7 +839,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		if err := b.service.UpdateUser(dbUser); err != nil {
 			logger.Error.Printf("Error updating user country: %v", err)
 			if query.Message != nil {
-				b.SendMessage(query.Message.Chat.ID, MessageOptions{
+				b.SendMessage(query.Message.GetChat().ID, MessageOptions{
 					Text: b.service.GetText("error", language),
 				})
 			}
@@ -853,17 +851,16 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			if !hadCountryBefore {
 				// Если страны не было установлено ранее:
 				// 1. Удаляем сообщение с выбором страны
-				err = b.bot.DeleteMessage(&telego.DeleteMessageParams{
-					ChatID:    telego.ChatID{ID: query.Message.Chat.ID},
-					MessageID: query.Message.MessageID,
+				err = b.bot.DeleteMessage(b.ctx, &telego.DeleteMessageParams{
+					ChatID:    telego.ChatID{ID: query.Message.GetChat().ID},
+					MessageID: query.Message.GetMessageID(),
 				})
-
 				if err != nil {
 					logger.Error.Printf("Error deleting country selection message: %v", err)
 				}
 
 				// Переходим к следующему шагу регистрации (выбор никнейма или проверка подписки)
-				b.handleNicknamePrompt(query.Message.Chat.ID, user.ID, language)
+				b.handleNicknamePrompt(query.Message.GetChat().ID, user.ID, language)
 				return
 			} else {
 				// Если страна была установлена ранее:
@@ -872,7 +869,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 				backBtn := b.createBackBtnKeyboard(language)
 
-				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 					Text:           successText,
 					InlineKeyboard: backBtn,
 				})
@@ -891,7 +888,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 			// Обновляем сообщение с выбором языка
 			if query.Message != nil {
-				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 					Text:           languageText,
 					InlineKeyboard: b.createLanguageKeyboard(language),
 				})
@@ -906,7 +903,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 			// Обновляем сообщение с выбором страны
 			if query.Message != nil {
-				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 					Text:           countryText,
 					InlineKeyboard: countriesKeyboard,
 				})
@@ -919,11 +916,11 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			// Обновляем сообщение и запрашиваем имя
 			if query.Message != nil {
 				// Устанавливаем состояние ожидания имени
-				b.stateManager.SetState(user.ID, StateInputName, query.Message.MessageID)
+				b.stateManager.SetState(user.ID, StateInputName, query.Message.GetMessageID())
 
 				backBtn := b.createBackBtnKeyboard(language)
 
-				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 					Text:           nameText,
 					InlineKeyboard: backBtn,
 				})
@@ -936,11 +933,11 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			// Обновляем сообщение и запрашиваем публичное имя
 			if query.Message != nil {
 				// Устанавливаем состояние ожидания публичного имени
-				b.stateManager.SetState(user.ID, StateInputUpNickname, query.Message.MessageID)
+				b.stateManager.SetState(user.ID, StateInputUpNickname, query.Message.GetMessageID())
 
 				backBtn := b.createBackBtnKeyboard(language)
 
-				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 					Text:           nameText,
 					InlineKeyboard: backBtn,
 				})
@@ -953,11 +950,11 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			// Обновляем сообщение и запрашиваем адрес кошелька
 			if query.Message != nil {
 				// Устанавливаем состояние ожидания адреса кошелька
-				b.stateManager.SetState(user.ID, StateInputWallet, query.Message.MessageID)
+				b.stateManager.SetState(user.ID, StateInputWallet, query.Message.GetMessageID())
 
 				backBtn := b.createBackBtnKeyboard(language)
 
-				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 					Text:           walletText,
 					InlineKeyboard: backBtn,
 				})
@@ -972,7 +969,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			b.stateManager.ClearState(user.ID)
 
 			if query.Message != nil {
-				b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+				b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 					Text:           settingsText,
 					InlineKeyboard: b.createSettingsKeyboard(language, user.ID), // передаем userID
 				})
@@ -984,7 +981,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			b.stateManager.ClearState(user.ID)
 
 			// Возвращаемся в главное меню
-			b.sendMainMenu(query.Message.Chat.ID, language)
+			b.sendMainMenu(query.Message.GetChat().ID, language)
 			return
 		}
 	}
@@ -1024,7 +1021,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			// Создаем кнопку назад с новым языком
 			backBtn := b.createBackBtnKeyboard(langCode)
 
-			b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+			b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 				Text:           successText,
 				InlineKeyboard: backBtn,
 			})
@@ -1107,9 +1104,9 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Обновляем сообщение и запрашиваем адрес кошелька
 		if query.Message != nil {
 			// Устанавливаем состояние ожидания адреса кошелька
-			b.stateManager.SetState(user.ID, StateInputWithdrawWallet, query.Message.MessageID)
+			b.stateManager.SetState(user.ID, StateInputWithdrawWallet, query.Message.GetMessageID())
 			options.ReplyKeyboard = b.createAccountKeyboard(language)
-			b.SendMessage(query.Message.Chat.ID, options)
+			b.SendMessage(query.Message.GetChat().ID, options)
 		}
 		return
 	case CallbackCancelInput:
@@ -1118,7 +1115,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Получаем локализованный текст раздела аккаунта
 		options := b.prepareMessage("accstart", language)
 		options.ReplyKeyboard = b.createAccountKeyboard(language)
-		b.SendMessage(query.Message.Chat.ID, options)
+		b.SendMessage(query.Message.GetChat().ID, options)
 		return
 	case CallbackCheckAmount:
 		b.handleCheckAmountCallback(query)
@@ -1128,9 +1125,9 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Посылаем сообщение и запрашиваем сумму для вывода
 		if query.Message != nil {
 			// Устанавливаем состояние ожидания суммы для вывода
-			b.stateManager.SetState(user.ID, StateInputWithdrawAmount, query.Message.MessageID)
+			b.stateManager.SetState(user.ID, StateInputWithdrawAmount, query.Message.GetMessageID())
 			options.ReplyKeyboard = b.createAccountKeyboard(language)
-			b.SendMessage(query.Message.Chat.ID, options)
+			b.SendMessage(query.Message.GetChat().ID, options)
 		}
 		return
 
@@ -1139,7 +1136,10 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	case "stop_game":
 		b.gameHandler.HandleStopGameButton(user.ID)
 		b.answerCallbackQuery(query.ID, "", false)
-		b.handleHelpCommand(query.Message)
+
+		if message, ok := query.Message.(*telego.Message); ok {
+			b.handleHelpCommand(message)
+		}
 	default:
 		// Неизвестный callback
 		b.answerCallbackQuery(query.ID, "Unknown action", true)
@@ -1174,7 +1174,7 @@ func (b *Bot) handleBackToStartMenu(query *telego.CallbackQuery) {
 
 	// Обновляем сообщение
 	if query.Message != nil {
-		b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+		b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 			Text:           welcomeText,
 			InlineKeyboard: inlineKeyboard,
 		})
@@ -1208,7 +1208,7 @@ func (b *Bot) updateOrSendMessage(query *telego.CallbackQuery, text string) {
 
 	if query.Message != nil {
 		// Обновляем существующее сообщение
-		b.UpdateMessage(query.Message.Chat.ID, query.Message.MessageID, MessageOptions{
+		b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 			Text:           text,
 			InlineKeyboard: keyboard,
 		})
@@ -1291,7 +1291,7 @@ func (b *Bot) handleBackToMainMenu(query *telego.CallbackQuery) {
 
 	// Если у сообщения есть чат, отправляем в него главное меню
 	if query.Message != nil {
-		b.sendMainMenu(query.Message.Chat.ID, language)
+		b.sendMainMenu(query.Message.GetChat().ID, language)
 	} else {
 		// Иначе отправляем в личку пользователю
 		b.sendMainMenu(user.ID, language)
@@ -1383,7 +1383,7 @@ func (b *Bot) showStatisticsForPeriod(message *telego.Message, period string) {
 
 // Відповідь на callback-запит
 func (b *Bot) answerCallbackQuery(queryID string, text string, showAlert bool) {
-	err := b.bot.AnswerCallbackQuery(&telego.AnswerCallbackQueryParams{
+	err := b.bot.AnswerCallbackQuery(b.ctx, &telego.AnswerCallbackQueryParams{
 		CallbackQueryID: queryID,
 		Text:            text,
 		ShowAlert:       showAlert,
@@ -1462,7 +1462,6 @@ type MessageOptions struct {
 
 // prepareMessage - подготовка сообщения - установка текста и фото/видео если указаны
 func (b *Bot) prepareMessage(key, languageCode string) (options MessageOptions) {
-
 	res, _ := b.service.GetRepo().GetLocalization(key, languageCode)
 
 	return MessageOptions{
@@ -1524,7 +1523,7 @@ func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions)
 	// Если указан путь к фото
 	if options.PhotoPath != "" {
 		// Для фото с локального источника необходимо удалить старое сообщение и отправить новое
-		err := b.bot.DeleteMessage(&telego.DeleteMessageParams{
+		err := b.bot.DeleteMessage(b.ctx, &telego.DeleteMessageParams{
 			ChatID:    telego.ChatID{ID: chatID},
 			MessageID: messageID,
 		})
@@ -1542,7 +1541,7 @@ func (b *Bot) UpdateMessage(chatID int64, messageID int, options MessageOptions)
 
 	} else if options.ReplyKeyboard != nil || options.RemoveKeyboard {
 		// Для ReplyKeyboard необходимо удалить старое сообщение и отправить новое
-		err := b.bot.DeleteMessage(&telego.DeleteMessageParams{
+		err := b.bot.DeleteMessage(b.ctx, &telego.DeleteMessageParams{
 			ChatID:    telego.ChatID{ID: chatID},
 			MessageID: messageID,
 		})
@@ -1567,11 +1566,13 @@ func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, e
 	}
 
 	params := &telego.SendMessageParams{
-		ChatID:                telego.ChatID{ID: chatID},
-		Text:                  options.Text,
-		ParseMode:             options.ParseMode,
-		DisableWebPagePreview: options.DisableWebPagePreview,
-		DisableNotification:   options.DisableNotification,
+		ChatID:    telego.ChatID{ID: chatID},
+		Text:      options.Text,
+		ParseMode: options.ParseMode,
+		LinkPreviewOptions: &telego.LinkPreviewOptions{
+			IsDisabled: options.DisableWebPagePreview,
+		},
+		DisableNotification: options.DisableNotification,
 	}
 
 	// Добавляем сущности, если они есть
@@ -1584,7 +1585,7 @@ func (b *Bot) sendText(chatID int64, options MessageOptions) (*telego.Message, e
 		params.ReplyMarkup = replyMarkup
 	}
 
-	msg, err := b.bot.SendMessage(params)
+	msg, err := b.bot.SendMessage(b.ctx, params)
 	if err != nil {
 		logger.Error.Printf("Error sending message: %v", err)
 		return nil, fmt.Errorf("failed to send message: %w", err)
@@ -1600,11 +1601,13 @@ func (b *Bot) updateText(chatID int64, messageID int, options MessageOptions) (*
 	}
 
 	params := &telego.EditMessageTextParams{
-		ChatID:                telego.ChatID{ID: chatID},
-		MessageID:             messageID,
-		Text:                  options.Text,
-		ParseMode:             options.ParseMode,
-		DisableWebPagePreview: options.DisableWebPagePreview,
+		ChatID:    telego.ChatID{ID: chatID},
+		MessageID: messageID,
+		Text:      options.Text,
+		ParseMode: options.ParseMode,
+		LinkPreviewOptions: &telego.LinkPreviewOptions{
+			IsDisabled: options.DisableWebPagePreview,
+		},
 	}
 
 	// Добавляем сущности, если они есть
@@ -1617,7 +1620,7 @@ func (b *Bot) updateText(chatID int64, messageID int, options MessageOptions) (*
 		params.ReplyMarkup = options.InlineKeyboard
 	}
 
-	msg, err := b.bot.EditMessageText(params)
+	msg, err := b.bot.EditMessageText(b.ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update message: %w", err)
 	}
@@ -1654,7 +1657,7 @@ func (b *Bot) sendVideo(chatID int64, options MessageOptions) (*telego.Message, 
 		// Для FileID используем его непосредственно
 		// params.Video = telego.InputFile{FileID: options.VideoFileID}
 		params.Video = tu.FileFromID(options.VideoFileID)
-		return b.bot.SendVideo(params)
+		return b.bot.SendVideo(b.ctx, params)
 	} else if options.VideoPath != "" {
 		// Для файла используем метод Upload
 		return b.sendVideoFile(chatID, options.VideoPath, params)
@@ -1692,7 +1695,7 @@ func (b *Bot) sendPhoto(chatID int64, options MessageOptions) (*telego.Message, 
 		// Для FileID используем его непосредственно
 		// params.Photo = telego.InputFile{FileID: options.PhotoFileID}
 		params.Photo = tu.FileFromID(options.PhotoFileID)
-		return b.bot.SendPhoto(params)
+		return b.bot.SendPhoto(b.ctx, params)
 	} else if options.PhotoPath != "" {
 		// Для файла используем метод Upload
 		return b.sendPhotoFile(chatID, options.PhotoPath, options.DelPhoto, params)
@@ -1712,7 +1715,7 @@ func (b *Bot) sendVideoFile(chatID int64, videoPath string, params *telego.SendV
 	params.Video = tu.File(file)
 
 	// Отправляем фото
-	msg, err := b.bot.SendVideo(params)
+	msg, err := b.bot.SendVideo(b.ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send video: %w", err)
 	}
@@ -1746,7 +1749,7 @@ func (b *Bot) sendPhotoFile(chatID int64, photoPath string, delPhoto bool, param
 	params.Photo = tu.File(file)
 
 	// Отправляем фото
-	msg, err := b.bot.SendPhoto(params)
+	msg, err := b.bot.SendPhoto(b.ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send photo: %w", err)
 	}
@@ -1784,7 +1787,7 @@ func (b *Bot) updatePhotoByFileID(chatID int64, messageID int, options MessageOp
 		params.ReplyMarkup = options.InlineKeyboard
 	}
 
-	msg, err := b.bot.EditMessageMedia(params)
+	msg, err := b.bot.EditMessageMedia(b.ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update photo: %w", err)
 	}
@@ -1818,7 +1821,7 @@ func (b *Bot) getReplyMarkup(options MessageOptions) telego.ReplyMarkup {
 
 // SendSticker отправляет стикер
 func (b *Bot) SendSticker(chatID int64, stickerFileID string) error {
-	_, err := b.bot.SendSticker(&telego.SendStickerParams{
+	_, err := b.bot.SendSticker(b.ctx, &telego.SendStickerParams{
 		ChatID:  telego.ChatID{ID: chatID},
 		Sticker: tu.FileFromID(stickerFileID),
 	})

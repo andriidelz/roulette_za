@@ -2,8 +2,9 @@ package bot
 
 import (
 	"fmt"
-	"roulette/internal/logger"
 	"time"
+
+	"roulette/internal/logger"
 
 	"github.com/mymmrac/telego"
 )
@@ -30,13 +31,12 @@ func (b *Bot) handleRatingCallbackQuery(query *telego.CallbackQuery) {
 	options, _ := b.getWeeklyRating(user.ID)
 
 	if query.Message != nil {
-		b.SendMessage(query.Message.Chat.ID, options)
+		b.SendMessage(query.Message.GetChat().ID, options)
 	}
 }
 
 // getWeeklyRating используется для вывода рейтинга в меню и в игре
 func (b *Bot) getWeeklyRating(telegramID int64) (MessageOptions, string) {
-
 	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
 	dbUser, err := b.service.GetUser(telegramID)
 	if err == nil {
