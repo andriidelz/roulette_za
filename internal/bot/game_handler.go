@@ -62,6 +62,7 @@ type GameHandler struct {
 }
 
 const (
+	CallbackStartRound    = "startround"
 	CallbackBetRed        = "bet_red"
 	CallbackBetBlack      = "bet_black"
 	CallbackBetZero       = "bet_zero"
@@ -883,28 +884,39 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	// Сначала отправляем сообщение с описанием игры
 	options := h.bot.prepareMessage("playstart1", language)
 
-	// Создаем inline клавиатуру с кнопкой "Детальные правила"
-	rulesButtonText := h.service.GetText("rulesstart", language)
+	// Создаем inline клавиатуру
 	options.InlineKeyboard = &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
-				{Text: rulesButtonText, URL: webPage + "/faq#gameplay"},
+				{Text: h.service.GetText("btn_awards", language), CallbackData: "awards"},
+				{Text: h.service.GetText("btn_payments", language), CallbackData: "payments"},
+				{Text: h.service.GetText("btn_fairplay", language), CallbackData: "fairplay"},
+			},
+			{
+				{Text: h.service.GetText("btn_startround", language), CallbackData: CallbackStartRound},
 			},
 		},
 	}
 
 	// Отправляем первое сообщение с описанием игры и кнопкой на правила
 	h.bot.SendMessage(message.Chat.ID, options)
+}
 
-	// Добавляем пользователя в список активных игроков
-	h.mutex.Lock()
-	h.activePlayers[user.ID] = 1
+// handleStartRound - старт нового раунду гри
+func (h *GameHandler) handleStartRound(query *telego.CallbackQuery) {
 
-	// Обновляем метрику активных игроков
-	if metrics := h.bot.getMetrics(); metrics != nil && metrics.Bot != nil {
-		metrics.Bot.SetActivePlayers(float64(len(h.activePlayers)))
+	user := query.From
+	dbUser, err := h.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error get user: %v", err)
+		return
 	}
-	h.mutex.Unlock()
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
 
 	// Пытаемся получить текущий раунд
 	currentRound, err := h.service.GetCurrentRound()
@@ -916,7 +928,8 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	// Проверяем, что раунд существует
 	if currentRound == nil {
 		logger.Warning.Printf("Current round is nil, waiting for a new round")
-		h.bot.SendMessage(message.Chat.ID, h.bot.prepareMessage("waiting_for_round", language))
+		// Виводимо pop-up toast без підтвердження
+		h.bot.answerCallbackQuery(query.ID, h.service.GetText("waiting_for_round", language), false)
 		return
 	}
 
@@ -935,18 +948,31 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 
 	// Если осталось меньше 0 секунд, ждем следующий раунд
 	if remainingTime < 0 {
-		h.bot.SendMessage(message.Chat.ID, h.bot.prepareMessage("waiting_for_round", language))
+		// Виводимо pop-up toast без підтвердження
+		h.bot.answerCallbackQuery(query.ID, h.service.GetText("waiting_for_round", language), false)
 		return
 	}
 
+	// Добавляем пользователя в список активных игроков
+	h.mutex.Lock()
+	h.activePlayers[user.ID] = 1
+
+	// Обновляем метрику активных игроков
+	if metrics := h.bot.getMetrics(); metrics != nil && metrics.Bot != nil {
+		metrics.Bot.SetActivePlayers(float64(len(h.activePlayers)))
+	}
+	h.mutex.Unlock()
+
+	h.bot.answerCallbackQuery(query.ID, "", false)
+
 	// Формируем текст в новом формате
 	remainingSeconds := int(remainingTime.Seconds())
-	options = h.bot.prepareMessage("round_info_countdown", language)
+	options := h.bot.prepareMessage("round_info_countdown", language)
 	options.Text = fmt.Sprintf(options.Text, roundIDBase62, currentRound.Hash, remainingSeconds)
 	options.InlineKeyboard = h.createBetKeyboard(language, user.ID)
 
 	// Отправляем сообщение с информацией о раунде и клавиатурой для ставок
-	h.bot.SendMessage(message.Chat.ID, options)
+	h.bot.SendMessage(query.Message.GetChat().ID, options)
 }
 
 // HandleBackButton обрабатывает нажатие кнопки "Назад"

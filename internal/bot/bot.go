@@ -1028,6 +1028,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.updateOrSendMessage(query, text)
 
 		// Гра
+	case CallbackStartRound:
+		b.gameHandler.handleStartRound(query)
 	case CallbackBetRed:
 		b.handleMakeBet(user.ID, models.Red)
 		b.answerCallbackQuery(query.ID, "", false)
@@ -1043,7 +1045,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		zeroText := b.service.GetText("zero_limit", language)
 		zeroText = fmt.Sprintf(zeroText, remaining)
 		// відправка повідомлення як toast pop-up
-		b.answerCallbackQuery(query.ID, zeroText, true)
+		b.answerCallbackQuery(query.ID, zeroText, false)
 	case CallbackBetAvailable:
 		b.gameHandler.handleAvailableBets(query)
 
