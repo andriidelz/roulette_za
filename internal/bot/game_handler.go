@@ -61,6 +61,24 @@ type GameHandler struct {
 	stopWorker     chan struct{}
 }
 
+const (
+	CallbackBetRed        = "bet_red"
+	CallbackBetBlack      = "bet_black"
+	CallbackBetZero       = "bet_zero"
+	CallbackBetZeroLocked = "bet_zero_locked"
+	CallbackBetAvailable  = "availablebets"
+
+	StickerNoBids    = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
+	StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
+	StickerLose      = "CAACAgUAAxkBAAEORL5n9lEOq_kczbL1CGpgN5-UhhhgqQAC3BIAAtGwqVdlepoFId2tMzYE" // lose
+	StickerBlackRes1 = "CAACAgUAAxkBAAEORMBn9lEUB8KMRJ8nduCQ-y32y5ns4AACNBUAArIsqVfUvoMXgG8VvzYE" // blackresult (вариант 1)
+	StickerBlackRes2 = "CAACAgUAAxkBAAEORMJn9lEXC6ByJRCY4_8Mu5vQQP-1zgACOxYAAnWOqVesBnNzFycGfDYE" // blackresult (вариант 2)
+	StickerRedRes1   = "CAACAgUAAxkBAAEORMhn9lEfopgbb8y7qi__V8deZr0MpAACYBcAAs4bqVeFX-l3HDBIFjYE" // redresult (вариант 1)
+	StickerRedRes2   = "CAACAgUAAxkBAAEORMpn9lEiRobEQnz4qg6GFSmfZQmjbwACiRgAAhuTqVdgysjb-Y-sLTYE" // redresult (вариант 2)
+	StickerZeroRes1  = "CAACAgUAAxkBAAEORMRn9lEar58eDwvent8Lp3TvMRvF5AACtxEAAlRRsFdySRXPzXyVqzYE" // zeroresult (вариант 1)
+	StickerZeroRes2  = "CAACAgUAAxkBAAEORMZn9lEd12gNsWFFxGXLAZoeJbSEsgACCxYAAmDwqVdsE7WC-rayWDYE" // zeroresult (вариант 2)
+)
+
 // NewGameHandler создает новый обработчик игры
 func NewGameHandler(bot *Bot, service service.Service, rabbitmqURL string) (*GameHandler, error) {
 	// Создаем клиент RabbitMQ
@@ -240,13 +258,7 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 		options := h.bot.prepareMessage("round_info_countdown", language)
 		options.Text = fmt.Sprintf(options.Text, roundIDBase62, round.Hash, remainingSeconds)
 
-		// Получаем доступное количество ставок
-		betsBalance, err := h.service.GetUserRemainingBets(userID)
-		if err != nil {
-			logger.Error.Printf("Error getting user remaining bets: %v", err)
-			betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
-		}
-		options.ReplyKeyboard = h.createDetailedBetKeyboard(language, userID, betsBalance)
+		options.InlineKeyboard = h.createBetKeyboard(language, userID)
 		h.bot.SendMessage(userID, options)
 	}
 }
@@ -297,14 +309,7 @@ func (h *GameHandler) notifyTimeRemaining(round *models.HashEntry, seconds int) 
 
 		// Формируем текст в новом формате
 		options.Text = fmt.Sprintf(options.Text, roundIDBase62)
-
-		// Узнаем доступное количество ставок
-		betsBalance, err := h.service.GetUserRemainingBets(userID)
-		if err != nil {
-			logger.Error.Printf("Error getting user remaining bets: %v", err)
-			betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
-		}
-		options.ReplyKeyboard = h.createDetailedBetKeyboard(language, userID, betsBalance)
+		options.InlineKeyboard = h.createBetKeyboard(language, userID)
 
 		h.bot.SendMessage(userID, options)
 	}
@@ -825,12 +830,46 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	go func() {
 		time.Sleep(1000 * time.Millisecond)
 		options := h.bot.prepareMessage("nomorebids", language)
-		options.ReplyKeyboard = h.createDetailedBetKeyboard(language, userID, betsRemaining)
+		options.InlineKeyboard = h.createBetKeyboard(language, userID)
 
 		h.bot.SendMessage(userID, options)
 	}()
 
 	return nil
+}
+
+func (h *GameHandler) handleAvailableBets(query *telego.CallbackQuery) {
+
+	h.bot.answerCallbackQuery(query.ID, "", false)
+	user := query.From
+	dbUser, err := h.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error get user: %v", err)
+		return
+	}
+
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	language := dbUser.LanguageCode
+	if language == "" {
+		language = "en"
+	}
+
+	// Получаем доступное количество ставок
+	betsBalance, err := h.service.GetUserRemainingBets(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user remaining bets: %v", err)
+		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
+	}
+
+	var options MessageOptions
+	if betsBalance <= 0 {
+		options = h.bot.prepareMessage("betsbalancelow", language)
+	} else {
+		options = h.bot.prepareMessage("betsbalanceok", language)
+		options.Text = fmt.Sprintf(options.Text, betsBalance)
+	}
+	options.InlineKeyboard = h.createBetKeyboard(language, user.ID)
+	h.bot.SendMessage(query.Message.GetChat().ID, options)
 }
 
 // HandlePlayCommand обрабатывает команду /play
@@ -904,14 +943,7 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	remainingSeconds := int(remainingTime.Seconds())
 	options = h.bot.prepareMessage("round_info_countdown", language)
 	options.Text = fmt.Sprintf(options.Text, roundIDBase62, currentRound.Hash, remainingSeconds)
-
-	// Получаем доступное количество ставок
-	betsBalance, err := h.service.GetUserRemainingBets(user.ID)
-	if err != nil {
-		logger.Error.Printf("Error getting user remaining bets: %v", err)
-		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
-	}
-	options.ReplyKeyboard = h.createDetailedBetKeyboard(language, user.ID, betsBalance)
+	options.InlineKeyboard = h.createBetKeyboard(language, user.ID)
 
 	// Отправляем сообщение с информацией о раунде и клавиатурой для ставок
 	h.bot.SendMessage(message.Chat.ID, options)
@@ -956,15 +988,8 @@ func (h *GameHandler) Stop() {
 	logger.Info.Println("Game handler stopped")
 }
 
-// createDetailedBetKeyboard создает расширенную клавиатуру для ставок с дополнительной информацией
-func (h *GameHandler) createDetailedBetKeyboard(language string, userID int64, betsBalance int) *telego.ReplyKeyboardMarkup {
-	// Получаем локализированные тексты для кнопок
-	btnRedText := h.service.GetText("btn_bet_red", language)
-	btnBlackText := h.service.GetText("btn_bet_black", language)
-	btnZeroText := h.service.GetText("btn_bet_zero", language)
-	btnZeroLockedText := h.service.GetText("btn_bet_zero_locked", language)
-	btnStopText := h.service.GetText("stop", language)
-	betsBalanceText := h.service.GetText("availablebets", language)
+// createBetKeyboard создает клавиатуру для ставок
+func (h *GameHandler) createBetKeyboard(language string, userID int64) *telego.InlineKeyboardMarkup {
 
 	// Проверяем, может ли пользователь ставить на Zero
 	canBetZero, _, err := h.service.CanBetZero(userID)
@@ -974,27 +999,23 @@ func (h *GameHandler) createDetailedBetKeyboard(language string, userID int64, b
 	}
 
 	// Создаем клавиатуру с соответствующими кнопками
-	var zeroButton telego.KeyboardButton
+	var zeroButton telego.InlineKeyboardButton
 	if canBetZero {
-		zeroButton = telego.KeyboardButton{Text: btnZeroText}
+		zeroButton = telego.InlineKeyboardButton{Text: h.service.GetText("btn_bet_zero", language), CallbackData: CallbackBetZero}
 	} else {
-		zeroButton = telego.KeyboardButton{Text: btnZeroLockedText}
+		zeroButton = telego.InlineKeyboardButton{Text: h.service.GetText("btn_bet_zero_locked", language), CallbackData: CallbackBetZero}
 	}
 
-	return &telego.ReplyKeyboardMarkup{
-		Keyboard: [][]telego.KeyboardButton{
+	return &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
-				{Text: btnRedText},
-				{Text: btnBlackText},
+				{Text: h.service.GetText("btn_bet_red", language), CallbackData: CallbackBetRed},
+				{Text: h.service.GetText("btn_bet_black", language), CallbackData: CallbackBetBlack},
 				zeroButton,
 			},
 			{
-				{Text: betsBalanceText},
-				{Text: btnStopText},
+				{Text: h.service.GetText("availablebets", language), CallbackData: CallbackBetAvailable},
 			},
 		},
-		ResizeKeyboard:  true,
-		OneTimeKeyboard: false,
-		Selective:       true,
 	}
 }

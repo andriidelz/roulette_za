@@ -48,21 +48,9 @@ const (
 	CommandFAQ      = "faq"
 	CommandSettings = "settings"
 
-	CallbackBetRed   = "bet_red"
-	CallbackBetBlack = "bet_black"
-	CallbackBetZero  = "bet_zero"
-	CallbackBack     = "back"
-	CallbackCaptcha  = "captcha_"
+	CallbackBack    = "back"
+	CallbackCaptcha = "captcha_"
 
-	StickerNoBids    = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
-	StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
-	StickerLose      = "CAACAgUAAxkBAAEORL5n9lEOq_kczbL1CGpgN5-UhhhgqQAC3BIAAtGwqVdlepoFId2tMzYE" // lose
-	StickerBlackRes1 = "CAACAgUAAxkBAAEORMBn9lEUB8KMRJ8nduCQ-y32y5ns4AACNBUAArIsqVfUvoMXgG8VvzYE" // blackresult (вариант 1)
-	StickerBlackRes2 = "CAACAgUAAxkBAAEORMJn9lEXC6ByJRCY4_8Mu5vQQP-1zgACOxYAAnWOqVesBnNzFycGfDYE" // blackresult (вариант 2)
-	StickerRedRes1   = "CAACAgUAAxkBAAEORMhn9lEfopgbb8y7qi__V8deZr0MpAACYBcAAs4bqVeFX-l3HDBIFjYE" // redresult (вариант 1)
-	StickerRedRes2   = "CAACAgUAAxkBAAEORMpn9lEiRobEQnz4qg6GFSmfZQmjbwACiRgAAhuTqVdgysjb-Y-sLTYE" // redresult (вариант 2)
-	StickerZeroRes1  = "CAACAgUAAxkBAAEORMRn9lEar58eDwvent8Lp3TvMRvF5AACtxEAAlRRsFdySRXPzXyVqzYE" // zeroresult (вариант 1)
-	StickerZeroRes2  = "CAACAgUAAxkBAAEORMZn9lEd12gNsWFFxGXLAZoeJbSEsgACCxYAAmDwqVdsE7WC-rayWDYE" // zeroresult (вариант 2)
 	// Стикер ошибки отправки сообщения, если словили 429 ошибку
 	StickerError        = "CAACAgUAAxkBAAEO5upob-zRQ5ptM0PmCYlvTra-KSbbiQACEBYAAkV9qVf5P89H45HU5zYE" // error
 	StickerRegistration = "CAACAgUAAxkBAAEBgIpokq-UIqudmGRVogN-Mu28MQQ6UwACwRIAAs9XsFejY2Cqcm0SBDYE" // registration (регистрация нового пользователя)
@@ -302,13 +290,6 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 		language = "en"
 	}
 
-	// Получаем доступное количество ставок
-	betsBalance, err := b.service.GetUserRemainingBets(userID)
-	if err != nil {
-		logger.Error.Printf("Error getting user remaining bets: %v", err)
-		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
-	}
-
 	// Проверяем активность пользователя
 	// - беспрерывная игра
 	// - ставка на одну и ту же опцию
@@ -328,7 +309,7 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 	}
 
 	// Вызываем MakeBet и обрабатываем возможные ошибки
-	err = b.gameHandler.MakeBet(userID, option)
+	err := b.gameHandler.MakeBet(userID, option)
 	if err != nil {
 		// Определяем тип ошибки и отправляем соответствующее сообщение
 		var errorKey string
@@ -360,7 +341,7 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 			options.Text = fmt.Sprintf(options.Text, remain)
 		}
 
-		options.ReplyKeyboard = b.gameHandler.createDetailedBetKeyboard(language, userID, betsBalance)
+		options.InlineKeyboard = b.gameHandler.createBetKeyboard(language, userID)
 		b.SendMessage(userID, options)
 		return
 	}
@@ -588,10 +569,6 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	btnAccountText := b.service.GetText("btn_account", language)
 	btnFAQText := b.service.GetText("btn_faq", language)
 
-	btnRedText := b.service.GetText("btn_bet_red", language)
-	btnBlackText := b.service.GetText("btn_bet_black", language)
-	btnZeroText := b.service.GetText("btn_bet_zero", language)
-	btnZeroLockedText := b.service.GetText("btn_bet_zero_locked", language)
 	btnBackText := b.service.GetText("btn_back", language)
 	btnStopText := b.service.GetText("stop", language)
 
@@ -613,46 +590,6 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	case btnFAQText:
 		b.handleFAQCommand(message)
 	// Обработка ставок по тексту кнопки
-	case btnRedText:
-		b.handleMakeBet(user.ID, models.Red)
-	case btnBlackText:
-		b.handleMakeBet(user.ID, models.Black)
-	case btnZeroText:
-		b.handleMakeBet(user.ID, models.Zero)
-	case btnZeroLockedText:
-		// Обработка нажатия на заблокированную кнопку Zero
-		canBetZero, remaining, _ := b.service.CanBetZero(user.ID)
-		if !canBetZero {
-			options := b.prepareMessage("zero_limit", language)
-			options.Text = fmt.Sprintf(options.Text, remaining)
-
-			// Получаем доступное количество ставок
-			betsBalance, err := b.service.GetUserRemainingBets(user.ID)
-			if err != nil {
-				logger.Error.Printf("Error getting user remaining bets: %v", err)
-				betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
-			}
-			options.ReplyKeyboard = b.gameHandler.createDetailedBetKeyboard(language, user.ID, betsBalance)
-			b.SendMessage(message.Chat.ID, options)
-		}
-	case b.service.GetText("availablebets", language):
-		// Получаем доступное количество ставок
-		betsBalance, err := b.service.GetUserRemainingBets(user.ID)
-		if err != nil {
-			logger.Error.Printf("Error getting user remaining bets: %v", err)
-			betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
-		}
-
-		var options MessageOptions
-		if betsBalance <= 0 {
-			options = b.prepareMessage("betsbalancelow", language)
-		} else {
-			options = b.prepareMessage("betsbalanceok", language)
-			options.Text = fmt.Sprintf(options.Text, betsBalance)
-		}
-		options.ReplyKeyboard = b.gameHandler.createDetailedBetKeyboard(language, user.ID, betsBalance)
-
-		b.SendMessage(message.Chat.ID, options)
 	case btnBackText:
 		// Возврат в главное меню и удаление из активных игроков
 		b.gameHandler.HandleBackButton(user.ID)
@@ -1089,6 +1026,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	case "fairplay":
 		text := b.service.GetText("fairplay", language)
 		b.updateOrSendMessage(query, text)
+
+		// Гра
 	case CallbackBetRed:
 		b.handleMakeBet(user.ID, models.Red)
 		b.answerCallbackQuery(query.ID, "", false)
@@ -1098,6 +1037,16 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	case CallbackBetZero:
 		b.handleMakeBet(user.ID, models.Zero)
 		b.answerCallbackQuery(query.ID, "", false)
+	case CallbackBetZeroLocked:
+		// Обработка нажатия на заблокированную кнопку Zero
+		_, remaining, _ := b.service.CanBetZero(user.ID)
+		zeroText := b.service.GetText("zero_limit", language)
+		zeroText = fmt.Sprintf(zeroText, remaining)
+		// відправка повідомлення як toast pop-up
+		b.answerCallbackQuery(query.ID, zeroText, true)
+	case CallbackBetAvailable:
+		b.gameHandler.handleAvailableBets(query)
+
 	case CallbackBack:
 		b.handleBackToMainMenu(query)
 	case "view_rating":
