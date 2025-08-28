@@ -340,11 +340,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	// Всегда используем язык из базы данных, т.к. он может быть обновлен
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	captchaKey := fmt.Sprintf(userCaptchaKeyPrefix, user.ID)
 	banKey := fmt.Sprintf(userBanKeyPrefix, user.ID)

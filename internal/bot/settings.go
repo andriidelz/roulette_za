@@ -30,10 +30,13 @@ const (
 // Обработчик команды настроек
 func (b *Bot) handleSettingsCommand(message *telego.Message) {
 	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user: %v", err)
+		return
 	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализованный текст для настроек
 	options := b.prepareMessage("settings_message", language)
@@ -66,7 +69,7 @@ func (b *Bot) createSettingsKeyboard(language string, userID int64) *telego.Inli
 
 	// Для языка отображаем название на выбранном языке
 	languageName := ""
-	switch user.LanguageCode {
+	switch language {
 	case "en":
 		languageName = "English"
 	case "ru":

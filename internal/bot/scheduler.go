@@ -164,10 +164,8 @@ func (b *Bot) StartUpdateCaptcha() {
 					}
 
 					// Всегда используем язык из базы данных, т.к. он может быть обновлен
-					language := dbUser.LanguageCode
-					if language == "" {
-						language = "en"
-					}
+					language := getLanguage(dbUser.LanguageCode, "")
+
 					// Присилаємо нову капчу
 					b.SendMessage(userID, b.captchaMessage(userID, language))
 				}

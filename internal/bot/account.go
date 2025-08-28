@@ -31,10 +31,13 @@ const FeeAmount = 1.0
 // handleAccountCommand обрабатывает команду "Аккаунт" из главного меню
 func (b *Bot) handleAccountCommand(message *telego.Message) {
 	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user: %v", err)
+		return
 	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализованный текст раздела аккаунта
 	options := b.prepareMessage("accstart", language)
@@ -78,13 +81,11 @@ func (b *Bot) createAccountKeyboard(language string) *telego.ReplyKeyboardMarkup
 // Модифицируем существующий метод handleBalanceCommand
 func (b *Bot) handleBalanceCommand(message *telego.Message) {
 	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
 
 	// Получаем информацию о пользователе для проверки баланса
 	dbUser, err := b.service.GetUser(user.ID)
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
+
 	if err != nil {
 		logger.Error.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, b.prepareMessage("error_retrieving_balance", language))
@@ -150,13 +151,11 @@ func (b *Bot) handleBalanceCommand(message *telego.Message) {
 // Обновим существующий метод handleWithdrawCommand
 func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
 
 	// Получаем информацию о пользователе для проверки баланса
 	dbUser, err := b.service.GetUser(user.ID)
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
+
 	if err != nil {
 		logger.Error.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, b.prepareMessage("error_retrieving_data", language))
@@ -222,23 +221,15 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 // handleInputWithdrawAmountCommand обрабатывает введение сумы на вывод
 func (b *Bot) handleInputWithdrawAmountCommand(message *telego.Message) {
 	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
 
 	// Получаем информацию о пользователе для проверки баланса
 	dbUser, err := b.service.GetUser(user.ID)
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 	if err != nil {
 		logger.Error.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, b.prepareMessage("error_retrieving_data", language))
 		b.stateManager.ClearState(user.ID)
 		return
-	}
-
-	// Всегда используем язык из базы данных, т.к. он может быть обновлен
-	if dbUser.LanguageCode != "" {
-		language = dbUser.LanguageCode
 	}
 
 	// Проверка валидности суммы
@@ -354,23 +345,16 @@ func (b *Bot) handleInputWithdrawAmountCommand(message *telego.Message) {
 // handleInputWithdrawWalletCommand обрабатывает введение кошелька
 func (b *Bot) handleInputWithdrawWalletCommand(message *telego.Message) {
 	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
 
 	// Получаем информацию о пользователе
 	dbUser, err := b.service.GetUser(user.ID)
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
+
 	if err != nil {
 		logger.Error.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, b.prepareMessage("error_retrieving_data", language))
 		b.stateManager.ClearState(user.ID)
 		return
-	}
-
-	// Всегда используем язык из базы данных, т.к. он может быть обновлен
-	if dbUser.LanguageCode != "" {
-		language = dbUser.LanguageCode
 	}
 
 	// Проверка валидности адреса кошелька (базовая проверка)
@@ -401,7 +385,7 @@ func (b *Bot) handleInputWithdrawWalletCommand(message *telego.Message) {
 	}
 
 	// Отправляем сообщение об успешном обновлении
-	options := b.prepareMessage("withdrawusdtchangeok", user.LanguageCode)
+	options := b.prepareMessage("withdrawusdtchangeok", language)
 
 	// Создаем кнопку для подтверждения кошелька
 	walletOKButtonText := b.service.GetText("usdtok", language)
@@ -443,11 +427,7 @@ func (b *Bot) handleRequestWithdrawCallback(query *telego.CallbackQuery) {
 		}
 	}
 
-	// Всегда используем язык из базы данных, т.к. он может быть обновлен
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Переводим пользователя в раздел вывода
 	if query.Message != nil {
@@ -476,11 +456,7 @@ func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 		return
 	}
 
-	// Всегда используем язык из базы данных, т.к. он может быть обновлен
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отвечаем на callback, чтобы убрать индикатор загрузки
 	b.answerCallbackQuery(query.ID, "", false)
@@ -556,11 +532,7 @@ func (b *Bot) handleCheckAmountCallback(query *telego.CallbackQuery) {
 		return
 	}
 
-	// Всегда используем язык из базы данных, т.к. он может быть обновлен
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отвечаем на callback, чтобы убрать индикатор загрузки
 	b.answerCallbackQuery(query.ID, "", false)
@@ -611,11 +583,7 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 		return
 	}
 
-	// Всегда используем язык из базы данных, т.к. он может быть обновлен
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отвечаем на callback, чтобы убрать индикатор загрузки
 	b.answerCallbackQuery(query.ID, "", false)
