@@ -9,17 +9,15 @@ import (
 
 // handleFAQCommand обрабатывает команду /faq и показывает стартовое меню FAQ
 func (b *Bot) handleFAQCommand(message *telego.Message) {
-	dbUser, err := b.service.GetUser(message.From.ID)
+	user := message.From
+
+	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user for FAQ menu: %v", err)
 		return
 	}
 
-	// Используем язык из базы данных
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для стартового сообщения FAQ
 	options := b.prepareMessage("faqstart", language)
@@ -66,16 +64,15 @@ func (b *Bot) createFAQKeyboard(language string) *telego.ReplyKeyboardMarkup {
 
 // handleFAQRules обрабатывает нажатие на кнопку "Правила" в меню FAQ
 func (b *Bot) handleFAQRules(message *telego.Message) {
-	dbUser, err := b.service.GetUser(message.From.ID)
+	user := message.From
+
+	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user for FAQ rules: %v", err)
 		return
 	}
 
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Правила"
 	options := b.prepareMessage("faqrulesm", language)
@@ -90,16 +87,15 @@ func (b *Bot) handleFAQRules(message *telego.Message) {
 
 // handleFAQAwards обрабатывает нажатие на кнопку "Распределение наград" в меню FAQ
 func (b *Bot) handleFAQAwards(message *telego.Message) {
-	dbUser, err := b.service.GetUser(message.From.ID)
+	user := message.From
+
+	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user for FAQ awards: %v", err)
 		return
 	}
 
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Распределение наград"
 	options := b.prepareMessage("faqawardsm", language)
@@ -114,16 +110,15 @@ func (b *Bot) handleFAQAwards(message *telego.Message) {
 
 // handleFAQPayments обрабатывает нажатие на кнопку "Выплаты наград" в меню FAQ
 func (b *Bot) handleFAQPayments(message *telego.Message) {
-	dbUser, err := b.service.GetUser(message.From.ID)
+	user := message.From
+
+	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user for FAQ payments: %v", err)
 		return
 	}
 
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Выплаты наград"
 	options := b.prepareMessage("faqpaymentsm", language)
@@ -138,16 +133,15 @@ func (b *Bot) handleFAQPayments(message *telego.Message) {
 
 // handleFAQFairPlay обрабатывает нажатие на кнопку "Принципы честной игры" в меню FAQ
 func (b *Bot) handleFAQFairPlay(message *telego.Message) {
-	dbUser, err := b.service.GetUser(message.From.ID)
+	user := message.From
+
+	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user for FAQ fair play: %v", err)
 		return
 	}
 
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Принципы честной игры"
 	options := b.prepareMessage("faqfairplaym", language)
@@ -162,16 +156,15 @@ func (b *Bot) handleFAQFairPlay(message *telego.Message) {
 
 // handleFAQPrivacyPolicy обрабатывает нажатие на кнопку "Privacy policy" в меню FAQ
 func (b *Bot) handleFAQPrivacyPolicy(message *telego.Message) {
-	dbUser, err := b.service.GetUser(message.From.ID)
+	user := message.From
+
+	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user for FAQ privacy policy: %v", err)
 		return
 	}
 
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Privacy policy"
 	options := b.prepareMessage("privacypolicym", language)
@@ -186,16 +179,15 @@ func (b *Bot) handleFAQPrivacyPolicy(message *telego.Message) {
 
 // handleFAQContact обрабатывает нажатие на кнопку "Контакт с админом" в меню FAQ
 func (b *Bot) handleFAQContact(message *telego.Message) {
-	dbUser, err := b.service.GetUser(message.From.ID)
+	user := message.From
+
+	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user for FAQ contact: %v", err)
 		return
 	}
 
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Контакт с админом"
 	options := b.prepareMessage("contactm", language)

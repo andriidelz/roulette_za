@@ -90,14 +90,12 @@ func (b *Bot) handleStartCommandNewUser(message *telego.Message) {
 
 	// Обновляем информацию
 	_, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, userSource, user.LanguageCode)
+	language := getLanguage("", user.LanguageCode)
+
 	if err != nil {
 		logger.Error.Printf("Error registering user: %v", err)
-		b.SendMessage(message.Chat.ID, b.prepareMessage("error_while_registering", user.LanguageCode))
+		b.SendMessage(message.Chat.ID, b.prepareMessage("error_while_registering", language))
 		return
-	}
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
 	}
 
 	// Получаем локализированный текст приветствия
@@ -125,21 +123,17 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 
 	// Регистрируем пользователя или обновляем информацию
 	dbUser, err := b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
+
 	if err != nil {
 		logger.Error.Printf("Error registering user: %v", err)
-		b.SendMessage(message.Chat.ID, b.prepareMessage("error_while_registering", user.LanguageCode))
+		b.SendMessage(message.Chat.ID, b.prepareMessage("error_while_registering", language))
 		return
 	}
 
 	// Проверка полностью ли завершена регистрация. Если нет то будет отправлено предложение завершить ее
 	if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "start") {
 		return
-	}
-
-	// Определяем язык пользователя из базы данных
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
 	}
 
 	// Если полностью завершена регистрация
@@ -152,10 +146,13 @@ func (b *Bot) handleStartCommand(message *telego.Message) {
 // 2. handleAgeVerifyCallback обрабатывает запуск запроса возраста
 func (b *Bot) handleAgeVerifyCallback(query *telego.CallbackQuery) {
 	user := query.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user: %v", err)
+		return
 	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отвечаем на callback, чтобы убрать индикатор загрузки
 	b.answerCallbackQuery(query.ID, "", false)
@@ -189,10 +186,6 @@ func (b *Bot) sendAgeVerificationRequest(chatID int64, language string) {
 // 3. handleAgeVerificationCallback обрабатывает ответ пользователя на запрос возраста
 func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 	user := query.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
 
 	// Отвечаем на callback, чтобы убрать индикатор загрузки
 	b.answerCallbackQuery(query.ID, "", false)
@@ -210,6 +203,7 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 		logger.Error.Printf("Error getting user: %v", err)
 		return
 	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Обновляем статус подтверждения возраста
 	dbUser.AgeVerified = &isAdult
@@ -257,10 +251,13 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 // 4. handleCountryCallback обрабатывает запуск запроса страны
 func (b *Bot) handleCountryCallback(query *telego.CallbackQuery) {
 	user := query.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user: %v", err)
+		return
 	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отвечаем на callback, чтобы убрать индикатор загрузки
 	b.answerCallbackQuery(query.ID, "", false)
@@ -275,10 +272,13 @@ func (b *Bot) handleCountryCallback(query *telego.CallbackQuery) {
 // 5. handleNicknamePrompt обрабатывает запуск запроса подтверждение/изменение никнейма
 func (b *Bot) handleNicknameCallback(query *telego.CallbackQuery) {
 	user := query.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user: %v", err)
+		return
 	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отвечаем на callback, чтобы убрать индикатор загрузки
 	b.answerCallbackQuery(query.ID, "", false)
@@ -336,10 +336,13 @@ func (b *Bot) handleNicknamePrompt(chatID int64, userID int64, language string) 
 // 6.1 handleChangeNameYes обрабатывает согласие на изменение никнейма
 func (b *Bot) handleChangeNameYes(query *telego.CallbackQuery) {
 	user := query.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user: %v", err)
+		return
 	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отвечаем на callback
 	b.answerCallbackQuery(query.ID, "", false)
@@ -362,10 +365,6 @@ func (b *Bot) handleChangeNameYes(query *telego.CallbackQuery) {
 // 6.2 handleChangeNameNo обрабатывает отказ от изменения никнейма
 func (b *Bot) handleChangeNameNo(query *telego.CallbackQuery) {
 	user := query.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
-	}
 
 	// Отвечаем на callback
 	b.answerCallbackQuery(query.ID, "", false)
@@ -376,6 +375,7 @@ func (b *Bot) handleChangeNameNo(query *telego.CallbackQuery) {
 		logger.Error.Printf("Error getting user: %v", err)
 		return
 	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Сохраняем текущий никнейм (если он не был установлен ранее)
 	if dbUser.Nickname == "" {
@@ -402,10 +402,13 @@ func (b *Bot) handleChangeNameNo(query *telego.CallbackQuery) {
 // 7. handleReserveSubscription отправляет запрос на подписку на резервный канал
 func (b *Bot) handleReserveSubscription(query *telego.CallbackQuery) {
 	user := query.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user: %v", err)
+		return
 	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отвечаем на callback, чтобы убрать индикатор загрузки
 	b.answerCallbackQuery(query.ID, "", false)
@@ -443,10 +446,13 @@ func (b *Bot) sendSubscriptionRequest(chatID int64, language, textKey string) {
 // 8. handleReserveSubscriptionCheck обрабатывает нажатие кнопки проверки подписки
 func (b *Bot) handleReserveSubscriptionCheck(query *telego.CallbackQuery) {
 	user := query.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user: %v", err)
+		return
 	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отвечаем на callback
 	b.answerCallbackQuery(query.ID, "", false)

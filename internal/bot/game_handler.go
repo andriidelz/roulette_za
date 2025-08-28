@@ -836,10 +836,13 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 // HandlePlayCommand обрабатывает команду /play
 func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
+	dbUser, err := h.bot.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user: %v", err)
+		return
 	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Сначала отправляем сообщение с описанием игры
 	options := h.bot.prepareMessage("playstart1", language)
