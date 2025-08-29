@@ -194,23 +194,8 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 
 	// Останавливаем всех неактивных игроков
 	for i := range stopPlayers {
-		userID := stopPlayers[i]
-
-		user, err := h.service.GetUser(userID)
-		if err != nil {
-			logger.Error.Printf("Error getting user %d: %v", userID, err)
-			continue
-		}
-
-		language := user.LanguageCode
-		if language == "" {
-			language = "en"
-		}
-		logger.Error.Println("Stop user ", userID)
-		// Остановка игры и возврат в главное меню
-		h.HandleStopGameButton(userID)
-		h.bot.SendMessage(userID, h.bot.prepareMessage("bet_inactive", language))
-		h.bot.sendMainMenu(userID, language)
+		logger.Error.Println("Stop user ", stopPlayers[i])
+		h.stopGame(stopPlayers[i])
 	}
 
 	roundIDBase62 := utils.ToBase62(uint(round.ID))
@@ -839,6 +824,7 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	return nil
 }
 
+// handleAvailableBets присылаем игроку доступное количество ставок
 func (h *GameHandler) handleAvailableBets(query *telego.CallbackQuery) {
 
 	h.bot.answerCallbackQuery(query.ID, "", false)
@@ -975,20 +961,8 @@ func (h *GameHandler) handleStartRound(query *telego.CallbackQuery) {
 	h.bot.SendMessage(query.Message.GetChat().ID, options)
 }
 
-// HandleBackButton обрабатывает нажатие кнопки "Назад"
-func (h *GameHandler) HandleBackButton(userID int64) {
-	h.mutex.Lock()
-	delete(h.activePlayers, userID)
-
-	// Обновляем метрику активных игроков
-	if metrics := h.bot.getMetrics(); metrics != nil && metrics.Bot != nil {
-		metrics.Bot.SetActivePlayers(float64(len(h.activePlayers)))
-	}
-	h.mutex.Unlock()
-}
-
-// HandleStopGameButton обрабатывает нажатие кнопки "Стоп игра"
-func (h *GameHandler) HandleStopGameButton(userID int64) {
+// stopGame видаляє зі списку активних гравців
+func (h *GameHandler) stopGame(userID int64) {
 	h.mutex.Lock()
 	delete(h.activePlayers, userID)
 
@@ -1029,7 +1003,7 @@ func (h *GameHandler) createBetKeyboard(language string, userID int64) *telego.I
 	if canBetZero {
 		zeroButton = telego.InlineKeyboardButton{Text: h.service.GetText("btn_bet_zero", language), CallbackData: CallbackBetZero}
 	} else {
-		zeroButton = telego.InlineKeyboardButton{Text: h.service.GetText("btn_bet_zero_locked", language), CallbackData: CallbackBetZero}
+		zeroButton = telego.InlineKeyboardButton{Text: h.service.GetText("btn_bet_zero_locked", language), CallbackData: CallbackBetZeroLocked}
 	}
 
 	return &telego.InlineKeyboardMarkup{

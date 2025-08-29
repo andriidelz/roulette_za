@@ -175,7 +175,7 @@ func (b *Bot) Start() error {
 	b.StartUpdateCaptcha()
 
 	// Запускам емуляцию ставок по заданиям для пользователей
-	b.gameHandler.initEmulate()
+	// b.gameHandler.initEmulate()
 
 	b.initialized = true
 	return nil
@@ -277,15 +277,18 @@ func (b *Bot) handleContactCommand(message *telego.Message) {
 }
 
 // MakeBet делает ставку в текущем раунде
-func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
+func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, option models.BetOption) {
+
+	user := query.From
 	// Получаем пользователя для определения языка
-	user, userErr := b.service.GetUser(userID)
+	dbUser, userErr := h.service.GetUser(user.ID)
 	if userErr != nil {
-		logger.Error.Printf("Error getting user %d: %v", userID, userErr)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, userErr)
 		return
 	}
 
-	language := user.LanguageCode
+	// Всегда используем язык из базы данных, т.к. он может быть обновлен
+	language := dbUser.LanguageCode
 	if language == "" {
 		language = "en"
 	}
@@ -293,23 +296,24 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 	// Проверяем активность пользователя
 	// - беспрерывная игра
 	// - ставка на одну и ту же опцию
-	switch b.captchaBetActivity(userID) {
+	switch h.bot.captchaBetActivity(user.ID) {
 	case "needCaptcha":
 
 		// виводимо капчу у рендомний час з першої секунди 4 хвилини по 59 секунду 5 хвилини
 		go func() {
 			time.Sleep(time.Duration(rand.Intn(120)) * time.Second)
-			b.SendMessage(userID, b.captchaMessage(userID, language))
+			h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language))
 		}()
 	}
-	switch b.captchaBetDuplicate(userID, string(option)) {
+	switch h.bot.captchaBetDuplicate(user.ID, string(option)) {
 	case "needCaptcha":
-		b.SendMessage(userID, b.captchaMessage(userID, language))
+		h.bot.answerCallbackQuery(query.ID, "", false)
+		h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language))
 		return
 	}
 
 	// Вызываем MakeBet и обрабатываем возможные ошибки
-	err := b.gameHandler.MakeBet(userID, option)
+	err := h.bot.gameHandler.MakeBet(user.ID, option)
 	if err != nil {
 		// Определяем тип ошибки и отправляем соответствующее сообщение
 		var errorKey string
@@ -320,7 +324,7 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 			errorKey = "bet_already_made"
 		} else if strings.Contains(err.Error(), "cannot bet on zero") {
 			// Пользователь не может ставить на Zero
-			canBetZero, remaining, _ := b.service.CanBetZero(userID)
+			canBetZero, remaining, _ := h.bot.service.CanBetZero(user.ID)
 			if !canBetZero {
 				errorKey = "zero_limit"
 				remain = remaining
@@ -336,15 +340,16 @@ func (b *Bot) handleMakeBet(userID int64, option models.BetOption) {
 			logger.Error.Println("bet_error", err)
 			errorKey = "bet_error"
 		}
-		options := b.prepareMessage(errorKey, language)
+		errText := h.bot.service.GetText(errorKey, language)
 		if errorKey == "zero_limit" {
-			options.Text = fmt.Sprintf(options.Text, remain)
+			errText = fmt.Sprintf(errText, remain)
 		}
 
-		options.InlineKeyboard = b.gameHandler.createBetKeyboard(language, userID)
-		b.SendMessage(userID, options)
+		// Виводимо pop-up toast без підтвердження
+		h.bot.answerCallbackQuery(query.ID, errText, false)
 		return
 	}
+	h.bot.answerCallbackQuery(query.ID, "", false)
 }
 
 // handleMessage обрабатывает сообщения
@@ -570,7 +575,6 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	btnFAQText := b.service.GetText("btn_faq", language)
 
 	btnBackText := b.service.GetText("btn_back", language)
-	btnStopText := b.service.GetText("stop", language)
 
 	weekRatingText := b.service.GetText("weekrat", language)
 	personalRatingText := b.service.GetText("personalrat", language)
@@ -591,12 +595,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		b.handleFAQCommand(message)
 	// Обработка ставок по тексту кнопки
 	case btnBackText:
-		// Возврат в главное меню и удаление из активных игроков
-		b.gameHandler.HandleBackButton(user.ID)
-		b.handleHelpCommand(message)
-	case btnStopText:
-		// Остановка игры и возврат в главное меню
-		b.gameHandler.HandleStopGameButton(user.ID)
+		// Возврат в главное меню
 		b.handleHelpCommand(message)
 
 		// Обработка кнопок статистики
@@ -1031,14 +1030,11 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	case CallbackStartRound:
 		b.gameHandler.handleStartRound(query)
 	case CallbackBetRed:
-		b.handleMakeBet(user.ID, models.Red)
-		b.answerCallbackQuery(query.ID, "", false)
+		b.gameHandler.handleMakeBet(query, models.Red)
 	case CallbackBetBlack:
-		b.handleMakeBet(user.ID, models.Black)
-		b.answerCallbackQuery(query.ID, "", false)
+		b.gameHandler.handleMakeBet(query, models.Black)
 	case CallbackBetZero:
-		b.handleMakeBet(user.ID, models.Zero)
-		b.answerCallbackQuery(query.ID, "", false)
+		b.gameHandler.handleMakeBet(query, models.Zero)
 	case CallbackBetZeroLocked:
 		// Обработка нажатия на заблокированную кнопку Zero
 		_, remaining, _ := b.service.CanBetZero(user.ID)
@@ -1093,13 +1089,6 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 	case CallbackProcessWithdraw:
 		b.handleProcessWithdrawCallback(query)
-	case "stop_game":
-		b.gameHandler.HandleStopGameButton(user.ID)
-		b.answerCallbackQuery(query.ID, "", false)
-
-		if message, ok := query.Message.(*telego.Message); ok {
-			b.handleHelpCommand(message)
-		}
 	default:
 		// Неизвестный callback
 		b.answerCallbackQuery(query.ID, "Unknown action", true)
