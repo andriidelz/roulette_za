@@ -283,11 +283,7 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, option models.B
 		return
 	}
 
-	// Всегда используем язык из базы данных, т.к. он может быть обновлен
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Проверяем активность пользователя
 	// - беспрерывная игра
@@ -1354,6 +1350,7 @@ const (
 	sendMessage      = "sendMessage"
 	editMessageText  = "editMessageText"
 	sendPhoto        = "sendPhoto"
+	sendCaptcha      = "sendCaptcha"
 	sendVideo        = "sendVideo"
 	editMessageMedia = "editMessageMedia"
 	sendSticker      = "sendSticker"
@@ -1463,12 +1460,14 @@ func (b *Bot) SendMessage(chatID int64, options MessageOptions) error {
 	}
 
 	// Определяем тип сообщения
-	if options.PhotoPath != "" || options.PhotoFileID != "" {
-		options.MethodName = sendPhoto
-	} else if options.VideoPath != "" || options.VideoFileID != "" {
-		options.MethodName = sendVideo
-	} else {
-		options.MethodName = sendMessage
+	if options.MethodName == "" {
+		if options.PhotoPath != "" || options.PhotoFileID != "" {
+			options.MethodName = sendPhoto
+		} else if options.VideoPath != "" || options.VideoFileID != "" {
+			options.MethodName = sendVideo
+		} else {
+			options.MethodName = sendMessage
+		}
 	}
 
 	// Устанавливаем в очередь на отправку
@@ -1714,8 +1713,8 @@ func (b *Bot) sendPhotoFile(chatID int64, photoPath string, delPhoto bool, param
 	return msg, nil
 }
 
-// updatePhotoByFileID обновляет фото по FileID
-func (b *Bot) updatePhotoByFileID(chatID int64, messageID int, options MessageOptions) (*telego.Message, error) {
+// updatePhoto обновляет фото
+func (b *Bot) updatePhoto(chatID int64, messageID int, options MessageOptions) (*telego.Message, error) {
 	if options.ParseMode == "" {
 		options.ParseMode = telego.ModeHTML
 	}
@@ -1723,9 +1722,38 @@ func (b *Bot) updatePhotoByFileID(chatID int64, messageID int, options MessageOp
 	// Создаем объект InputMediaPhoto с FileID
 	mediaPhoto := &telego.InputMediaPhoto{
 		Type:      "photo",
-		Media:     tu.FileFromID(options.PhotoFileID),
 		Caption:   options.Text,
 		ParseMode: options.ParseMode,
+	}
+
+	// Выбираем источник фото
+	if options.PhotoFileID != "" {
+		mediaPhoto.Media = tu.FileFromID(options.PhotoFileID)
+	} else if options.PhotoPath != "" {
+		// Открываем файл
+		file, err := os.Open(options.PhotoPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open photo file: %w", err)
+		}
+		defer file.Close()
+
+		if options.DelPhoto {
+			// Если был передан параметр на удаление
+			// то через какое то время запускаем функцию удаления фото
+			go func() {
+				time.Sleep(20 * time.Second)
+				e := os.Remove(options.PhotoPath)
+				logger.Error.Println("Remove photo file")
+				if e != nil {
+					logger.Error.Println("failed to remove photo file: %w", err)
+				}
+			}()
+		}
+
+		// Устанавливаем загруженный файл
+		mediaPhoto.Media = tu.File(file)
+	} else {
+		return nil, fmt.Errorf("no photo source specified")
 	}
 
 	// Добавляем сущности для подписи, если они есть

@@ -835,11 +835,7 @@ func (h *GameHandler) handleAvailableBets(query *telego.CallbackQuery) {
 		return
 	}
 
-	// Всегда используем язык из базы данных, т.к. он может быть обновлен
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем доступное количество ставок
 	betsBalance, err := h.service.GetUserRemainingBets(user.ID)
@@ -901,11 +897,7 @@ func (h *GameHandler) handleStartRound(query *telego.CallbackQuery) {
 		return
 	}
 
-	// Всегда используем язык из базы данных, т.к. он может быть обновлен
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Пытаемся получить текущий раунд
 	currentRound, err := h.service.GetCurrentRound()

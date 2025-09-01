@@ -282,7 +282,7 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 
 	var err error
 	var messageType string
-
+	mes := &telego.Message{}
 	switch options.MethodName {
 	case editMessageText:
 		messageType = "text"
@@ -293,9 +293,34 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 	case sendPhoto:
 		messageType = "photo"
 		_, err = b.sendPhoto(chatID, options)
+	case sendCaptcha:
+		messageType = "photo"
+
+		// отримуємо ID останньої капчі
+		cont, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+
+		captchaMess := fmt.Sprintf(userCaptchaMessPrefix, chatID)
+		messageID, err := b.redisDB.Get(cont, captchaMess).Int()
+		if err != nil {
+			if err == redis.Nil {
+				logger.Error.Printf("Error Set %d: %v", chatID, err)
+			}
+			mes, err = b.sendPhoto(chatID, options)
+		} else {
+			mes, err = b.updatePhoto(chatID, messageID, options)
+		}
+		messageID = mes.MessageID
+
+		// для капчі зберігаємо id останньої відправленої капчі щоб замінити її
+		err = b.redisDB.Set(cont, captchaMess, messageID, 0).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set %d: %v", chatID, err)
+		}
+
 	case editMessageMedia:
 		messageType = "photo"
-		_, err = b.updatePhotoByFileID(chatID, options.MessageID, options)
+		_, err = b.updatePhoto(chatID, options.MessageID, options)
 	case sendSticker:
 		messageType = "sticker"
 		err = b.SendSticker(chatID, options.Text)

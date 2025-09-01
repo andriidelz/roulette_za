@@ -42,6 +42,7 @@ const (
 	// В случае нахождения пользователя все дальнейшие действия будут заблокированы
 	// до прохождения капчи
 	userCaptchaKeyPrefix         = "user:%d:captcha"              // необходимо пройти капчу, значение - правильный ответ
+	userCaptchaMessPrefix        = "user:%d:captcha_mes"          // telegram id останнього повідомлення з капчею для оновлення повідомлення
 	userCaptchaUpdateKey         = "users:captcha_update"         // пользователи которым нужно обновить капчу
 	userCaptchaUpdateCountPrefix = "user:%d:captcha_update_count" // кол-во обновлений капчи если нет ответа
 
@@ -303,6 +304,7 @@ func (b *Bot) captchaMessage(telegramID int64, language string) MessageOptions {
 	mess := MessageOptions{
 		Text:           captchaText,
 		InlineKeyboard: nicknameKeyboard,
+		MethodName:     sendCaptcha,
 	}
 	filepath := "./internal/captcha-go/"
 	filename := correctText + ".png"
@@ -382,7 +384,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 			b.answerCallbackQuery(query.ID, b.service.GetText("wrongcapcha_mes", language), true)
 
 			// // присилаєм нову капчу
-			// b.SendMessage(user.ID, b.captchaMessage(user.ID, language))
+			b.SendMessage(user.ID, b.captchaMessage(user.ID, language))
 			return
 		}
 
@@ -458,6 +460,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 	pipe.Del(cont, fmt.Sprintf(userCaptchaUpdateCountPrefix, user.ID))
 	// Убираем пользователю правильный ответ капчи
 	pipe.Del(cont, captchaKey)
+	pipe.Del(cont, fmt.Sprintf(userCaptchaMessPrefix, user.ID))
 	// Убираем пользователю баны
 	pipe.Del(cont, banKey)
 	pipe.Del(cont, captchaWrongCountKey)
