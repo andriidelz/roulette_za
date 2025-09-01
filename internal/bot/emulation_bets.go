@@ -2,7 +2,6 @@ package bot
 
 import (
 	"roulette/internal/logger"
-	"roulette/internal/models"
 	"time"
 )
 
@@ -20,7 +19,7 @@ var gameDebugTaskMap = map[int64]GameDebugTask{
 		createdCount: 0,
 		taskCount:    10000,
 	},
-	}
+}
 
 func (h *GameHandler) initEmulate() {
 	go func() {
@@ -57,7 +56,7 @@ func (h *GameHandler) gameHandlerEmulate(telegramID, remainingSeconds int64) {
 	if task.taskCount <= task.createdCount {
 		logger.Info.Println("Total emulate bets: ", task.createdCount, telegramID)
 
-		h.HandleStopGameButton(telegramID)
+		h.stopGame(telegramID)
 		return
 	}
 
@@ -69,9 +68,9 @@ func (h *GameHandler) gameHandlerEmulate(telegramID, remainingSeconds int64) {
 	gameDebugTaskMap[telegramID] = task
 
 	//  Если для пользователя есть эмуляция ставки то имитируем нажатие на кнопку красное/черное
-	bet := models.Red
-	if remainingSeconds%2 == 0 {
-		bet = models.Black
-	}
-	h.bot.handleMakeBet(task.telegramID, bet)
+	// bet := models.Red
+	// if remainingSeconds%2 == 0 {
+	// 	bet = models.Black
+	// }
+	// h.bot.handleMakeBet(task.telegramID, bet)
 }

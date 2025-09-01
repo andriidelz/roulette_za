@@ -12,10 +12,13 @@ import (
 // handleRatingCommand обрабатывает команду /rating
 func (b *Bot) handleRatingCommand(message *telego.Message) {
 	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user: %v", err)
+		return
 	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отправляем стартовое сообщение о рейтинге
 	options := b.prepareMessage("ratingstart", language)
@@ -28,7 +31,7 @@ func (b *Bot) handleRatingCommand(message *telego.Message) {
 func (b *Bot) handleRatingCallbackQuery(query *telego.CallbackQuery) {
 	user := query.From
 
-	options, _ := b.getWeeklyRating(user.ID)
+	options, _ := b.getWeeklyRating(user.ID, user.LanguageCode)
 
 	if query.Message != nil {
 		b.SendMessage(query.Message.GetChat().ID, options)
@@ -36,18 +39,14 @@ func (b *Bot) handleRatingCallbackQuery(query *telego.CallbackQuery) {
 }
 
 // getWeeklyRating используется для вывода рейтинга в меню и в игре
-func (b *Bot) getWeeklyRating(telegramID int64) (MessageOptions, string) {
+func (b *Bot) getWeeklyRating(telegramID int64, appLanguage string) (MessageOptions, string) {
 	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
 	dbUser, err := b.service.GetUser(telegramID)
 	if err == nil {
 		b.service.GetRepo().UpdateWeeklyRatingForUser(dbUser.ID)
 	}
 
-	// Всегда используем язык из базы данных, т.к. он может быть обновлен
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, appLanguage)
 
 	// Получаем текущий недельный рейтинг (топ 100)
 	ratings, err := b.service.GetWeeklyTopRating(100)
@@ -96,7 +95,7 @@ func (b *Bot) getWeeklyRating(telegramID int64) (MessageOptions, string) {
 func (b *Bot) handleWeeklyRating(message *telego.Message) {
 	user := message.From
 
-	options, language := b.getWeeklyRating(user.ID)
+	options, language := b.getWeeklyRating(user.ID, user.LanguageCode)
 	options.ReplyKeyboard = b.createRatingKeyboard(language)
 
 	// Отправляем сообщение с рейтингом
@@ -114,10 +113,13 @@ func (b *Bot) handleWeeklyRating(message *telego.Message) {
 // handlePersonalRating обрабатывает запрос на просмотр личной позиции в рейтинге
 func (b *Bot) handlePersonalRating(message *telego.Message) {
 	user := message.From
-	language := user.LanguageCode
-	if language == "" {
-		language = "en"
+	dbUser, err := b.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user: %v", err)
+		return
 	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем позицию пользователя и его соседей в рейтинге
 	neighbors, position, err := b.service.GetUserRatingPosition(user.ID, 2)

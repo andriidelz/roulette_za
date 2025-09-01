@@ -159,10 +159,7 @@ func (b *Bot) MakeRequestDeferredErr(chatID int64, errText string) {
 			logger.Error.Printf("Error getting user %d: %v", chatID, userErr)
 		}
 
-		language := user.LanguageCode
-		if language == "" {
-			language = "en"
-		}
+		language := getLanguage(user.LanguageCode, "")
 
 		errSendText := b.service.GetText(errText, language)
 		options := MessageOptions{

@@ -251,7 +251,7 @@ func (b *Bot) captchaBetPoints(telegramID int64, point int) string {
 // captchaMessage - Создание капчи
 func (b *Bot) captchaMessage(telegramID int64, language string) MessageOptions {
 	// Остановка игры и возврат в главное меню
-	b.gameHandler.HandleStopGameButton(telegramID)
+	b.gameHandler.stopGame(telegramID)
 	b.sendMainMenu(telegramID, language)
 
 	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -340,11 +340,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	// Всегда используем язык из базы данных, т.к. он может быть обновлен
-	language := dbUser.LanguageCode
-	if language == "" {
-		language = "en"
-	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	captchaKey := fmt.Sprintf(userCaptchaKeyPrefix, user.ID)
 	banKey := fmt.Sprintf(userBanKeyPrefix, user.ID)
