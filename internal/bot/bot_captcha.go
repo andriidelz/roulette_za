@@ -251,7 +251,7 @@ func (b *Bot) captchaBetPoints(telegramID int64, point int) string {
 // captchaMessage - Создание капчи
 func (b *Bot) captchaMessage(telegramID int64, language string) MessageOptions {
 	// Остановка игры и возврат в главное меню
-	b.gameHandler.HandleStopGameButton(telegramID)
+	b.gameHandler.stopGame(telegramID)
 	b.sendMainMenu(telegramID, language)
 
 	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
