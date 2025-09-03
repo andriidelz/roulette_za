@@ -127,8 +127,8 @@ func (b *Bot) StartUpdateCaptcha() {
 					err = b.redisDB.Set(cont, userUpdateKey, 1, 0).Err()
 					if err != nil {
 						logger.Error.Printf("Error Set %d: %v", userID, err)
-						continue
 					}
+					continue
 				} else if err != nil {
 					logger.Error.Printf("Error Get %d: %v", userID, err)
 					continue
