@@ -49,12 +49,11 @@ type GameHandler struct {
 	service         service.Service
 	currentRound    *models.HashEntry
 	mutex           sync.RWMutex
-	waitingPlayers  map[int64]bool             // Карта игроков, ожидающих результатов
-	activeBets      map[int64]models.BetOption // Карта активных ставок игроков
-	activePlayers   map[int64]int              // Карта активных игроков в режиме /play
-	rabbitmq        *messaging.RabbitMQ        // Клиент RabbitMQ
-	processedRounds map[uint]bool              // Хранит ID обработанных раундов для избежания дублирования
-	processMutex    sync.Mutex                 // Мьютекс для доступа к processedRounds
+	waitingPlayers  map[int64]bool      // Карта игроков, ожидающих результатов
+	activePlayers   map[int64]int       // Карта активных игроков в режиме /play
+	rabbitmq        *messaging.RabbitMQ // Клиент RabbitMQ
+	processedRounds map[uint]bool       // Хранит ID обработанных раундов для избежания дублирования
+	processMutex    sync.Mutex          // Мьютекс для доступа к processedRounds
 
 	roundMsgChan   chan RoundMessage
 	processingLock sync.Mutex
@@ -92,7 +91,6 @@ func NewGameHandler(bot *Bot, service service.Service, rabbitmqURL string) (*Gam
 		bot:             bot,
 		service:         service,
 		waitingPlayers:  make(map[int64]bool),
-		activeBets:      make(map[int64]models.BetOption),
 		activePlayers:   make(map[int64]int),
 		rabbitmq:        rmq,
 		processedRounds: make(map[uint]bool),
@@ -155,7 +153,7 @@ func (h *GameHandler) processMessagesWorker() {
 					h.mutex.Unlock()
 
 					// Уведомляем активных игроков
-					h.notifyActivePlayers(msg.Round)
+					h.checkActivePlayers()
 
 					// Если есть дополнительные данные о раунде, можно использовать их
 					if msg.Data != nil && msg.Data.Hash != "" {
@@ -174,11 +172,10 @@ func (h *GameHandler) processMessagesWorker() {
 	}
 }
 
-// notifyActivePlayers уведомляет всех активных игроков о новом раунде
-func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
+// checkActivePlayers проверяет активных игроков
+func (h *GameHandler) checkActivePlayers() {
 	stopPlayers := []int64{}
 	h.mutex.RLock()
-	players := make([]int64, 0, len(h.activePlayers))
 	for userID, val := range h.activePlayers {
 		// Перед отправлением раунда проверяем активный ли юзер
 		// Если юзер пропустил 10 раундов останавливаем для него игру
@@ -187,7 +184,6 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 		} else {
 			// Инкрементим ему кол-во раундов. В случае если он сделает ставку это число обнулится
 			h.activePlayers[userID] = val + 1
-			players = append(players, userID)
 		}
 	}
 	h.mutex.RUnlock()
@@ -196,108 +192,6 @@ func (h *GameHandler) notifyActivePlayers(round *models.HashEntry) {
 	for i := range stopPlayers {
 		logger.Error.Println("Stop user ", stopPlayers[i])
 		h.stopGame(stopPlayers[i])
-	}
-
-	roundIDBase62 := utils.ToBase62(uint(round.ID))
-
-	// Запускаем таймер для одного уведомления - 5 секунд до конца раунда
-	go func() {
-		// Вычисляем время до уведомления
-		createdAt := round.CreatedAt
-		// roundDuration := 15 * time.Second // Раунд длится 15 секунд
-
-		// Отправляем уведомление за 5 секунд до конца раунда (на 10-й секунде)
-		fiveSecondsMark := createdAt.Add(10 * time.Second)
-
-		// Вычисляем время до уведомления
-		timeToFive := time.Until(fiveSecondsMark)
-
-		// Отправляем уведомление за 5 секунд до конца раунда
-		if timeToFive > 0 {
-			time.Sleep(timeToFive)
-			h.notifyTimeRemaining(round, 5)
-		}
-	}()
-
-	for _, userID := range players {
-		user, err := h.service.GetUser(userID)
-		if err != nil {
-			logger.Error.Printf("Error getting user %d: %v", userID, err)
-			continue
-		}
-
-		language := user.LanguageCode
-		if language == "" {
-			language = "en"
-		}
-
-		// Вычисляем оставшееся время до конца раунда
-		elapsedTime := time.Since(round.CreatedAt)
-		roundDuration := 15 * time.Second // 15-секундный раунд
-		remainingSeconds := int((roundDuration - elapsedTime).Seconds())
-
-		if remainingSeconds < 0 {
-			remainingSeconds = 0
-		}
-
-		// Получаем локализированный шаблон для нового раунда с обратным отсчетом
-		options := h.bot.prepareMessage("round_info_countdown", language)
-		options.Text = fmt.Sprintf(options.Text, roundIDBase62, round.Hash, remainingSeconds)
-
-		options.InlineKeyboard = h.createBetKeyboard(language, userID)
-		h.bot.SendMessage(userID, options)
-	}
-}
-
-// notifyTimeRemaining уведомляет игроков об оставшемся времени раунда
-func (h *GameHandler) notifyTimeRemaining(round *models.HashEntry, seconds int) {
-	h.mutex.RLock()
-	// Получаем активных игроков
-	players := make([]int64, 0, len(h.activePlayers))
-	for userID := range h.activePlayers {
-		players = append(players, userID)
-	}
-	h.mutex.RUnlock()
-
-	roundIDBase62 := utils.ToBase62(uint(round.ID))
-
-	for _, userID := range players {
-		// Проверяем, сделал ли игрок уже ставку в текущем раунде
-		bets, err := h.service.GetUserBetsForRound(userID, round.ID)
-		if err != nil {
-			logger.Error.Printf("Error getting user bets: %v", err)
-			continue
-		}
-
-		// Если пользователь уже сделал ставку, не отправляем уведомление
-		if len(bets) > 0 {
-			continue
-		}
-
-		user, err := h.service.GetUser(userID)
-		if err != nil {
-			logger.Error.Printf("Error getting user %d: %v", userID, err)
-			continue
-		}
-
-		language := user.LanguageCode
-		if language == "" {
-			language = "en"
-		}
-
-		// Получаем локализированный шаблон для времени
-		var options MessageOptions
-		if seconds == 15 {
-			options = h.bot.prepareMessage("nextbid15", language)
-		} else {
-			options = h.bot.prepareMessage("nextbid5", language)
-		}
-
-		// Формируем текст в новом формате
-		options.Text = fmt.Sprintf(options.Text, roundIDBase62)
-		options.InlineKeyboard = h.createBetKeyboard(language, userID)
-
-		h.bot.SendMessage(userID, options)
 	}
 }
 
@@ -448,18 +342,18 @@ func (h *GameHandler) handleRoundCompletion(round *models.HashEntry) {
 	var wg sync.WaitGroup
 
 	// Уведомляем каждого пользователя
-	for userID, bet := range userBets {
+	for userID := range userBets {
 		wg.Add(1)
-		go func(uid int64, b models.Bet) {
+		go func(uid int64) {
 			defer wg.Done()
 
 			// Отправляем уведомления о результатах синхронно
-			if err := h.notifyPlayerAboutResult(uid, round.ID, round, result, b.Option); err != nil {
+			if err := h.notifyPlayerAboutResult(uid, round.ID, round, result); err != nil {
 				logger.Error.Printf("Error notifying player %d: %v", uid, err)
 			} else {
 				logger.Info.Printf("Successfully notified player %d about round #%d results", uid, round.ID)
 			}
-		}(userID, bet)
+		}(userID)
 	}
 
 	// Ожидаем завершения всех уведомлений
@@ -468,7 +362,7 @@ func (h *GameHandler) handleRoundCompletion(round *models.HashEntry) {
 }
 
 // notifyPlayerAboutResult уведомляет игрока о результате раунда
-func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round *models.HashEntry, result models.BetOption, userBet models.BetOption) error {
+func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round *models.HashEntry, result models.BetOption) error {
 	logger.Info.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, roundID)
 
 	// Не отправляем результаты если пользователя нет в списке активных игроков
@@ -680,6 +574,9 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		{Text: checkSystemText, URL: checkSystemURL},
 		{Text: viewRatingText, CallbackData: "view_rating"},
 	})
+	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
+		{Text: h.service.GetText("next_round", language), CallbackData: CallbackStartRound},
+	})
 
 	// TODO: кнопка временно скрыта
 	// Второй ряд только с кнопкой пополнения баланса
@@ -690,10 +587,8 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 
 	// Если баланс ставок недостаточен, добавляем кнопку остановки игры в третий ряд
 	if betsBalance <= 0 {
-		stopGameText := h.service.GetText("stopgame", language)
-		inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
-			{Text: stopGameText, CallbackData: "stop_game"},
-		})
+
+		h.stopGame(userID)
 	}
 
 	// Создаем inline клавиатуру с кнопками
@@ -797,10 +692,8 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 		language = "en"
 	}
 
-	// Регистрируем пользователя как ожидающего результата и сохраняем его ставку
+	// Регистрируем пользователя как активного
 	h.mutex.Lock()
-	h.waitingPlayers[userID] = true
-	h.activeBets[userID] = option
 	h.activePlayers[userID] = 1 // обнуляем кол-во пропущенных раундов
 	h.mutex.Unlock()
 
