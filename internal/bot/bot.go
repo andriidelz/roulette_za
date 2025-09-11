@@ -959,6 +959,12 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		return
 	}
 
+	// Обработка отримання результату гри
+	if strings.HasPrefix(callbackData, CallbackGetResultRound) {
+		b.gameHandler.handleGetResultRound(query)
+		return
+	}
+
 	switch callbackData {
 	// Обработка регистрации и заполнения данных пользователя
 	case CallbackAgeVerify:

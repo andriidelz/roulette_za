@@ -2,6 +2,8 @@ package bot
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -61,12 +63,13 @@ type GameHandler struct {
 }
 
 const (
-	CallbackStartRound    = "startround"
-	CallbackBetRed        = "bet_red"
-	CallbackBetBlack      = "bet_black"
-	CallbackBetZero       = "bet_zero"
-	CallbackBetZeroLocked = "bet_zero_locked"
-	CallbackBetAvailable  = "availablebets"
+	CallbackStartRound     = "startround"
+	CallbackGetResultRound = "get_result_"
+	CallbackBetRed         = "bet_red"
+	CallbackBetBlack       = "bet_black"
+	CallbackBetZero        = "bet_zero"
+	CallbackBetZeroLocked  = "bet_zero_locked"
+	CallbackBetAvailable   = "availablebets"
 
 	StickerNoBids    = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
 	StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
@@ -312,14 +315,19 @@ func (h *GameHandler) handleRabbitMQMessage(message messaging.RouletteMessage) e
 
 // handleRoundCompletion обрабатывает завершение раунда
 func (h *GameHandler) handleRoundCompletion(round *models.HashEntry) {
-	// Получаем всех пользователей, которые сделали ставки в этом раунде
-	bets, err := h.service.ProcessAndGetBets(round.ID)
-	if err != nil {
-		logger.Error.Printf("Error processing bets for round #%d: %v", round.ID, err)
-		return
-	}
 
-	if len(bets) == 0 {
+	// Отримуємо користувачів які натиснули отримати результат до завершення раунду.
+	// Відправляємо їм результат по першій можливості
+
+	h.mutex.Lock()
+	players := make([]int64, 0, len(h.waitingPlayers))
+	for userID := range h.waitingPlayers {
+		players = append(players, userID)
+	}
+	h.waitingPlayers = map[int64]bool{}
+	h.mutex.Unlock()
+
+	if len(players) == 0 {
 		return
 	}
 
@@ -332,17 +340,12 @@ func (h *GameHandler) handleRoundCompletion(round *models.HashEntry) {
 
 	logger.Info.Printf("Round #%d result: %s (number: %d)", round.ID, result, round.Number)
 
-	// Группируем ставки по пользователям
-	userBets := make(map[int64]models.Bet)
-	for _, bet := range bets {
-		userBets[bet.User.TelegramID] = bet
-	}
-
 	// Создаем WaitGroup для ожидания завершения всех уведомлений
 	var wg sync.WaitGroup
 
 	// Уведомляем каждого пользователя
-	for userID := range userBets {
+	for i := range players {
+		userID := players[i]
 		wg.Add(1)
 		go func(uid int64) {
 			defer wg.Done()
@@ -359,6 +362,58 @@ func (h *GameHandler) handleRoundCompletion(round *models.HashEntry) {
 	// Ожидаем завершения всех уведомлений
 	wg.Wait()
 	logger.Info.Printf("All players have been notified about round #%d results", round.ID)
+}
+
+// handleGetResultRound присилаємо користувачу результат раунда в якому він робив ставку і не отримав результат
+func (h *GameHandler) handleGetResultRound(query *telego.CallbackQuery) {
+
+	user := query.From
+
+	// Отримуєм раунд
+	roundID, err := strconv.ParseUint(strings.TrimPrefix(query.Data, CallbackGetResultRound), 10, 64)
+	if err != nil {
+		logger.Error.Printf("failed to parse #%s: %v", query.Data, err)
+		return
+	}
+
+	round, err := h.service.GetHashEntryByID(uint(roundID))
+	if err != nil {
+		logger.Error.Printf("failed to get round #%d: %v", roundID, err)
+		return
+	}
+
+	// Получаем пользователя
+	dbUser, err := h.service.GetUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
+		return
+	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
+
+	//  Користувач натискає кнопку отримати результат раніше, ніж результати готові для виводу
+	if round.IsCompleted {
+		h.mutex.Lock()
+		h.waitingPlayers[user.ID] = true // записуємо в список гравців що очікують на отримання
+		h.mutex.Unlock()
+
+		// Виводимо pop-up toast без підтвердження
+		h.bot.answerCallbackQuery(query.ID, h.service.GetText("wait_result", language), false)
+		return
+	}
+
+	h.bot.answerCallbackQuery(query.ID, "", false)
+
+	// Отримуєм результат раунда
+	result, err := h.service.GetRoundResult(round.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting result for round #%d: %v", round.ID, err)
+		return
+	}
+
+	if err := h.notifyPlayerAboutResult(user.ID, round.ID, round, result); err != nil {
+		logger.Error.Printf("Error notifying player %d: %v", user.ID, err)
+	}
 }
 
 // notifyPlayerAboutResult уведомляет игрока о результате раунда
@@ -450,8 +505,6 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	case models.Zero:
 		resultLangKey = "zeroresult"
 	}
-	// Отправляем текст результата
-	h.bot.SendMessage(userID, h.bot.prepareMessage(resultLangKey, language))
 
 	// 3. Отправляем стикер выигрыша/проигрыша на 19 секунде (через 1 секунду)
 	time.Sleep(1 * time.Second)
@@ -481,6 +534,8 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	} else {
 		options = h.bot.prepareMessage("losemessage", language)
 	}
+
+	options.Text = resultLangKey + "\n\n" + options.Text
 
 	// Формируем часть о рейтинге
 
@@ -709,7 +764,17 @@ func (h *GameHandler) MakeBet(userID int64, option models.BetOption) error {
 	go func() {
 		time.Sleep(1000 * time.Millisecond)
 		options := h.bot.prepareMessage("nomorebids", language)
-		options.InlineKeyboard = h.createBetKeyboard(language, userID)
+
+		// Создаем кнопку для запроса результата
+		inlineKeyboard := &telego.InlineKeyboardMarkup{
+			InlineKeyboard: [][]telego.InlineKeyboardButton{{
+				{
+					Text:         h.service.GetText("get_result", language),
+					CallbackData: CallbackGetResultRound + fmt.Sprint(currentRound.ID),
+				},
+			}},
+		}
+		options.InlineKeyboard = inlineKeyboard
 
 		h.bot.SendMessage(userID, options)
 	}()
