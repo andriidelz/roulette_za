@@ -351,7 +351,7 @@ func (h *GameHandler) handleRoundCompletion(round *models.HashEntry) {
 			defer wg.Done()
 
 			// Отправляем уведомления о результатах синхронно
-			if err := h.notifyPlayerAboutResult(uid, round.ID, round, result); err != nil {
+			if err := h.notifyPlayerAboutResult(uid, round, result); err != nil {
 				logger.Error.Printf("Error notifying player %d: %v", uid, err)
 			} else {
 				logger.Info.Printf("Successfully notified player %d about round #%d results", uid, round.ID)
@@ -411,14 +411,14 @@ func (h *GameHandler) handleGetResultRound(query *telego.CallbackQuery) {
 		return
 	}
 
-	if err := h.notifyPlayerAboutResult(user.ID, round.ID, round, result); err != nil {
+	if err := h.notifyPlayerAboutResult(user.ID, round, result); err != nil {
 		logger.Error.Printf("Error notifying player %d: %v", user.ID, err)
 	}
 }
 
 // notifyPlayerAboutResult уведомляет игрока о результате раунда
-func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round *models.HashEntry, result models.BetOption) error {
-	logger.Info.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, roundID)
+func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEntry, result models.BetOption) error {
+	logger.Info.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, round.ID)
 
 	// Не отправляем результаты если пользователя нет в списке активных игроков
 	h.mutex.RLock()
@@ -441,16 +441,57 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 	}
 
 	// Получаем информацию о ставке
-	userBets, err := h.service.GetUserBetsForRound(userID, roundID)
+	userBets, err := h.service.GetUserBetsForRound(userID, round.ID)
 	if err != nil {
 		return fmt.Errorf("error getting bets: %w", err)
 	}
 
 	if len(userBets) == 0 {
-		return fmt.Errorf("no bets found for user %d in round %d", userID, roundID)
+		return fmt.Errorf("no bets found for user %d in round %d", userID, round.ID)
 	}
 
 	bet := userBets[0]
+
+	//  Користувач вже отримував результат раунду - присилаєм текст і лінк на сторінку з історією ставок
+	if bet.GetResult {
+		options := h.bot.prepareMessage("repeatresultalert", language)
+		options.Text = "#" + fmt.Sprint(round.ID) + "\n\n" + options.Text
+		// Создаем кнопки
+		var inlineButtons [][]telego.InlineKeyboardButton
+
+		// Добавляем первый ряд с двумя кнопками: проверка раунда и просмотр рейтинга
+		checkSystemText := h.service.GetText("systemcheck", language)
+		roundIDBase62 := utils.ToBase62(uint(round.ID))
+		checkSystemURL := fmt.Sprintf("%s/hashes/?id=%s", webPage, roundIDBase62)
+
+		viewRatingText := h.service.GetText("viewrating", language)
+
+		// Верхний ряд из 2 кнопок
+		inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
+			{Text: checkSystemText, URL: checkSystemURL},
+			{Text: viewRatingText, CallbackData: "view_rating"},
+		})
+		inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
+			{Text: h.service.GetText("next_round", language), CallbackData: CallbackStartRound},
+		})
+
+		// Создаем inline клавиатуру с кнопками
+		options.InlineKeyboard = &telego.InlineKeyboardMarkup{
+			InlineKeyboard: inlineButtons,
+		}
+
+		// Отправляем объединенное сообщение с клавиатурой
+		h.bot.SendMessage(userID, options)
+		return nil
+	}
+
+	// Сохраняем обновленную ставку в БД
+	bet.GetResult = true
+	if err := h.service.GetRepo().UpdateBet(&bet); err != nil {
+		logger.Error.Printf("Error updating bet for user %d in round %d: %v",
+			bet.UserID, round.ID, err)
+	}
+
 	won := bet.Won
 	points := bet.Points
 
@@ -535,7 +576,8 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 		options = h.bot.prepareMessage("losemessage", language)
 	}
 
-	options.Text = resultLangKey + "\n\n" + options.Text
+	options.Text = "#" + fmt.Sprint(round.ID) + "\n\n" +
+		h.service.GetText(resultLangKey, language) + "\n\n" + options.Text
 
 	// Формируем часть о рейтинге
 
@@ -619,7 +661,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, roundID uint, round 
 
 	// Добавляем первый ряд с двумя кнопками: проверка раунда и просмотр рейтинга
 	checkSystemText := h.service.GetText("systemcheck", language)
-	roundIDBase62 := utils.ToBase62(uint(roundID))
+	roundIDBase62 := utils.ToBase62(uint(round.ID))
 	checkSystemURL := fmt.Sprintf("%s/hashes/?id=%s", webPage, roundIDBase62)
 
 	viewRatingText := h.service.GetText("viewrating", language)
