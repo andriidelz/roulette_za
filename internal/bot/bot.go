@@ -273,7 +273,7 @@ func (b *Bot) handleContactCommand(message *telego.Message) {
 }
 
 // MakeBet делает ставку в текущем раунде
-func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, option models.BetOption) {
+func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData string, option models.BetOption) {
 
 	user := query.From
 	// Получаем пользователя для определения языка
@@ -304,8 +304,15 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, option models.B
 		return
 	}
 
+	// Отримуєм раунд
+	roundID, err := strconv.ParseUint(strings.TrimPrefix(query.Data, callbackData), 10, 64)
+	if err != nil {
+		logger.Error.Printf("failed to parse #%s: %v", query.Data, err)
+		return
+	}
+
 	// Вызываем MakeBet и обрабатываем возможные ошибки
-	err := h.bot.gameHandler.MakeBet(user.ID, option)
+	err = h.bot.gameHandler.MakeBet(user.ID, roundID, option)
 	if err != nil {
 		// Определяем тип ошибки и отправляем соответствующее сообщение
 		var errorKey string
@@ -326,6 +333,19 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, option models.B
 		} else if strings.Contains(err.Error(), "no bets left") {
 			// У пользователя закончились ставки на сегодня
 			errorKey = "betsbalancelow"
+		} else if strings.Contains(err.Error(), "already completed") {
+			errorKey = "bet_time_completed"
+
+			h.bot.answerCallbackQuery(query.ID, "", false)
+
+			options := h.bot.prepareMessage(errorKey, language)
+			options.InlineKeyboard = &telego.InlineKeyboardMarkup{
+				InlineKeyboard: [][]telego.InlineKeyboardButton{
+					{{Text: h.bot.service.GetText("next_round", language), CallbackData: CallbackStartRound}},
+				},
+			}
+			h.bot.SendMessage(user.ID, options)
+			return
 		} else {
 			// Общая ошибка ставки
 
@@ -959,6 +979,31 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		return
 	}
 
+	charToTrimAfter := "_"
+	lastIndex := strings.LastIndex(callbackData, charToTrimAfter)
+
+	if lastIndex != -1 {
+		trimmedString := callbackData[:lastIndex+len(charToTrimAfter)] // Include the character(s)
+
+		switch trimmedString {
+		// Отримання результату гри
+		case CallbackGetResultRound:
+			b.gameHandler.handleGetResultRound(query)
+			return
+
+			// Ставки
+		case CallbackBetRed:
+			b.gameHandler.handleMakeBet(query, CallbackBetRed, models.Red)
+			return
+		case CallbackBetBlack:
+			b.gameHandler.handleMakeBet(query, CallbackBetBlack, models.Black)
+			return
+		case CallbackBetZero:
+			b.gameHandler.handleMakeBet(query, CallbackBetZero, models.Zero)
+			return
+		}
+	}
+
 	switch callbackData {
 	// Обработка регистрации и заполнения данных пользователя
 	case CallbackAgeVerify:
@@ -1008,12 +1053,6 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Гра
 	case CallbackStartRound:
 		b.gameHandler.handleStartRound(query)
-	case CallbackBetRed:
-		b.gameHandler.handleMakeBet(query, models.Red)
-	case CallbackBetBlack:
-		b.gameHandler.handleMakeBet(query, models.Black)
-	case CallbackBetZero:
-		b.gameHandler.handleMakeBet(query, models.Zero)
 	case CallbackBetZeroLocked:
 		// Обработка нажатия на заблокированную кнопку Zero
 		_, remaining, _ := b.service.CanBetZero(user.ID)

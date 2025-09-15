@@ -62,12 +62,52 @@ func (r *PostgresRepository) GetHashEntryByID(id uint) (*models.HashEntry, error
 	return &entry, nil
 }
 
-// unused
+func (r *PostgresRepository) CreateBet(bet *models.Bet) error {
+	return r.db.Create(bet).Error
+}
+
+// UpdateBet обновляет информацию о ставке
+func (r *PostgresRepository) UpdateBet(bet *models.Bet) error {
+	return r.db.Save(bet).Error
+}
+
+func (r *PostgresRepository) GetUserBets(userID uint, limit int) ([]models.Bet, error) {
+	var bets []models.Bet
+	query := r.db.Where("user_id = ?", userID).Order("created_at desc")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Find(&bets).Error; err != nil {
+		return nil, err
+	}
+
+	return bets, nil
+}
+
+func (r *PostgresRepository) GetUserBetsCount(userID uint) (int, error) {
+	var count int64
+	if err := r.db.Model(&models.Bet{}).Where("user_id = ?", userID).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
 // GetBetsByHashEntryID получает все ставки для указанного хеша (раунда)
 func (r *PostgresRepository) GetBetsByHashEntryID(hashEntryID uint) ([]models.Bet, error) {
 	var bets []models.Bet
 	err := r.db.Where("hash_entry_id = ?", hashEntryID).Find(&bets).Error
 	return bets, err
+}
+
+// GetBetsByHashEntryIDWithUsers получает все ставки для указанного хеша (раунда) вместе с данными пользователей
+func (r *PostgresRepository) GetBetsByHashEntryIDWithUsers(hashEntryID uint) ([]models.Bet, error) {
+	var bets []models.Bet
+	if err := r.db.Where("hash_entry_id = ?", hashEntryID).Preload("User").Find(&bets).Error; err != nil {
+		return nil, err
+	}
+	return bets, nil
 }
 
 // GetActiveHashEntry получает текущий активный хеш (раунд)
@@ -94,11 +134,6 @@ func (r *PostgresRepository) GetUserBetsForHashEntry(userID, hashEntryID uint) (
 	var bets []models.Bet
 	err := r.db.Where("user_id = ? AND hash_entry_id = ?", userID, hashEntryID).Find(&bets).Error
 	return bets, err
-}
-
-// UpdateBet обновляет информацию о ставке
-func (r *PostgresRepository) UpdateBet(bet *models.Bet) error {
-	return r.db.Save(bet).Error
 }
 
 // GetCompletedRounds возвращает список завершенных раундов с пагинацией

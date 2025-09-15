@@ -164,35 +164,6 @@ func NewRepository(db *gorm.DB) Repository {
 	return &PostgresRepository{db: db}
 }
 
-// Реалізація методів для ігор і ставок
-
-func (r *PostgresRepository) CreateBet(bet *models.Bet) error {
-	return r.db.Create(bet).Error
-}
-
-func (r *PostgresRepository) GetUserBets(userID uint, limit int) ([]models.Bet, error) {
-	var bets []models.Bet
-	query := r.db.Where("user_id = ?", userID).Order("created_at desc")
-
-	if limit > 0 {
-		query = query.Limit(limit)
-	}
-
-	if err := query.Find(&bets).Error; err != nil {
-		return nil, err
-	}
-
-	return bets, nil
-}
-
-func (r *PostgresRepository) GetUserBetsCount(userID uint) (int, error) {
-	var count int64
-	if err := r.db.Model(&models.Bet{}).Where("user_id = ?", userID).Count(&count).Error; err != nil {
-		return 0, err
-	}
-	return int(count), nil
-}
-
 // Реалізація методів для рейтингів
 
 func (r *PostgresRepository) GetWeeklyRating(year, week int, limit int) ([]models.WeeklyRating, error) {
@@ -475,15 +446,6 @@ func (r *PostgresRepository) GetUserMonthlyStats(userID uint) (int, int, error) 
 	err = r.db.Model(&models.Bet{}).Where("user_id = ? AND won = ? AND DATE(created_at) >= ?", userID, true, startOfMonth).Select("COALESCE(SUM(points), 0)").Scan(&points).Error
 
 	return int(count), points, err
-}
-
-// GetBetsByHashEntryIDWithUsers получает все ставки для указанного хеша (раунда) вместе с данными пользователей
-func (r *PostgresRepository) GetBetsByHashEntryIDWithUsers(hashEntryID uint) ([]models.Bet, error) {
-	var bets []models.Bet
-	if err := r.db.Where("hash_entry_id = ?", hashEntryID).Preload("User").Find(&bets).Error; err != nil {
-		return nil, err
-	}
-	return bets, nil
 }
 
 func (r *PostgresRepository) GetCurrentYearWeek() (int, int) {
