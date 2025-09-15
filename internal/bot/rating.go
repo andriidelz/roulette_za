@@ -31,9 +31,16 @@ func (b *Bot) handleRatingCommand(message *telego.Message) {
 func (b *Bot) handleRatingCallbackQuery(query *telego.CallbackQuery) {
 	user := query.From
 
-	options, _ := b.getWeeklyRating(user.ID, user.LanguageCode)
+	options, language := b.getWeeklyRating(user.ID, user.LanguageCode)
 
 	if query.Message != nil {
+		// Создаем inline клавиатуру с кнопками
+		options.InlineKeyboard = &telego.InlineKeyboardMarkup{
+			InlineKeyboard: [][]telego.InlineKeyboardButton{
+				{{Text: b.service.GetText("next_round", language), CallbackData: CallbackStartRound}},
+			},
+		}
+
 		b.SendMessage(query.Message.GetChat().ID, options)
 	}
 }

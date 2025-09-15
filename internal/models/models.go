@@ -57,7 +57,8 @@ type Bet struct {
 	HashEntry   HashEntry `gorm:"foreignKey:HashEntryID"`
 	Option      BetOption `gorm:"size:10"`
 	Won         bool      `gorm:"default:false"`
-	Points      int       `gorm:"default:0"` // Отримані бали
+	GetResult   bool      `gorm:"default:false"` // Історія того чи отримував користувач результат своєї ставки
+	Points      int       `gorm:"default:0"`     // Отримані бали
 	CreatedAt   time.Time
 }
 
