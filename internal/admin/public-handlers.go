@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"roulette/internal/models"
 	"roulette/internal/utils"
 	"strconv"
 
@@ -34,18 +35,48 @@ func (a *AdminPanel) publicHashes(c *gin.Context) {
 		page = 1
 	}
 	perPage := 10
+	var totalPages int
+	var entries []models.HashEntry
 
 	// Опционально получаем ID для подсветки
 	highlightID, _ := strconv.ParseUint(c.Query("highlight"), 10, 64)
 
-	// Получаем хеши с пагинацией
-	entries, totalPages, err := a.service.GetHashEntries(page, perPage)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title": "Ошибка",
-			"error": err.Error(),
-		})
-		return
+	id := c.Query("id")
+	if id != "" {
+		// Якщо вказано id
+		hashID := utils.FromBase62(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID хеша"})
+			return
+		}
+
+		targetEntry, err := a.service.GetHashEntryByID(uint(hashID))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		if targetEntry == nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title": "Ошибка",
+				"error": "Хеш не найден",
+			})
+			return
+		}
+		totalPages = 1
+		entries = append(entries, *targetEntry)
+
+	} else {
+
+		// Получаем хеши с пагинацией
+		entries, totalPages, err = a.service.GetHashEntries(page, perPage)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title": "Ошибка",
+				"error": err.Error(),
+			})
+			return
+		}
 	}
 
 	// Получаем текущий активный раунд (который не должен отображаться)
@@ -124,6 +155,7 @@ func (a *AdminPanel) publicHashes(c *gin.Context) {
 		"totalPages":  totalPages,
 		"pagination":  pagination,
 		"highlightID": highlightID,
+		"id":          id,
 		"cssFiles": []string{
 			"home.css",
 		},
