@@ -8,12 +8,15 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 	"strings"
 	"time"
 
 	logger "roulette/internal/logger"
 )
+
+const charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 func DumpInterface(in interface{}) {
 	b, err := json.MarshalIndent(in, "", "  ")
@@ -58,7 +61,6 @@ func VerifyHash(originalHash, saltHex string, number int64) bool {
 
 // ToBase62 конвертує число в Base62 рядок
 func ToBase62(num uint) string {
-	const charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	length := len(charset)
 
 	if num == 0 {
@@ -79,6 +81,23 @@ func ToBase62(num uint) string {
 	}
 
 	return string(runes)
+}
+
+// FromBase62 decodes a base62 encoded string to an uint64.
+func FromBase62(token string) uint64 {
+	var val uint64
+	var base uint64 = 62
+	for index, char := range token {
+		pow := len(token) - (index + 1)
+		pos := strings.IndexRune(charset, char)
+		if pos == -1 {
+			return 0
+		}
+
+		val += uint64(pos) * uint64(math.Pow(float64(base), float64(pow)))
+	}
+
+	return val
 }
 
 // GetColorForNumber повертає колір для числа на рулетці
