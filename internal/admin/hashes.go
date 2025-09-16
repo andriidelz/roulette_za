@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
-	"roulette/internal/models"
 	"roulette/internal/utils"
 	"strconv"
 
@@ -157,20 +156,10 @@ func (a *AdminPanel) getHashDetailsAPI(c *gin.Context) {
 		return
 	}
 
-	// Получаем хеш из базы данных
-	entries, _, err := a.service.GetHashEntries(1, 100) // Временное решение, пока не будет метода GetHashByID
+	targetEntry, err := a.service.GetHashEntryByID(uint(hashID))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-	}
-
-	// Ищем нужный хеш
-	var targetEntry *models.HashEntry
-	for _, entry := range entries {
-		if entry.ID == uint(hashID) {
-			targetEntry = &entry
-			break
-		}
 	}
 
 	if targetEntry == nil {
