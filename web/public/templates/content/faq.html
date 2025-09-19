@@ -1,118 +1,133 @@
-{{define "public_faq"}}
-{{template "public_base" .}}
-{{end}}
-
-{{define "public_faq_content"}}
+{{define "public_faq"}} {{template "public_base" .}} {{end}} {{define
+"public_faq_content"}}
 <!-- Баннер с краткой информацией -->
 <div class="hero-section">
-    <div class="container">
-        <div class="row align-items-center">
-            <div class="col-md-8 mx-auto text-center">
-                <h1>Часто задаваемые вопросы</h1>
-                <p class="lead">Ответы на популярные вопросы о боте Roulette и системе проверки честности.</p>
-                <a href="/hashes" class="btn btn-primary">
-                    <i class="bi bi-shield-check"></i> Проверить результаты
-                </a>
-            </div>
-        </div>
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-8 mx-auto text-center">
+        <h1>{{ i18n .lang "faq_title" }}</h1>
+        <p class="lead">{{ i18n .lang "faq_subtitle" }}</p>
+        <a href="/hashes" class="btn btn-primary">
+          <i class="bi bi-shield-check"></i> {{ i18n .lang "verify_results" }}
+        </a>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Основное содержимое -->
 <div class="main-container">
-    <div class="container">
-        <!-- Навигация по разделам FAQ -->
-        <ul class="nav nav-pills mb-4 justify-content-center">
-            <li class="nav-item">
-                <a class="nav-link active" href="#general">Общие вопросы</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#gameplay">Игровой процесс</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#verification">Проверка честности</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#ratings">Рейтинги и призы</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#withdrawals">Вывод средств</a>
-            </li>
-        </ul>
+  <div class="container">
+    <!-- Общие вопросы -->
+    <ul class="nav nav-pills mb-4 justify-content-center">
+      <li class="nav-item">
+        <a class="nav-link active" href="#general"
+          >{{ i18n .lang "general_questions" }}</a
+        >
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#gameplay">{{ i18n .lang "gameplay" }}</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#verification"
+          >{{ i18n .lang "verification" }}</a
+        >
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#ratings">{{ i18n .lang "ratings" }}</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#withdrawals"
+          >{{ i18n .lang "withdrawals" }}</a
+        >
+      </li>
+    </ul>
 
-        <!-- Раздел: Общие вопросы -->
-        <div id="general" class="faq-section">
-            <h2 class="mb-4">Общие вопросы</h2>
-            
-            <div class="faq-card card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Что такое Roulette Bot?</h5>
-                </div>
-                <div class="card-body">
-                    <p>Roulette Bot - это Telegram-бот, который позволяет пользователям играть в упрощенную версию рулетки. В нашей рулетке есть возможность делать ставки на красное, черное или зеро (0).</p>
-                    <p>Основные особенности Roulette Bot:</p>
-                    <ul>
-                        <li>Упрощенная игра в рулетку с ставками на красное, черное или зеро</li>
-                        <li>Еженедельный рейтинг игроков с призовым фондом</li>
-                        <li>Супер-рейтинг на основе позиций в еженедельных рейтингах</li>
-                        <li>Поддержка нескольких языков (украинский, английский и русский)</li>
-                        <li>Прозрачная система проверки честности результатов</li>
-                        <li>Возможность вывода выигрышей</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="faq-card card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Как начать играть в Roulette Bot?</h5>
-                </div>
-                <div class="card-body">
-                    <p>Начать играть очень просто:</p>
-                    <ol>
-                        <li>Перейдите по ссылке <a href="https://t.me/socialroulette_bot" target="_blank">https://t.me/socialroulette_bot</a> или найдите бот @socialroulette_bot в Telegram</li>
-                        <li>Нажмите кнопку "Старт" или отправьте команду /start</li>
-                        <li>Следуйте инструкциям бота для начала игры</li>
-                        <li>Используйте команду /play для размещения ставок</li>
-                    </ol>
-                    <p>Бот предоставит подробные инструкции и поможет вам разобраться в игровом процессе.</p>
-                </div>
-            </div>
-            
-            <div class="faq-card card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> Какие языки поддерживает бот?</h5>
-                </div>
-                <div class="card-body">
-                    <p>Roulette Bot поддерживает следующие языки:</p>
-                    <ul>
-                        <li>Русский</li>
-                        <li>Украинский</li>
-                        <li>Английский</li>
-                    </ul>
-                    <p>Вы можете изменить язык в любой момент, используя команду /settings или соответствующую кнопку в меню бота.</p>
-                </div>
-            </div>
-        </div>
+    <!-- Общие вопросы -->
+    <div id="general" class="faq-section">
+      <h2 class="mb-4">{{ i18n .lang "general_questions" }}</h2>
 
-        <!-- Дополнительные вопросы -->
-        <div class="faq-section">
-            <h2 class="mb-4">Дополнительные вопросы</h2>
-            
-            <div class="faq-card card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i> У меня возникла проблема или вопрос, не указанный здесь. Что делать?</h5>
-                </div>
-                <div class="card-body">
-                    <p>Если у вас возникли вопросы, которые не освещены в FAQ, или вы столкнулись с проблемой, вы можете связаться с нашей службой поддержки:</p>
-                    <ul>
-                        <li>Используйте команду /contact в боте и опишите свою проблему</li>
-                        <li>Напишите в нашу службу поддержки в Telegram: <a href="https://t.me/roulette_support" target="_blank">@roulette_support</a></li>
-                        <li>Отправьте email на адрес: <a href="mailto:support@games.sprut.net">support@games.sprut.net</a></li>
-                    </ul>
-                    <p>Мы постараемся ответить на ваш запрос в течение 24 часов. Ваше мнение очень важно для нас, и мы постоянно работаем над улучшением нашего сервиса.</p>
-                </div>
-            </div>
+      <div class="faq-card card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-question-circle me-2"></i> {{ i18n .lang
+            "what_is_roulette_bot" }}
+          </h5>
         </div>
+        <div class="card-body">
+          <p>{{ i18n .lang "roulette_bot_answer" }}</p>
+          <p>{{ i18n .lang "main_features" }}</p>
+          <ul>
+            <li>{{ i18n .lang "feature_simplified_game" }}</li>
+            <li>{{ i18n .lang "feature_weekly_rating" }}</li>
+            <li>{{ i18n .lang "feature_super_rating" }}</li>
+            <li>{{ i18n .lang "feature_multilang" }}</li>
+            <li>{{ i18n .lang "feature_transparent" }}</li>
+            <li>{{ i18n .lang "feature_withdrawal" }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="faq-card card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-question-circle me-2"></i> {{ i18n .lang
+            "how_to_start" }}
+          </h5>
+        </div>
+        <div class="card-body">
+          <p>{{ i18n .lang "start_playing_answer" }}</p>
+          <ol>
+            <li>{{ i18n .lang "start_step1" }}</li>
+            <li>{{ i18n .lang "start_step2" }}</li>
+            <li>{{ i18n .lang "start_step3" }}</li>
+            <li>{{ i18n .lang "start_step4" }}</li>
+          </ol>
+          <p>{{ i18n .lang "bot_instructions" }}</p>
+        </div>
+      </div>
+
+      <div class="faq-card card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-question-circle me-2"></i> {{ i18n .lang
+            "language_support" }}
+          </h5>
+        </div>
+        <div class="card-body">
+          <p>{{ i18n .lang "languages_list" }}</p>
+          <ul>
+            <li>{{ i18n .lang "language_russian" }}</li>
+            <li>{{ i18n .lang "language_ukrainian" }}</li>
+            <li>{{ i18n .lang "language_english" }}</li>
+          </ul>
+          <p>{{ i18n .lang "change_language" }}</p>
+        </div>
+      </div>
     </div>
+
+    <!-- Поддержка -->
+    <div class="faq-section">
+      <h2 class="mb-4">{{ i18n .lang "footer_support" }}</h2>
+
+      <div class="faq-card card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-question-circle me-2"></i> {{ i18n .lang
+            "support_title" }}
+          </h5>
+        </div>
+        <div class="card-body">
+          <p>{{ i18n .lang "support_answer" }}</p>
+          <ul>
+            <li>{{ i18n .lang "contact_method1" }}</li>
+            <li>{{ i18n .lang "contact_method2" }}</li>
+            <li>{{ i18n .lang "contact_method3" }}</li>
+          </ul>
+          <p>{{ i18n .lang "support_response_time" }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {{end}}

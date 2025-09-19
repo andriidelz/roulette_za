@@ -1,0 +1,35 @@
+# Navigation menu
+nav_home: "Главная"
+nav_open_bot: "Открыть бот"
+nav_results: "Результаты"
+nav_faq: "FAQ"
+nav_example: "Пример проверки"
+
+# Footer
+about_roulette_bot: "О Roulette Bot"
+about_description: "Телеграм-бот для социального казино на основе упрощенного принципа игры в рулетку с системой проверки честности."
+footer_links: "Ссылки"
+footer_home: "Главная"
+footer_results: "Результаты"
+footer_faq: "FAQ"
+footer_example: "Пример проверки"
+footer_play: "Играть"
+footer_telegram_bot: "Telegram Бот"
+footer_invite_friend: "Пригласить друга"
+footer_our_rules: "Наши правила"
+footer_contacts: "Контакты"
+footer_support: "Поддержка"
+all_rights_reserved: "Все права защищены"
+developed_by: "Разработано"
+
+# Common buttons and actions
+start: "Старт"
+close: "Закрыть"
+verify: "Проверить"
+copy: "Копировать"
+search: "Поиск"
+previous: "Предыдущая"
+next: "Следующая"
+
+# Base template
+page_not_found: "Страница не найдена"

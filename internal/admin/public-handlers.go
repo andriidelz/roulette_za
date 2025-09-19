@@ -62,7 +62,7 @@ func (a *AdminPanel) publicHashes(c *gin.Context) {
 		if targetEntry == nil {
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 				"lang": userLang,
-				"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"home"})),
+				"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"common", "hashes"})),
 
 				"title": "Ошибка",
 				"error": "Хеш не найден",
@@ -79,7 +79,7 @@ func (a *AdminPanel) publicHashes(c *gin.Context) {
 		if err != nil {
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 				"lang": userLang,
-				"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"home"})),
+				"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"common", "hashes"})),
 
 				"title": "Ошибка",
 				"error": err.Error(),
@@ -158,7 +158,7 @@ func (a *AdminPanel) publicHashes(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "public_hashes", gin.H{
 		"lang": userLang,
-		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"home"})),
+		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"common", "hashes"})),
 
 		"title":       "Проверка результатов | Roulette Bot",
 		"activeTab":   "hashes",
@@ -183,7 +183,7 @@ func (a *AdminPanel) publicHome(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "public_home", gin.H{
 		"lang": userLang,
-		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"home"})),
+		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"common", "hashes"})),
 
 		"title":     "Roulette Bot | Социальное казино в Telegram",
 		"activeTab": "home",
@@ -202,7 +202,7 @@ func (a *AdminPanel) publicFAQ(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "public_faq", gin.H{
 		"lang": userLang,
-		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"home"})),
+		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"common", "faq"})),
 
 		"title":     "FAQ | Roulette Bot",
 		"activeTab": "faq",
@@ -219,7 +219,7 @@ func (a *AdminPanel) publicExample(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "public_example", gin.H{
 		"lang": userLang,
-		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"home"})),
+		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"common", "example"})),
 
 		"title":     "Пример проверки хеша | Roulette Bot",
 		"activeTab": "example",

@@ -10,8 +10,7 @@
           {{ i18n .lang "social_casino_on_telegram" }}
         </h1>
         <p class="lead hero-description mb-4">
-          Roulette Bot – это Telegram-бот для игры в упрощенную версию рулетки с
-          еженедельными рейтингами и прозрачной системой проверки честности.
+          {{ i18n .lang "roulette_bot_description" }}
         </p>
         <div class="d-flex flex-wrap gap-2">
           <a
@@ -19,10 +18,11 @@
             class="btn btn-primary btn-lg"
             target="_blank"
           >
-            <i class="bi bi-telegram me-2"></i> Открыть бот
+            <i class="bi bi-telegram me-2"></i> {{ i18n .lang "open_bot" }}
           </a>
           <a href="/hashes" class="btn btn-outline-light btn-lg">
-            <i class="bi bi-shield-check me-2"></i> Проверить честность
+            <i class="bi bi-shield-check me-2"></i> {{ i18n .lang
+            "verify_fairness" }}
           </a>
         </div>
       </div>
@@ -30,14 +30,12 @@
   </div>
 </section>
 
-<!-- Особенности -->
+<!-- Особенности Roulette Bot -->
 <section class="py-5 bg-white" id="features">
   <div class="container">
     <div class="text-center mb-5">
-      <h2 class="fw-bold">Особенности Roulette Bot</h2>
-      <p class="lead text-muted">
-        Все преимущества нашего бота для социальной рулетки
-      </p>
+      <h2 class="fw-bold">{{ i18n .lang "features_title" }}</h2>
+      <p class="lead text-muted">{{ i18n .lang "features_subtitle" }}</p>
     </div>
 
     <div class="row g-4">
@@ -47,11 +45,10 @@
             <div class="feature-icon mx-auto">
               <i class="bi bi-joystick"></i>
             </div>
-            <h4 class="card-title mb-3">Простой игровой процесс</h4>
-            <p class="card-text">
-              Интуитивно понятный интерфейс и упрощенные правила для комфортной
-              игры в рулетку через Telegram.
-            </p>
+            <h4 class="card-title mb-3">
+              {{ i18n .lang "simple_gameplay_title" }}
+            </h4>
+            <p class="card-text">{{ i18n .lang "simple_gameplay_desc" }}</p>
           </div>
         </div>
       </div>
@@ -62,10 +59,11 @@
             <div class="feature-icon mx-auto">
               <i class="bi bi-shield-check"></i>
             </div>
-            <h4 class="card-title mb-3">Прозрачная честность</h4>
+            <h4 class="card-title mb-3">
+              {{ i18n .lang "transparent_fairness_title" }}
+            </h4>
             <p class="card-text">
-              Система проверки честности с использованием криптографических
-              хешей SHA-256, доступная для проверки каждым игроком.
+              {{ i18n .lang "transparent_fairness_desc" }}
             </p>
           </div>
         </div>
@@ -77,11 +75,10 @@
             <div class="feature-icon mx-auto">
               <i class="bi bi-trophy"></i>
             </div>
-            <h4 class="card-title mb-3">Рейтинги и призы</h4>
-            <p class="card-text">
-              Еженедельные рейтинги с призовым фондом для лучших игроков и
-              долгосрочный супер-рейтинг с особыми наградами.
-            </p>
+            <h4 class="card-title mb-3">
+              {{ i18n .lang "ratings_and_prizes_title" }}
+            </h4>
+            <p class="card-text">{{ i18n .lang "ratings_and_prizes_desc" }}</p>
           </div>
         </div>
       </div>
@@ -89,12 +86,12 @@
   </div>
 </section>
 
-<!-- Как это работает -->
+<!-- Как играть в Roulette Bot -->
 <section class="how-it-works" id="how-it-works">
   <div class="container">
     <div class="text-center mb-5">
-      <h2 class="fw-bold">Как играть в Roulette Bot</h2>
-      <p class="lead text-muted">Начать игру просто – следуйте трем шагам</p>
+      <h2 class="fw-bold">{{ i18n .lang "how_to_play_title" }}</h2>
+      <p class="lead text-muted">{{ i18n .lang "how_to_play_subtitle" }}</p>
     </div>
 
     <div class="row position-relative">
@@ -103,17 +100,14 @@
       <div class="col-md-4 mb-4 mb-md-0">
         <div class="step-card">
           <div class="step-number">1</div>
-          <h4 class="mb-3">Откройте бот</h4>
-          <p>
-            Найдите @socialroulette_bot в Telegram или перейдите по ссылке и
-            нажмите "Старт", чтобы зарегистрироваться.
-          </p>
+          <h4 class="mb-3">{{ i18n .lang "step1_title" }}</h4>
+          <p>{{ i18n .lang "step1_desc" }}</p>
           <a
             href="https://t.me/socialroulette_bot"
             class="btn btn-primary mt-2"
             target="_blank"
           >
-            <i class="bi bi-telegram me-2"></i> Перейти в бот
+            <i class="bi bi-telegram me-2"></i> {{ i18n .lang "go_to_bot" }}
           </a>
         </div>
       </div>
@@ -121,22 +115,16 @@
       <div class="col-md-4 mb-4 mb-md-0">
         <div class="step-card">
           <div class="step-number">2</div>
-          <h4 class="mb-3">Сделайте ставку</h4>
-          <p>
-            Выберите цвет (красный, черный или зеро) и дождитесь результата
-            раунда, который проводится каждые 30 секунд.
-          </p>
+          <h4 class="mb-3">{{ i18n .lang "step2_title" }}</h4>
+          <p>{{ i18n .lang "step2_desc" }}</p>
         </div>
       </div>
 
       <div class="col-md-4">
         <div class="step-card">
           <div class="step-number">3</div>
-          <h4 class="mb-3">Получайте призы</h4>
-          <p>
-            Поднимайтесь в еженедельном рейтинге, получайте долю от призового
-            фонда и выводите свои выигрыши.
-          </p>
+          <h4 class="mb-3">{{ i18n .lang "step3_title" }}</h4>
+          <p>{{ i18n .lang "step3_desc" }}</p>
         </div>
       </div>
     </div>
@@ -148,25 +136,25 @@
   <div class="container">
     <div class="row">
       <div class="col-lg-8 mx-auto text-center">
-        <h2 class="display-5 fw-bold mb-4">Готовы начать игру?</h2>
-        <p class="lead mb-4">
-          Присоединяйтесь к тысячам игроков Roulette Bot прямо сейчас и
-          испытайте свою удачу!
-        </p>
+        <h2 class="display-5 fw-bold mb-4">
+          {{ i18n .lang "ready_to_start_title" }}
+        </h2>
+        <p class="lead mb-4">{{ i18n .lang "ready_to_start_desc" }}</p>
         <div class="d-flex flex-wrap justify-content-center gap-3">
           <a
             href="https://t.me/socialroulette_bot"
             class="btn btn-light btn-lg"
             target="_blank"
           >
-            <i class="bi bi-telegram me-2"></i> Открыть бот
+            <i class="bi bi-telegram me-2"></i> {{ i18n .lang "open_bot" }}
           </a>
           <a href="/hashes" class="btn btn-light-outline btn-lg">
-            <i class="bi bi-shield-check me-2"></i> Проверить честность
+            <i class="bi bi-shield-check me-2"></i> {{ i18n .lang
+            "verify_fairness" }}
           </a>
         </div>
       </div>
     </div>
   </div>
 </section>
-< {{end}}
+{{end}}

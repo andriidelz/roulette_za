@@ -1,45 +1,47 @@
-{{define "public_example"}}
-{{template "public_base" .}}
-{{end}}
-
-{{define "public_example_content"}}
+{{define "public_example"}} {{template "public_base" .}} {{end}} {{define
+"public_example_content"}}
 <!-- Основное содержимое -->
 <div class="main-container">
-    <div class="container">
-        <h1 class="mb-4">Пример проверки хеша SHA-256</h1>
-        <p class="lead mb-5">На этой странице вы можете увидеть пример реализации алгоритма проверки хеша SHA-256 с использованием JavaScript. Вы можете использовать этот код для самостоятельной проверки результатов нашей рулетки.</p>
-        
-        <div class="row">
-            <div class="col-lg-7 mb-4">
-                <div class="card verification-card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-code-slash"></i> Код для проверки хеша</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="code-block-dark">
-                            <button class="copy-btn" id="copy-code-btn">Копировать</button>
-<pre><code>// Функция для проверки хеша SHA-256
+  <div class="container">
+    <h1 class="mb-4">{{ i18n .lang "example_title" }}</h1>
+    <p class="lead mb-5">{{ i18n .lang "example_subtitle" }}</p>
+
+    <div class="row">
+      <div class="col-lg-7 mb-4">
+        <div class="card verification-card">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="bi bi-code-slash"></i> {{ i18n .lang
+              "code_for_verification" }}
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="code-block-dark">
+              <button class="copy-btn" id="copy-code-btn">
+                {{ i18n .lang "copy_code" }}
+              </button>
+              <pre><code>// Function for SHA-256 hash verification
 async function verifyHash(number, salt, originalHash) {
     try {
-        // Формируем строку в формате "число:соль"
+        // Format string as "number:salt"
         const data = `${number}:${salt}`;
-        
-        // Кодируем строку в массив байтов
+
+        // Encode string to byte array
         const encoder = new TextEncoder();
         const dataBuffer = encoder.encode(data);
-        
-        // Вычисляем SHA-256 хеш
+
+        // Calculate SHA-256 hash
         const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-        
-        // Преобразуем ArrayBuffer в строку hex
+
+        // Convert ArrayBuffer to hex string
         const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const computedHash = hashArray.map(b => 
+        const computedHash = hashArray.map(b =>
             b.toString(16).padStart(2, '0')
         ).join('');
-        
-        // Проверяем, совпадает ли вычисленный хеш с оригинальным
+
+        // Check if computed hash matches the original
         const isValid = computedHash === originalHash;
-        
+
         return {
             isValid,
             computedHash,
@@ -49,111 +51,141 @@ async function verifyHash(number, salt, originalHash) {
             input: data
         };
     } catch (error) {
-        console.error('Ошибка при проверке хеша:', error);
+        console.error('Error during hash verification:', error);
         return {
             isValid: false,
             error: error.message
         };
     }
 }</code></pre>
-                        </div>
-                        
-                        <h6 class="mb-3">Как использовать этот код:</h6>
-                        <ol>
-                            <li>Скопируйте код функции <code>verifyHash</code></li>
-                            <li>Добавьте его в свой JavaScript-проект</li>
-                            <li>Вызовите функцию с параметрами: число, соль и оригинальный хеш</li>
-                            <li>Функция вернет объект с результатом проверки и дополнительной информацией</li>
-                        </ol>
-                        
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle me-2"></i>
-                            <strong>Обратите внимание:</strong> Этот код использует Web Crypto API, который доступен в большинстве современных браузеров.
-                        </div>
-                    </div>
-                </div>
             </div>
-            
-            <div class="col-lg-5">
-                <div class="card verification-card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-shield-check"></i> Попробуйте сами</h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="verification-form">
-                            <div class="mb-3">
-                                <label for="number-input" class="form-label">Число (0-36):</label>
-                                <input type="number" class="form-control" id="number-input" min="0" max="36" value="5" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="salt-input" class="form-label">Соль (HEX):</label>
-                                <input type="text" class="form-control" id="salt-input" value="a1b2c3d4e5f6" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="hash-input" class="form-label">Оригинальный хеш:</label>
-                                <input type="text" class="form-control" id="hash-input" value="" placeholder="Будет вычислен автоматически">
-                                <div class="form-text">Оставьте пустым для автоматического вычисления и сравнения.</div>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="bi bi-check-circle"></i> Проверить
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                
-                <div class="card verification-card d-none" id="result-card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Результат проверки</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="verification-result" class="alert alert-info">
-                            <i class="bi bi-hourglass-split me-2"></i> Ожидание проверки...
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Входные данные:</label>
-                            <div class="code-block-dark p-2" id="input-data">-</div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Вычисленный хеш:</label>
-                            <div class="code-block-dark p-2" id="computed-hash">-</div>
-                        </div>
-                        
-                        <div class="mb-3" id="original-hash-block">
-                            <label class="form-label">Оригинальный хеш:</label>
-                            <div class="code-block-dark p-2" id="original-hash">-</div>
-                        </div>
-                    </div>
-                </div>
+
+            <h6 class="mb-3">{{ i18n .lang "how_to_use_code" }}</h6>
+            <ol>
+              <li>{{ i18n .lang "usage_step1" }} <code>verifyHash</code></li>
+              <li>{{ i18n .lang "usage_step2" }}</li>
+              <li>{{ i18n .lang "usage_step3" }}</li>
+              <li>{{ i18n .lang "usage_step4" }}</li>
+            </ol>
+
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>{{ i18n .lang "web_crypto_note" }}</strong>
             </div>
+          </div>
         </div>
-        
-        <div class="mt-5">
-            <h2 class="mb-4">Как работает проверка хеша?</h2>
-            
-            <div class="verification-steps">
-                <div class="verification-step">
-                    <h5>Генерация данных</h5>
-                    <p>Система создает строку в формате "<strong>число:соль</strong>" (например, "5:a1b2c3d4e5f6"). Здесь число — это результат раунда рулетки (от 0 до 36), а соль — случайная строка символов.</p>
-                </div>
-                
-                <div class="verification-step">
-                    <h5>Вычисление хеша</h5>
-                    <p>Эта строка преобразуется в массив байтов, к которому применяется алгоритм SHA-256. Результатом является 64-символьная строка в шестнадцатеричном формате.</p>
-                </div>
-                
-                <div class="verification-step">
-                    <h5>Публикация и проверка</h5>
-                    <p>Перед началом раунда публикуется только хеш. После завершения раунда раскрываются число и соль. Вы можете самостоятельно вычислить хеш и убедиться, что он соответствует опубликованному.</p>
-                </div>
-            </div>
-            
-            <div class="alert alert-primary">
-                <h5><i class="bi bi-lightbulb me-2"></i>Почему это гарантирует честность?</h5>
-                <p class="mb-0">Поскольку хеш публикуется <strong>до</strong> начала приема ставок, а результат и соль раскрываются <strong>после</strong> окончания раунда, система не может изменить результат после того, как игроки сделали свои ставки. Криптографический алгоритм SHA-256 гарантирует, что невозможно найти другую пару "число:соль", которая дала бы такой же хеш.</p>
-            </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="card verification-card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="bi bi-shield-check"></i> {{ i18n .lang "try_yourself" }}
+            </h5>
+          </div>
+          <div class="card-body">
+            <form id="verification-form">
+              <div class="mb-3">
+                <label for="number-input" class="form-label"
+                  >{{ i18n .lang "number_input_label" }}</label
+                >
+                <input
+                  type="number"
+                  class="form-control"
+                  id="number-input"
+                  min="0"
+                  max="36"
+                  value="5"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label for="salt-input" class="form-label"
+                  >{{ i18n .lang "salt_input_label" }}</label
+                >
+                <input
+                  type="text"
+                  class="form-control"
+                  id="salt-input"
+                  value="a1b2c3d4e5f6"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label for="hash-input" class="form-label"
+                  >{{ i18n .lang "hash_input_label" }}</label
+                >
+                <input type="text" class="form-control" id="hash-input" value=""
+                placeholder="{{ i18n .lang "hash_auto_calc" }}">
+                <div class="form-text">{{ i18n .lang "hash_help_text" }}</div>
+              </div>
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-check-circle"></i> {{ i18n .lang "verify_btn" }}
+              </button>
+            </form>
+          </div>
         </div>
+
+        <div class="card verification-card d-none" id="result-card">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="bi bi-info-circle"></i> {{ i18n .lang
+              "verification_result" }}
+            </h5>
+          </div>
+          <div class="card-body">
+            <div id="verification-result" class="alert alert-info">
+              <i class="bi bi-hourglass-split me-2"></i> {{ i18n .lang
+              "waiting_verification" }}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">{{ i18n .lang "input_data" }}</label>
+              <div class="code-block-dark p-2" id="input-data">-</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">{{ i18n .lang "computed_hash" }}</label>
+              <div class="code-block-dark p-2" id="computed-hash">-</div>
+            </div>
+
+            <div class="mb-3" id="original-hash-block">
+              <label class="form-label">{{ i18n .lang "original_hash" }}</label>
+              <div class="code-block-dark p-2" id="original-hash">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <div class="mt-5">
+      <h2 class="mb-4">{{ i18n .lang "how_hash_verification_works" }}</h2>
+
+      <div class="verification-steps">
+        <div class="verification-step">
+          <h5>{{ i18n .lang "step_data_generation" }}</h5>
+          <p>{{ i18n .lang "step_data_desc" }}</p>
+        </div>
+
+        <div class="verification-step">
+          <h5>{{ i18n .lang "step_hash_calculation" }}</h5>
+          <p>{{ i18n .lang "step_hash_desc" }}</p>
+        </div>
+
+        <div class="verification-step">
+          <h5>{{ i18n .lang "step_publication_verification" }}</h5>
+          <p>{{ i18n .lang "step_publication_desc" }}</p>
+        </div>
+      </div>
+
+      <div class="alert alert-primary">
+        <h5>
+          <i class="bi bi-lightbulb me-2"></i>{{ i18n .lang
+          "why_guarantee_fairness" }}
+        </h5>
+        <p class="mb-0">{{ i18n .lang "fairness_explanation" }}</p>
+      </div>
+    </div>
+  </div>
 </div>
 {{end}}
