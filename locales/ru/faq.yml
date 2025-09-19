@@ -1,0 +1,46 @@
+faq_title: "Часто задаваемые вопросы"
+faq_subtitle: "Ответы на популярные вопросы о боте Roulette и системе проверки честности."
+verify_results: "Проверить результаты"
+
+# Navigation tabs
+general_questions: "Общие вопросы"
+gameplay: "Игровой процесс"
+verification: "Проверка честности"
+ratings: "Рейтинги и призы"
+withdrawals: "Вывод средств"
+
+# What is Roulette Bot
+what_is_roulette_bot: "Что такое Roulette Bot?"
+roulette_bot_answer: "Roulette Bot - это Telegram-бот, который позволяет пользователям играть в упрощенную версию рулетки. В нашей рулетке есть возможность делать ставки на красное, черное или зеро (0)."
+main_features: "Основные особенности Roulette Bot:"
+feature_simplified_game: "Упрощенная игра в рулетку с ставками на красное, черное или зеро"
+feature_weekly_rating: "Еженедельный рейтинг игроков с призовым фондом"
+feature_super_rating: "Супер-рейтинг на основе позиций в еженедельных рейтингах"
+feature_multilang: "Поддержка нескольких языков (украинский, английский и русский)"
+feature_transparent: "Прозрачная система проверки честности результатов"
+feature_withdrawal: "Возможность вывода выигрышей"
+
+# How to start playing
+how_to_start: "Как начать играть в Roulette Bot?"
+start_playing_answer: "Начать играть очень просто:"
+start_step1: "Перейдите по ссылке https://t.me/socialroulette_bot или найдите бот @socialroulette_bot в Telegram"
+start_step2: 'Нажмите кнопку "Старт" или отправьте команду /start'
+start_step3: "Следуйте инструкциям бота для начала игры"
+start_step4: "Используйте команду /play для размещения ставок"
+bot_instructions: "Бот предоставит подробные инструкции и поможет вам разобраться в игровом процессе."
+
+# Language support
+language_support: "Какие языки поддерживает бот?"
+languages_list: "Roulette Bot поддерживает следующие языки:"
+language_russian: "Русский"
+language_ukrainian: "Украинский"
+language_english: "Английский"
+change_language: "Вы можете изменить язык в любой момент, используя команду /settings или соответствующую кнопку в меню бота."
+
+# Support section
+support_title: "У меня возникла проблема или вопрос, не указанный здесь. Что делать?"
+support_answer: "Если у вас возникли вопросы, которые не освещены в FAQ, или вы столкнулись с проблемой, вы можете связаться с нашей службой поддержки:"
+contact_method1: "Используйте команду /contact в боте и опишите свою проблему"
+contact_method2: "Напишите в нашу службу поддержки в Telegram: @roulette_support"
+contact_method3: "Отправьте email на адрес: support@games.sprut.net"
+support_response_time: "Мы постараемся ответить на ваш запрос в течение 24 часов. Ваше мнение очень важно для нас, и мы постоянно работаем над улучшением нашего сервиса."

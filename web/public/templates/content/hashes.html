@@ -8,10 +8,10 @@
     <div class="container">
         <div class="row align-items-center">
             <div class="col-md-7">
-                <h1>Проверка честности результатов</h1>
-                <p class="lead">Проверьте подлинность любого результата рулетки. Наша система обеспечивает 100% прозрачность игрового процесса.</p>
-                <a href="#verification-form" class="btn btn-primary">Проверить результат</a>
-                <a href="#how-it-works" class="btn btn-outline-light ms-2">Как это работает</a>
+                <h1>{{ i18n .lang "fairness_verification_title" }}</h1>
+                <p class="lead">{{ i18n .lang "verify_authenticity" }}</p>
+                <a href="#verification-form" class="btn btn-primary">{{ i18n .lang "verify_result" }}</a>
+                <a href="#how-it-works" class="btn btn-outline-light ms-2">{{ i18n .lang "how_it_works" }}</a>
             </div>
         </div>
     </div>
@@ -20,12 +20,12 @@
 <!-- Основное содержимое -->
 <div class="main-container">
     <div class="container">
-        <!-- Таблица с историей результатов -->
+        <!-- История результатов -->
         <div class="card roulette-table mb-5">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-clock-history"></i> История результатов</h5>
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> {{ i18n .lang "results_history" }}</h5>
                 <form class="d-flex" action="/hashes" method="GET">
-                    <input class="form-control me-2" type="search" placeholder="Поиск по ID" name="id" value="{{.id}}">
+                    <input class="form-control me-2" type="search" placeholder="{{ i18n .lang "search_by_id" }}" name="id" value="{{.id}}">
                     <button class="btn btn-outline-primary" type="submit">
                         <i class="bi bi-search"></i>
                     </button>
@@ -45,13 +45,13 @@
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>ID</th>
-                                <th>Результат</th>
-                                <th>Цвет</th>
-                                <th class="d-none d-md-table-cell">Хеш</th>
-                                <th class="d-none d-md-table-cell">Соль (HEX)</th>
-                                <th class="d-none d-lg-table-cell">Время</th>
-                                <th>Действия</th>
+                                <th>{{ i18n .lang "result_id" }}</th>
+                                <th>{{ i18n .lang "result_number" }}</th>
+                                <th>{{ i18n .lang "color" }}</th>
+                                <th class="d-none d-md-table-cell">{{ i18n .lang "hash_column" }}</th>
+                                <th class="d-none d-md-table-cell">{{ i18n .lang "salt_hex" }}</th>
+                                <th class="d-none d-lg-table-cell">{{ i18n .lang "time" }}</th>
+                                <th>{{ i18n .lang "actions" }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -62,24 +62,24 @@
                                     <td>{{ .Number }}</td>
                                     <td>
                                         {{ if eq .Color "red" }}
-                                        <span><span class="color-indicator color-red"></span>Красный</span>
+                                        <span><span class="color-indicator color-red"></span>{{ i18n $.lang "color_red" }}</span>
                                         {{ else if eq .Color "black" }}
-                                        <span><span class="color-indicator color-black"></span>Чёрный</span>
+                                        <span><span class="color-indicator color-black"></span>{{ i18n $.lang "color_black" }}</span>
                                         {{ else }}
-                                        <span><span class="color-indicator color-green"></span>Зеро</span>
+                                        <span><span class="color-indicator color-green"></span>{{ i18n $.lang "color_green" }}</span>
                                         {{ end }}
                                     </td>
                                     <td class="d-none d-md-table-cell"><span class="hash-label" title="{{ .Hash }}">{{ .Hash }}</span></td>
                                     <td class="d-none d-md-table-cell"><span class="hash-label" title="{{ .SaltHEX }}">{{ .SaltHEX }}</span></td>
                                     <td class="d-none d-lg-table-cell">{{ .CreatedAt }}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-primary verify-hash-btn" 
+                                        <button class="btn btn-sm btn-primary verify-hash-btn"
                                                 data-id="{{ .ID }}"
                                                 data-base62="{{ .Base62ID }}"
                                                 data-number="{{ .Number }}"
                                                 data-hash="{{ .Hash }}"
                                                 data-salt="{{ .SaltHEX }}">
-                                            <i class="bi bi-shield-check"></i> Проверить
+                                            <i class="bi bi-shield-check"></i> {{ i18n $.lang "verify" }}
                                         </button>
                                     </td>
                                 </tr>
@@ -88,7 +88,7 @@
                                 <tr>
                                     <td colspan="7" class="text-center py-3">
                                         <div class="alert alert-info mb-0">
-                                            <i class="bi bi-info-circle me-2"></i>Результаты не найдены
+                                            <i class="bi bi-info-circle me-2"></i>{{ i18n .lang "no_results" }}
                                         </div>
                                     </td>
                                 </tr>
@@ -102,7 +102,7 @@
                     <ul class="pagination justify-content-center flex-wrap mb-0">
                         {{ if gt .currentPage 1 }}
                         <li class="page-item">
-                            <a class="page-link" href="/hashes?page={{ subtract .currentPage 1 }}" aria-label="Previous">
+                            <a class="page-link" href="/hashes?page={{ subtract .currentPage 1 }}" aria-label="{{ i18n .lang "previous" }}">
                                 <span aria-hidden="true">&laquo;</span>
                             </a>
                         </li>
@@ -124,7 +124,7 @@
 
                         {{ if lt .currentPage .totalPages }}
                         <li class="page-item">
-                            <a class="page-link" href="/hashes?page={{ add .currentPage 1 }}" aria-label="Next">
+                            <a class="page-link" href="/hashes?page={{ add .currentPage 1 }}" aria-label="{{ i18n .lang "next" }}">
                                 <span aria-hidden="true">&raquo;</span>
                             </a>
                         </li>
@@ -143,59 +143,59 @@
             <div class="col-lg-6 mb-4 mb-lg-0">
                 <div class="card verification-card h-100">
                     <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-shield-check"></i> Проверка результата</h5>
+                        <h5 class="mb-0"><i class="bi bi-shield-check"></i> {{ i18n .lang "verification_title" }}</h5>
                     </div>
                     <div class="card-body">
                         <form id="verify-form" class="mb-4">
                             <div class="mb-3">
-                                <label for="verify-number" class="form-label">Номер (0-36):</label>
+                                <label for="verify-number" class="form-label">{{ i18n .lang "number_label" }}</label>
                                 <input type="number" class="form-control" id="verify-number" min="0" max="36" required>
                             </div>
                             <div class="mb-3">
-                                <label for="verify-salt" class="form-label">Соль (HEX):</label>
+                                <label for="verify-salt" class="form-label">{{ i18n .lang "salt_label" }}</label>
                                 <input type="text" class="form-control" id="verify-salt" required>
                             </div>
                             <div class="mb-3">
-                                <label for="verify-hash" class="form-label">Хеш (SHA-256):</label>
+                                <label for="verify-hash" class="form-label">{{ i18n .lang "original_hash_label" }}</label>
                                 <input type="text" class="form-control" id="verify-hash" required>
                             </div>
                             <button type="submit" class="btn btn-primary w-100">
-                                <i class="bi bi-shield-check"></i> Проверить
+                                <i class="bi bi-shield-check"></i> {{ i18n .lang "verify" }}
                             </button>
                         </form>
                         <div id="verify-result" class="alert alert-info d-none">
-                            <h6 class="alert-heading mb-2"><i class="bi bi-info-circle me-2"></i>Результат проверки</h6>
+                            <h6 class="alert-heading mb-2"><i class="bi bi-info-circle me-2"></i>{{ i18n .lang "verification_result_title" }}</h6>
                             <div class="mb-2" id="verify-message"></div>
                             <div class="d-flex justify-content-between small">
-                                <span>Вычисленный хеш:</span>
+                                <span>{{ i18n .lang "computed_hash_label" }}</span>
                                 <span id="computed-hash-text" class="ms-2 fw-bold text-break"></span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-lg-6">
                 <div class="card verification-card h-100">
                     <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Как работает проверка</h5>
+                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> {{ i18n .lang "how_verification_works" }}</h5>
                     </div>
                     <div class="card-body">
-                        <p>Перед каждым раундом система генерирует случайное число и криптографическую соль, затем вычисляет хеш SHA-256.</p>
-                        <p>Хеш публикуется до начала раунда, а число и соль раскрываются после его завершения.</p>
-                        <p>Вы можете самостоятельно проверить, соответствует ли опубликованный хеш открытым данным:</p>
-                        
+                        <p>{{ i18n .lang "verification_explanation" }}</p>
+                        <p>{{ i18n .lang "hash_publication" }}</p>
+                        <p>{{ i18n .lang "self_verification" }}</p>
+
                         <div class="code-block">
-                            <pre><code>SHA-256(число:соль)</code></pre>
+                            <pre><code>{{ i18n .lang "verification_formula" }}</code></pre>
                         </div>
-                        
-                        <h6 class="mt-4 mb-3">Пример проверки:</h6>
+
+                        <h6 class="mt-4 mb-3">{{ i18n .lang "verification_example" }}</h6>
                         <ol>
-                            <li>Номер: <code>5</code></li>
-                            <li>Соль: <code>a1b2c3d4e5f6</code></li>
-                            <li>Хеш: <code>e37f...0840</code></li>
+                            <li>{{ i18n .lang "example_number" }}: <code>5</code></li>
+                            <li>{{ i18n .lang "example_salt" }}: <code>a1b2c3d4e5f6</code></li>
+                            <li>{{ i18n .lang "example_hash" }}: <code>e37f...0840</code></li>
                         </ol>
-                        <p>Для проверки вычислите SHA-256 хеш от строки <code>5:a1b2c3d4e5f6</code> и сравните с оригинальным хешем. Если они совпадают, результат честный.</p>
+                        <p>{{ i18n .lang "verification_instruction" }}</p>
                     </div>
                 </div>
             </div>
@@ -206,7 +206,7 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header bg-dark text-white">
-                        <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Как работает система честной игры</h5>
+                        <h5 class="mb-0"><i class="bi bi-lightbulb"></i> {{ i18n .lang "fair_system_title" }}</h5>
                     </div>
                     <div class="card-body">
                         <div class="row">
@@ -216,8 +216,8 @@
                                         <i class="bi bi-1-circle-fill fs-2"></i>
                                     </div>
                                 </div>
-                                <h5 class="text-center">Генерация хеша</h5>
-                                <p>Перед началом раунда система генерирует случайное число от 0 до 36 и уникальную криптографическую соль. Затем вычисляется SHA-256 хеш от строки "число:соль".</p>
+                                <h5 class="text-center">{{ i18n .lang "generation_step" }}</h5>
+                                <p>{{ i18n .lang "generation_desc" }}</p>
                             </div>
                             <div class="col-md-4 mb-4 mb-md-0">
                                 <div class="text-center mb-3">
@@ -225,8 +225,8 @@
                                         <i class="bi bi-2-circle-fill fs-2"></i>
                                     </div>
                                 </div>
-                                <h5 class="text-center">Публикация хеша</h5>
-                                <p>Хеш публикуется до того, как игроки начинают делать ставки. Это гарантирует, что результат предопределен и не может быть изменен после размещения ставок.</p>
+                                <h5 class="text-center">{{ i18n .lang "publication_step" }}</h5>
+                                <p>{{ i18n .lang "publication_desc" }}</p>
                             </div>
                             <div class="col-md-4">
                                 <div class="text-center mb-3">
@@ -234,13 +234,13 @@
                                         <i class="bi bi-3-circle-fill fs-2"></i>
                                     </div>
                                 </div>
-                                <h5 class="text-center">Раскрытие результата</h5>
-                                <p>После завершения раунда система раскрывает использованное число и соль. Любой может проверить, соответствует ли опубликованный заранее хеш этим данным.</p>
+                                <h5 class="text-center">{{ i18n .lang "reveal_step" }}</h5>
+                                <p>{{ i18n .lang "reveal_desc" }}</p>
                             </div>
                         </div>
-                        
+
                         <div class="alert alert-info mt-4">
-                            <h6 class="mb-2"><i class="bi bi-code-slash me-2"></i>Пример самостоятельной проверки (на языке Go):</h6>
+                            <h6 class="mb-2"><i class="bi bi-code-slash me-2"></i>{{ i18n .lang "code_example_title" }}</h6>
                             <div class="code-block">
 <pre><code>package main
 
@@ -251,21 +251,21 @@ import (
 )
 
 func main() {
-    number := 5                   // Число, которое выпало
-    salt := "a1b2c3d4e5f6"        // Соль из сообщения бота
-    originalHash := "e37f...0840" // Хеш из начала раунда
-    
-    // Формируем строку и вычисляем хеш
+    number := 5                   // Number that came up
+    salt := "a1b2c3d4e5f6"        // Salt from bot message
+    originalHash := "e37f...0840" // Hash from round start
+
+    // Format string and calculate hash
     data := fmt.Sprintf("%d:%s", number, salt)
     hasher := sha256.New()
     hasher.Write([]byte(data))
     computedHash := hex.EncodeToString(hasher.Sum(nil))
-    
-    // Проверяем совпадение
+
+    // Verify match
     if computedHash == originalHash {
-        fmt.Println("Результат верен!")
+        fmt.Println("Result is valid!")
     } else {
-        fmt.Println("Результат не соответствует хешу!")
+        fmt.Println("Result does not match hash!")
     }
 }</code></pre>
                             </div>
@@ -274,51 +274,51 @@ func main() {
                 </div>
             </div>
         </div>
-        
+
         <!-- FAQ -->
         <div class="accordion mb-5" id="faqAccordion">
             <div class="accordion-item">
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqOne">
-                        Как я могу быть уверен, что результаты не подтасованы?
+                        {{ i18n .lang "faq_question_1" }}
                     </button>
                 </h2>
                 <div id="faqOne" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                     <div class="accordion-body">
-                        <p>Благодаря системе предварительного хеширования, результат каждого раунда определяется заранее и не может быть изменен после начала приема ставок. Хеш публикуется до начала раунда, а после завершения вы можете проверить его соответствие с открытыми данными.</p>
-                        <p>Криптографический алгоритм SHA-256 математически гарантирует, что невозможно подобрать другую комбинацию номера и соли, которая дала бы такой же хеш.</p>
+                        <p>{{ i18n .lang "faq_answer_1_p1" }}</p>
+                        <p>{{ i18n .lang "faq_answer_1_p2" }}</p>
                     </div>
                 </div>
             </div>
             <div class="accordion-item">
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqTwo">
-                        Что такое "соль" и зачем она нужна?
+                        {{ i18n .lang "faq_question_2" }}
                     </button>
                 </h2>
                 <div id="faqTwo" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                     <div class="accordion-body">
-                        <p>Соль — это случайная строка символов, которая добавляется к числу перед вычислением хеша. Она нужна для того, чтобы нельзя было заранее подготовить таблицу соответствия всех возможных чисел (от 0 до 36) их хешам.</p>
-                        <p>Без соли злоумышленник мог бы просто посмотреть в такую таблицу и узнать, какое число выпадет. Соль добавляет непредсказуемость и гарантирует уникальность хеша для каждого раунда, даже если выпадают одинаковые числа.</p>
+                        <p>{{ i18n .lang "faq_answer_2_p1" }}</p>
+                        <p>{{ i18n .lang "faq_answer_2_p2" }}</p>
                     </div>
                 </div>
             </div>
             <div class="accordion-item">
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqThree">
-                        Какие инструменты я могу использовать для проверки?
+                        {{ i18n .lang "faq_question_3" }}
                     </button>
                 </h2>
                 <div id="faqThree" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                     <div class="accordion-body">
-                        <p>Вы можете использовать:</p>
+                        <p>{{ i18n .lang "faq_answer_3" }}</p>
                         <ul>
-                            <li>Встроенную форму проверки на этой странице</li>
-                            <li>Онлайн-калькуляторы SHA-256 (например, <a href="https://emn178.github.io/online-tools/sha256.html" target="_blank">Online SHA-256</a>)</li>
-                            <li>Командную строку на Linux/Mac: <code>echo -n "5:a1b2c3d4e5f6" | sha256sum</code></li>
-                            <li>Любой язык программирования с библиотекой для вычисления SHA-256 хешей</li>
+                            <li>{{ i18n .lang "verification_tools_1" }}</li>
+                            <li>{{ i18n .lang "verification_tools_2" }}</li>
+                            <li>{{ i18n .lang "verification_tools_3" }}</li>
+                            <li>{{ i18n .lang "verification_tools_4" }}</li>
                         </ul>
-                        <p>Не забудьте использовать формат <code>число:соль</code> без пробелов и других символов.</p>
+                        <p>{{ i18n .lang "format_reminder" }}</p>
                     </div>
                 </div>
             </div>
@@ -331,34 +331,34 @@ func main() {
     <div class="modal-dialog modal-fullscreen-sm-down">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="verifyHashModalLabel"><i class="bi bi-shield-check"></i> Проверка результата</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="verifyHashModalLabel"><i class="bi bi-shield-check"></i> {{ i18n .lang "modal_verify_title" }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ i18n .lang "modal_close" }}"></button>
             </div>
             <div class="modal-body">
                 <div id="modal-verify-result" class="alert alert-info mb-4">
                     <i class="bi bi-info-circle me-2"></i>
-                    Нажмите "Проверить", чтобы подтвердить подлинность результата
+                    {{ i18n .lang "modal_verify_info" }}
                 </div>
                 <div class="mb-3">
-                    <label for="modal-verify-number" class="form-label">Номер:</label>
+                    <label for="modal-verify-number" class="form-label">{{ i18n .lang "modal_number_label" }}</label>
                     <input type="number" class="form-control" id="modal-verify-number" min="0" max="36" readonly>
                 </div>
                 <div class="mb-3">
-                    <label for="modal-verify-salt" class="form-label">Соль (HEX):</label>
+                    <label for="modal-verify-salt" class="form-label">{{ i18n .lang "modal_salt_label" }}</label>
                     <input type="text" class="form-control" id="modal-verify-salt" readonly>
                 </div>
                 <div class="mb-3">
-                    <label for="modal-verify-hash" class="form-label">Оригинальный хеш:</label>
+                    <label for="modal-verify-hash" class="form-label">{{ i18n .lang "modal_original_hash" }}</label>
                     <input type="text" class="form-control" id="modal-verify-hash" readonly>
                 </div>
                 <div class="mb-3">
-                    <label for="modal-verify-computed-hash" class="form-label">Вычисленный хеш:</label>
+                    <label for="modal-verify-computed-hash" class="form-label">{{ i18n .lang "modal_computed_hash" }}</label>
                     <input type="text" class="form-control" id="modal-verify-computed-hash" readonly>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                <button type="button" class="btn btn-primary" id="modal-do-verify-hash">Проверить</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ i18n .lang "modal_close" }}</button>
+                <button type="button" class="btn btn-primary" id="modal-do-verify-hash">{{ i18n .lang "modal_verify_btn" }}</button>
             </div>
         </div>
     </div>
