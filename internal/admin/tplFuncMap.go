@@ -3,9 +3,27 @@ package admin
 import (
 	"html/template"
 	"time"
+
+	"roulette/internal/utils"
+
+	"github.com/kataras/i18n"
+)
+
+var (
+	localesPath               = utils.GetPWD() + "/locales/*/*.yml"
+	localesMap, localesMapErr = utils.YAMLFiles2Map(localesPath)
+	I18n, I18nErr             = i18n.New(i18n.Glob(localesPath), "uk_UA", "en-US", "ru-RU") // "en-US", "uk_UA", "ru-RU", ...
 )
 
 var tplFuncMap = template.FuncMap{
+	// Функция для перевода текста с поддержкой множественных форм и аргументов
+	"i18n": func(lang, format string, args ...interface{}) string {
+		result := I18n.Tr(lang, format, args...)
+		if len(result) == 0 {
+			return format
+		}
+		return result
+	},
 	"abs": func(x float64) float64 {
 		if x < 0 {
 			return -x
