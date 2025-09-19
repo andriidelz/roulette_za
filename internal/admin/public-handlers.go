@@ -5,9 +5,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"strconv"
+
 	"roulette/internal/models"
 	"roulette/internal/utils"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -29,6 +30,8 @@ func (a *AdminPanel) setupPublicRoutes() {
 
 // publicHashes отображает публичную страницу проверки результатов
 func (a *AdminPanel) publicHashes(c *gin.Context) {
+	userLang := utils.GetUserLang(c) // "en-US", "zh-CN", "el-GR", ...
+
 	// Получаем параметры пагинации
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
@@ -58,6 +61,9 @@ func (a *AdminPanel) publicHashes(c *gin.Context) {
 
 		if targetEntry == nil {
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"lang": userLang,
+				"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"home"})),
+
 				"title": "Ошибка",
 				"error": "Хеш не найден",
 			})
@@ -72,6 +78,9 @@ func (a *AdminPanel) publicHashes(c *gin.Context) {
 		entries, totalPages, err = a.service.GetHashEntries(page, perPage)
 		if err != nil {
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"lang": userLang,
+				"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"home"})),
+
 				"title": "Ошибка",
 				"error": err.Error(),
 			})
@@ -148,6 +157,9 @@ func (a *AdminPanel) publicHashes(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "public_hashes", gin.H{
+		"lang": userLang,
+		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"home"})),
+
 		"title":       "Проверка результатов | Roulette Bot",
 		"activeTab":   "hashes",
 		"entries":     hashEntries,
@@ -167,7 +179,12 @@ func (a *AdminPanel) publicHashes(c *gin.Context) {
 
 // publicHome отображает публичную главную страницу
 func (a *AdminPanel) publicHome(c *gin.Context) {
+	userLang := utils.GetUserLang(c)
+
 	c.HTML(http.StatusOK, "public_home", gin.H{
+		"lang": userLang,
+		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"home"})),
+
 		"title":     "Roulette Bot | Социальное казино в Telegram",
 		"activeTab": "home",
 		"cssFiles": []string{
@@ -181,7 +198,12 @@ func (a *AdminPanel) publicHome(c *gin.Context) {
 
 // publicFAQ отображает публичную страницу с часто задаваемыми вопросами
 func (a *AdminPanel) publicFAQ(c *gin.Context) {
+	userLang := utils.GetUserLang(c)
+
 	c.HTML(http.StatusOK, "public_faq", gin.H{
+		"lang": userLang,
+		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"home"})),
+
 		"title":     "FAQ | Roulette Bot",
 		"activeTab": "faq",
 		"cssFiles": []string{
@@ -193,7 +215,12 @@ func (a *AdminPanel) publicFAQ(c *gin.Context) {
 
 // publicExample отображает страницу с примером проверки хеша
 func (a *AdminPanel) publicExample(c *gin.Context) {
+	userLang := utils.GetUserLang(c)
+
 	c.HTML(http.StatusOK, "public_example", gin.H{
+		"lang": userLang,
+		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"home"})),
+
 		"title":     "Пример проверки хеша | Roulette Bot",
 		"activeTab": "example",
 		"cssFiles":  []string{},
