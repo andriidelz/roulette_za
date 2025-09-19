@@ -15,6 +15,7 @@ import (
 	"roulette/internal/utils"
 
 	"github.com/mymmrac/telego"
+	"github.com/redis/go-redis/v9"
 )
 
 const webPage = "https://games.sprut.net"
@@ -73,6 +74,7 @@ const (
 
 	userWaitBetResultPrefix = "game:waiting_bet_result" // Карта игроков, ожидающих результатов
 	userWaitNewRoundPrefix  = "game:waiting_new_round"  // Карта игроков, ожидающих результатов
+	gameAnimationPrefix     = "game:animation"          // Карта анимаций
 
 	StickerNoBids    = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
 	StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
@@ -83,6 +85,7 @@ const (
 	StickerRedRes2   = "CAACAgUAAxkBAAEORMpn9lEiRobEQnz4qg6GFSmfZQmjbwACiRgAAhuTqVdgysjb-Y-sLTYE" // redresult (вариант 2)
 	StickerZeroRes1  = "CAACAgUAAxkBAAEORMRn9lEar58eDwvent8Lp3TvMRvF5AACtxEAAlRRsFdySRXPzXyVqzYE" // zeroresult (вариант 1)
 	StickerZeroRes2  = "CAACAgUAAxkBAAEORMZn9lEd12gNsWFFxGXLAZoeJbSEsgACCxYAAmDwqVdsE7WC-rayWDYE" // zeroresult (вариант 2)
+
 )
 
 // NewGameHandler создает новый обработчик игры
@@ -579,20 +582,6 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	}
 
 	// 1. Отправляем стикер с результатом (цвет) на 17 секунде
-	var resultSticker string
-	switch result {
-	case models.Red:
-		resultSticker = getRandomSticker(StickerRedRes1, StickerRedRes2)
-	case models.Black:
-		resultSticker = getRandomSticker(StickerBlackRes1, StickerBlackRes2)
-	case models.Zero:
-		resultSticker = getRandomSticker(StickerZeroRes1, StickerZeroRes2)
-	}
-	// Отправляем стикер результата
-	h.bot.MakeRequestDeferred(userID, 0, MessageOptions{
-		Text:       resultSticker,
-		MethodName: sendSticker,
-	})
 
 	// 2. Отправляем сообщение о результате на 18 секунде (через 1 секунду)
 	time.Sleep(1 * time.Second)
@@ -609,26 +598,21 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	default:
 		logger.Error.Println("Error getting prize fund", &round)
 		logger.Error.Println("Error getting prize fund", *round)
-		logger.Error.Println("Error getting prize fund", result)
 		return nil
 	}
 
 	// 3. Отправляем стикер выигрыша/проигрыша на 19 секунде (через 1 секунду)
 	time.Sleep(1 * time.Second)
 
+	// "black"+"_"+"lose" = black_lose
+	var resultAnimation string = string(result) + "_"
 	if won {
-		// Отправляем стикер выигрыша
-		h.bot.MakeRequestDeferred(userID, 0, MessageOptions{
-			Text:       StickerWin,
-			MethodName: sendSticker,
-		})
+		resultAnimation += "win"
 	} else {
-		// Отправляем стикер проигрыша
-		h.bot.MakeRequestDeferred(userID, 0, MessageOptions{
-			Text:       StickerLose,
-			MethodName: sendSticker,
-		})
+		resultAnimation += "lose"
 	}
+
+	logger.Error.Println(resultAnimation)
 
 	// 4. Отправляем полное сообщение о выигрыше/проигрыше на 20 секунде (через 1 секунду)
 	time.Sleep(1 * time.Second)
@@ -759,7 +743,23 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 		InlineKeyboard: inlineButtons,
 	}
 
-	// Отправляем объединенное сообщение с клавиатурой
+	options.MethodName = sendAnimation
+
+	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Пробуємо отримати id файла
+	value, err := h.bot.redisDB.HGet(cont, gameAnimationPrefix, resultAnimation).Result()
+	if err == redis.Nil {
+		// Пробуємо відправити файл
+		options.VideoPath = resultAnimation
+	} else if err != nil {
+		logger.Error.Println(err)
+	} else {
+		options.VideoFileID = value
+		options.Text = "#" + value + "\n\n" + options.Text
+	}
+
 	h.bot.SendMessage(userID, options)
 
 	// Проверяем активность пользователя - кол-во набранных баллов

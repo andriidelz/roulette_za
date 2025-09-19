@@ -51,6 +51,8 @@ const (
 	CallbackBack    = "back"
 	CallbackCaptcha = "captcha_"
 
+	sharedData = "/files" // локація для файлів
+
 	// Стикер ошибки отправки сообщения, если словили 429 ошибку
 	StickerError        = "CAACAgUAAxkBAAEO5upob-zRQ5ptM0PmCYlvTra-KSbbiQACEBYAAkV9qVf5P89H45HU5zYE" // error
 	StickerRegistration = "CAACAgUAAxkBAAEBgIpokq-UIqudmGRVogN-Mu28MQQ6UwACwRIAAs9XsFejY2Cqcm0SBDYE" // registration (регистрация нового пользователя)
@@ -1393,6 +1395,7 @@ const (
 	sendVideo        = "sendVideo"
 	editMessageMedia = "editMessageMedia"
 	sendSticker      = "sendSticker"
+	sendAnimation    = "sendAnimation"
 )
 
 // MessageOptions содержит опции для отправки или обновления сообщения
@@ -1697,6 +1700,74 @@ func (b *Bot) sendPhoto(chatID int64, options MessageOptions) (*telego.Message, 
 	}
 
 	return nil, fmt.Errorf("no photo source specified")
+}
+
+// sendAnimation отправляет анимацию с подписью
+func (b *Bot) sendAnimation(chatID int64, options MessageOptions) (*telego.Message, error) {
+	if options.ParseMode == "" {
+		options.ParseMode = telego.ModeHTML
+	}
+
+	// Параметры для отправки
+	params := &telego.SendAnimationParams{
+		ChatID:              telego.ChatID{ID: chatID},
+		Caption:             options.Text,
+		ParseMode:           options.ParseMode,
+		DisableNotification: options.DisableNotification,
+	}
+
+	// Добавляем сущности для подписи, если они есть
+	if len(options.Entities) > 0 {
+		params.CaptionEntities = options.Entities
+	}
+
+	// Устанавливаем соответствующую клавиатуру
+	if replyMarkup := b.getReplyMarkup(options); replyMarkup != nil {
+		params.ReplyMarkup = replyMarkup
+	}
+
+	// Выбираем источник фото
+	if options.VideoFileID != "" {
+		// Для FileID используем его непосредственно
+		params.Animation = tu.FileFromID(options.VideoFileID)
+		return b.bot.SendAnimation(b.ctx, params)
+	} else if options.VideoPath != "" {
+		// Для файла используем метод Upload
+		return b.sendAnimationFile(chatID, options.VideoPath, params)
+	}
+
+	return nil, fmt.Errorf("no animation source specified")
+}
+
+// sendAnimationFile отправляет видео с локального файла
+func (b *Bot) sendAnimationFile(chatID int64, videoPath string, params *telego.SendAnimationParams) (*telego.Message, error) {
+	// Открываем файл
+	file, err := os.Open(sharedData + "/video/" + videoPath + ".mp4")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open animation %s: %w", videoPath, err)
+	}
+	defer file.Close()
+	params.Animation = tu.File(file)
+
+	// Отправляем анимацию
+	msg, err := b.bot.SendAnimation(b.ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send animation: %w", err)
+	}
+
+	if msg.Animation != nil {
+		logger.Error.Println("videoPath", videoPath, msg.Animation.FileID)
+
+		cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		// записуємо в список анімацій
+		err = b.redisDB.HSet(cont, gameAnimationPrefix, videoPath, msg.Animation.FileID).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set %s: %v", videoPath, err)
+		}
+	}
+
+	return msg, nil
 }
 
 // sendVideoFile отправляет видео с локального файла
