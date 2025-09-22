@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -10,10 +11,16 @@ import (
 	"log"
 	"math"
 	"math/big"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	logger "roulette/internal/logger"
+
+	"github.com/gin-gonic/gin"
+	"golang.org/x/text/language"
+	"gopkg.in/yaml.v3"
 )
 
 const charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -116,7 +123,6 @@ func GetColorForNumber(number int64) string {
 
 // PeriodControl - check dates
 func PeriodControl(dateFrom, dateTo, period *string) (bool, error) {
-
 	if *dateTo == "" && *dateFrom == "" {
 		year, month, day := time.Now().Date()
 		switch *period {
@@ -194,4 +200,138 @@ func ReplaceMacrosInTexts(title, message, buttonText string, params map[string]i
 	}
 
 	return title, message, buttonText
+}
+
+func GetUserLang(c *gin.Context) string {
+	matcher := language.NewMatcher([]language.Tag{
+		language.Ukrainian, // The first language is used as fallback
+		language.English,
+		language.Russian,
+	})
+
+	header := c.Request.Header.Get("X-Language")
+	tag, _ := language.MatchStrings(matcher, header)
+	baseLang, _ := tag.Base()
+
+	return baseLang.String()
+}
+
+func GetLangPath(c *gin.Context) string {
+	path := ""
+	lang := GetUserLang(c)
+	if lang != "uk" {
+		path = "/" + lang
+	}
+	return path
+}
+
+func GetLangPathFromLang(lang string) string {
+	path := ""
+	if lang != "uk" {
+		path = "/" + lang
+	}
+	return path
+}
+
+func GetPWD() string {
+	ex, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+
+	return filepath.Dir(ex)
+}
+
+// Функция, которая преобразует map[string]interface{} в JSON строку и кодирует её в Base64
+func MapToBase64Json(input map[string]interface{}) string {
+	jsonData, err := json.Marshal(input)
+	if err != nil {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(jsonData)
+}
+
+// GetYAMLData возвращает карту с данными YAML для указанного языка и списка модулей.
+func GetYAMLData(lang string, modules []string) map[string]interface{} {
+	result := map[string]interface{}{}
+
+	for _, module := range modules {
+		// Строим путь к файлам YAML для указанного языка и модуля
+		path := fmt.Sprintf(GetPWD()+"/locales/%s/%s.yml", lang, module)
+
+		// Получаем данные YAML для указанного пути
+		data, err := YAMLFiles2Map(path)
+		if err != nil {
+			return result
+		}
+
+		// Объединяем результаты в общую карту
+		for _, v := range data[lang] {
+			for k, v2 := range v {
+				result[k] = v2
+			}
+		}
+	}
+
+	return result
+}
+
+// YAMLFiles2Map принимает путь к файлам YAML в формате "/locales/*/*.yml" и возвращает карту с данными, организованными по языкам и модулям.
+// Каждый язык содержит данные для разных модулей.
+// Пример использования:
+//
+//	result, err := YAMLFiles2Map("/locales/*/*.yml")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	// Получить данные для английского языка в public модуле
+//	data := result["en"]["ad-marker"]
+//	fmt.Println(data)
+func YAMLFiles2Map(path string) (map[string]map[string]map[string]interface{}, error) {
+	matches, err := filepath.Glob(path)
+	if err != nil {
+		return nil, err
+	}
+
+	result := map[string]map[string]map[string]interface{}{}
+
+	for _, match := range matches {
+		language := filepath.Base(filepath.Dir(match))
+
+		filename := filepath.Base(match)
+		module := strings.TrimSuffix(filename, filepath.Ext(filename))
+
+		m, err := YAMLFile2Map(match)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, ok := result[language]; !ok {
+			result[language] = map[string]map[string]interface{}{}
+		}
+
+		if _, ok := result[language][module]; !ok {
+			result[language][module] = map[string]interface{}{}
+		}
+
+		for key, value := range m {
+			result[language][module][key] = value
+		}
+	}
+
+	return result, nil
+}
+
+func YAMLFile2Map(path string) (map[string]interface{}, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	if err := yaml.Unmarshal(data, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

@@ -35,6 +35,7 @@ WORKDIR /app
 COPY --from=builder /app/roulette-bot /app/roulette-bot
 COPY --from=builder /app/roulette-admin /app/roulette-admin
 COPY --from=builder /app/roulette-rotator /app/roulette-rotator
+COPY --from=builder /app/locales /app/locales
 COPY --from=builder /app/web /app/web
 COPY --from=builder /app/internal/captcha-go /app/internal/captcha-go
 

@@ -4,31 +4,31 @@
     <div class="container">
         <div class="row">
             <div class="col-md-4 mb-4 mb-md-0">
-                <h5>О Roulette Bot</h5>
-                <p class="text-muted">Телеграм-бот для социального казино на основе упрощенного принципа игры в рулетку с системой проверки честности.</p>
+                <h5>{{ i18n .lang "about_roulette_bot" }}</h5>
+                <p class="text-muted">{{ i18n .lang "about_description" }}</p>
             </div>
             <div class="col-md-2 col-6 mb-4 mb-md-0">
-                <h5>Ссылки</h5>
+                <h5>{{ i18n .lang "footer_links" }}</h5>
                 <ul class="list-unstyled">
-                    <li class="mb-2"><a href="/" class="text-white text-decoration-none">Главная</a></li>
-                    <li class="mb-2"><a href="/hashes" class="text-white text-decoration-none">Результаты</a></li>
-                    <li class="mb-2"><a href="/faq" class="text-white text-decoration-none">FAQ</a></li>
-                    <li><a href="/example" class="text-white text-decoration-none">Пример проверки</a></li>
+                    <li class="mb-2"><a href="/" class="text-white text-decoration-none">{{ i18n .lang "footer_home" }}</a></li>
+                    <li class="mb-2"><a href="/hashes" class="text-white text-decoration-none">{{ i18n .lang "footer_results" }}</a></li>
+                    <li class="mb-2"><a href="/faq" class="text-white text-decoration-none">{{ i18n .lang "footer_faq" }}</a></li>
+                    <li><a href="/example" class="text-white text-decoration-none">{{ i18n .lang "footer_example" }}</a></li>
                 </ul>
             </div>
             <div class="col-md-3 col-6 mb-4 mb-md-0">
-                <h5>Играть</h5>
+                <h5>{{ i18n .lang "footer_play" }}</h5>
                 <ul class="list-unstyled">
-                    <li class="mb-2"><a href="https://t.me/socialroulette_bot" class="text-white text-decoration-none" target="_blank">Telegram Бот</a></li>
-                    <li class="mb-2"><a href="#" class="text-white text-decoration-none">Пригласить друга</a></li>
-                    <li><a href="#" class="text-white text-decoration-none">Наши правила</a></li>
+                    <li class="mb-2"><a href="https://t.me/socialroulette_bot" class="text-white text-decoration-none" target="_blank">{{ i18n .lang "footer_telegram_bot" }}</a></li>
+                    <li class="mb-2"><a href="#" class="text-white text-decoration-none">{{ i18n .lang "footer_invite_friend" }}</a></li>
+                    <li><a href="#" class="text-white text-decoration-none">{{ i18n .lang "footer_our_rules" }}</a></li>
                 </ul>
             </div>
             <div class="col-md-3">
-                <h5>Контакты</h5>
+                <h5>{{ i18n .lang "footer_contacts" }}</h5>
                 <ul class="list-unstyled">
                     <li class="mb-2"><a href="mailto:support@games.sprut.net" class="text-white text-decoration-none"><i class="bi bi-envelope me-2"></i>support@games.sprut.net</a></li>
-                    <li><a href="https://t.me/roulette_support" class="text-white text-decoration-none" target="_blank"><i class="bi bi-headset me-2"></i>Поддержка</a></li>
+                    <li><a href="https://t.me/roulette_support" class="text-white text-decoration-none" target="_blank"><i class="bi bi-headset me-2"></i>{{ i18n .lang "footer_support" }}</a></li>
                 </ul>
                 <div class="mt-3">
                     <a href="https://t.me/socialroulette_dev" target="_blank" class="text-white me-3 fs-5"><i class="bi bi-telegram"></i></a>
@@ -40,10 +40,10 @@
         <hr class="my-3">
         <div class="row align-items-center">
             <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                <p class="mb-0">&copy; 2025 Roulette Bot. Все права защищены.</p>
+                <p class="mb-0">&copy; 2025 Roulette Bot. {{ i18n .lang "all_rights_reserved" }}</p>
             </div>
             <div class="col-md-6 text-center text-md-end">
-                <small class="text-muted">Разработано <a href="https://traff.tools" class="text-white" target="_blank">TRAFF.TOOLS</a></small>
+                <small class="text-muted">{{ i18n .lang "developed_by" }} <a href="https://traff.tools" class="text-white" target="_blank">TRAFF.TOOLS</a></small>
             </div>
         </div>
     </div>

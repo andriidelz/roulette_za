@@ -13,27 +13,27 @@
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "home"}}active{{end}}" href="/">
-                        <i class="bi bi-house"></i> Главная
+                        <i class="bi bi-house"></i> {{ i18n .lang "nav_home" }}
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="https://t.me/socialroulette_bot" target="_blank">
-                        <i class="bi bi-telegram"></i> Открыть бот
+                        <i class="bi bi-telegram"></i> {{ i18n .lang "nav_open_bot" }}
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "hashes"}}active{{end}}" href="/hashes">
-                        <i class="bi bi-shield-check"></i> Результаты
+                        <i class="bi bi-shield-check"></i> {{ i18n .lang "nav_results" }}
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "faq"}}active{{end}}" href="/faq">
-                        <i class="bi bi-question-circle"></i> FAQ
+                        <i class="bi bi-question-circle"></i> {{ i18n .lang "nav_faq" }}
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{if eq .activeTab "example"}}active{{end}}" href="/example">
-                        <i class="bi bi-code-slash"></i> Пример проверки
+                        <i class="bi bi-code-slash"></i> {{ i18n .lang "nav_example" }}
                     </a>
                 </li>
             </ul>

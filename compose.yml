@@ -91,7 +91,7 @@ services:
       <<: *postgres-env
     volumes:
       - ./shared-data/postgresql:/var/lib/postgresql/data
-      # - ./migrations:/docker-entrypoint-initdb.d
+    # - ./migrations:/docker-entrypoint-initdb.d
     # ports:
     #   - "5432:5432"
     restart: unless-stopped
@@ -218,6 +218,8 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    volumes:
+      - ./shared-data/files/video:/files/video
     ports:
       - "127.0.0.1:9101:9101"
     logging: *default-logging
