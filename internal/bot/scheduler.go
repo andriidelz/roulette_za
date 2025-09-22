@@ -15,7 +15,9 @@ func (b *Bot) StartRatingScheduler() {
 	go func() {
 		// Периодическое обновление рейтингов (каждые 15 минут)
 		ratingTicker := time.NewTicker(15 * time.Minute)
+		prizeTicker := time.NewTicker(1 * time.Minute)
 		defer ratingTicker.Stop()
+		defer prizeTicker.Stop()
 
 		// TODO перенести определение недели внутрь цикла и оттестить
 
@@ -36,9 +38,13 @@ func (b *Bot) StartRatingScheduler() {
 
 		// // Устанавливаем последнюю обработанную неделю
 		// lastProcessedYear, lastProcessedWeek = currentYear, currentWeek
+		b.refreshCache()
 
 		for {
 			select {
+			case <-prizeTicker.C:
+				b.refreshCache()
+
 			case <-ratingTicker.C:
 				// Обновляем позиции в рейтинге
 				if err := b.service.RefreshAllRatings(); err != nil {
@@ -172,4 +178,38 @@ func (b *Bot) StartUpdateCaptcha() {
 			}
 		}
 	}()
+}
+
+func (b *Bot) refreshCache() {
+	year, week := time.Now().ISOWeek()
+
+	// По умолчанию
+	var prizeFundAmount float64 = 1000.0
+	var topCount int = 100
+	var totalPoints int = 0
+
+	// Получаем призовой фонд через репозиторий
+	prizeFund, err := b.service.GetPrizeFund(year, week)
+	if err != nil {
+		logger.Error.Printf("Error getting prize fund: %v", err)
+	} else {
+		// Устанавливаем данные о призовом фонде из БД
+		prizeFundAmount = prizeFund.Amount
+		topCount = prizeFund.TopCount
+	}
+
+	// Отримуємо рейтинг
+	ratings, err := b.service.GetWeeklyRating(topCount)
+	if err != nil {
+		logger.Error.Printf("Error getting GetWeeklyRating: %v", err)
+	}
+
+	// Рахуємо загальну кількість балів у топі
+	for _, rating := range ratings {
+		totalPoints += rating.Points
+	}
+
+	b.gameHandler.prizeFundAmount = prizeFundAmount
+	b.gameHandler.topCount = topCount
+	b.gameHandler.totalPoints = totalPoints
 }
