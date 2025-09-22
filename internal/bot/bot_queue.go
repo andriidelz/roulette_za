@@ -324,6 +324,10 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 	case sendSticker:
 		messageType = "sticker"
 		err = b.SendSticker(chatID, options.Text)
+	case sendAnimation:
+		messageType = "animation"
+		_, err = b.sendAnimation(chatID, options)
+
 	default:
 		messageType = "text"
 		_, err = b.sendText(chatID, options)
