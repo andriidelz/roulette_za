@@ -58,6 +58,10 @@ type GameHandler struct {
 	processedRounds map[uint]bool       // Хранит ID обработанных раундов для избежания дублирования
 	processMutex    sync.Mutex          // Мьютекс для доступа к processedRounds
 
+	prizeFundAmount float64 // значення з GetPrizeFund
+	topCount        int     // значення з GetPrizeFund
+	totalPoints     int     // значення з GetWeeklyRating
+
 	roundMsgChan   chan RoundMessage
 	processingLock sync.Mutex
 	stopWorker     chan struct{}
@@ -104,6 +108,10 @@ func NewGameHandler(bot *Bot, service service.Service, rabbitmqURL string) (*Gam
 		processedRounds: make(map[uint]bool),
 		roundMsgChan:    make(chan RoundMessage, 100), // Буфер для сообщений
 		stopWorker:      make(chan struct{}),
+
+		prizeFundAmount: 1000.0, // По умолчанию
+		topCount:        100,    // По умолчанию
+		totalPoints:     0,      // По умолчанию
 	}
 
 	// Запускаем обработчик сообщений в отдельной горутине
@@ -484,14 +492,6 @@ func (h *GameHandler) handleGetResultRound(query *telego.CallbackQuery) {
 func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEntry, result models.BetOption) error {
 	logger.Info.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, round.ID)
 
-	// Не отправляем результаты если пользователя нет в списке активных игроков
-	h.mutex.RLock()
-	_, exists := h.activePlayers[userID]
-	h.mutex.RUnlock()
-	if !exists {
-		return nil
-	}
-
 	// Получаем пользователя
 	userInfo, err := h.service.GetUser(userID)
 	if err != nil {
@@ -519,13 +519,13 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	//  Користувач вже отримував результат раунду - присилаєм текст і лінк на сторінку з історією ставок
 	if bet.GetResult {
 		options := h.bot.prepareMessage("repeatresultalert", language)
-		options.Text = "#" + fmt.Sprint(round.ID) + "\n\n" + options.Text
 		// Создаем кнопки
 		var inlineButtons [][]telego.InlineKeyboardButton
 
 		// Добавляем первый ряд с двумя кнопками: проверка раунда и просмотр рейтинга
 		checkSystemText := h.service.GetText("systemcheck", language)
 		roundIDBase62 := utils.ToBase62(uint(round.ID))
+		options.Text = "#" + roundIDBase62 + "\n\n" + options.Text
 		checkSystemURL := fmt.Sprintf("%s/hashes/?id=%s", webPage, roundIDBase62)
 
 		viewRatingText := h.service.GetText("viewrating", language)
@@ -626,8 +626,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 		options = h.bot.prepareMessage("losemessage", language)
 	}
 
-	options.Text = "#" + fmt.Sprint(round.ID) + "\n\n" +
-		h.service.GetText(resultLangKey, language) + "\n\n" + options.Text
+	options.Text = h.service.GetText(resultLangKey, language) + "\n\n" + options.Text
 
 	// Формируем часть о рейтинге
 
@@ -649,34 +648,17 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 
 	// Переменные для текста рейтинга
 	var ratingText string
-	var prizeFundAmount float64 = 1000.0 // По умолчанию
 	var userShare float64 = 0.0
-	var topCount int = 100 // По умолчанию
-
-	// Получаем призовой фонд через репозиторий
-	prizeFund, err := h.service.GetPrizeFund(year, week)
-	if err == nil {
-		// Получаем данные о призовом фонде из БД
-		prizeFundAmount = prizeFund.Amount
-		topCount = prizeFund.TopCount
-
-		if rating.Position > 0 && rating.Position <= topCount {
-			// Расчет доли пользователя
-			userShare = prizeFundAmount / float64(topCount) * (float64(topCount-rating.Position+1) / float64(topCount))
-		}
-	} else {
-		logger.Error.Printf("Error getting prize fund: %v", err)
-
-		// Если не удалось получить данные о призовом фонде, используем значения по умолчанию
-		if rating.Position > 0 && rating.Position <= 100 {
-			// Упрощенный расчет доли пользователя
-			userShare = prizeFundAmount / 100.0 * (float64(100-rating.Position+1) / 100.0)
-		}
+	totalPoints := h.totalPoints
+	
+	if rating.Points > 0 && totalPoints > 0 {
+		// Расчет доли пользователя
+		userShare = (float64(rating.Points) / float64(totalPoints)) * h.prizeFundAmount
 	}
 
 	// Формируем сообщение о рейтинге
 	ratingTemplate := h.service.GetText("bidrating", language)
-	ratingText = fmt.Sprintf(ratingTemplate, rating.Points, rating.Position, userShare, prizeFundAmount)
+	ratingText = fmt.Sprintf(ratingTemplate, rating.Points, rating.Position, userShare, h.prizeFundAmount)
 
 	// Часть проверки баланса ставок
 	betsBalance, err := h.service.GetUserRemainingBets(userID)
@@ -713,6 +695,8 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	checkSystemText := h.service.GetText("systemcheck", language)
 	roundIDBase62 := utils.ToBase62(uint(round.ID))
 	checkSystemURL := fmt.Sprintf("%s/hashes/?id=%s", webPage, roundIDBase62)
+
+	options.Text = "#" + roundIDBase62 + "\n\n" + options.Text
 
 	viewRatingText := h.service.GetText("viewrating", language)
 
