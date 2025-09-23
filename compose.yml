@@ -15,7 +15,7 @@ x-infrastructure-logging: &infrastructure-logging
 x-database-config: &database-config
   DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-roulette}?sslmode=disable
 
-# RabbitMQ configuration  
+# RabbitMQ configuration
 x-rabbitmq-config: &rabbitmq-config
   RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
 
@@ -60,8 +60,8 @@ x-pgadmin-config: &pgadmin-config
   PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-postgres@postgres.com}
   PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-postgres}
   PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
-  PGADMIN_CONFIG_SERVER_MODE: 'False'
-  PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+  PGADMIN_CONFIG_SERVER_MODE: "False"
+  PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
 
 # Admin panel configuration
 x-admin-config: &admin-config
@@ -89,14 +89,28 @@ services:
     container_name: roulette-postgres
     environment:
       <<: *postgres-env
+      POSTGRES_INITDB_ARGS: "--data-checksums"
     volumes:
       - ./shared-data/postgresql:/var/lib/postgresql/data
-    # - ./migrations:/docker-entrypoint-initdb.d
-    # ports:
-    #   - "5432:5432"
+      - ./postgres.conf:/etc/postgresql/postgresql.conf:ro
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: "4"
+        reservations:
+          memory: 4G
+          cpus: "2"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-roulette}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-roulette}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -111,16 +125,19 @@ services:
       - ./migrations:/migrations:ro
     environment:
       <<: *database-config
-    command: [
-      "-path", "/migrations",
-      "-database", "postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-roulette}?sslmode=disable",
-      "-verbose",
-      "up"
-    ]
+    command:
+      [
+        "-path",
+        "/migrations",
+        "-database",
+        "postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-roulette}?sslmode=disable",
+        "-verbose",
+        "up",
+      ]
     depends_on:
       postgres:
         condition: service_healthy
-    restart: "no"  # Запускается один раз при старте
+    restart: "no" # Запускается один раз при старте
     logging: *infrastructure-logging
 
   pgadmin:
@@ -137,6 +154,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "0.5"
     logging:
       driver: "none"
 
@@ -146,18 +168,30 @@ services:
     environment:
       <<: *redis-env
     command: >
-      redis-server 
-      --requirepass ${REDIS_PASSWORD:-redis123} 
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-redis123}
       --appendonly yes
       --maxclients 10000
       --tcp-backlog 511
       --tcp-keepalive 300
-      --maxmemory 1gb
+      --maxmemory 2gb
       --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --stop-writes-on-bgsave-error no
+      --rdbcompression yes
+      --rdbchecksum yes
     volumes:
       - ./shared-data/redis:/data
-    # ports:
-    #   - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 2.5G
+          cpus: "1"
+        reservations:
+          memory: 1G
+          cpus: "0.5"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
@@ -181,6 +215,11 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+          cpus: "0.2"
     logging:
       driver: "none"
 
@@ -188,12 +227,20 @@ services:
     image: rabbitmq:3-management
     container_name: roulette-rabbitmq
     ports:
-      # - "5672:5672"
       - "127.0.0.1:15672:15672"
     volumes:
       - ./shared-data/rabbitmq:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     environment:
       <<: *rabbitmq-env
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
       interval: 5s
@@ -207,7 +254,14 @@ services:
     container_name: roulette-bot
     command: ./roulette-bot
     environment:
-      <<: [*database-config, *rabbitmq-config, *telegram-config, *payment-config, *redis-config]
+      <<:
+        [
+          *database-config,
+          *rabbitmq-config,
+          *telegram-config,
+          *payment-config,
+          *redis-config,
+        ]
     depends_on:
       postgres:
         condition: service_healthy
@@ -217,6 +271,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1"
+        reservations:
+          memory: 128M
+          cpus: "0.2"
     restart: unless-stopped
     volumes:
       - ./shared-data/files/video:/files/video
@@ -239,6 +301,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+        reservations:
+          memory: 64M
+          cpus: "0.1"
     restart: unless-stopped
     ports:
       - "127.0.0.1:9102:9102"
@@ -249,7 +319,15 @@ services:
     container_name: roulette-admin
     command: ./roulette-admin
     environment:
-      <<: [*database-config, *rabbitmq-config, *telegram-config, *admin-config, *payment-config, *redis-config]
+      <<:
+        [
+          *database-config,
+          *rabbitmq-config,
+          *telegram-config,
+          *admin-config,
+          *payment-config,
+          *redis-config,
+        ]
     ports:
       - "127.0.0.1:8080:8080"
       - "127.0.0.1:9103:9103"
@@ -260,6 +338,14 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+        reservations:
+          memory: 64M
+          cpus: "0.1"
     restart: unless-stopped
     logging: *default-logging
 
@@ -272,16 +358,21 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - ./shared-data/prometheus:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=90d'
-      - '--storage.tsdb.retention.size=10GB'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.external-url=http://localhost:9090/prometheus'
-      - '--web.route-prefix=/prometheus'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=90d"
+      - "--storage.tsdb.retention.size=10GB"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.external-url=http://localhost:9090/prometheus"
+      - "--web.route-prefix=/prometheus"
     ports:
       - "127.0.0.1:9090:9090"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "0.5"
     restart: unless-stopped
     logging: *infrastructure-logging
 
@@ -299,10 +390,15 @@ services:
       - "127.0.0.1:3000:3000"
     depends_on:
       - prometheus
-      - postgres-exporter  
+      - postgres-exporter
       - rabbitmq-exporter
       - redis-exporter
       - node-exporter
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
     restart: unless-stopped
     logging: *infrastructure-logging
 
@@ -314,6 +410,11 @@ services:
       - postgres_exporter.env
     ports:
       - "127.0.0.1:9187:9187"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.2"
     restart: unless-stopped
     depends_on:
       - postgres
@@ -329,6 +430,11 @@ services:
       - RABBIT_PASSWORD=${RABBITMQ_PASS:-guest}
     ports:
       - "127.0.0.1:9419:9419"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.2"
     restart: unless-stopped
     depends_on:
       - rabbitmq
@@ -343,15 +449,20 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--path.rootfs=/rootfs'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
     ports:
       - "127.0.0.1:9100:9100"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.2"
     restart: unless-stopped
     logging: *infrastructure-logging
-    
+
   redis-exporter:
     profiles: ["monitoring"]
     image: oliver006/redis_exporter:v1.55.0
@@ -362,6 +473,11 @@ services:
       REDIS_EXPORTER_LOG_FORMAT: txt
     ports:
       - "127.0.0.1:9121:9121"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.2"
     restart: unless-stopped
     depends_on:
       redis:
