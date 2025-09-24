@@ -161,7 +161,7 @@ func (b *Bot) MakeRequestDeferredErr(chatID int64, errText string) {
 
 		language := getLanguage(user.LanguageCode, "")
 
-		errSendText := b.service.GetText(errText, language)
+		errSendText := b.getText(errText, language)
 		options := MessageOptions{
 			Text:      fmt.Sprintf(errSendText, 100),
 			ParseMode: telego.ModeHTML,

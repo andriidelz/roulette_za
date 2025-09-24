@@ -470,7 +470,7 @@ func (h *GameHandler) handleGetResultRound(query *telego.CallbackQuery) {
 		}
 
 		// Виводимо pop-up toast без підтвердження
-		h.bot.answerCallbackQuery(query.ID, h.service.GetText("wait_result", language), false)
+		h.bot.answerCallbackQuery(query.ID, h.bot.getText("wait_result", language), false)
 		return
 	}
 
@@ -523,12 +523,12 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 		var inlineButtons [][]telego.InlineKeyboardButton
 
 		// Добавляем первый ряд с двумя кнопками: проверка раунда и просмотр рейтинга
-		checkSystemText := h.service.GetText("systemcheck", language)
+		checkSystemText := h.bot.getText("systemcheck", language)
 		roundIDBase62 := utils.ToBase62(uint(round.ID))
 		options.Text = "#" + roundIDBase62 + "\n\n" + options.Text
 		checkSystemURL := fmt.Sprintf("%s/hashes/?id=%s", webPage, roundIDBase62)
 
-		viewRatingText := h.service.GetText("viewrating", language)
+		viewRatingText := h.bot.getText("viewrating", language)
 
 		// Верхний ряд из 2 кнопок
 		inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
@@ -536,7 +536,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 			{Text: viewRatingText, CallbackData: "view_rating"},
 		})
 		inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
-			{Text: h.service.GetText("next_round", language), CallbackData: CallbackStartRound},
+			{Text: h.bot.getText("next_round", language), CallbackData: CallbackStartRound},
 		})
 
 		// Создаем inline клавиатуру с кнопками
@@ -626,7 +626,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 		options = h.bot.prepareMessage("losemessage", language)
 	}
 
-	options.Text = h.service.GetText(resultLangKey, language) + "\n\n" + options.Text
+	options.Text = h.bot.getText(resultLangKey, language) + "\n\n" + options.Text
 
 	// Формируем часть о рейтинге
 
@@ -650,14 +650,14 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	var ratingText string
 	var userShare float64 = 0.0
 	totalPoints := h.totalPoints
-	
+
 	if rating.Points > 0 && totalPoints > 0 {
 		// Расчет доли пользователя
 		userShare = (float64(rating.Points) / float64(totalPoints)) * h.prizeFundAmount
 	}
 
 	// Формируем сообщение о рейтинге
-	ratingTemplate := h.service.GetText("bidrating", language)
+	ratingTemplate := h.bot.getText("bidrating", language)
 	ratingText = fmt.Sprintf(ratingTemplate, rating.Points, rating.Position, userShare, h.prizeFundAmount)
 
 	// Часть проверки баланса ставок
@@ -672,11 +672,11 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 
 	if betsBalance <= 0 {
 		// Недостаточно ставок
-		betsBalanceText = h.service.GetText("betsbalancelow", language)
-		additionalMessage = h.service.GetText("nextbidlow", language)
+		betsBalanceText = h.bot.getText("betsbalancelow", language)
+		additionalMessage = h.bot.getText("nextbidlow", language)
 	} else {
 		// Достаточно ставок
-		betsBalanceTemplate := h.service.GetText("betsbalanceok", language)
+		betsBalanceTemplate := h.bot.getText("betsbalanceok", language)
 		betsBalanceText = fmt.Sprintf(betsBalanceTemplate, betsBalance)
 	}
 
@@ -692,13 +692,13 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	var inlineButtons [][]telego.InlineKeyboardButton
 
 	// Добавляем первый ряд с двумя кнопками: проверка раунда и просмотр рейтинга
-	checkSystemText := h.service.GetText("systemcheck", language)
+	checkSystemText := h.bot.getText("systemcheck", language)
 	roundIDBase62 := utils.ToBase62(uint(round.ID))
 	checkSystemURL := fmt.Sprintf("%s/hashes/?id=%s", webPage, roundIDBase62)
 
 	options.Text = "#" + roundIDBase62 + "\n\n" + options.Text
 
-	viewRatingText := h.service.GetText("viewrating", language)
+	viewRatingText := h.bot.getText("viewrating", language)
 
 	// Верхний ряд из 2 кнопок
 	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
@@ -706,12 +706,12 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 		{Text: viewRatingText, CallbackData: "view_rating"},
 	})
 	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
-		{Text: h.service.GetText("next_round", language), CallbackData: CallbackStartRound},
+		{Text: h.bot.getText("next_round", language), CallbackData: CallbackStartRound},
 	})
 
 	// TODO: кнопка временно скрыта
 	// Второй ряд только с кнопкой пополнения баланса
-	// topUpBalanceText := h.service.GetText("topupbalance", language)
+	// topUpBalanceText := h.bot.getText("topupbalance", language)
 	// inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
 	// 	{Text: topUpBalanceText, CallbackData: "noop"},
 	// })
@@ -861,7 +861,7 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 		inlineKeyboard := &telego.InlineKeyboardMarkup{
 			InlineKeyboard: [][]telego.InlineKeyboardButton{{
 				{
-					Text:         h.service.GetText("get_result", language),
+					Text:         h.bot.getText("get_result", language),
 					CallbackData: CallbackGetResultRound + fmt.Sprint(currentRound.ID),
 				},
 			}},
@@ -895,11 +895,11 @@ func (h *GameHandler) handleAvailableBets(query *telego.CallbackQuery) {
 
 	if betsBalance <= 0 {
 		// Виводимо pop-up toast без підтвердження
-		h.bot.answerCallbackQuery(query.ID, h.service.GetText("betsbalancelow", language), false)
+		h.bot.answerCallbackQuery(query.ID, h.bot.getText("betsbalancelow", language), false)
 		return
 	}
 
-	text := h.service.GetText("betsbalanceok", language)
+	text := h.bot.getText("betsbalanceok", language)
 	text = fmt.Sprintf(text, betsBalance)
 
 	// Виводимо pop-up toast без підтвердження
@@ -924,12 +924,12 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	options.InlineKeyboard = &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
-				{Text: h.service.GetText("btn_awards", language), CallbackData: "awards"},
-				{Text: h.service.GetText("btn_payments", language), CallbackData: "payments"},
-				{Text: h.service.GetText("btn_fairplay", language), CallbackData: "fairplay"},
+				{Text: h.bot.getText("btn_awards", language), CallbackData: "awards"},
+				{Text: h.bot.getText("btn_payments", language), CallbackData: "payments"},
+				{Text: h.bot.getText("btn_fairplay", language), CallbackData: "fairplay"},
 			},
 			{
-				{Text: h.service.GetText("btn_startround", language), CallbackData: CallbackStartRound},
+				{Text: h.bot.getText("btn_startround", language), CallbackData: CallbackStartRound},
 			},
 		},
 	}
@@ -969,7 +969,7 @@ func (h *GameHandler) handleStartRound(query *telego.CallbackQuery) {
 		}
 
 		// Виводимо pop-up toast без підтвердження
-		h.bot.answerCallbackQuery(query.ID, h.bot.service.GetText(errorKey, language), false)
+		h.bot.answerCallbackQuery(query.ID, h.bot.getText(errorKey, language), false)
 		return
 	}
 
@@ -1082,19 +1082,19 @@ func (h *GameHandler) createBetKeyboard(language string, userID int64, currentRo
 	// Создаем клавиатуру с соответствующими кнопками
 	var zeroButton telego.InlineKeyboardButton
 	if canBetZero {
-		zeroButton = telego.InlineKeyboardButton{Text: h.service.GetText("btn_bet_zero", language), CallbackData: CallbackBetZero + round}
+		zeroButton = telego.InlineKeyboardButton{Text: h.bot.getText("btn_bet_zero", language), CallbackData: CallbackBetZero + round}
 	} else {
-		zeroButton = telego.InlineKeyboardButton{Text: h.service.GetText("btn_bet_zero_locked", language), CallbackData: CallbackBetZeroLocked}
+		zeroButton = telego.InlineKeyboardButton{Text: h.bot.getText("btn_bet_zero_locked", language), CallbackData: CallbackBetZeroLocked}
 	}
 	return &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
-				{Text: h.service.GetText("btn_bet_red", language), CallbackData: CallbackBetRed + round},
-				{Text: h.service.GetText("btn_bet_black", language), CallbackData: CallbackBetBlack + round},
+				{Text: h.bot.getText("btn_bet_red", language), CallbackData: CallbackBetRed + round},
+				{Text: h.bot.getText("btn_bet_black", language), CallbackData: CallbackBetBlack + round},
 				zeroButton,
 			},
 			{
-				{Text: h.service.GetText("availablebets", language), CallbackData: CallbackBetAvailable},
+				{Text: h.bot.getText("availablebets", language), CallbackData: CallbackBetAvailable},
 			},
 		},
 	}

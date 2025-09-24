@@ -30,13 +30,13 @@ func (b *Bot) handleFAQCommand(message *telego.Message) {
 // createFAQKeyboard создает клавиатуру для меню FAQ
 func (b *Bot) createFAQKeyboard(language string) *telego.ReplyKeyboardMarkup {
 	// Получаем локализированные тексты для кнопок FAQ
-	btnRulesText := b.service.GetText("faqrules", language)
-	btnAwardsText := b.service.GetText("faqawards", language)
-	btnPaymentsText := b.service.GetText("faqpayments", language)
-	btnFairPlayText := b.service.GetText("faqfairplay", language)
-	btnPrivacyPolicyText := b.service.GetText("privacypolicy", language)
-	btnContactText := b.service.GetText("contact", language)
-	btnExitText := b.service.GetText("faqexit", language)
+	btnRulesText := b.getText("faqrules", language)
+	btnAwardsText := b.getText("faqawards", language)
+	btnPaymentsText := b.getText("faqpayments", language)
+	btnFairPlayText := b.getText("faqfairplay", language)
+	btnPrivacyPolicyText := b.getText("privacypolicy", language)
+	btnContactText := b.getText("contact", language)
+	btnExitText := b.getText("faqexit", language)
 
 	// Создаем клавиатуру
 	return &telego.ReplyKeyboardMarkup{
