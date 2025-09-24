@@ -14,15 +14,15 @@ func (b *Bot) createStatsKeyboard(language string) *telego.ReplyKeyboardMarkup {
 	return &telego.ReplyKeyboardMarkup{
 		Keyboard: [][]telego.KeyboardButton{
 			{
-				{Text: b.service.GetText("daystat", language)},
-				{Text: b.service.GetText("weekstat", language)},
+				{Text: b.getText("daystat", language)},
+				{Text: b.getText("weekstat", language)},
 			},
 			{
-				{Text: b.service.GetText("monthstat", language)},
-				{Text: b.service.GetText("allstat", language)},
+				{Text: b.getText("monthstat", language)},
+				{Text: b.getText("allstat", language)},
 			},
 			{
-				{Text: b.service.GetText("exitstat", language)},
+				{Text: b.getText("exitstat", language)},
 			},
 		},
 		ResizeKeyboard:  true,
@@ -35,15 +35,15 @@ func (b *Bot) createMainReplyKeyboard(language string) *telego.ReplyKeyboardMark
 	return &telego.ReplyKeyboardMarkup{
 		Keyboard: [][]telego.KeyboardButton{
 			{
-				{Text: b.service.GetText("btn_play", language)},
-				{Text: b.service.GetText("btn_statistics", language)},
+				{Text: b.getText("btn_play", language)},
+				{Text: b.getText("btn_statistics", language)},
 			},
 			{
-				{Text: b.service.GetText("btn_rating", language)},
-				{Text: b.service.GetText("btn_account", language)},
+				{Text: b.getText("btn_rating", language)},
+				{Text: b.getText("btn_account", language)},
 			},
 			{
-				{Text: b.service.GetText("btn_faq", language)},
+				{Text: b.getText("btn_faq", language)},
 			},
 		},
 		ResizeKeyboard:  true,
@@ -109,7 +109,7 @@ func (b *Bot) createBackBtnKeyboard(language string) *telego.InlineKeyboardMarku
 	return &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
-				{Text: b.service.GetText("btn_back", language), CallbackData: CallbackSettingsBack},
+				{Text: b.getText("btn_back", language), CallbackData: CallbackSettingsBack},
 			},
 		},
 	}
@@ -119,12 +119,12 @@ func (b *Bot) createStartInlineKeyboard(language string) *telego.InlineKeyboardM
 	return &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
-				{Text: b.service.GetText("btn_rules", language), CallbackData: "rules"},
-				{Text: b.service.GetText("btn_awards", language), CallbackData: "awards"},
+				{Text: b.getText("btn_rules", language), CallbackData: "rules"},
+				{Text: b.getText("btn_awards", language), CallbackData: "awards"},
 			},
 			{
-				{Text: b.service.GetText("btn_payments", language), CallbackData: "payments"},
-				{Text: b.service.GetText("btn_fairplay", language), CallbackData: "fairplay"},
+				{Text: b.getText("btn_payments", language), CallbackData: "payments"},
+				{Text: b.getText("btn_fairplay", language), CallbackData: "fairplay"},
 			},
 		},
 	}

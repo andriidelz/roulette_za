@@ -58,12 +58,12 @@ func (b *Bot) createSettingsKeyboard(language string, userID int64) *telego.Inli
 	}
 
 	// Получаем локализованные тексты для кнопок
-	btnLanguageText := b.service.GetText("btn_settings_language", language)
-	btnCountryText := b.service.GetText("btn_settings_country", language)
-	btnNameText := b.service.GetText("btn_settings_name", language)
-	btnNicknameText := b.service.GetText("btn_settings_nickname", language)
-	btnWalletText := b.service.GetText("btn_settings_wallet", language) // Новая локализация
-	btnBackText := b.service.GetText("btn_back_to_main", language)
+	btnLanguageText := b.getText("btn_settings_language", language)
+	btnCountryText := b.getText("btn_settings_country", language)
+	btnNameText := b.getText("btn_settings_name", language)
+	btnNicknameText := b.getText("btn_settings_nickname", language)
+	btnWalletText := b.getText("btn_settings_wallet", language) // Новая локализация
+	btnBackText := b.getText("btn_back_to_main", language)
 
 	// Добавляем текущие значения в кнопки
 
@@ -141,12 +141,12 @@ func (b *Bot) createSettingsKeyboard(language string, userID int64) *telego.Inli
 // Функция для базовой клавиатуры без текущих значений (будет использоваться в случае ошибки)
 func (b *Bot) createBasicSettingsKeyboard(language string) *telego.InlineKeyboardMarkup {
 	// Получаем локализованные тексты для кнопок
-	btnLanguageText := b.service.GetText("btn_settings_language", language)
-	btnCountryText := b.service.GetText("btn_settings_country", language)
-	btnNameText := b.service.GetText("btn_settings_name", language)
-	btnNicknameText := b.service.GetText("btn_settings_nickname", language)
-	btnWalletText := b.service.GetText("btn_settings_wallet", language) // Новая локализация
-	btnBackText := b.service.GetText("btn_back_to_main", language)
+	btnLanguageText := b.getText("btn_settings_language", language)
+	btnCountryText := b.getText("btn_settings_country", language)
+	btnNameText := b.getText("btn_settings_name", language)
+	btnNicknameText := b.getText("btn_settings_nickname", language)
+	btnWalletText := b.getText("btn_settings_wallet", language) // Новая локализация
+	btnBackText := b.getText("btn_back_to_main", language)
 
 	return &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
@@ -174,7 +174,7 @@ func (b *Bot) createBasicSettingsKeyboard(language string) *telego.InlineKeyboar
 
 // Создает клавиатуру выбора языка
 func (b *Bot) createLanguageKeyboard(language string) *telego.InlineKeyboardMarkup {
-	btnBackText := b.service.GetText("btn_back", language)
+	btnBackText := b.getText("btn_back", language)
 
 	return &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{

@@ -300,7 +300,7 @@ func (b *Bot) captchaMessage(telegramID int64, language string) MessageOptions {
 	nicknameKeyboard := &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{lines},
 	}
-	captchaText := b.service.GetText("captcha_text", language)
+	captchaText := b.getText("captcha_text", language)
 	mess := MessageOptions{
 		Text:           captchaText,
 		InlineKeyboard: nicknameKeyboard,
@@ -381,7 +381,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 				logger.Error.Printf("Error Set %d: %v", user.ID, err)
 			}
 			// Відповідаєм на callback текстом что капча невірна
-			b.answerCallbackQuery(query.ID, b.service.GetText("wrongcapcha_mes", language), true)
+			b.answerCallbackQuery(query.ID, b.getText("wrongcapcha_mes", language), true)
 
 			// // присилаєм нову капчу
 			b.SendMessage(user.ID, b.captchaMessage(user.ID, language))
@@ -481,7 +481,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 		logger.Error.Printf("Error in pipeline execution: %v", pipeErr)
 	}
 
-	correctText := b.service.GetText("captcha_correct", language)
+	correctText := b.getText("captcha_correct", language)
 
 	// Отвечаем на callback c текстом что капча успешно решена
 	b.answerCallbackQuery(query.ID, correctText, true)

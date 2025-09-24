@@ -52,11 +52,11 @@ func (b *Bot) handleAccountCommand(message *telego.Message) {
 // createAccountKeyboard создает клавиатуру для раздела аккаунта
 func (b *Bot) createAccountKeyboard(language string) *telego.ReplyKeyboardMarkup {
 	// Получаем локализованные тексты для кнопок
-	balanceText := b.service.GetText("balance", language)
-	withdrawText := b.service.GetText("withdraw", language)
-	bonusText := b.service.GetText("bonus", language)
-	buyBetsText := b.service.GetText("buybets", language)
-	exitAccText := b.service.GetText("exitacc", language)
+	balanceText := b.getText("balance", language)
+	withdrawText := b.getText("withdraw", language)
+	bonusText := b.getText("bonus", language)
+	buyBetsText := b.getText("buybets", language)
+	exitAccText := b.getText("exitacc", language)
 
 	// Создаем клавиатуру
 	return &telego.ReplyKeyboardMarkup{
@@ -113,7 +113,7 @@ func (b *Bot) handleBalanceCommand(message *telego.Message) {
 		options.Text = fmt.Sprintf(options.Text, dbUser.Balance)
 
 		// Создаем кнопку для запроса вывода
-		withdrawButtonText := b.service.GetText("balaccokwith", language)
+		withdrawButtonText := b.getText("balaccokwith", language)
 		withdrawButton := telego.InlineKeyboardButton{
 			Text:         withdrawButtonText,
 			CallbackData: CallbackRequestWithdraw,
@@ -183,7 +183,7 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 		options.Text = fmt.Sprintf(options.Text, dbUser.Balance)
 
 		// Создаем кнопку для проверки кошелька
-		processButtonText := b.service.GetText("withdrawproc", language)
+		processButtonText := b.getText("withdrawproc", language)
 		processButton := telego.InlineKeyboardButton{
 			Text:         processButtonText,
 			CallbackData: CallbackCheckWallet,
@@ -326,7 +326,7 @@ func (b *Bot) handleInputWithdrawAmountCommand(message *telego.Message) {
 	options.Text = fmt.Sprintf(options.Text, withdrawal.Amount, dbUser.WalletAddress)
 
 	// Создаем кнопку для возврата в главное меню
-	exitAccText := b.service.GetText("exitacc", language)
+	exitAccText := b.getText("exitacc", language)
 	exitAccButton := telego.InlineKeyboardButton{
 		Text:         exitAccText,
 		CallbackData: CallbackSettingsMainMenu,
@@ -388,7 +388,7 @@ func (b *Bot) handleInputWithdrawWalletCommand(message *telego.Message) {
 	options := b.prepareMessage("withdrawusdtchangeok", language)
 
 	// Создаем кнопку для подтверждения кошелька
-	walletOKButtonText := b.service.GetText("usdtok", language)
+	walletOKButtonText := b.getText("usdtok", language)
 	walletOKButton := telego.InlineKeyboardButton{
 		Text:         walletOKButtonText,
 		CallbackData: CallbackCheckAmount,
@@ -468,7 +468,7 @@ func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 		options := b.prepareMessage("no_wallet_address", language)
 
 		// Создаем кнопку для указания кошелька
-		walletChangeButtonText := b.service.GetText("usdtchange", language)
+		walletChangeButtonText := b.getText("usdtchange", language)
 		walletChangeButton := telego.InlineKeyboardButton{
 			Text:         walletChangeButtonText,
 			CallbackData: CallbackChangeWallet,
@@ -492,14 +492,14 @@ func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 	options.Text = fmt.Sprintf(options.Text, dbUser.WalletAddress)
 
 	// Создаем кнопку для подтверждения кошелька
-	walletOKButtonText := b.service.GetText("usdtok", language)
+	walletOKButtonText := b.getText("usdtok", language)
 	walletOKButton := telego.InlineKeyboardButton{
 		Text:         walletOKButtonText,
 		CallbackData: CallbackCheckAmount,
 	}
 
 	// Создаем кнопку для изменения кошелька
-	walletChangeButtonText := b.service.GetText("usdtchange", language)
+	walletChangeButtonText := b.getText("usdtchange", language)
 	walletChangeButton := telego.InlineKeyboardButton{
 		Text:         walletChangeButtonText,
 		CallbackData: CallbackChangeWallet,
@@ -542,14 +542,14 @@ func (b *Bot) handleCheckAmountCallback(query *telego.CallbackQuery) {
 	options.Text = fmt.Sprintf(options.Text, dbUser.Balance, FeeAmount)
 
 	// Создаем кнопку для запроса вывода всей суммы
-	amountAllButtonText := b.service.GetText("withdrawusdtall", language)
+	amountAllButtonText := b.getText("withdrawusdtall", language)
 	amountAllButton := telego.InlineKeyboardButton{
 		Text:         amountAllButtonText,
 		CallbackData: CallbackProcessWithdraw,
 	}
 
 	// Создаем кнопку для указания суммы для вывода
-	amountAmountButtonText := b.service.GetText("withdrawusdtamount", language)
+	amountAmountButtonText := b.getText("withdrawusdtamount", language)
 	amountAmountButton := telego.InlineKeyboardButton{
 		Text:         amountAmountButtonText,
 		CallbackData: CallbackSetAmount,
@@ -655,13 +655,13 @@ func (b *Bot) sendCancelMessage(chatID int64, language string) {
 	options := b.prepareMessage("withdrawusdtsumstop", language)
 
 	// Создаем кнопку для возврата в главное меню
-	exitAccText := b.service.GetText("exitacc", language)
+	exitAccText := b.getText("exitacc", language)
 	exitAccButton := telego.InlineKeyboardButton{
 		Text:         exitAccText,
 		CallbackData: CallbackSettingsMainMenu,
 	}
 	// Создаем кнопку отмены ввода
-	cancelText := b.service.GetText("withdrawcancel", language)
+	cancelText := b.getText("withdrawcancel", language)
 	cancelButton := telego.InlineKeyboardButton{
 		Text:         cancelText,
 		CallbackData: CallbackCancelInput,

@@ -37,7 +37,7 @@ func (b *Bot) handleRatingCallbackQuery(query *telego.CallbackQuery) {
 		// Создаем inline клавиатуру с кнопками
 		options.InlineKeyboard = &telego.InlineKeyboardMarkup{
 			InlineKeyboard: [][]telego.InlineKeyboardButton{
-				{{Text: b.service.GetText("next_round", language), CallbackData: CallbackStartRound}},
+				{{Text: b.getText("next_round", language), CallbackData: CallbackStartRound}},
 			},
 		}
 
@@ -192,9 +192,9 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 // createRatingKeyboard создает клавиатуру для выбора типа рейтинга
 func (b *Bot) createRatingKeyboard(language string) *telego.ReplyKeyboardMarkup {
 	// Получаем локализованные тексты для кнопок
-	weekRatingText := b.service.GetText("weekrat", language)
-	personalRatingText := b.service.GetText("personalrat", language)
-	exitRatingText := b.service.GetText("exitrat", language)
+	weekRatingText := b.getText("weekrat", language)
+	personalRatingText := b.getText("personalrat", language)
+	exitRatingText := b.getText("exitrat", language)
 
 	return &telego.ReplyKeyboardMarkup{
 		Keyboard: [][]telego.KeyboardButton{
