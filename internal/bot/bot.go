@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"roulette/internal/config"
@@ -34,6 +35,8 @@ type Bot struct {
 	subscriptionCache *SubscriptionCache // Кеш подписок на каналы
 	redisDB           *redis.Client      // Клиент Redis
 	metrics           *metrics.Metrics
+	localMutex        sync.RWMutex
+	localizations     map[string]map[string]models.Localization // Карта локалізацій - мова-ключ
 }
 
 // Константы для команд и callback-запитов
@@ -86,6 +89,8 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 		stateManager: NewStateManager(),
 		redisDB:      NewRedisClient(cfg),
 		metrics:      nil,
+
+		localizations: map[string]map[string]models.Localization{},
 	}
 
 	// Инициализируем обработчик игры после создания бота с поддержкой RabbitMQ
@@ -171,6 +176,8 @@ func (b *Bot) Start() error {
 	// Запускаем отправку сообщений
 	go b.sendBotQueue()
 
+	// Запускаем планировщик для обновления кеша
+	b.StartUpdateCache()
 	// Запускаем планировщик для обновления рейтингов
 	b.StartRatingScheduler()
 	// Запускаем планировщик для обновления капч
@@ -343,7 +350,7 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData st
 			options := h.bot.prepareMessage(errorKey, language)
 			options.InlineKeyboard = &telego.InlineKeyboardMarkup{
 				InlineKeyboard: [][]telego.InlineKeyboardButton{
-					{{Text: h.bot.service.GetText("next_round", language), CallbackData: CallbackStartRound}},
+					{{Text: h.bot.getText("next_round", language), CallbackData: CallbackStartRound}},
 				},
 			}
 			h.bot.SendMessage(user.ID, options)
@@ -354,7 +361,7 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData st
 			logger.Error.Println("bet_error", err)
 			errorKey = "bet_error"
 		}
-		errText := h.bot.service.GetText(errorKey, language)
+		errText := h.bot.getText(errorKey, language)
 		if errorKey == "zero_limit" {
 			errText = fmt.Sprintf(errText, remain)
 		}
@@ -573,17 +580,17 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	}
 
 	// Получаем локализированные тексты для кнопок
-	btnPlayText := b.service.GetText("btn_play", language)
-	btnStatisticsText := b.service.GetText("btn_statistics", language)
-	btnRatingText := b.service.GetText("btn_rating", language)
-	btnAccountText := b.service.GetText("btn_account", language)
-	btnFAQText := b.service.GetText("btn_faq", language)
+	btnPlayText := b.getText("btn_play", language)
+	btnStatisticsText := b.getText("btn_statistics", language)
+	btnRatingText := b.getText("btn_rating", language)
+	btnAccountText := b.getText("btn_account", language)
+	btnFAQText := b.getText("btn_faq", language)
 
-	btnBackText := b.service.GetText("btn_back", language)
+	btnBackText := b.getText("btn_back", language)
 
-	weekRatingText := b.service.GetText("weekrat", language)
-	personalRatingText := b.service.GetText("personalrat", language)
-	exitRatingText := b.service.GetText("exitrat", language)
+	weekRatingText := b.getText("weekrat", language)
+	personalRatingText := b.getText("personalrat", language)
+	exitRatingText := b.getText("exitrat", language)
 
 	// Обработка клавиатуры главного меню
 	switch text {
@@ -604,15 +611,15 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		b.handleHelpCommand(message)
 
 		// Обработка кнопок статистики
-	case b.service.GetText("daystat", language):
+	case b.getText("daystat", language):
 		b.handleDayStatistics(message)
-	case b.service.GetText("weekstat", language):
+	case b.getText("weekstat", language):
 		b.handleWeekStatistics(message)
-	case b.service.GetText("monthstat", language):
+	case b.getText("monthstat", language):
 		b.handleMonthStatistics(message)
-	case b.service.GetText("allstat", language):
+	case b.getText("allstat", language):
 		b.handleAllStatistics(message)
-	case b.service.GetText("exitstat", language):
+	case b.getText("exitstat", language):
 		b.handleHelpCommand(message) // Возврат в главное меню
 
 		// Обработка кнопок рейтинга
@@ -624,34 +631,34 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		b.handleHelpCommand(message) // Возврат в главное меню
 
 	// Обработка кнопок аккаунта
-	case b.service.GetText("balance", language):
+	case b.getText("balance", language):
 		b.handleBalanceCommand(message)
 		return
-	case b.service.GetText("withdraw", language):
+	case b.getText("withdraw", language):
 		b.handleWithdrawCommand(message)
-	case b.service.GetText("bonus", language):
+	case b.getText("bonus", language):
 		// Временно просто возвращаем в меню аккаунта
 		b.handleAccountCommand(message)
-	case b.service.GetText("buybets", language):
+	case b.getText("buybets", language):
 		// Временно просто возвращаем в меню аккаунта
 		b.handleAccountCommand(message)
-	case b.service.GetText("exitacc", language):
+	case b.getText("exitacc", language):
 		b.handleHelpCommand(message) // Возврат в главное меню
 
 		// Обработка кнопок меню FAQ
-	case b.service.GetText("faqrules", language):
+	case b.getText("faqrules", language):
 		b.handleFAQRules(message)
-	case b.service.GetText("faqawards", language):
+	case b.getText("faqawards", language):
 		b.handleFAQAwards(message)
-	case b.service.GetText("faqpayments", language):
+	case b.getText("faqpayments", language):
 		b.handleFAQPayments(message)
-	case b.service.GetText("faqfairplay", language):
+	case b.getText("faqfairplay", language):
 		b.handleFAQFairPlay(message)
-	case b.service.GetText("privacypolicy", language):
+	case b.getText("privacypolicy", language):
 		b.handleFAQPrivacyPolicy(message)
-	case b.service.GetText("contact", language):
+	case b.getText("contact", language):
 		b.handleFAQContact(message)
-	case b.service.GetText("faqexit", language):
+	case b.getText("faqexit", language):
 		b.handleHelpCommand(message) // Возврат в главное меню
 
 	default:
@@ -730,7 +737,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 		// Обновляем сообщение с новой страницей стран
 		if query.Message != nil {
-			countryText := b.service.GetText("countrymes", language)
+			countryText := b.getText("countrymes", language)
 			b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), MessageOptions{
 				Text:           countryText,
 				InlineKeyboard: b.createCountriesKeyboard(page),
@@ -761,7 +768,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Проверяем, является ли выбранная страна заблокированной (RU или BY)
 		if countryCode == "RU" || countryCode == "BY" {
 			// Получаем локализованный текст сообщения о блокировке
-			banText := b.service.GetText("stopcountry", language)
+			banText := b.getText("stopcountry", language)
 
 			// Отправляем сообщение о недоступности сервиса
 			if query.Message != nil {
@@ -786,7 +793,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			logger.Error.Printf("Error updating user country: %v", err)
 			if query.Message != nil {
 				b.SendMessage(query.Message.GetChat().ID, MessageOptions{
-					Text: b.service.GetText("error", language),
+					Text: b.getText("error", language),
 				})
 			}
 			return
@@ -811,7 +818,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			} else {
 				// Если страна была установлена ранее:
 				// Показываем подтверждение сохранения и кнопку назад
-				successText := b.service.GetText("country_saved", language)
+				successText := b.getText("country_saved", language)
 
 				backBtn := b.createBackBtnKeyboard(language)
 
@@ -830,7 +837,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 		switch callbackData {
 		case CallbackSettingsLanguage:
-			languageText := b.service.GetText("settings_language", language)
+			languageText := b.getText("settings_language", language)
 
 			// Обновляем сообщение с выбором языка
 			if query.Message != nil {
@@ -842,7 +849,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			return
 
 		case CallbackSettingsCountry:
-			countryText := b.service.GetText("countrymes", language)
+			countryText := b.getText("countrymes", language)
 
 			// Создаем клавиатуру со странами - начинаем с первой страницы
 			countriesKeyboard := b.createCountriesKeyboard(1)
@@ -857,7 +864,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			return
 
 		case CallbackSettingsName:
-			nameText := b.service.GetText("settings_name", language)
+			nameText := b.getText("settings_name", language)
 
 			// Обновляем сообщение и запрашиваем имя
 			if query.Message != nil {
@@ -874,7 +881,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			return
 
 		case CallbackSettingsNickName:
-			nameText := b.service.GetText("settings_nickname", language)
+			nameText := b.getText("settings_nickname", language)
 
 			// Обновляем сообщение и запрашиваем публичное имя
 			if query.Message != nil {
@@ -891,7 +898,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			return
 
 		case CallbackSettingsWallet:
-			walletText := b.service.GetText("withdrawusdtchange", language)
+			walletText := b.getText("withdrawusdtchange", language)
 
 			// Обновляем сообщение и запрашиваем адрес кошелька
 			if query.Message != nil {
@@ -909,7 +916,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 		case CallbackSettingsBack:
 			// Возвращаемся к меню настроек
-			settingsText := b.service.GetText("settings_message", language)
+			settingsText := b.getText("settings_message", language)
 
 			// Очищаем состояние пользователя
 			b.stateManager.ClearState(user.ID)
@@ -957,7 +964,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 		// Получаем локализованный текст для успешного сохранения языка
 		// используя новый язык
-		successText := b.service.GetText("language_saved", langCode)
+		successText := b.getText("language_saved", langCode)
 
 		// Отвечаем на callback
 		b.answerCallbackQuery(query.ID, "", false)
@@ -1040,16 +1047,16 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 	// Обработка других callback data
 	case "rules":
-		text := b.service.GetText("rules", language)
+		text := b.getText("rules", language)
 		b.updateOrSendMessage(query, text)
 	case "awards":
-		text := b.service.GetText("awards", language)
+		text := b.getText("awards", language)
 		b.updateOrSendMessage(query, text)
 	case "payments":
-		text := b.service.GetText("payments", language)
+		text := b.getText("payments", language)
 		b.updateOrSendMessage(query, text)
 	case "fairplay":
-		text := b.service.GetText("fairplay", language)
+		text := b.getText("fairplay", language)
 		b.updateOrSendMessage(query, text)
 
 		// Гра
@@ -1058,7 +1065,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	case CallbackBetZeroLocked:
 		// Обработка нажатия на заблокированную кнопку Zero
 		_, remaining, _ := b.service.CanBetZero(user.ID)
-		zeroText := b.service.GetText("zero_limit", language)
+		zeroText := b.getText("zero_limit", language)
 		zeroText = fmt.Sprintf(zeroText, remaining)
 		// відправка повідомлення як toast pop-up
 		b.answerCallbackQuery(query.ID, zeroText, false)
@@ -1140,7 +1147,7 @@ func (b *Bot) handleBackToStartMenu(query *telego.CallbackQuery) {
 	b.answerCallbackQuery(query.ID, "", false)
 
 	// Получаем локализированный текст приветствия
-	welcomeText := b.service.GetText("startmessage1", language)
+	welcomeText := b.getText("startmessage1", language)
 
 	// Создаем inline клавиатуру для стартового сообщения
 	inlineKeyboard := b.createStartInlineKeyboard(language)
@@ -1173,7 +1180,7 @@ func (b *Bot) updateOrSendMessage(query *telego.CallbackQuery, text string) {
 
 	// Создаем кнопку "Назад"
 	backButton := telego.InlineKeyboardButton{
-		Text:         b.service.GetText("btn_back", language),
+		Text:         b.getText("btn_back", language),
 		CallbackData: "back_to_start",
 	}
 	keyboard := &telego.InlineKeyboardMarkup{
@@ -1458,13 +1465,48 @@ type MessageOptions struct {
 
 // prepareMessage - подготовка сообщения - установка текста и фото/видео если указаны
 func (b *Bot) prepareMessage(key, languageCode string) (options MessageOptions) {
-	res, _ := b.service.GetRepo().GetLocalization(key, languageCode)
+
+	var res models.Localization
+
+	b.localMutex.Lock()
+	localizationMap, ok := b.localizations[languageCode]
+	if ok {
+		res = localizationMap[key]
+	}
+	b.localMutex.Unlock()
+
+	// Значення не знайдено, пробуємо отримати з бази
+	if res.Value == "" {
+		logger.Info.Println("Key not found: ", key, languageCode)
+		res, _ = b.service.GetRepo().GetLocalization(key, languageCode)
+	}
 
 	return MessageOptions{
 		Text:        res.Value,
 		PhotoFileID: res.Image,
 		VideoFileID: res.Video,
 	}
+}
+
+// getText -отримання локалізації по мові та ключу
+func (b *Bot) getText(key, languageCode string) (options string) {
+
+	var res models.Localization
+
+	b.localMutex.Lock()
+	localizationMap, ok := b.localizations[languageCode]
+	if ok {
+		res = localizationMap[key]
+	}
+	b.localMutex.Unlock()
+
+	if res.Value != "" {
+		return res.Value
+	}
+
+	// Значення не знайдено, пробуємо отримати з бази
+	logger.Info.Println("Key not found: ", key, languageCode)
+	return b.service.GetText(key, languageCode)
 }
 
 // SendMessage отправляет новое сообщение с указанными опциями
@@ -2012,7 +2054,7 @@ func (b *Bot) handleInputNameState(message *telego.Message, messageID int) {
 		}
 
 		// Отправляем сообщение об успешном обновлении
-		successText := b.service.GetText("name_saved", language)
+		successText := b.getText("name_saved", language)
 
 		backBtn := b.createBackBtnKeyboard(language)
 
@@ -2070,7 +2112,7 @@ func (b *Bot) handleInputUpNicknameState(message *telego.Message, messageID int)
 		}
 
 		// Отправляем сообщение об успешном обновлении
-		successText := b.service.GetText("nickname_saved", language)
+		successText := b.getText("nickname_saved", language)
 
 		backBtn := b.createBackBtnKeyboard(language)
 
@@ -2125,7 +2167,7 @@ func (b *Bot) handleInputWalletState(message *telego.Message, messageID int) {
 		}
 
 		// Отправляем сообщение об успешном обновлении
-		successText := b.service.GetText("withdrawusdtchangeok", language)
+		successText := b.getText("withdrawusdtchangeok", language)
 
 		backBtn := b.createBackBtnKeyboard(language)
 

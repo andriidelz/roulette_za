@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"roulette/internal/logger"
+	"roulette/internal/models"
 	"strconv"
 	"time"
 
@@ -15,9 +16,7 @@ func (b *Bot) StartRatingScheduler() {
 	go func() {
 		// Периодическое обновление рейтингов (каждые 15 минут)
 		ratingTicker := time.NewTicker(15 * time.Minute)
-		prizeTicker := time.NewTicker(1 * time.Minute)
 		defer ratingTicker.Stop()
-		defer prizeTicker.Stop()
 
 		// TODO перенести определение недели внутрь цикла и оттестить
 
@@ -38,12 +37,9 @@ func (b *Bot) StartRatingScheduler() {
 
 		// // Устанавливаем последнюю обработанную неделю
 		// lastProcessedYear, lastProcessedWeek = currentYear, currentWeek
-		b.refreshCache()
 
 		for {
 			select {
-			case <-prizeTicker.C:
-				b.refreshCache()
 
 			case <-ratingTicker.C:
 				// Обновляем позиции в рейтинге
@@ -98,7 +94,7 @@ func (b *Bot) StartRatingScheduler() {
 	}()
 }
 
-// StartRatingScheduler запускает планировщик заданий для обновления капчи
+// StartUpdateCaptcha запускает планировщик заданий для обновления капчи
 func (b *Bot) StartUpdateCaptcha() {
 	go func() {
 		ratingTicker := time.NewTicker(30 * time.Second)
@@ -180,7 +176,31 @@ func (b *Bot) StartUpdateCaptcha() {
 	}()
 }
 
-func (b *Bot) refreshCache() {
+// StartUpdateCache запускает планировщик кеша
+func (b *Bot) StartUpdateCache() {
+	go func() {
+
+		localizationTicker := time.NewTicker(5 * time.Minute)
+		prizeTicker := time.NewTicker(1 * time.Minute)
+		defer localizationTicker.Stop()
+		defer prizeTicker.Stop()
+
+		b.refreshPrizeCache()
+		b.refreshLocalizationCache()
+
+		for {
+			select {
+			case <-prizeTicker.C:
+				b.refreshPrizeCache()
+			case <-prizeTicker.C:
+				b.refreshLocalizationCache()
+			}
+		}
+	}()
+}
+
+// Зберігаємо налаштування призового фонду в кеш
+func (b *Bot) refreshPrizeCache() {
 	year, week := time.Now().ISOWeek()
 
 	// По умолчанию
@@ -212,4 +232,25 @@ func (b *Bot) refreshCache() {
 	b.gameHandler.prizeFundAmount = prizeFundAmount
 	b.gameHandler.topCount = topCount
 	b.gameHandler.totalPoints = totalPoints
+}
+
+// Зберігаємо локалізацію мов в кеш
+func (b *Bot) refreshLocalizationCache() {
+	languages := []string{"en", "ru", "uk"}
+
+	for _, lang := range languages {
+		localizations, err := b.service.GetRepo().GetAllLocalizationsForLanguage(lang)
+		if err != nil {
+			logger.Error.Printf("Error GetAllLocalizationsForLanguage: %v", err)
+		}
+
+		localizationMap := make(map[string]models.Localization)
+		for _, loc := range localizations {
+			localizationMap[loc.Key] = loc
+		}
+
+		b.localMutex.Lock()
+		b.localizations[lang] = localizationMap
+		b.localMutex.Unlock()
+	}
 }
