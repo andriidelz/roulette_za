@@ -35,8 +35,10 @@ type Bot struct {
 	subscriptionCache *SubscriptionCache // Кеш подписок на каналы
 	redisDB           *redis.Client      // Клиент Redis
 	metrics           *metrics.Metrics
-	localMutex        sync.RWMutex
+	localMutex        sync.Mutex
 	localizations     map[string]map[string]models.Localization // Карта локалізацій - мова-ключ
+	activeUsersMutex  sync.Mutex
+	activeUsers       map[int64]bool // Карта активних користувачів бота протягом останньої 1 хв
 }
 
 // Константы для команд и callback-запитов
@@ -91,6 +93,7 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 		metrics:      nil,
 
 		localizations: map[string]map[string]models.Localization{},
+		activeUsers:   map[int64]bool{},
 	}
 
 	// Инициализируем обработчик игры после создания бота с поддержкой RabbitMQ
@@ -393,7 +396,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	}()
 
 	user := message.From
-	go b.service.UpdateUserActivity(user.ID)
+	go b.updateUserActivity(user.ID)
 
 	// Режим эмуляции
 	originalUserID := user.ID
@@ -671,7 +674,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	// Валидация пользователя
 	user := query.From
-	go b.service.UpdateUserActivity(user.ID)
+	go b.updateUserActivity(user.ID)
 
 	dbUser, err := b.service.GetUser(user.ID)
 	if err != nil {

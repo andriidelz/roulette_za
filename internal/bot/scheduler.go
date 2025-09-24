@@ -192,6 +192,7 @@ func (b *Bot) StartUpdateCache() {
 			select {
 			case <-prizeTicker.C:
 				b.refreshPrizeCache()
+				b.refreshActiveUsers()
 			case <-prizeTicker.C:
 				b.refreshLocalizationCache()
 			}
@@ -253,4 +254,33 @@ func (b *Bot) refreshLocalizationCache() {
 		b.localizations[lang] = localizationMap
 		b.localMutex.Unlock()
 	}
+}
+
+// updateUserActivity - перевірка і за відсутності додавання користувача в список активних протягом останньої 1 хв
+func (b *Bot) updateUserActivity(userID int64) {
+	b.activeUsersMutex.Lock()
+	if _, ok := b.activeUsers[userID]; !ok {
+		b.activeUsers[userID] = true
+	}
+	b.activeUsersMutex.Unlock()
+}
+
+func (b *Bot) refreshActiveUsers() {
+
+	b.activeUsersMutex.Lock()
+	data := b.activeUsers
+	b.activeUsersMutex.Unlock()
+
+	for userID := range data {
+
+		logger.Error.Println("UpdateUserActivity", userID)
+		if err := b.service.UpdateUserActivity(userID); err != nil {
+			logger.Error.Printf("Error UpdateUserActivity: %d, %v", userID, err)
+		}
+	}
+
+	// очищуєм map
+	b.activeUsersMutex.Lock()
+	b.activeUsers = map[int64]bool{}
+	b.activeUsersMutex.Unlock()
 }
