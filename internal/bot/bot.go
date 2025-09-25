@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -109,21 +110,23 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 }
 
 func NewRedisClient(cfg *config.Config) *redis.Client {
-	// Create Redis client with options
 	rdb := redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort),
-		Password:     cfg.RedisPass,
-		DB:           cfg.RedisDB,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
-		PoolSize:     50,
-		PoolTimeout:  30 * time.Second,
-		MinIdleConns: 10,
+		Addr:            fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort),
+		Password:        cfg.RedisPass,
+		DB:              cfg.RedisDB,
+		DialTimeout:     1000 * time.Millisecond,
+		ReadTimeout:     600 * time.Millisecond,
+		WriteTimeout:    600 * time.Millisecond,
+		PoolSize:        500,
+		PoolTimeout:     2 * time.Second,
+		MinIdleConns:    150,
+		MaxIdleConns:    300,
+		ConnMaxIdleTime: 2 * time.Minute,
+		MaxRetries:      1,
+		PoolFIFO:        false, // LIFO для лучшей производительности кеша
 	})
 
-	// Test connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	_, err := rdb.Ping(ctx).Result()
@@ -228,7 +231,19 @@ func (b *Bot) Stop() {
 // processUpdates обрабатывает обновления от телеграма
 func (b *Bot) processUpdates() {
 	for update := range b.updates {
-		b.handleUpdate(update)
+		if runtime.NumGoroutine() < 5000 {
+			go func(upd telego.Update) {
+				defer func() {
+					if r := recover(); r != nil {
+						logger.Error.Printf("Panic in update handler: %v", r)
+					}
+				}()
+				b.handleUpdate(upd)
+			}(update)
+		} else {
+			logger.Error.Printf("Extreme load: %d goroutines, falling back to sync processing", runtime.NumGoroutine())
+			b.handleUpdate(update)
+		}
 	}
 }
 

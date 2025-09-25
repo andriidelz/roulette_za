@@ -106,7 +106,7 @@ func NewGameHandler(bot *Bot, service service.Service, rabbitmqURL string) (*Gam
 		activePlayers:   make(map[int64]int),
 		rabbitmq:        rmq,
 		processedRounds: make(map[uint]bool),
-		roundMsgChan:    make(chan RoundMessage, 100), // Буфер для сообщений
+		roundMsgChan:    make(chan RoundMessage, 500), // Буфер для сообщений
 		stopWorker:      make(chan struct{}),
 
 		prizeFundAmount: 1000.0, // По умолчанию
