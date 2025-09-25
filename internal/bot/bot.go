@@ -168,7 +168,8 @@ func (b *Bot) Start() error {
 
 	// Начало получения обновлений
 	updates, err := b.bot.UpdatesViaLongPolling(b.ctx, &telego.GetUpdatesParams{
-		Timeout: 60,
+		Timeout: 120,
+		Limit:   100,
 		Offset:  0,
 	})
 	if err != nil {

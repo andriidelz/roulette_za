@@ -194,9 +194,8 @@ func (b *Bot) sendBotQueue() {
 
 		logger.Info.Printf("Found %d ready users", len(readyUsers))
 
-		// TODO: мб тут тоже увеличить workerCount?
 		// Создаем worker pool для параллельной обработки
-		const workerCount = 5 // Оптимальное количество воркеров
+		const workerCount = 25 // Оптимальное количество воркеров
 		jobs := make(chan int64, len(readyUsers))
 		results := make(chan bool, len(readyUsers))
 
