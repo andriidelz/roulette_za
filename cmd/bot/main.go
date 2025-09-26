@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"roulette/internal/bot"
 	"roulette/internal/config"
@@ -33,6 +34,9 @@ func main() {
 		logger.Error.Fatalf("Failed to connect to database: %v", err)
 	}
 
+	// Оптимизируем настройки БД
+	optimizeDatabase(db)
+
 	// Создаем репозиторий
 	repo := repository.NewRepository(db)
 
@@ -61,4 +65,22 @@ func main() {
 	telegramBot.Stop()
 
 	logger.Info.Println("Bot stopped gracefully")
+}
+
+func optimizeDatabase(db *gorm.DB) {
+	sqlDB, err := db.DB()
+	if err != nil {
+		logger.Error.Printf("Failed to get database instance: %v", err)
+		return
+	}
+
+	sqlDB.SetMaxOpenConns(180)
+	sqlDB.SetMaxIdleConns(90)
+	sqlDB.SetConnMaxLifetime(10 * time.Minute)
+	sqlDB.SetConnMaxIdleTime(3 * time.Minute)
+
+	db = db.Session(&gorm.Session{
+		PrepareStmt:          true,
+		FullSaveAssociations: false,
+	})
 }

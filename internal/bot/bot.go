@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -58,6 +59,10 @@ const (
 
 	sharedData = "/files" // локація для файлів
 
+	// Redis key для перевірки чи є запущена задача від користувача
+	userActiveTaskKeyPrefix  = "user:%d:active_task"
+	userActiveTaskExpiration = 10 * time.Second // Время периода
+
 	// Стикер ошибки отправки сообщения, если словили 429 ошибку
 	StickerError        = "CAACAgUAAxkBAAEO5upob-zRQ5ptM0PmCYlvTra-KSbbiQACEBYAAkV9qVf5P89H45HU5zYE" // error
 	StickerRegistration = "CAACAgUAAxkBAAEBgIpokq-UIqudmGRVogN-Mu28MQQ6UwACwRIAAs9XsFejY2Cqcm0SBDYE" // registration (регистрация нового пользователя)
@@ -109,21 +114,23 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 }
 
 func NewRedisClient(cfg *config.Config) *redis.Client {
-	// Create Redis client with options
 	rdb := redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort),
-		Password:     cfg.RedisPass,
-		DB:           cfg.RedisDB,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
-		PoolSize:     50,
-		PoolTimeout:  30 * time.Second,
-		MinIdleConns: 10,
+		Addr:            fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort),
+		Password:        cfg.RedisPass,
+		DB:              cfg.RedisDB,
+		DialTimeout:     1000 * time.Millisecond,
+		ReadTimeout:     600 * time.Millisecond,
+		WriteTimeout:    600 * time.Millisecond,
+		PoolSize:        500,
+		PoolTimeout:     2 * time.Second,
+		MinIdleConns:    150,
+		MaxIdleConns:    300,
+		ConnMaxIdleTime: 2 * time.Minute,
+		MaxRetries:      1,
+		PoolFIFO:        false, // LIFO для лучшей производительности кеша
 	})
 
-	// Test connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	_, err := rdb.Ping(ctx).Result()
@@ -165,7 +172,8 @@ func (b *Bot) Start() error {
 
 	// Начало получения обновлений
 	updates, err := b.bot.UpdatesViaLongPolling(b.ctx, &telego.GetUpdatesParams{
-		Timeout: 60,
+		Timeout: 120,
+		Limit:   100,
 		Offset:  0,
 	})
 	if err != nil {
@@ -228,7 +236,19 @@ func (b *Bot) Stop() {
 // processUpdates обрабатывает обновления от телеграма
 func (b *Bot) processUpdates() {
 	for update := range b.updates {
-		b.handleUpdate(update)
+		if runtime.NumGoroutine() < 5000 {
+			go func(upd telego.Update) {
+				defer func() {
+					if r := recover(); r != nil {
+						logger.Error.Printf("Panic in update handler: %v", r)
+					}
+				}()
+				b.handleUpdate(upd)
+			}(update)
+		} else {
+			logger.Error.Printf("Extreme load: %d goroutines, falling back to sync processing", runtime.NumGoroutine())
+			b.handleUpdate(update)
+		}
 	}
 }
 
@@ -376,6 +396,49 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData st
 	h.bot.answerCallbackQuery(query.ID, "", false)
 }
 
+// checkActiveTask - перевірка чи запущена вже рутина для користувача
+func (b *Bot) checkActiveTask(chatID int64) bool {
+
+	activeTaskKey := fmt.Sprintf(userActiveTaskKeyPrefix, chatID)
+
+	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// перевіряєм чи є запущена рутина від користувача
+	_, err := b.redisDB.Get(cont, activeTaskKey).Result()
+	if err == redis.Nil {
+		// Якщо немає то створюємо
+
+		// Установлюєм userActiveTaskExpiration для розблокування доступу якщо функція вийшла за межі часу
+		// value не важно, перевірка по наявності ключа
+		err = b.redisDB.Set(cont, activeTaskKey, "value", userActiveTaskExpiration).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set activeTaskKey %d: %v", chatID, err)
+		}
+		return false
+
+	} else if err != nil {
+		logger.Error.Printf("Error Get %d: %v", chatID, err)
+		return false
+	}
+	logger.Error.Println("Find active routine, ", chatID)
+	// Вже виконується рутина
+	return true
+}
+
+func (b *Bot) deleteActiveTask(chatID int64) {
+	activeTaskKey := fmt.Sprintf(userActiveTaskKeyPrefix, chatID)
+
+	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Удаляем ключ
+	_, err := b.redisDB.Del(cont, activeTaskKey).Result()
+	if err != nil {
+		logger.Error.Printf("Error Del %d: %v", chatID, err)
+	}
+}
+
 // handleMessage обрабатывает сообщения
 func (b *Bot) handleMessage(message *telego.Message) {
 	startTime := time.Now()
@@ -396,6 +459,11 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	}()
 
 	user := message.From
+	if b.checkActiveTask(user.ID) {
+		return // Вже виконується рутина
+	}
+	defer b.deleteActiveTask(user.ID)
+
 	go b.updateUserActivity(user.ID)
 
 	// Режим эмуляции
@@ -674,6 +742,12 @@ func (b *Bot) handleMessage(message *telego.Message) {
 func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	// Валидация пользователя
 	user := query.From
+	if b.checkActiveTask(user.ID) {
+		b.answerCallbackQuery(query.ID, "Wait action", true)
+		return // Вже виконується рутина
+	}
+	defer b.deleteActiveTask(user.ID)
+
 	go b.updateUserActivity(user.ID)
 
 	dbUser, err := b.service.GetUser(user.ID)
