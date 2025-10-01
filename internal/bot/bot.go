@@ -40,6 +40,8 @@ type Bot struct {
 	localizations     map[string]map[string]models.Localization // Карта локалізацій - мова-ключ
 	activeUsersMutex  sync.Mutex
 	activeUsers       map[int64]bool // Карта активних користувачів бота протягом останньої 1 хв
+	settingsMutex     sync.Mutex
+	settings          map[string]int64 // Карта налаштувань
 }
 
 // Константы для команд и callback-запитов
@@ -81,7 +83,11 @@ func (b *Bot) getMetrics() *metrics.Metrics {
 func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, error) {
 	ReserveChannelID = cfg.TelegramReserveChannelID
 
-	bot, err := telego.NewBot(token)
+	bot, err := telego.NewBot(
+		token,
+		telego.WithAPIServer(cfg.TelegramAPIURL),
+		telego.WithDefaultLogger(true, true),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %w", err)
 	}
@@ -99,6 +105,7 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 
 		localizations: map[string]map[string]models.Localization{},
 		activeUsers:   map[int64]bool{},
+		settings:      map[string]int64{},
 	}
 
 	// Инициализируем обработчик игры после создания бота с поддержкой RabbitMQ

@@ -48,7 +48,21 @@ func (r *PostgresRepository) CreateOrUpdateSetting(key, value, defaultValue, des
 	return r.db.Save(&setting).Error
 }
 
-// GetSettingWithDefault получает настройку с значением по умолчанию
+func (r *PostgresRepository) GetSetting(key string) (*models.Setting, error) {
+	var setting models.Setting
+	if err := r.db.Where("key = ?", key).First(&setting).Error; err != nil {
+		return nil, err
+	}
+	return &setting, nil
+}
+
+// unused
+func (r *PostgresRepository) UpdateSetting(key string, value string) error {
+	return r.db.Model(&models.Setting{}).Where("key = ?", key).
+		Update("value", value).Error
+}
+
+// unused GetSettingWithDefault получает настройку с значением по умолчанию
 func (r *PostgresRepository) GetSettingWithDefault(key string) (*models.Setting, error) {
 	var setting models.Setting
 	err := r.db.Where("key = ?", key).First(&setting).Error

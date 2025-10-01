@@ -19,14 +19,12 @@ const (
 	// он будет записан в userCaptchaKeyPrefix и ему будет отправлена капча
 	userActivityKeyPrefix  = "user:%d:activity"
 	userActivityExpiration = 10 * time.Second // Время периода
-	userActivityLimit      = 10               // Лимит действий за период userActivityExpiration
 
 	// Redis key для измерения ставок пользователей за период betActivityExpiration
 	// В случае превышения пользователем кол-ва ставок выше betActivityLimit
 	// он будет записан в userCaptchaKeyPrefix и ему будет отправлена капча
 	betActivityKeyPrefix  = "user:%d:bet_activity"
 	betActivityExpiration = 3 * time.Minute // Время периода
-	betActivityLimit      = 9               // Лимит ставок за период betActivityExpiration
 
 	// Redis key для проверки одинаковости ставок за период betDuplicateExpiration
 	// В случае превышения если все время betDuplicateExpiration пользователь делает ставки только на 1 опцию
@@ -36,7 +34,6 @@ const (
 
 	// Redis key для проверки через каждые userBetPointsLimit набранных баллов
 	userBetPointsPrefix = "user:%d:bet_points"
-	userBetPointsLimit  = 50 // Лимит баллов для запуска капчи
 
 	// Redis key для пользователей которые ожидают на проверку капчи
 	// В случае нахождения пользователя все дальнейшие действия будут заблокированы
@@ -109,7 +106,12 @@ func (b *Bot) captchaUserActivity(telegramID int64) string {
 
 	val++
 
-	if val <= userActivityLimit {
+	var limit int64
+	b.settingsMutex.Lock()
+	limit, _ = b.settings["captcha_user_activity"]
+	b.settingsMutex.Unlock()
+
+	if val <= limit {
 
 		// Пользователь не превышает активность
 		// Обновляем активность пользователя за минуту
@@ -145,7 +147,12 @@ func (b *Bot) captchaBetActivity(telegramID int64) string {
 
 	val++
 
-	if val < betActivityLimit {
+	var limit int64
+	b.settingsMutex.Lock()
+	limit, _ = b.settings["captcha_bet_activity"]
+	b.settingsMutex.Unlock()
+
+	if val < limit {
 
 		// Пользователь не превышает активность
 		// Обновляем активность пользователя за период
@@ -234,7 +241,11 @@ func (b *Bot) captchaBetPoints(telegramID int64, point int) string {
 
 	val += point
 
-	if val <= userBetPointsLimit {
+	var limit int64
+	b.settingsMutex.Lock()
+	limit, _ = b.settings["captcha_bet_points"]
+	b.settingsMutex.Unlock()
+	if int64(val) <= limit {
 
 		// Пользователь не превышает лимит балов для запуска капчи
 		// Обновляем кол-во балов

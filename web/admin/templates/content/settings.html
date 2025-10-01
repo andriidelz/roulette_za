@@ -97,6 +97,44 @@
             </div>
           </div>
         </div>
+
+        <div class="row">
+          <div class="col-lg-6 mb-4">
+            <div class="card">
+              <div class="card-header">
+                <h5 class="mb-0">Настройки капчи</h5>
+              </div>
+              <div class="card-body">
+                <form id="captcha-settings-form">
+                  <div class="mb-3">
+                    <label for="captcha_user_activity" class="form-label">Лимит действий за период 10 сек</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_user_activity" name="captcha_user_activity" 
+                             value="{{with index .settings "captcha_user_activity"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="captcha_bet_activity" class="form-label">Лимит ставок за период 3 минуты</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_bet_activity" name="captcha_bet_activity" 
+                             value="{{with index .settings "captcha_bet_activity"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="captcha_bet_points" class="form-label">Лимит баллов</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_bet_points" name="captcha_bet_points" 
+                             value="{{with index .settings "captcha_bet_points"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+                  
+                  <button type="submit" class="btn btn-primary">Сохранить</button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
     </main>
   </div>  

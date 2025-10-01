@@ -104,6 +104,25 @@ func (s *ServiceImpl) getDefaultSettings() map[string]models.SettingInfo {
 			Description:  "Время раздачи призов (UTC+0)",
 			Type:         "time",
 		},
+		// Налаштування капчі
+		"captcha_bet_activity": {
+			Key:          "captcha_bet_activity",
+			DefaultValue: "9",
+			Description:  "Лимит ставок за период",
+			Type:         "int",
+		},
+		"captcha_user_activity": {
+			Key:          "captcha_user_activity",
+			DefaultValue: "10",
+			Description:  "Лимит действий за период",
+			Type:         "int",
+		},
+		"captcha_bet_points": {
+			Key:          "captcha_bet_points",
+			DefaultValue: "50",
+			Description:  "Лимит баллов",
+			Type:         "int",
+		},
 	}
 }
 

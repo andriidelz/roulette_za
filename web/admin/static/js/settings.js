@@ -11,6 +11,12 @@ $(document).ready(function () {
         saveSettings($(this));
     });
 
+    // Обработчик формы общих настроек
+    $('#captcha-settings-form').submit(function (e) {
+        e.preventDefault();
+        saveSettings($(this));
+    });
+
     // Функция для сохранения настроек
     function saveSettings(form) {
         // Собираем данные формы

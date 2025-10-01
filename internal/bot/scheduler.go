@@ -180,28 +180,29 @@ func (b *Bot) StartUpdateCaptcha() {
 func (b *Bot) StartUpdateCache() {
 	go func() {
 
-		localizationTicker := time.NewTicker(5 * time.Minute)
-		prizeTicker := time.NewTicker(1 * time.Minute)
-		defer localizationTicker.Stop()
-		defer prizeTicker.Stop()
+		fiveMinuteTicker := time.NewTicker(5 * time.Minute)
+		minuteTicker := time.NewTicker(1 * time.Minute)
+		defer fiveMinuteTicker.Stop()
+		defer minuteTicker.Stop()
 
-		b.refreshPrizeCache()
+		b.refreshMinuteCache()
 		b.refreshLocalizationCache()
 
 		for {
 			select {
-			case <-prizeTicker.C:
-				b.refreshPrizeCache()
+			case <-minuteTicker.C:
+				b.refreshMinuteCache()
 				b.refreshActiveUsers()
-			case <-prizeTicker.C:
+			case <-fiveMinuteTicker.C:
 				b.refreshLocalizationCache()
 			}
 		}
 	}()
 }
 
-// Зберігаємо налаштування призового фонду в кеш
-func (b *Bot) refreshPrizeCache() {
+// Зберігаємо налаштування призового фонду
+// Зберігаємо налаштування капчі
+func (b *Bot) refreshMinuteCache() {
 	year, week := time.Now().ISOWeek()
 
 	// По умолчанию
@@ -233,6 +234,32 @@ func (b *Bot) refreshPrizeCache() {
 	b.gameHandler.prizeFundAmount = prizeFundAmount
 	b.gameHandler.topCount = topCount
 	b.gameHandler.totalPoints = totalPoints
+
+	// Налаштування капчі
+	settings, err := b.service.GetSettings()
+	if err != nil {
+		logger.Error.Printf("Error GetSettings: %v", err)
+	}
+
+	settingsMap := map[string]int64{}
+	params := []string{
+		"captcha_bet_activity",  // Лимит ставок за период betActivityExpiration
+		"captcha_user_activity", // Лимит действий за период userActivityExpiration
+		"captcha_bet_points",    // Лимит баллов для запуска капчи
+	}
+
+	for i := range params {
+		key := params[i]
+		if settKey, ok := settings[key]; ok {
+			if limit, err := strconv.Atoi(settKey); err == nil {
+				settingsMap[key] = int64(limit)
+			}
+		}
+	}
+
+	b.settingsMutex.Lock()
+	b.settings = settingsMap
+	b.settingsMutex.Unlock()
 }
 
 // Зберігаємо локалізацію мов в кеш
