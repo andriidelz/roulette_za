@@ -65,7 +65,7 @@ type Service interface {
 	// Настройки и локализация
 	GetText(key string, languageCode string) string
 	GetSettings() (map[string]string, error)
-	UpdateSetting(key, value string) error
+	// UpdateSetting(key, value string) error
 	GetSettingsWithInfo() (map[string]models.SettingInfo, error)
 	SaveSettings(settings map[string]string) error
 
@@ -707,9 +707,10 @@ func (s *ServiceImpl) GetText(key string, languageCode string) string {
 	return res.Value
 }
 
-func (s *ServiceImpl) UpdateSetting(key, value string) error {
-	return s.repo.UpdateSetting(key, value)
-}
+// unused
+// func (s *ServiceImpl) UpdateSetting(key, value string) error {
+// 	return s.repo.UpdateSetting(key, value)
+// }
 
 // Реалізація методів для хешів та історії раундів
 

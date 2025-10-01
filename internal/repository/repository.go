@@ -67,10 +67,10 @@ type Repository interface {
 
 	// Методы для работы с настройками
 	GetSetting(key string) (*models.Setting, error)
-	UpdateSetting(key string, value string) error
+	// UpdateSetting(key string, value string) error
 	GetAllSettings() (map[string]*models.Setting, error)
 	CreateOrUpdateSetting(key, value, defaultValue, description string) error
-	GetSettingWithDefault(key string) (*models.Setting, error)
+	// GetSettingWithDefault(key string) (*models.Setting, error)
 
 	// Локализации
 	GetLocalization(key string, language string) (models.Localization, error)
@@ -345,20 +345,6 @@ func (r *PostgresRepository) GetUserNotifications(userID uint, limit int) ([]mod
 func (r *PostgresRepository) MarkNotificationAsRead(id uint) error {
 	return r.db.Model(&models.Notification{}).Where("id = ?", id).
 		Update("read", true).Error
-}
-
-// Методы для настроек (перенесенные из settings.go)
-func (r *PostgresRepository) GetSetting(key string) (*models.Setting, error) {
-	var setting models.Setting
-	if err := r.db.Where("key = ?", key).First(&setting).Error; err != nil {
-		return nil, err
-	}
-	return &setting, nil
-}
-
-func (r *PostgresRepository) UpdateSetting(key string, value string) error {
-	return r.db.Model(&models.Setting{}).Where("key = ?", key).
-		Update("value", value).Error
 }
 
 // Методы статистики (новые)
