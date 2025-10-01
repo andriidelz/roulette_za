@@ -13,6 +13,8 @@ type Config struct {
 	DatabaseURL string
 
 	// Телеграм
+	TelegramAPIURL           string
+	TelegramTestMode         bool
 	TelegramToken            string
 	TelegramName             string // название бота
 	TelegramReserveChannelID string
@@ -48,6 +50,9 @@ func NewConfig() *Config {
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/roulette?sslmode=disable"),
 
 		// Телеграм
+
+		TelegramAPIURL:           getEnv("TELEGRAM_API_URL", "https://api.telegram.org"),
+		TelegramTestMode:         getEnvBool("TELEGRAM_TEST_MODE", false),
 		TelegramToken:            getEnv("TELEGRAM_TOKEN", ""),
 		TelegramName:             getEnv("TELEGRAM_NAME", ""),
 		TelegramReserveChannelID: getEnv("TELEGRAM_RESERVE_CHANNEL_ID", ""),

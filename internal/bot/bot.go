@@ -81,7 +81,11 @@ func (b *Bot) getMetrics() *metrics.Metrics {
 func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, error) {
 	ReserveChannelID = cfg.TelegramReserveChannelID
 
-	bot, err := telego.NewBot(token)
+	bot, err := telego.NewBot(
+		token,
+		telego.WithAPIServer(cfg.TelegramAPIURL),
+		telego.WithDefaultLogger(true, true),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %w", err)
 	}
