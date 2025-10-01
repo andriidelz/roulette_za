@@ -518,6 +518,13 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 
 	//  Користувач вже отримував результат раунду - присилаєм текст і лінк на сторінку з історією ставок
 	if bet.GetResult {
+		if time.Since(bet.CreatedAt).Seconds() < 20 {
+			// раунд ще не закінчився, ніяк не відповідаємо
+			logger.Error.Printf("Not complited %d: ", userID)
+			return nil
+		}
+		// Якщо з моменту створення раунду пройшло більше 20 сек
+
 		options := h.bot.prepareMessage("repeatresultalert", language)
 		// Создаем кнопки
 		var inlineButtons [][]telego.InlineKeyboardButton
@@ -612,7 +619,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 		resultAnimation += "lose"
 	}
 
-	logger.Error.Println(resultAnimation)
+	// logger.Error.Println(resultAnimation)
 
 	// 4. Отправляем полное сообщение о выигрыше/проигрыше на 20 секунде (через 1 секунду)
 	time.Sleep(1 * time.Second)
@@ -651,6 +658,9 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	var userShare float64 = 0.0
 	totalPoints := h.totalPoints
 
+	if rating.Points > totalPoints {
+		totalPoints = rating.Points // totalPoints оновлюється з затримкою і є ймовірність що рейтинг користувача буде більше ніж загальна кількість балів
+	}
 	if rating.Points > 0 && totalPoints > 0 {
 		// Расчет доли пользователя
 		userShare = (float64(rating.Points) / float64(totalPoints)) * h.prizeFundAmount

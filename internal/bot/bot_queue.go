@@ -192,8 +192,6 @@ func (b *Bot) sendBotQueue() {
 			continue
 		}
 
-		logger.Info.Printf("Found %d ready users", len(readyUsers))
-
 		// Создаем worker pool для параллельной обработки
 		const workerCount = 25 // Оптимальное количество воркеров
 		jobs := make(chan int64, len(readyUsers))
@@ -303,8 +301,8 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 		captchaMess := fmt.Sprintf(userCaptchaMessPrefix, chatID)
 		messageID, err := b.redisDB.Get(cont, captchaMess).Int()
 		if err != nil {
-			if err == redis.Nil {
-				logger.Error.Printf("Error Set %d: %v", chatID, err)
+			if err != redis.Nil {
+				logger.Error.Printf("Error Get %d: %v", chatID, err)
 			}
 			mes, err = b.sendPhoto(chatID, options)
 		} else {
@@ -445,8 +443,6 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 			}
 		}
 	}
-
-	logger.Info.Println("SendMessage ", chatID, options)
 }
 
 func (b *Bot) createTaskToSend(chatID, nextSendTime int64) {
