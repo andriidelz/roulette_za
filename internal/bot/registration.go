@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"roulette/internal/config"
 	"roulette/internal/logger"
 	"roulette/internal/models"
 
@@ -465,6 +466,11 @@ func (b *Bot) handleReserveSubscriptionCheck(query *telego.CallbackQuery) {
 		isSubscribed = false
 	}
 
+	cfg := config.NewConfig()
+	if cfg.TelegramTestMode {
+		isSubscribed = true
+	}
+
 	if isSubscribed {
 		// Подписка подтверждена
 		successText := b.getText("reservok", language)
@@ -607,6 +613,12 @@ func (b *Bot) RequireCompleteRegistration(chatID, userID int64, command string) 
 
 	// Дополнительная проверка на подписку, даже если регистрация завершена
 	subscribed := b.checkSubscriptionWithCache(userID, ReserveChannelID)
+
+	cfg := config.NewConfig()
+	if cfg.TelegramTestMode {
+		subscribed = true
+	}
+
 	if !subscribed {
 
 		if command == "start" {
