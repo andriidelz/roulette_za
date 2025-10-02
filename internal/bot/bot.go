@@ -83,11 +83,16 @@ func (b *Bot) getMetrics() *metrics.Metrics {
 func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, error) {
 	ReserveChannelID = cfg.TelegramReserveChannelID
 
-	bot, err := telego.NewBot(
-		token,
+	opts := []telego.BotOption{
 		telego.WithAPIServer(cfg.TelegramAPIURL),
 		telego.WithDefaultLogger(true, true),
-	)
+	}
+
+	if cfg.TelegramTestMode {
+		opts = append(opts, telego.WithTestServerPath())
+	}
+
+	bot, err := telego.NewBot(token, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %w", err)
 	}
@@ -313,7 +318,6 @@ func (b *Bot) handleContactCommand(message *telego.Message) {
 
 // MakeBet делает ставку в текущем раунде
 func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData string, option models.BetOption) {
-
 	user := query.From
 	// Получаем пользователя для определения языка
 	dbUser, userErr := h.service.GetUser(user.ID)
@@ -405,7 +409,6 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData st
 
 // checkActiveTask - перевірка чи запущена вже рутина для користувача
 func (b *Bot) checkActiveTask(chatID int64) bool {
-
 	activeTaskKey := fmt.Sprintf(userActiveTaskKeyPrefix, chatID)
 
 	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1549,7 +1552,6 @@ type MessageOptions struct {
 
 // prepareMessage - подготовка сообщения - установка текста и фото/видео если указаны
 func (b *Bot) prepareMessage(key, languageCode string) (options MessageOptions) {
-
 	var res models.Localization
 
 	b.localMutex.Lock()
@@ -1574,7 +1576,6 @@ func (b *Bot) prepareMessage(key, languageCode string) (options MessageOptions) 
 
 // getText -отримання локалізації по мові та ключу
 func (b *Bot) getText(key, languageCode string) (options string) {
-
 	var res models.Localization
 
 	b.localMutex.Lock()
