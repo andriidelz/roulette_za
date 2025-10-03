@@ -189,12 +189,20 @@
                           <td>{{ .CreatedAt.Format "02.01.2006" }}</td>
                           <td>{{ .Amount }} $</td>
                           <td>
-                            {{ if eq .Status "pending" }}
-                              <span class="badge bg-warning">Ожидание</span>
+                            {{ if eq .Status "processing" }}
+                            <span class="badge bg-primary">Обработка</span>
+                            {{ else if eq .Status "pending" }}
+                            <span class="badge bg-warning">Ожидание</span>
+                            {{ else if eq .Status "completed" }}
+                            <span class="badge bg-success">Завершен</span>
                             {{ else if eq .Status "approved" }}
-                              <span class="badge bg-success">Выполнено</span>
+                            <span class="badge bg-success">Подтвержден</span>
+                            {{ else if eq .Status "rejected" }}
+                            <span class="badge bg-danger">Отклонен</span>
+                            {{ else if eq .Status "failed" }}
+                            <span class="badge bg-danger">Ошибка</span>
                             {{ else }}
-                              <span class="badge bg-danger">Отклонено</span>
+                            <span class="badge bg-secondary">{{ .Status }}</span>
                             {{ end }}
                           </td>
                         </tr>
