@@ -42,6 +42,7 @@ type Bot struct {
 	activeUsers       map[int64]bool // Карта активних користувачів бота протягом останньої 1 хв
 	settingsMutex     sync.Mutex
 	settings          map[string]int64 // Карта налаштувань
+	testMode          bool             // тестовий сервіс
 }
 
 // Константы для команд и callback-запитов
@@ -107,6 +108,7 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 		stateManager: NewStateManager(),
 		redisDB:      NewRedisClient(cfg),
 		metrics:      nil,
+		testMode:     cfg.TelegramTestMode,
 
 		localizations: map[string]map[string]models.Localization{},
 		activeUsers:   map[int64]bool{},

@@ -77,6 +77,10 @@ func (b *Bot) captchaBan(telegramID int64) bool {
 // captchaUserActivity - Проверка активности и если она слишком высокая - вывод капчи
 func (b *Bot) captchaUserActivity(telegramID int64) string {
 
+	if b.testMode {
+		return ""
+	}
+
 	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -130,6 +134,10 @@ func (b *Bot) captchaUserActivity(telegramID int64) string {
 // captchaBetActivity - Проверка активности - беспрерывная игра
 func (b *Bot) captchaBetActivity(telegramID int64) string {
 
+	if b.testMode {
+		return ""
+	}
+
 	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -178,6 +186,10 @@ func (b *Bot) captchaBetActivity(telegramID int64) string {
 // captchaBetDuplicate - Проверка активности - ставка на одну и ту же опцию
 func (b *Bot) captchaBetDuplicate(telegramID int64, option string) string {
 
+	if b.testMode {
+		return ""
+	}
+
 	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	userBetKey := fmt.Sprintf(betDuplicateKeyPrefix, telegramID)
@@ -225,6 +237,10 @@ func (b *Bot) captchaBetDuplicate(telegramID int64, option string) string {
 
 // captchaBetPoints - Проверка активности - кол-во набранных баллов
 func (b *Bot) captchaBetPoints(telegramID int64, point int) string {
+
+	if b.testMode {
+		return ""
+	}
 
 	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
