@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -11,6 +12,8 @@ import (
 	"roulette/internal/models"
 	"roulette/internal/repository"
 	"roulette/internal/utils"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // Service інтерфейс для бізнес-логіки
@@ -114,13 +117,15 @@ type Service interface {
 type ServiceImpl struct {
 	repo          repository.Repository
 	telegramToken string // Токен для доступа к Telegram API
+	redisClient   *redis.Client
 }
 
 // NewService створює новий екземпляр сервісу
-func NewService(repo repository.Repository, telegramToken string) Service {
+func NewService(repo repository.Repository, telegramToken string, redisClient *redis.Client) Service {
 	return &ServiceImpl{
 		repo:          repo,
 		telegramToken: telegramToken,
+		redisClient:   redisClient,
 	}
 }
 
@@ -463,26 +468,48 @@ func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
 		return fmt.Errorf("no active round at the moment")
 	}
 
-	// Проверяем, может ли пользователь делать ставку на Zero
-	if option == models.Zero {
-		canBetZero, _, err := s.CanBetZero(telegramID)
-		if err != nil {
-			return err
-		}
+	// Атомарная проверка через Redis с использованием SETNX
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 
-		if !canBetZero {
-			return fmt.Errorf("cannot bet on zero yet")
-		}
+	betKey := fmt.Sprintf("bet:%d:%d", telegramID, currentRound.ID)
+
+	// SETNX возвращает true только если ключа не было (атомарная операция)
+	wasSet, err := s.redisClient.SetNX(ctx, betKey, "1", 30*time.Second).Result()
+	if err != nil {
+		logger.Error.Printf("Redis SETNX error for user %d: %v", telegramID, err)
+		// Продолжаем работу даже при ошибке Redis, проверим через БД
+	} else if !wasSet {
+		// Ключ уже существует - пользователь уже делал ставку
+		return fmt.Errorf("user has already made a bet in this round")
 	}
 
-	// Проверяем, не делал ли пользователь уже ставку в этом раунде
+	// Дополнительная проверка в БД для надежности
 	existingBets, err := s.repo.GetUserBetsForHashEntry(user.ID, currentRound.ID)
 	if err != nil {
+		// Откатываем Redis ключ при ошибке БД
+		s.redisClient.Del(context.Background(), betKey)
 		return err
 	}
 
 	if len(existingBets) > 0 {
+		// Откатываем Redis ключ если нашли ставку в БД
+		s.redisClient.Del(context.Background(), betKey)
 		return fmt.Errorf("user has already made a bet in this round")
+	}
+
+	// Проверяем, может ли пользователь делать ставку на Zero
+	if option == models.Zero {
+		canBetZero, _, err := s.CanBetZero(telegramID)
+		if err != nil {
+			s.redisClient.Del(context.Background(), betKey)
+			return err
+		}
+
+		if !canBetZero {
+			s.redisClient.Del(context.Background(), betKey)
+			return fmt.Errorf("cannot bet on zero yet")
+		}
 	}
 
 	// Создаем новую ставку
@@ -494,7 +521,13 @@ func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
 	}
 
 	// Сохраняем ставку
-	return s.repo.CreateBet(bet)
+	if err := s.repo.CreateBet(bet); err != nil {
+		// Откатываем Redis ключ при ошибке сохранения
+		s.redisClient.Del(context.Background(), betKey)
+		return err
+	}
+
+	return nil
 }
 
 // GetUserBets получает историю ставок пользователя
@@ -628,7 +661,6 @@ func (s *ServiceImpl) UpdateWeeklyRatings() error {
 }
 
 func (s *ServiceImpl) DistributePrizes(year, week int) error {
-
 	// Отримуємо призовий фонд
 	prizeFund, err := s.repo.GetPrizeFund(year, week)
 	if err != nil {

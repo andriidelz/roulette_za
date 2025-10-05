@@ -157,6 +157,10 @@ func NewRedisClient(cfg *config.Config) *redis.Client {
 	return rdb
 }
 
+func (b *Bot) GetRedisClient() *redis.Client {
+	return b.redisDB
+}
+
 // Start запускает бота
 func (b *Bot) Start() error {
 	if b.initialized {

@@ -994,67 +994,54 @@ func (h *GameHandler) handleStartRound(query *telego.CallbackQuery) {
 }
 
 func (h *GameHandler) sendNewRound(language string, userID int64) error {
-	// Пытаемся получить текущий раунд
 	currentRound, err := h.service.GetCurrentRound()
 	if err != nil {
 		logger.Error.Printf("Error getting current round: %v", err)
 		return fmt.Errorf("Error getting current round")
 	}
 
-	// Проверяем, что раунд существует
 	if currentRound == nil {
-		logger.Warning.Printf("Current round is nil, waiting for a new round")
 		return fmt.Errorf("waiting_for_round")
 	}
 
-	// Обновляем текущий раунд в хендлере
+	// БЫСТРАЯ проверка через Redis вместо БД (экономия ~50-200ms)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	betKey := fmt.Sprintf("bet:%d:%d", userID, currentRound.ID)
+	exists, err := h.bot.redisDB.Exists(ctx, betKey).Result()
+	if err == nil && exists > 0 {
+		return fmt.Errorf("user has already made a bet in this round")
+	}
+
 	h.mutex.Lock()
 	h.currentRound = currentRound
 	h.mutex.Unlock()
 
-	// Проверяем, не делал ли пользователь уже ставку в этом раунде
-	existingBets, err := h.service.GetUserBetsForRound(userID, currentRound.ID)
-	if err != nil {
-		logger.Error.Printf("Error checking existing bets: %v", err)
-		return fmt.Errorf("Error checking existing bets")
-	}
-
-	if len(existingBets) > 0 {
-		return fmt.Errorf("user has already made a bet in this round")
-	}
-
-	// Получаем ID раунда в Base62 формате
 	roundIDBase62 := utils.ToBase62(uint(currentRound.ID))
-
-	// Вычисляем оставшееся время до конца раунда
 	elapsedTime := time.Since(currentRound.CreatedAt)
-	roundDuration := 15 * time.Second // Изменено с 30 на 15 секунд
+	roundDuration := 15 * time.Second
 	remainingTime := roundDuration - elapsedTime
 
-	// Если осталось меньше 0 секунд, ждем следующий раунд
 	if remainingTime < 0 {
 		return fmt.Errorf("waiting_for_round")
 	}
 
-	// Добавляем пользователя в список активных игроков
 	h.mutex.Lock()
 	h.activePlayers[userID] = 1
-
-	// Обновляем метрику активных игроков
 	if metrics := h.bot.getMetrics(); metrics != nil && metrics.Bot != nil {
 		metrics.Bot.SetActivePlayers(float64(len(h.activePlayers)))
 	}
 	h.mutex.Unlock()
 
-	// Формируем текст в новом формате
 	remainingSeconds := int(remainingTime.Seconds())
 	options := h.bot.prepareMessage("round_info_countdown", language)
 	options.Text = fmt.Sprintf(options.Text, roundIDBase62, currentRound.Hash, remainingSeconds)
 	options.InlineKeyboard = h.createBetKeyboard(language, userID, currentRound.ID)
 
-	// Отправляем сообщение с информацией о раунде и клавиатурой для ставок
-	h.bot.SendMessage(userID, options)
-	return nil
+	// ВЫСОКИЙ ПРИОРИТЕТ для игровых сообщений
+	options.TTL = 5 * time.Second
+	return h.bot.MakeRequestDeferred(userID, 3, options)
 }
 
 // stopGame видаляє зі списку активних гравців
