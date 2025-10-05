@@ -369,70 +369,80 @@ func (h *GameHandler) handleRabbitMQMessage(message messaging.RouletteMessage) e
 
 // handleRoundCompletion обрабатывает завершение раунда
 func (h *GameHandler) handleRoundCompletion() {
-
-	// Отримуємо користувачів які натиснули отримати результат до завершення раунду.
-	// Відправляємо їм результат по першій можливості
-	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	// Список гравців що очікують на отримання
-	players, err := h.bot.redisDB.HGetAll(cont, userWaitBetResultPrefix).Result()
+	// Получаем список игроков, ожидающих результат
+	players, err := h.bot.redisDB.HGetAll(ctx, userWaitBetResultPrefix).Result()
 	if err != nil {
 		logger.Error.Println("Failed to HGetAll", err)
+		return
 	}
+
 	if len(players) == 0 {
 		return
 	}
 
-	// Видаляєм список гравців
-	_, err = h.bot.redisDB.Del(cont, userWaitBetResultPrefix).Result()
+	// Удаляем список игроков сразу
+	_, err = h.bot.redisDB.Del(ctx, userWaitBetResultPrefix).Result()
 	if err != nil {
 		logger.Error.Printf("Error Del: %v", err)
 	}
 
+	// Параллельная обработка с ограничением
+	var wg sync.WaitGroup
+	semaphore := make(chan struct{}, 10) // Максимум 10 параллельных уведомлений
+
 	for userText, roundText := range players {
+		wg.Add(1)
+		semaphore <- struct{}{} // Захватываем слот
 
-		userID, err := strconv.ParseInt(userText, 10, 64)
-		if err != nil {
-			logger.Error.Printf("failed to parse #%s: %v", userText, err)
-			continue
-		}
+		go func(ut, rt string) {
+			defer wg.Done()
+			defer func() { <-semaphore }() // Освобождаем слот
 
-		// Отримуєм раунд
-		roundID, err := strconv.ParseUint(roundText, 10, 64)
-		if err != nil {
-			logger.Error.Printf("failed to parse #%s: %v", roundText, err)
-			continue
-		}
+			userID, err := strconv.ParseInt(ut, 10, 64)
+			if err != nil {
+				logger.Error.Printf("failed to parse user ID '%s': %v", ut, err)
+				return
+			}
 
-		round, err := h.service.GetHashEntryByID(uint(roundID))
-		if err != nil {
-			logger.Error.Printf("failed to get round #%d: %v", roundID, err)
-			continue
-		}
-		// Получаем результат раунда
-		result, err := h.service.GetRoundResult(uint(roundID))
-		if err != nil {
-			logger.Error.Printf("Error getting result for round #%d: %v", roundID, err)
-			continue
-		}
+			roundID, err := strconv.ParseUint(rt, 10, 64)
+			if err != nil {
+				logger.Error.Printf("failed to parse round ID '%s': %v", rt, err)
+				return
+			}
 
-		logger.Info.Printf("Round #%d result: %s (number: %d)", roundID, result, round.Number)
+			round, err := h.service.GetHashEntryByID(uint(roundID))
+			if err != nil {
+				logger.Error.Printf("failed to get round #%d: %v", roundID, err)
+				return
+			}
 
-		// Уведомляем каждого пользователя
-		if err := h.notifyPlayerAboutResult(userID, round, result); err != nil {
-			logger.Error.Printf("Error notifying player %d: %v", userID, err)
-		} else {
-			logger.Info.Printf("Successfully notified player %d about round #%d results", userID, round.ID)
-		}
+			// Получаем результат раунда
+			result, err := h.service.GetRoundResult(uint(roundID))
+			if err != nil {
+				logger.Error.Printf("Error getting result for round #%d: %v", roundID, err)
+				return
+			}
+
+			logger.Info.Printf("Round #%d result: %s (number: %d)", roundID, result, round.Number)
+
+			// Уведомляем игрока о результате
+			if err := h.notifyPlayerAboutResult(userID, round, result); err != nil {
+				logger.Error.Printf("Error notifying player %d: %v", userID, err)
+			} else {
+				logger.Info.Printf("Successfully notified player %d about round #%d results", userID, round.ID)
+			}
+		}(userText, roundText)
 	}
 
+	wg.Wait()
 	logger.Info.Printf("All players have been notified about results")
 }
 
 // handleGetResultRound присилаємо користувачу результат раунда в якому він робив ставку і не отримав результат
 func (h *GameHandler) handleGetResultRound(query *telego.CallbackQuery) {
-
 	user := query.From
 
 	// Отримуєм раунд
@@ -728,7 +738,6 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 
 	// Если баланс ставок недостаточен, добавляем кнопку остановки игры в третий ряд
 	if betsBalance <= 0 {
-
 		h.stopGame(userID)
 	}
 
@@ -886,7 +895,6 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 
 // handleAvailableBets присылаем игроку доступное количество ставок
 func (h *GameHandler) handleAvailableBets(query *telego.CallbackQuery) {
-
 	user := query.From
 	dbUser, err := h.service.GetUser(user.ID)
 	if err != nil {
@@ -950,7 +958,6 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 
 // handleStartRound - старт нового раунду гри
 func (h *GameHandler) handleStartRound(query *telego.CallbackQuery) {
-
 	user := query.From
 	dbUser, err := h.service.GetUser(user.ID)
 	if err != nil {
@@ -987,7 +994,6 @@ func (h *GameHandler) handleStartRound(query *telego.CallbackQuery) {
 }
 
 func (h *GameHandler) sendNewRound(language string, userID int64) error {
-
 	// Пытаемся получить текущий раунд
 	currentRound, err := h.service.GetCurrentRound()
 	if err != nil {
@@ -1080,7 +1086,6 @@ func (h *GameHandler) Stop() {
 
 // createBetKeyboard создает клавиатуру для ставок
 func (h *GameHandler) createBetKeyboard(language string, userID int64, currentRoundID uint) *telego.InlineKeyboardMarkup {
-
 	// Проверяем, может ли пользователь ставить на Zero
 	canBetZero, _, err := h.service.CanBetZero(userID)
 	if err != nil {
