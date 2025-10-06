@@ -42,6 +42,7 @@ type Bot struct {
 	activeUsers       map[int64]bool // Карта активних користувачів бота протягом останньої 1 хв
 	settingsMutex     sync.Mutex
 	settings          map[string]int64 // Карта налаштувань
+	testMode          bool             // тестовий сервіс
 }
 
 // Константы для команд и callback-запитов
@@ -107,6 +108,7 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 		stateManager: NewStateManager(),
 		redisDB:      NewRedisClient(cfg),
 		metrics:      nil,
+		testMode:     cfg.TelegramTestMode,
 
 		localizations: map[string]map[string]models.Localization{},
 		activeUsers:   map[int64]bool{},
@@ -155,6 +157,10 @@ func NewRedisClient(cfg *config.Config) *redis.Client {
 	return rdb
 }
 
+func (b *Bot) GetRedisClient() *redis.Client {
+	return b.redisDB
+}
+
 // Start запускает бота
 func (b *Bot) Start() error {
 	if b.initialized {
@@ -182,19 +188,8 @@ func (b *Bot) Start() error {
 		// Продолжаем работу, так как это не критическая ошибка
 	}
 
-	// Начало получения обновлений
-	updates, err := b.bot.UpdatesViaLongPolling(b.ctx, &telego.GetUpdatesParams{
-		Timeout: 120,
-		Limit:   100,
-		Offset:  0,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to get updates: %w", err)
-	}
-	b.updates = updates
-
 	// Запускаем обработку обновлений в фоновом режиме
-	go b.processUpdates()
+	go b.processUpdatesLoop()
 
 	// Запускаем отправку сообщений
 	go b.sendBotQueue()
@@ -211,6 +206,55 @@ func (b *Bot) Start() error {
 
 	b.initialized = true
 	return nil
+}
+
+// processUpdatesLoop - цикл получения updates через GetUpdates
+func (b *Bot) processUpdatesLoop() {
+	offset := 0
+
+	for {
+		select {
+		case <-b.ctx.Done():
+			logger.Info.Println("Stopping updates processing")
+			return
+		default:
+		}
+
+		params := &telego.GetUpdatesParams{
+			Timeout: 120,
+			Limit:   100,
+			Offset:  offset,
+		}
+
+		updates, err := b.bot.GetUpdates(b.ctx, params)
+		if err != nil {
+			logger.Error.Printf("GetUpdates error: %v", err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		for _, update := range updates {
+			offset = update.UpdateID + 1
+			b.processUpdate(update)
+		}
+	}
+}
+
+// processUpdate - обработка одного update
+func (b *Bot) processUpdate(update telego.Update) {
+	if runtime.NumGoroutine() < 5000 {
+		go func(upd telego.Update) {
+			defer func() {
+				if r := recover(); r != nil {
+					logger.Error.Printf("Panic in update handler: %v", r)
+				}
+			}()
+			b.handleUpdate(upd)
+		}(update)
+	} else {
+		logger.Error.Printf("Extreme load: %d goroutines, falling back to sync processing", runtime.NumGoroutine())
+		b.handleUpdate(update)
+	}
 }
 
 // GetGameHandler возвращает обработчик игры для регистрации в ротаторе
@@ -243,25 +287,6 @@ func (b *Bot) Stop() {
 
 	b.initialized = false
 	logger.Info.Println("Bot stopped")
-}
-
-// processUpdates обрабатывает обновления от телеграма
-func (b *Bot) processUpdates() {
-	for update := range b.updates {
-		if runtime.NumGoroutine() < 5000 {
-			go func(upd telego.Update) {
-				defer func() {
-					if r := recover(); r != nil {
-						logger.Error.Printf("Panic in update handler: %v", r)
-					}
-				}()
-				b.handleUpdate(upd)
-			}(update)
-		} else {
-			logger.Error.Printf("Extreme load: %d goroutines, falling back to sync processing", runtime.NumGoroutine())
-			b.handleUpdate(update)
-		}
-	}
 }
 
 // handleUpdate обрабатывает одно обновление

@@ -45,7 +45,7 @@ func main() {
 	repo := repository.NewRepository(db)
 
 	// Створюємо сервіс
-	svc := service.NewService(repo, cfg.TelegramToken)
+	svc := service.NewService(repo, cfg.TelegramToken, nil)
 
 	// Створюємо ротатор з налаштуваннями інтервалу та RabbitMQ
 	hashRotator, err := rotator.NewRotator(svc, cfg.RotationInterval, cfg.RabbitMQURL)

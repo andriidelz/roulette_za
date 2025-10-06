@@ -40,8 +40,11 @@ func main() {
 	// Создаем репозиторий
 	repo := repository.NewRepository(db)
 
+	// Создаем Redis клиент
+	redisDB := bot.NewRedisClient(cfg)
+
 	// Создаем сервис
-	svc := service.NewService(repo, cfg.TelegramToken)
+	svc := service.NewService(repo, cfg.TelegramToken, redisDB)
 
 	// Создаем бота с URL для RabbitMQ (метрики инициализируются внутри бота)
 	telegramBot, err := bot.NewBot(cfg.TelegramToken, svc, cfg)

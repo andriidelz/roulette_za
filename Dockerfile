@@ -22,10 +22,14 @@ ENV LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.b
 
 # Параллельная сборка (BuildKit кеш для компиляции)
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    ( go build -trimpath -ldflags "$LDFLAGS" -o roulette-bot      ./cmd/bot      & \
-    go build -trimpath -ldflags "$LDFLAGS" -o roulette-admin    ./cmd/admin    & \
-    go build -trimpath -ldflags "$LDFLAGS" -o roulette-rotator  ./cmd/rotator  & \
-    wait )
+    ( go build -trimpath -ldflags "$LDFLAGS" -o roulette-bot ./cmd/bot & \
+      go build -trimpath -ldflags "$LDFLAGS" -o roulette-admin ./cmd/admin & \
+      go build -trimpath -ldflags "$LDFLAGS" -o roulette-rotator ./cmd/rotator & \
+      wait ) && \
+    ls -la /app/roulette-* && \
+    test -f /app/roulette-bot && \
+    test -f /app/roulette-admin && \
+    test -f /app/roulette-rotator
 
 # Runtime: alpine (root по умолчанию)
 FROM alpine:3.20

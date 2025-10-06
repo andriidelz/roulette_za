@@ -46,7 +46,7 @@ func main() {
 	repo := repository.NewRepository(db)
 
 	// Створюємо сервіс
-	svc := service.NewService(repo, cfg.TelegramToken)
+	svc := service.NewService(repo, cfg.TelegramToken, nil)
 
 	// Инициализируем фабрику платежных провайдеров
 	paymentFactory, defaultProvider, err := config.InitPaymentProviders(db)
