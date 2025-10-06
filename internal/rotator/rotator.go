@@ -154,7 +154,7 @@ func (r *Rotator) Start() {
 			}
 
 			// Создаем структуру с результатами раунда для отправки
-			roundResult, err := r.service.GetRoundResult(currentRoundID)
+			option, err := r.service.GetRoundResult(completedRound.Number)
 			if err != nil {
 				logger.Error.Printf("Error getting round result for #%d: %v", currentRoundID, err)
 			}
@@ -164,7 +164,7 @@ func (r *Rotator) Start() {
 				"number":       completedRound.Number,
 				"salt_hex":     completedRound.SaltHEX,
 				"hash":         completedRound.Hash,
-				"result":       string(roundResult),
+				"result":       string(option),
 				"created_at":   completedRound.CreatedAt,
 				"completed_at": roundEndTime,
 			}

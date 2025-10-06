@@ -129,7 +129,7 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем позицию пользователя и его соседей в рейтинге
-	neighbors, position, err := b.service.GetUserRatingPosition(user.ID, 2)
+	neighbors, position, err := b.service.GetUserRatingPosition(dbUser.ID, 2)
 	if err != nil {
 		logger.Error.Printf("Error getting user position: %v", err)
 		b.SendMessage(message.Chat.ID, b.prepareMessage("rating_error", language))
@@ -150,7 +150,7 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 		formattedList := b.service.FormatRatingList(neighbors, user.ID, language)
 
 		// Получаем количество баллов, необходимое для входа в призовую зону
-		pointsNeeded, err := b.service.GetPointsNeededForUser(user.ID)
+		pointsNeeded, err := b.service.GetPointsNeededForUser(dbUser.ID)
 		if err != nil {
 			logger.Error.Printf("Error getting points needed: %v", err)
 			pointsNeeded = 0

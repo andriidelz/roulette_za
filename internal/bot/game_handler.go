@@ -248,7 +248,7 @@ func (h *GameHandler) checkActivePlayers() {
 			language = "en"
 		}
 
-		err = h.sendNewRound(language, userID)
+		err = h.sendNewRound(language, userID, dbUser.ID)
 		if err != nil {
 			logger.Error.Printf("Error sendNewRound: %v", err)
 			continue
@@ -420,16 +420,16 @@ func (h *GameHandler) handleRoundCompletion() {
 			}
 
 			// Получаем результат раунда
-			result, err := h.service.GetRoundResult(uint(roundID))
+			option, err := h.service.GetRoundResult(round.Number)
 			if err != nil {
 				logger.Error.Printf("Error getting result for round #%d: %v", roundID, err)
 				return
 			}
 
-			logger.Info.Printf("Round #%d result: %s (number: %d)", roundID, result, round.Number)
+			logger.Info.Printf("Round #%d result: %s (number: %d)", roundID, option, round.Number)
 
 			// Уведомляем игрока о результате
-			if err := h.notifyPlayerAboutResult(userID, round, result); err != nil {
+			if err := h.notifyPlayerAboutResult(userID, round, option); err != nil {
 				logger.Error.Printf("Error notifying player %d: %v", userID, err)
 			} else {
 				logger.Info.Printf("Successfully notified player %d about round #%d results", userID, round.ID)
@@ -487,13 +487,13 @@ func (h *GameHandler) handleGetResultRound(query *telego.CallbackQuery) {
 	h.bot.answerCallbackQuery(query.ID, "", false)
 
 	// Отримуєм результат раунда
-	result, err := h.service.GetRoundResult(round.ID)
+	option, err := h.service.GetRoundResult(round.Number)
 	if err != nil {
 		logger.Error.Printf("Error getting result for round #%d: %v", round.ID, err)
 		return
 	}
 
-	if err := h.notifyPlayerAboutResult(user.ID, round, result); err != nil {
+	if err := h.notifyPlayerAboutResult(user.ID, round, option); err != nil {
 		logger.Error.Printf("Error notifying player %d: %v", user.ID, err)
 	}
 }
@@ -503,19 +503,19 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	logger.Info.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, round.ID)
 
 	// Получаем пользователя
-	userInfo, err := h.service.GetUser(userID)
+	dbUser, err := h.service.GetUser(userID)
 	if err != nil {
 		logger.Error.Printf("Error getting user %d: %v", userID, err)
 		return fmt.Errorf("error getting user: %w", err)
 	}
 
-	language := userInfo.LanguageCode
+	language := dbUser.LanguageCode
 	if language == "" {
 		language = "en"
 	}
 
 	// Получаем информацию о ставке
-	userBets, err := h.service.GetUserBetsForRound(userID, round.ID)
+	userBets, err := h.service.GetUserBetsForRound(dbUser.ID, round.ID)
 	if err != nil {
 		return fmt.Errorf("error getting bets: %w", err)
 	}
@@ -650,13 +650,13 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
 	// Пересчитываем балы и эффективность пользователя и
 	// обновляем позиции всех пользователей
-	if err := h.service.GetRepo().UpdateWeeklyRatingForUser(userInfo.ID); err != nil {
+	if err := h.service.GetRepo().UpdateWeeklyRatingForUser(dbUser.ID); err != nil {
 		logger.Error.Printf("Error refreshing ratings before getting position: %v", err)
 	}
 
 	// Получаем текущий рейтинг пользователя
 	year, week := time.Now().ISOWeek()
-	rating, err := h.service.GetRepo().GetUserWeeklyRating(userInfo.ID, year, week)
+	rating, err := h.service.GetRepo().GetUserWeeklyRating(dbUser.ID, year, week)
 	if err != nil {
 		logger.Error.Printf("Error get rating: %v", err)
 	}
@@ -681,7 +681,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	ratingText = fmt.Sprintf(ratingTemplate, rating.Points, rating.Position, userShare, h.prizeFundAmount)
 
 	// Часть проверки баланса ставок
-	betsBalance, err := h.service.GetUserRemainingBets(userID)
+	betsBalance, err := h.service.GetUserRemainingBets(dbUser.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user remaining bets: %v", err)
 		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
@@ -782,13 +782,13 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 	logger.Info.Printf("MakeBet called for user %d with option %s", userID, option)
 
 	// Получаем пользователя
-	user, err := h.service.GetUser(userID)
+	dbUser, err := h.service.GetUser(userID)
 	if err != nil {
 		return fmt.Errorf("error getting user: %w", err)
 	}
 
 	// Проверяем статус бана
-	if user.Banned {
+	if dbUser.Banned {
 		return fmt.Errorf("user is banned")
 	}
 
@@ -808,7 +808,7 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 	}
 
 	// Проверяем, не делал ли пользователь уже ставку в этом раунде
-	existingBets, err := h.service.GetUserBetsForRound(userID, currentRound.ID)
+	existingBets, err := h.service.GetUserBetsForRound(dbUser.ID, currentRound.ID)
 	if err != nil {
 		logger.Error.Printf("Error checking existing bets: %v", err)
 		return fmt.Errorf("error checking existing bets: %w", err)
@@ -821,7 +821,7 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 
 	// Проверяем, может ли пользователь делать ставку на Zero
 	if option == models.Zero {
-		canBetZero, _, err := h.service.CanBetZero(userID)
+		canBetZero, _, err := h.service.CanBetZero(dbUser.ID)
 		if err != nil {
 			logger.Error.Printf("Error checking zero bet: %v", err)
 			return fmt.Errorf("error checking zero bet: %w", err)
@@ -833,7 +833,7 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 	}
 
 	// Проверяем доступное количество ставок
-	betsRemaining, err := h.service.GetUserRemainingBets(userID)
+	betsRemaining, err := h.service.GetUserRemainingBets(dbUser.ID)
 	if err != nil {
 		logger.Error.Printf("Error checking remaining bets: %v", err)
 		// Не возвращаем ошибку, так как это не критично
@@ -842,7 +842,7 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 	}
 
 	// Делаем ставку через сервис
-	if err := h.service.MakeBet(userID, option); err != nil {
+	if err := h.service.MakeBet(dbUser.ID, option); err != nil {
 		logger.Error.Printf("Error making bet: %v", err)
 		return fmt.Errorf("error making bet: %w", err)
 	}
@@ -853,7 +853,7 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 	}
 
 	// Получаем язык пользователя
-	language := user.LanguageCode
+	language := dbUser.LanguageCode
 	if language == "" {
 		language = "en"
 	}
@@ -905,7 +905,7 @@ func (h *GameHandler) handleAvailableBets(query *telego.CallbackQuery) {
 	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем доступное количество ставок
-	betsBalance, err := h.service.GetUserRemainingBets(user.ID)
+	betsBalance, err := h.service.GetUserRemainingBets(dbUser.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user remaining bets: %v", err)
 		betsBalance = -1 // Если ошибка, ставим отрицательное значение (безлимитное)
@@ -966,7 +966,7 @@ func (h *GameHandler) handleStartRound(query *telego.CallbackQuery) {
 	}
 
 	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
-	err = h.sendNewRound(language, user.ID)
+	err = h.sendNewRound(language, user.ID, dbUser.ID)
 	if err != nil {
 		var errorKey string
 		if strings.Contains(err.Error(), "already made a bet") {
@@ -993,7 +993,7 @@ func (h *GameHandler) handleStartRound(query *telego.CallbackQuery) {
 	h.bot.answerCallbackQuery(query.ID, "", false)
 }
 
-func (h *GameHandler) sendNewRound(language string, userID int64) error {
+func (h *GameHandler) sendNewRound(language string, telegramID int64, userID uint) error {
 	currentRound, err := h.service.GetCurrentRound()
 	if err != nil {
 		logger.Error.Printf("Error getting current round: %v", err)
@@ -1028,7 +1028,7 @@ func (h *GameHandler) sendNewRound(language string, userID int64) error {
 	}
 
 	h.mutex.Lock()
-	h.activePlayers[userID] = 1
+	h.activePlayers[telegramID] = 1
 	if metrics := h.bot.getMetrics(); metrics != nil && metrics.Bot != nil {
 		metrics.Bot.SetActivePlayers(float64(len(h.activePlayers)))
 	}
@@ -1041,7 +1041,7 @@ func (h *GameHandler) sendNewRound(language string, userID int64) error {
 
 	// ВЫСОКИЙ ПРИОРИТЕТ для игровых сообщений
 	options.TTL = 5 * time.Second
-	return h.bot.MakeRequestDeferred(userID, 3, options)
+	return h.bot.MakeRequestDeferred(telegramID, 3, options)
 }
 
 // stopGame видаляє зі списку активних гравців
@@ -1072,7 +1072,7 @@ func (h *GameHandler) Stop() {
 }
 
 // createBetKeyboard создает клавиатуру для ставок
-func (h *GameHandler) createBetKeyboard(language string, userID int64, currentRoundID uint) *telego.InlineKeyboardMarkup {
+func (h *GameHandler) createBetKeyboard(language string, userID uint, currentRoundID uint) *telego.InlineKeyboardMarkup {
 	// Проверяем, может ли пользователь ставить на Zero
 	canBetZero, _, err := h.service.CanBetZero(userID)
 	if err != nil {

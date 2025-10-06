@@ -391,7 +391,7 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData st
 			errorKey = "bet_already_made"
 		} else if strings.Contains(err.Error(), "cannot bet on zero") {
 			// Пользователь не может ставить на Zero
-			canBetZero, remaining, _ := h.bot.service.CanBetZero(user.ID)
+			canBetZero, remaining, _ := h.bot.service.CanBetZero(dbUser.ID)
 			if !canBetZero {
 				errorKey = "zero_limit"
 				remain = remaining
@@ -1176,7 +1176,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.gameHandler.handleStartRound(query)
 	case CallbackBetZeroLocked:
 		// Обработка нажатия на заблокированную кнопку Zero
-		_, remaining, _ := b.service.CanBetZero(user.ID)
+		_, remaining, _ := b.service.CanBetZero(dbUser.ID)
 		zeroText := b.getText("zero_limit", language)
 		zeroText = fmt.Sprintf(zeroText, remaining)
 		// відправка повідомлення як toast pop-up
