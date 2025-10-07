@@ -11,13 +11,11 @@ import (
 func (b *Bot) handleFAQCommand(message *telego.Message) {
 	user := message.From
 
-	dbUser, err := b.service.GetUser(user.ID)
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user for FAQ menu: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для стартового сообщения FAQ
 	options := b.prepareMessage("faqstart", language)
@@ -66,13 +64,11 @@ func (b *Bot) createFAQKeyboard(language string) *telego.ReplyKeyboardMarkup {
 func (b *Bot) handleFAQRules(message *telego.Message) {
 	user := message.From
 
-	dbUser, err := b.service.GetUser(user.ID)
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user for FAQ rules: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Правила"
 	options := b.prepareMessage("faqrulesm", language)
@@ -89,13 +85,11 @@ func (b *Bot) handleFAQRules(message *telego.Message) {
 func (b *Bot) handleFAQAwards(message *telego.Message) {
 	user := message.From
 
-	dbUser, err := b.service.GetUser(user.ID)
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user for FAQ awards: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Распределение наград"
 	options := b.prepareMessage("faqawardsm", language)
@@ -112,13 +106,11 @@ func (b *Bot) handleFAQAwards(message *telego.Message) {
 func (b *Bot) handleFAQPayments(message *telego.Message) {
 	user := message.From
 
-	dbUser, err := b.service.GetUser(user.ID)
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user for FAQ payments: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Выплаты наград"
 	options := b.prepareMessage("faqpaymentsm", language)
@@ -135,13 +127,11 @@ func (b *Bot) handleFAQPayments(message *telego.Message) {
 func (b *Bot) handleFAQFairPlay(message *telego.Message) {
 	user := message.From
 
-	dbUser, err := b.service.GetUser(user.ID)
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user for FAQ fair play: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Принципы честной игры"
 	options := b.prepareMessage("faqfairplaym", language)
@@ -158,13 +148,11 @@ func (b *Bot) handleFAQFairPlay(message *telego.Message) {
 func (b *Bot) handleFAQPrivacyPolicy(message *telego.Message) {
 	user := message.From
 
-	dbUser, err := b.service.GetUser(user.ID)
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user for FAQ privacy policy: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Privacy policy"
 	options := b.prepareMessage("privacypolicym", language)
@@ -181,13 +169,11 @@ func (b *Bot) handleFAQPrivacyPolicy(message *telego.Message) {
 func (b *Bot) handleFAQContact(message *telego.Message) {
 	user := message.From
 
-	dbUser, err := b.service.GetUser(user.ID)
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user for FAQ contact: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Контакт с админом"
 	options := b.prepareMessage("contactm", language)

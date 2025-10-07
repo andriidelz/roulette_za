@@ -35,7 +35,6 @@ type Service interface {
 	StartNewRoundFromRotator() (*models.HashEntry, error)
 	CompleteRound(hashEntryID uint) error
 	GetRoundResult(roundNumber int64) (models.BetOption, error)
-	ProcessAndGetBets(hashEntryID uint) ([]models.Bet, error)
 	GetUserBetsForRound(userID uint, hashEntryID uint) ([]models.Bet, error)
 	GetHashEntryByID(id uint) (*models.HashEntry, error)
 
@@ -366,7 +365,7 @@ func (s *ServiceImpl) CompleteRound(hashEntryID uint) error {
 	}
 
 	// Обрабатываем ставки
-	_, err = s.ProcessAndGetBets(hashEntryID)
+	_, err = s.ProcessAndGetBets(hashEntryID, round.Number)
 	if err != nil {
 		return err
 	}
@@ -398,7 +397,7 @@ func (s *ServiceImpl) GetRoundResult(roundNumber int64) (models.BetOption, error
 }
 
 // ProcessAndGetBets обрабатывает все ставки и возвращает список обработанных ставок
-func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint) ([]models.Bet, error) {
+func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]models.Bet, error) {
 	// Получаем все ставки для этого раунда с preload пользователей
 	bets, err := s.repo.GetBetsByHashEntryIDWithUsers(hashEntryID)
 	if err != nil {
@@ -409,13 +408,8 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint) ([]models.Bet, error) 
 		return bets, nil
 	}
 
-	round, err := s.repo.GetHashEntryByID(hashEntryID)
-	if err != nil {
-		return nil, err
-	}
-
 	// Получаем результат раунда
-	option, err := s.GetRoundResult(round.Number)
+	option, err := s.GetRoundResult(roundNumber)
 	if err != nil {
 		return nil, err
 	}

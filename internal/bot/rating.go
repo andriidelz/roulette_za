@@ -12,13 +12,12 @@ import (
 // handleRatingCommand обрабатывает команду /rating
 func (b *Bot) handleRatingCommand(message *telego.Message) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отправляем стартовое сообщение о рейтинге
 	options := b.prepareMessage("ratingstart", language)
@@ -48,7 +47,7 @@ func (b *Bot) handleRatingCallbackQuery(query *telego.CallbackQuery) {
 // getWeeklyRating используется для вывода рейтинга в меню и в игре
 func (b *Bot) getWeeklyRating(telegramID int64, appLanguage string) (MessageOptions, string) {
 	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
-	dbUser, err := b.service.GetUser(telegramID)
+	dbUser, err := b.getUser(telegramID)
 	if err == nil {
 		b.service.GetRepo().UpdateWeeklyRatingForUser(dbUser.ID)
 	}
@@ -120,7 +119,7 @@ func (b *Bot) handleWeeklyRating(message *telego.Message) {
 // handlePersonalRating обрабатывает запрос на просмотр личной позиции в рейтинге
 func (b *Bot) handlePersonalRating(message *telego.Message) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err := b.getUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user: %v", err)
 		return

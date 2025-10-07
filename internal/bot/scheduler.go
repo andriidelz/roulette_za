@@ -159,14 +159,12 @@ func (b *Bot) StartUpdateCaptcha() {
 					if err != nil {
 						logger.Error.Printf("Error Set %d: %v", userID, err)
 					}
-					dbUser, err := b.service.GetUser(userID)
+
+					language, err := b.getUserLang(userID, "")
 					if err != nil {
-						logger.Error.Printf("Error GetUser %d: %v", userID, err)
+						logger.Error.Printf("Error getting user %d: %v", userID, err)
 						continue
 					}
-
-					// Всегда используем язык из базы данных, т.к. он может быть обновлен
-					language := getLanguage(dbUser.LanguageCode, "")
 
 					// Присилаємо нову капчу
 					b.SendMessage(userID, b.captchaMessage(userID, language))
@@ -186,12 +184,14 @@ func (b *Bot) StartUpdateCache() {
 		defer minuteTicker.Stop()
 
 		b.refreshMinuteCache()
+		b.refreshUserCache()
 		b.refreshLocalizationCache()
 
 		for {
 			select {
 			case <-minuteTicker.C:
 				b.refreshMinuteCache()
+				b.refreshUserCache()
 				b.refreshActiveUsers()
 			case <-fiveMinuteTicker.C:
 				b.refreshLocalizationCache()
@@ -281,6 +281,72 @@ func (b *Bot) refreshLocalizationCache() {
 		b.localizations[lang] = localizationMap
 		b.localMutex.Unlock()
 	}
+}
+
+func (b *Bot) refreshUserCache() {
+	// Зберігаємо локалізацію користувачів в кеш
+	usersInfo := map[int64]models.User{}
+	var count int64
+	users, totalUsers, err := b.service.GetRepo().GetUsers(1, 1000000)
+	if err != nil {
+		logger.Error.Printf("Error GetUsers: %v", err)
+		return
+	}
+	count = totalUsers
+
+	logger.Error.Println(count)
+
+	for i := range users {
+		usersInfo[users[i].TelegramID] = users[i]
+	}
+
+	b.usersInfoMutex.Lock()
+	b.usersInfo = usersInfo
+	b.usersInfoMutex.Unlock()
+}
+
+// getUser - отримання користувача з кешу
+func (b *Bot) getUser(telegramID int64) (*models.User, error) {
+
+	b.usersInfoMutex.Lock()
+	v, ok := b.usersInfo[telegramID]
+	b.usersInfoMutex.Unlock()
+
+	if ok {
+		return &v, nil
+	}
+
+	logger.Error.Println("Cannot find: ", telegramID)
+
+	dbUser, err := b.service.GetUser(telegramID)
+	if err == nil {
+		b.usersInfoMutex.Lock()
+		b.usersInfo[telegramID] = *dbUser
+		b.usersInfoMutex.Unlock()
+	}
+	return dbUser, err
+}
+
+// getUser - оновлення користувача в кеші
+func (b *Bot) updateUserCache(telegramID int64) error {
+
+	dbUser, err := b.service.GetUser(telegramID)
+	if err == nil {
+		b.usersInfoMutex.Lock()
+		b.usersInfo[telegramID] = *dbUser
+		b.usersInfoMutex.Unlock()
+	}
+	return err
+}
+
+// getUserLang - обгортка getUser, отримання лише мови користувача
+func (b *Bot) getUserLang(telegramID int64, appLanguage string) (string, error) {
+
+	// Отримуємо користувача з кешу або бази
+	dbUser, err := b.getUser(telegramID)
+
+	// Визначаємо мову
+	return getLanguage(dbUser.LanguageCode, appLanguage), err
 }
 
 // updateUserActivity - перевірка і за відсутності додавання користувача в список активних протягом останньої 1 хв

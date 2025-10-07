@@ -30,13 +30,12 @@ const (
 // Обработчик команды настроек
 func (b *Bot) handleSettingsCommand(message *telego.Message) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализованный текст для настроек
 	options := b.prepareMessage("settings_message", language)
@@ -50,7 +49,7 @@ func (b *Bot) handleSettingsCommand(message *telego.Message) {
 // Создает клавиатуру настроек
 func (b *Bot) createSettingsKeyboard(language string, userID int64) *telego.InlineKeyboardMarkup {
 	// Получаем текущие данные пользователя
-	user, err := b.service.GetUser(userID)
+	user, err := b.getUser(userID)
 	if err != nil {
 		logger.Error.Printf("Error getting user for settings keyboard: %v", err)
 		// Возвращаем клавиатуру без текущих значений в случае ошибки

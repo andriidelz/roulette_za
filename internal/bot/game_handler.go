@@ -237,7 +237,7 @@ func (h *GameHandler) checkActivePlayers() {
 			continue
 		}
 
-		dbUser, err := h.service.GetUser(userID)
+		dbUser, err := h.bot.getUser(userID)
 		if err != nil {
 			logger.Error.Printf("Error get user: %v", err)
 			continue
@@ -459,13 +459,11 @@ func (h *GameHandler) handleGetResultRound(query *telego.CallbackQuery) {
 	}
 
 	// Получаем пользователя
-	dbUser, err := h.service.GetUser(user.ID)
+	language, err := h.bot.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
 		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	//  Користувач натискає кнопку отримати результат раніше, ніж результати готові для виводу
 	if !round.IsCompleted {
@@ -503,7 +501,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	logger.Info.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, round.ID)
 
 	// Получаем пользователя
-	dbUser, err := h.service.GetUser(userID)
+	dbUser, err := h.bot.getUser(userID)
 	if err != nil {
 		logger.Error.Printf("Error getting user %d: %v", userID, err)
 		return fmt.Errorf("error getting user: %w", err)
@@ -782,7 +780,7 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 	logger.Info.Printf("MakeBet called for user %d with option %s", userID, option)
 
 	// Получаем пользователя
-	dbUser, err := h.service.GetUser(userID)
+	dbUser, err := h.bot.getUser(userID)
 	if err != nil {
 		return fmt.Errorf("error getting user: %w", err)
 	}
@@ -896,7 +894,7 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 // handleAvailableBets присылаем игроку доступное количество ставок
 func (h *GameHandler) handleAvailableBets(query *telego.CallbackQuery) {
 	user := query.From
-	dbUser, err := h.service.GetUser(user.ID)
+	dbUser, err := h.bot.getUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error get user: %v", err)
 		return
@@ -927,13 +925,11 @@ func (h *GameHandler) handleAvailableBets(query *telego.CallbackQuery) {
 // HandlePlayCommand обрабатывает команду /play
 func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 	user := message.From
-	dbUser, err := h.bot.service.GetUser(user.ID)
+	language, err := h.bot.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Сначала отправляем сообщение с описанием игры
 	options := h.bot.prepareMessage("playstart1", language)
@@ -959,9 +955,9 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 // handleStartRound - старт нового раунду гри
 func (h *GameHandler) handleStartRound(query *telego.CallbackQuery) {
 	user := query.From
-	dbUser, err := h.service.GetUser(user.ID)
+	dbUser, err := h.bot.getUser(user.ID)
 	if err != nil {
-		logger.Error.Printf("Error get user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
 

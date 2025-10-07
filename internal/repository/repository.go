@@ -13,8 +13,10 @@ type Repository interface {
 	// Пользователи
 	CreateUser(user *models.User) error
 	GetUserByTelegramID(telegramID int64) (*models.User, error)
+	GetUserByID(id uint) (*models.User, error)
 	UpdateUser(user *models.User) error
 	GetUserCount() (int64, error)
+	GetUsers(page, perPage int) ([]models.User, int64, error)
 	GetUserWithdrawals(userID uint, limit int) ([]models.Withdrawal, error)
 	SearchUsers(query string, page, perPage int) ([]models.User, int64, error)
 	UpdateUserActivity(userID uint) error
@@ -103,8 +105,6 @@ type Repository interface {
 	UpdateWithdrawal(withdrawal *models.Withdrawal) error
 
 	// Админ-функции
-	GetUsers(page, perPage int) ([]models.User, int64, error)
-	GetUserByID(id uint) (*models.User, error)
 	GetWithdrawalByID(id uint) (*models.Withdrawal, error)
 
 	// Хеши и раунды
@@ -120,7 +120,7 @@ type Repository interface {
 	GetUserBetsForHashEntry(userID, hashEntryID uint) ([]models.Bet, error)
 
 	// Работа со страной пользователя
-	SetUserCountry(userID uint, country string) error
+	// SetUserCountry(userID uint, country string) error
 	GetUserCountry(userID uint) (string, error)
 
 	GetBetsByHashEntryIDWithUsers(hashEntryID uint) ([]models.Bet, error)
