@@ -154,12 +154,10 @@ func (b *Bot) MakeRequestDeferredErr(chatID int64, errText string) {
 		// Если не было таких сообщений то создаем сообщение об ошибке и ставим ключ
 
 		// Получаем пользователя для определения языка
-		user, userErr := b.service.GetUser(chatID)
+		language, userErr := b.getUserLang(chatID, "")
 		if userErr != nil {
 			logger.Error.Printf("Error getting user %d: %v", chatID, userErr)
 		}
-
-		language := getLanguage(user.LanguageCode, "")
 
 		errSendText := b.getText(errText, language)
 		options := MessageOptions{

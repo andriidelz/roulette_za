@@ -69,6 +69,7 @@ func (r *PostgresRepository) GetUserByID(id uint) (*models.User, error) {
 	return &user, nil
 }
 
+// unused
 // Реализация методов для работы со страной пользователя
 func (r *PostgresRepository) SetUserCountry(userID uint, country string) error {
 	user, err := r.GetUserByID(userID)
@@ -81,6 +82,7 @@ func (r *PostgresRepository) SetUserCountry(userID uint, country string) error {
 	return r.UpdateUser(user)
 }
 
+// unused
 func (r *PostgresRepository) GetUserCountry(userID uint) (string, error) {
 	var user models.User
 	err := r.db.Where("id = ?", userID).First(&user).Error

@@ -356,20 +356,15 @@ func (b *Bot) captchaMessage(telegramID int64, language string) MessageOptions {
 func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 
 	user := query.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		// Регистрация пользователя, если он не найден
-		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
-		if err != nil {
-			logger.Error.Printf("Error registering user: %v", err)
-			return
-		}
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
+		return
 	}
 
 	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	captchaKey := fmt.Sprintf(userCaptchaKeyPrefix, user.ID)
 	banKey := fmt.Sprintf(userBanKeyPrefix, user.ID)

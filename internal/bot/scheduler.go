@@ -96,84 +96,77 @@ func (b *Bot) StartRatingScheduler() {
 
 // StartUpdateCaptcha запускает планировщик заданий для обновления капчи
 func (b *Bot) StartUpdateCaptcha() {
-	go func() {
-		ratingTicker := time.NewTicker(30 * time.Second)
-		defer ratingTicker.Stop()
+	// Запускаем планировщик для обновления капч
 
-		for range ratingTicker.C {
-			cont, cancel := context.WithTimeout(context.Background(), time.Minute)
-			defer cancel()
+	cont, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 
-			// Список всіх користувачів що можуть отримати оновлення капчі через бездіяльність
-			allUsers, err := b.redisDB.LRange(cont, userCaptchaUpdateKey, 0, -1).Result()
+	// Список всіх користувачів що можуть отримати оновлення капчі через бездіяльність
+	allUsers, err := b.redisDB.LRange(cont, userCaptchaUpdateKey, 0, -1).Result()
+	if err != nil {
+		logger.Error.Printf("Failed to LRANGE all elements: %v", err)
+	}
+
+	if len(allUsers) == 0 {
+		return
+	}
+
+	for i := range allUsers {
+		userID, err := strconv.ParseInt(allUsers[i], 10, 64)
+		if err != nil {
+			logger.Error.Printf("Could not parse '%s': %v\n", allUsers[i], err)
+			continue
+		}
+
+		// Якщо користувач в списку на приймання капчі і немає відповіді протягом 30 сек оновлюєм капчу (3 рази)
+		userUpdateKey := fmt.Sprintf(userCaptchaUpdateCountPrefix, userID)
+		val, err := b.redisDB.Get(cont, userUpdateKey).Int64()
+		if err == redis.Nil {
+			// Ще не було відправки, створюємо запис
+			err = b.redisDB.Set(cont, userUpdateKey, 1, 0).Err()
 			if err != nil {
-				logger.Error.Printf("Failed to LRANGE all elements: %v", err)
+				logger.Error.Printf("Error Set %d: %v", userID, err)
+			}
+			continue
+		} else if err != nil {
+			logger.Error.Printf("Error Get %d: %v", userID, err)
+			continue
+		}
+		val++
+
+		if val > 3 {
+
+			// Было отправлено 3 одновления капчи. Прекращаем отправку.
+			// Удаляем из список пользователей которые ожидают капчу
+			_, err := b.redisDB.LRem(cont, userCaptchaUpdateKey, 0, userID).Result()
+			if err != nil {
+				logger.Error.Printf("Failed to LREM: %d: %v", userID, err)
+			}
+			// Удаляем ключ
+			_, err = b.redisDB.Del(cont, userUpdateKey).Result()
+			if err != nil {
+				logger.Error.Printf("Error Del %d: %v", userID, err)
 			}
 
-			if len(allUsers) == 0 {
+		} else {
+
+			// Пользователь не превышает активность
+			// Обновляем кол-во
+			err = b.redisDB.Set(cont, userUpdateKey, val, redis.KeepTTL).Err()
+			if err != nil {
+				logger.Error.Printf("Error Set %d: %v", userID, err)
+			}
+
+			language, err := b.getUserLang(userID, "")
+			if err != nil {
+				logger.Error.Printf("Error getting user %d: %v", userID, err)
 				continue
 			}
 
-			for i := range allUsers {
-				userID, err := strconv.ParseInt(allUsers[i], 10, 64)
-				if err != nil {
-					logger.Error.Printf("Could not parse '%s': %v\n", allUsers[i], err)
-					continue
-				}
-
-				// Якщо користувач в списку на приймання капчі і немає відповіді протягом 30 сек оновлюєм капчу (3 рази)
-				userUpdateKey := fmt.Sprintf(userCaptchaUpdateCountPrefix, userID)
-				val, err := b.redisDB.Get(cont, userUpdateKey).Int64()
-				if err == redis.Nil {
-					// Ще не було відправки, створюємо запис
-					err = b.redisDB.Set(cont, userUpdateKey, 1, 0).Err()
-					if err != nil {
-						logger.Error.Printf("Error Set %d: %v", userID, err)
-					}
-					continue
-				} else if err != nil {
-					logger.Error.Printf("Error Get %d: %v", userID, err)
-					continue
-				}
-				val++
-
-				if val > 3 {
-
-					// Было отправлено 3 одновления капчи. Прекращаем отправку.
-					// Удаляем из список пользователей которые ожидают капчу
-					_, err := b.redisDB.LRem(cont, userCaptchaUpdateKey, 0, userID).Result()
-					if err != nil {
-						logger.Error.Printf("Failed to LREM: %d: %v", userID, err)
-					}
-					// Удаляем ключ
-					_, err = b.redisDB.Del(cont, userUpdateKey).Result()
-					if err != nil {
-						logger.Error.Printf("Error Del %d: %v", userID, err)
-					}
-
-				} else {
-
-					// Пользователь не превышает активность
-					// Обновляем кол-во
-					err = b.redisDB.Set(cont, userUpdateKey, val, redis.KeepTTL).Err()
-					if err != nil {
-						logger.Error.Printf("Error Set %d: %v", userID, err)
-					}
-					dbUser, err := b.service.GetUser(userID)
-					if err != nil {
-						logger.Error.Printf("Error GetUser %d: %v", userID, err)
-						continue
-					}
-
-					// Всегда используем язык из базы данных, т.к. он может быть обновлен
-					language := getLanguage(dbUser.LanguageCode, "")
-
-					// Присилаємо нову капчу
-					b.SendMessage(userID, b.captchaMessage(userID, language))
-				}
-			}
+			// Присилаємо нову капчу
+			b.SendMessage(userID, b.captchaMessage(userID, language))
 		}
-	}()
+	}
 }
 
 // StartUpdateCache запускает планировщик кеша
@@ -182,16 +175,22 @@ func (b *Bot) StartUpdateCache() {
 
 		fiveMinuteTicker := time.NewTicker(5 * time.Minute)
 		minuteTicker := time.NewTicker(1 * time.Minute)
+		thirtySecTicker := time.NewTicker(30 * time.Second)
+		defer thirtySecTicker.Stop()
 		defer fiveMinuteTicker.Stop()
 		defer minuteTicker.Stop()
 
 		b.refreshMinuteCache()
+		b.refreshUserCache()
 		b.refreshLocalizationCache()
 
 		for {
 			select {
+			case <-thirtySecTicker.C:
+				b.StartUpdateCaptcha()
 			case <-minuteTicker.C:
 				b.refreshMinuteCache()
+				b.refreshUserCache()
 				b.refreshActiveUsers()
 			case <-fiveMinuteTicker.C:
 				b.refreshLocalizationCache()
@@ -231,9 +230,11 @@ func (b *Bot) refreshMinuteCache() {
 		totalPoints += rating.Points
 	}
 
+	b.gameHandler.prizeFundMutex.Lock()
 	b.gameHandler.prizeFundAmount = prizeFundAmount
-	b.gameHandler.topCount = topCount
+	// b.gameHandler.topCount = topCount
 	b.gameHandler.totalPoints = totalPoints
+	b.gameHandler.prizeFundMutex.Unlock()
 
 	// Налаштування капчі
 	settings, err := b.service.GetSettings()
@@ -281,6 +282,73 @@ func (b *Bot) refreshLocalizationCache() {
 		b.localizations[lang] = localizationMap
 		b.localMutex.Unlock()
 	}
+}
+
+// TODO: при кількості користувачів більше 1000000 переписати на отримання порціями
+func (b *Bot) refreshUserCache() {
+	// Зберігаємо локалізацію користувачів в кеш
+	usersInfo := map[int64]models.User{}
+	var count int64
+	users, totalUsers, err := b.service.GetRepo().GetUsers(1, 1000000)
+	if err != nil {
+		logger.Error.Printf("Error GetUsers: %v", err)
+		return
+	}
+	count = totalUsers
+
+	logger.Error.Println(count)
+
+	for i := range users {
+		usersInfo[users[i].TelegramID] = users[i]
+	}
+
+	b.usersInfoMutex.Lock()
+	b.usersInfo = usersInfo
+	b.usersInfoMutex.Unlock()
+}
+
+// getUser - отримання користувача з кешу
+func (b *Bot) getUser(telegramID int64) (*models.User, error) {
+
+	b.usersInfoMutex.Lock()
+	v, ok := b.usersInfo[telegramID]
+	b.usersInfoMutex.Unlock()
+
+	if ok {
+		return &v, nil
+	}
+
+	logger.Error.Println("Cannot find: ", telegramID)
+
+	dbUser, err := b.service.GetUser(telegramID)
+	if err == nil {
+		b.usersInfoMutex.Lock()
+		b.usersInfo[telegramID] = *dbUser
+		b.usersInfoMutex.Unlock()
+	}
+	return dbUser, err
+}
+
+// getUser - оновлення користувача в кеші
+func (b *Bot) updateUserCache(telegramID int64) error {
+
+	dbUser, err := b.service.GetUser(telegramID)
+	if err == nil {
+		b.usersInfoMutex.Lock()
+		b.usersInfo[telegramID] = *dbUser
+		b.usersInfoMutex.Unlock()
+	}
+	return err
+}
+
+// getUserLang - обгортка getUser, отримання лише мови користувача
+func (b *Bot) getUserLang(telegramID int64, appLanguage string) (string, error) {
+
+	// Отримуємо користувача з кешу або бази
+	dbUser, err := b.getUser(telegramID)
+
+	// Визначаємо мову
+	return getLanguage(dbUser.LanguageCode, appLanguage), err
 }
 
 // updateUserActivity - перевірка і за відсутності додавання користувача в список активних протягом останньої 1 хв

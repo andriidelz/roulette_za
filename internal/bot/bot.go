@@ -40,6 +40,8 @@ type Bot struct {
 	localizations     map[string]map[string]models.Localization // Карта локалізацій - мова-ключ
 	activeUsersMutex  sync.Mutex
 	activeUsers       map[int64]bool // Карта активних користувачів бота протягом останньої 1 хв
+	usersInfoMutex    sync.Mutex
+	usersInfo         map[int64]models.User // Кеш користувачів бота по telegramID
 	settingsMutex     sync.Mutex
 	settings          map[string]int64 // Карта налаштувань
 	testMode          bool             // тестовий сервіс
@@ -112,6 +114,7 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 
 		localizations: map[string]map[string]models.Localization{},
 		activeUsers:   map[int64]bool{},
+		usersInfo:     map[int64]models.User{},
 		settings:      map[string]int64{},
 	}
 
@@ -198,8 +201,7 @@ func (b *Bot) Start() error {
 	b.StartUpdateCache()
 	// Запускаем планировщик для обновления рейтингов
 	b.StartRatingScheduler()
-	// Запускаем планировщик для обновления капч
-	b.StartUpdateCaptcha()
+
 
 	// Запускам емуляцию ставок по заданиям для пользователей
 	// b.gameHandler.initEmulate()
@@ -307,13 +309,12 @@ func (b *Bot) handleUpdate(update telego.Update) {
 // handlePrivacyCommand обрабатывает команду /privacy
 func (b *Bot) handlePrivacyCommand(message *telego.Message) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user for privacy policy: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст privacy policy
 	options := b.prepareMessage("privacypolicym", language)
@@ -326,13 +327,12 @@ func (b *Bot) handlePrivacyCommand(message *telego.Message) {
 // handleContactCommand обрабатывает команду /contact
 func (b *Bot) handleContactCommand(message *telego.Message) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user for contact: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для раздела "Контакт с админом"
 	options := b.prepareMessage("contactm", language)
@@ -345,7 +345,7 @@ func (b *Bot) handleContactCommand(message *telego.Message) {
 func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData string, option models.BetOption) {
 	user := query.From
 	// Получаем пользователя для определения языка
-	dbUser, userErr := h.service.GetUser(user.ID)
+	dbUser, userErr := h.bot.getUser(user.ID)
 	if userErr != nil {
 		logger.Error.Printf("Error getting user %d: %v", user.ID, userErr)
 		return
@@ -391,7 +391,7 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData st
 			errorKey = "bet_already_made"
 		} else if strings.Contains(err.Error(), "cannot bet on zero") {
 			// Пользователь не может ставить на Zero
-			canBetZero, remaining, _ := h.bot.service.CanBetZero(user.ID)
+			canBetZero, remaining, _ := h.bot.service.CanBetZero(dbUser.ID)
 			if !canBetZero {
 				errorKey = "zero_limit"
 				remain = remaining
@@ -517,7 +517,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	isNewUser := false
 
 	// Получаем данные пользователя из базы
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err := b.getUser(user.ID)
 	if err != nil {
 		// Если пользователь новый выполняется его предварительная регистрация,
 		// независимо от того какую команду он выполнил
@@ -527,7 +527,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		if err != nil {
 			logger.Error.Printf("Error registering user: %v", err)
 		} else {
-
+			b.updateUserCache(user.ID)
 			isNewUser = true
 
 			// Записываем метрику регистрации нового пользователя
@@ -785,7 +785,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 	go b.updateUserActivity(user.ID)
 
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err := b.getUser(user.ID)
 	if err != nil {
 		// Регистрация пользователя, если он не найден
 		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
@@ -793,6 +793,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			logger.Error.Printf("Error registering user: %v", err)
 			return
 		}
+		b.updateUserCache(user.ID)
 	}
 
 	// Режим эмуляции
@@ -864,7 +865,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		countryCode := strings.TrimPrefix(callbackData, "country:")
 
 		// Получаем пользователя
-		dbUser, err := b.service.GetUser(user.ID)
+		dbUser, err := b.getUser(user.ID)
 		if err != nil {
 			logger.Error.Printf("Error getting user: %v", err)
 			b.answerCallbackQuery(query.ID, "Error getting user info", true)
@@ -895,6 +896,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			if err := b.service.UpdateUser(dbUser); err != nil {
 				logger.Error.Printf("Error updating user: %v", err)
 			}
+			b.updateUserCache(user.ID)
 
 			return
 		}
@@ -910,6 +912,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			}
 			return
 		}
+		b.updateUserCache(user.ID)
 
 		// Продолжаем обычную обработку для незабаненных пользователей
 		if query.Message != nil {
@@ -1057,7 +1060,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		langCode := strings.TrimPrefix(callbackData, "language_")
 
 		// Обновляем язык пользователя
-		dbUser, err := b.service.GetUser(user.ID)
+		dbUser, err := b.getUser(user.ID)
 		if err != nil {
 			b.answerCallbackQuery(query.ID, "Error updating language", true)
 			return
@@ -1070,6 +1073,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			b.answerCallbackQuery(query.ID, "Error saving language", true)
 			return
 		}
+		b.updateUserCache(user.ID)
 
 		// Обновляем язык пользователя для текущей сессии
 		language = langCode // Обновляем локальную переменную language
@@ -1176,7 +1180,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.gameHandler.handleStartRound(query)
 	case CallbackBetZeroLocked:
 		// Обработка нажатия на заблокированную кнопку Zero
-		_, remaining, _ := b.service.CanBetZero(user.ID)
+		_, remaining, _ := b.service.CanBetZero(dbUser.ID)
 		zeroText := b.getText("zero_limit", language)
 		zeroText = fmt.Sprintf(zeroText, remaining)
 		// відправка повідомлення як toast pop-up
@@ -1247,13 +1251,11 @@ func (b *Bot) sendMainMenu(chatID int64, language string) {
 func (b *Bot) handleBackToStartMenu(query *telego.CallbackQuery) {
 	user := query.From
 
-	dbUser, err := b.service.GetUser(user.ID)
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отвечаем на callback
 	b.answerCallbackQuery(query.ID, "", false)
@@ -1282,13 +1284,12 @@ func (b *Bot) handleBackToStartMenu(query *telego.CallbackQuery) {
 // updateOrSendMessage обновляет существующее сообщение или отправляет новое
 func (b *Bot) updateOrSendMessage(query *telego.CallbackQuery, text string) {
 	user := query.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Создаем кнопку "Назад"
 	backButton := telego.InlineKeyboardButton{
@@ -1321,13 +1322,12 @@ func (b *Bot) updateOrSendMessage(query *telego.CallbackQuery, text string) {
 
 func (b *Bot) handleHelpCommand(message *telego.Message) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отправляем главное меню
 	b.sendMainMenu(message.Chat.ID, language)
@@ -1335,13 +1335,12 @@ func (b *Bot) handleHelpCommand(message *telego.Message) {
 
 func (b *Bot) handleStatsCommand(message *telego.Message) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализированный текст для стартового сообщения статистики
 	options := b.prepareMessage("statisticsstart", language)
@@ -1356,13 +1355,12 @@ func (b *Bot) handleStatsCommand(message *telego.Message) {
 // handleUnknownCommand обрабатывает неизвестные команды
 func (b *Bot) handleUnknownCommand(message *telego.Message) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отправляем сообщение о неизвестной команде
 	b.SendMessage(message.Chat.ID, b.prepareMessage("unknown_command", language))
@@ -1374,13 +1372,12 @@ func (b *Bot) handleUnknownCommand(message *telego.Message) {
 // handleGenericMessage обрабатывает обычные текстовые сообщения
 func (b *Bot) handleGenericMessage(message *telego.Message) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отправляем главное меню
 	b.sendMainMenu(message.Chat.ID, language)
@@ -1391,13 +1388,12 @@ func (b *Bot) handleBackToMainMenu(query *telego.CallbackQuery) {
 	b.answerCallbackQuery(query.ID, "", false)
 
 	user := query.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Если у сообщения есть чат, отправляем в него главное меню
 	if query.Message != nil {
@@ -1431,13 +1427,12 @@ func (b *Bot) handleAllStatistics(message *telego.Message) {
 // showStatisticsForPeriod показывает статистику для выбранного периода
 func (b *Bot) showStatisticsForPeriod(message *telego.Message, period string) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем подробную статистику пользователя
 	detailedStats, err := b.service.GetDetailedUserStats(user.ID, period)
@@ -2102,7 +2097,7 @@ func (b *Bot) handleInputNicknameState(message *telego.Message) {
 		}
 
 		// Обновляем никнейм пользователя
-		dbUser, err := b.service.GetUser(user.ID)
+		dbUser, err := b.getUser(user.ID)
 		if err != nil {
 			logger.Error.Printf("Error getting user: %v", err)
 			b.stateManager.ClearState(user.ID)
@@ -2122,6 +2117,7 @@ func (b *Bot) handleInputNicknameState(message *telego.Message) {
 		if err := b.service.UpdateUser(dbUser); err != nil {
 			logger.Error.Printf("Error updating user nickname: %v", err)
 		}
+		b.updateUserCache(user.ID)
 
 		// Очищаем состояние
 		b.stateManager.ClearState(user.ID)
@@ -2138,7 +2134,7 @@ func (b *Bot) handleInputNameState(message *telego.Message, messageID int) {
 	// Обработка ввода имени
 	if len(message.Text) > 0 {
 		// Обновляем имя пользователя
-		dbUser, err := b.service.GetUser(user.ID)
+		dbUser, err := b.getUser(user.ID)
 		if err != nil {
 			logger.Error.Printf("Error getting user: %v", err)
 			b.stateManager.ClearState(user.ID)
@@ -2162,6 +2158,7 @@ func (b *Bot) handleInputNameState(message *telego.Message, messageID int) {
 			b.SendMessage(message.Chat.ID, b.prepareMessage("update_error", language))
 			return
 		}
+		b.updateUserCache(user.ID)
 
 		// Отправляем сообщение об успешном обновлении
 		successText := b.getText("name_saved", language)
@@ -2185,7 +2182,7 @@ func (b *Bot) handleInputUpNicknameState(message *telego.Message, messageID int)
 	// Обработка ввода никнейма при обновлении в настройках
 	if len(message.Text) > 0 {
 		// Обновляем никнейм пользователя
-		dbUser, err := b.service.GetUser(user.ID)
+		dbUser, err := b.getUser(user.ID)
 		if err != nil {
 			logger.Error.Printf("Error getting user: %v", err)
 			b.stateManager.ClearState(user.ID)
@@ -2220,6 +2217,7 @@ func (b *Bot) handleInputUpNicknameState(message *telego.Message, messageID int)
 			b.SendMessage(message.Chat.ID, b.prepareMessage("update_error", language))
 			return
 		}
+		b.updateUserCache(user.ID)
 
 		// Отправляем сообщение об успешном обновлении
 		successText := b.getText("nickname_saved", language)
@@ -2242,7 +2240,7 @@ func (b *Bot) handleInputWalletState(message *telego.Message, messageID int) {
 
 	// Обработка ввода адреса кошелька
 	if len(message.Text) > 0 {
-		dbUser, err := b.service.GetUser(user.ID)
+		dbUser, err := b.getUser(user.ID)
 		if err != nil {
 			logger.Error.Printf("Error getting user: %v", err)
 			b.stateManager.ClearState(user.ID)
@@ -2275,6 +2273,7 @@ func (b *Bot) handleInputWalletState(message *telego.Message, messageID int) {
 			b.SendMessage(message.Chat.ID, b.prepareMessage("update_error", language))
 			return
 		}
+		b.updateUserCache(user.ID)
 
 		// Отправляем сообщение об успешном обновлении
 		successText := b.getText("withdrawusdtchangeok", language)
