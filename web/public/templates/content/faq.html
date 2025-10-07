@@ -19,7 +19,7 @@
 <div class="main-container">
   <div class="container">
     <!-- Общие вопросы -->
-    <ul class="nav nav-pills mb-4 justify-content-center">
+    <!-- <ul class="nav nav-pills mb-4 justify-content-center">
       <li class="nav-item">
         <a class="nav-link active" href="#general"
           >{{ i18n .lang "general_questions" }}</a
@@ -41,11 +41,10 @@
           >{{ i18n .lang "withdrawals" }}</a
         >
       </li>
-    </ul>
+    </ul> -->
 
-    <!-- Общие вопросы -->
     <div id="general" class="faq-section">
-      <h2 class="mb-4">{{ i18n .lang "general_questions" }}</h2>
+      <!-- <h2 class="mb-4">{{ i18n .lang "general_questions" }}</h2> -->
 
       <div class="faq-card card">
         <div class="card-header">
@@ -58,32 +57,12 @@
           <p>{{ i18n .lang "roulette_bot_answer" }}</p>
           <p>{{ i18n .lang "main_features" }}</p>
           <ul>
-            <li>{{ i18n .lang "feature_simplified_game" }}</li>
-            <li>{{ i18n .lang "feature_weekly_rating" }}</li>
-            <li>{{ i18n .lang "feature_super_rating" }}</li>
-            <li>{{ i18n .lang "feature_multilang" }}</li>
-            <li>{{ i18n .lang "feature_transparent" }}</li>
-            <li>{{ i18n .lang "feature_withdrawal" }}</li>
+            <li>{{ i18n .lang "feature_1" }}</li>
+            <li>{{ i18n .lang "feature_2" }}</li>
+            <li>{{ i18n .lang "feature_3" }}</li>
+            <li>{{ i18n .lang "feature_4" }}</li>
+            <li>{{ i18n .lang "feature_5" }}</li>
           </ul>
-        </div>
-      </div>
-
-      <div class="faq-card card">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="bi bi-question-circle me-2"></i> {{ i18n .lang
-            "how_to_start" }}
-          </h5>
-        </div>
-        <div class="card-body">
-          <p>{{ i18n .lang "start_playing_answer" }}</p>
-          <ol>
-            <li>{{ i18n .lang "start_step1" }}</li>
-            <li>{{ i18n .lang "start_step2" }}</li>
-            <li>{{ i18n .lang "start_step3" }}</li>
-            <li>{{ i18n .lang "start_step4" }}</li>
-          </ol>
-          <p>{{ i18n .lang "bot_instructions" }}</p>
         </div>
       </div>
 
@@ -104,12 +83,98 @@
           <p>{{ i18n .lang "change_language" }}</p>
         </div>
       </div>
-    </div>
 
-    <!-- Поддержка -->
-    <div class="faq-section">
-      <h2 class="mb-4">{{ i18n .lang "footer_support" }}</h2>
+      <div class="faq-card card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-question-circle me-2"></i> {{ i18n .lang
+            "rules" }}
+          </h5>
+        </div>
+        <div class="card-body">
+          <p>{{ i18n .lang "rules_start_title" }}</p>
+          <p>{{ i18n .lang "rules_start_text" }}</p>
+          <p>{{ i18n .lang "rules_process_title" }}</p>
+          <p>{{ i18n .lang "rules_process_text" }}</p>
+          <p>{{ i18n .lang "rules_zero_title" }}</p>
+          <p>{{ i18n .lang "rules_zero_text" }}</p>
+          <p>{{ i18n .lang "rules_points_title" }}</p>
+          <p>{{ i18n .lang "rules_points_text_1" }}</p>
+          <p>{{ i18n .lang "rules_points_text_2" }}</p>
+          <p>{{ i18n .lang "rules_points_text_3" }}</p>
+          <p>{{ i18n .lang "rules_rating_title" }}</p>
+          <p>{{ i18n .lang "rules_rating_text" }}</p>
+        </div>
+      </div>
 
+      <div class="faq-card card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-question-circle me-2"></i> {{ i18n .lang
+            "safety" }}
+          </h5>
+        </div>
+        <div class="card-body">
+          <p>{{ i18n .lang "safety_text" }}</p>
+          <p>{{ i18n .lang "safety_description" }}</p>
+          <p>{{ i18n .lang "safety_description_step_1" }}</p>
+          <p>{{ i18n .lang "safety_description_step_2" }}</p>
+          <p>{{ i18n .lang "safety_description_step_3" }}</p>
+          <p>{{ i18n .lang "safety_description_step_4" }}</p>
+          <p>{{ i18n .lang "safety_description_step_5" }}</p>
+          <p>{{ i18n .lang "safety_steps_title" }}</p>
+          <ol>            
+            <li><p>{{ i18n .lang "safety_steps_text_1" }}</p></li>
+            <li><p>{{ i18n .lang "safety_steps_text_2" }}</p></li>
+            <li><p>{{ i18n .lang "safety_steps_text_3" }}</p></li>
+            <li><p>{{ i18n .lang "safety_steps_text_4" }}</p></li>
+            <li><p>{{ i18n .lang "safety_summary" }}</p></li>
+          </ol>
+        </div>
+      </div>
+      
+      <div class="faq-card card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-question-circle me-2"></i> {{ i18n .lang
+            "rewards" }}
+          </h5>
+        </div>
+        <div class="card-body">
+          <p>{{ i18n .lang "rewards_text" }}</p>
+          <p>{{ i18n .lang "rewards_distribution_title" }}</p>
+          <p>{{ i18n .lang "rewards_distribution_text" }}</p>
+          <p>{{ i18n .lang "rewards_example" }}</p>
+          <p>{{ i18n .lang "rewards_example_text_1" }}</p>
+          <p>{{ i18n .lang "rewards_example_text_2" }}</p>
+          <p>{{ i18n .lang "rewards_example_text_3" }}</p>
+          <p>{{ i18n .lang "rewards_identical_results" }}</p>
+          <p>{{ i18n .lang "rewards_identical_results_text" }}</p>
+          <p>{{ i18n .lang "rewards_payments_title" }}</p>
+          <p>{{ i18n .lang "rewards_payments_text" }}</p>
+        </div>
+      </div>
+
+      <div class="faq-card card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-question-circle me-2"></i> {{ i18n .lang
+            "payments" }}
+          </h5>
+        </div>
+        <div class="card-body">
+          <p>{{ i18n .lang "payments_accrual_title" }}</p>
+          <p>{{ i18n .lang "payments_accrual_text" }}</p>
+          <p>{{ i18n .lang "payments_withdrawal_title" }}</p>
+          <p>{{ i18n .lang "payments_withdrawal_text" }}</p>
+          <p>{{ i18n .lang "payments_terms_title" }}</p>
+          <p>{{ i18n .lang "payments_terms_text" }}</p>
+          <p>{{ i18n .lang "payments_conditions_title" }}</p>
+          <p>{{ i18n .lang "payments_conditions_text_1" }}</p>
+          <p>{{ i18n .lang "payments_conditions_text_2" }}</p>
+        </div>
+      </div>
+      
       <div class="faq-card card">
         <div class="card-header">
           <h5 class="mb-0">
@@ -122,11 +187,12 @@
           <ul>
             <li>{{ i18n .lang "contact_method1" }}</li>
             <li>{{ i18n .lang "contact_method2" }}</li>
-            <li>{{ i18n .lang "contact_method3" }}</li>
           </ul>
           <p>{{ i18n .lang "support_response_time" }}</p>
+          <p>{{ i18n .lang "support_rules" }}</p>
         </div>
       </div>
+
     </div>
   </div>
 </div>

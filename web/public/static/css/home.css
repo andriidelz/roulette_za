@@ -3,7 +3,19 @@
 /* Улучшенная версия заголовка главной страницы */
 .hero-section.hero-home {
     padding: 6rem 0;
-    background: linear-gradient(135deg, var(--dark-color) 0%, #343a40 100%);
+    background: url("../img/intro-btn.png"), url("../img/intro-bg.png");
+    background-position: center right, center;
+    background-repeat: no-repeat, no-repeat;
+    background-size: contain, cover;
+}
+
+@media (max-width: 768px) {
+    .hero-section.hero-home {
+        background: url("../img/intro-btn.png"), url("../img/intro-bg-mob.png");
+        background-position: center right, center;
+        background-repeat: no-repeat, no-repeat;
+        background-size: contain, cover;
+    }
 }
 
 .hero-home .hero-content {
@@ -54,11 +66,10 @@
     position: relative;
     z-index: 1;
     height: 100%;
-    transition: transform 0.3s, box-shadow 0.3s;
+    transition: box-shadow 0.3s;
 }
 
 .step-card:hover {
-    transform: translateY(-5px);
     box-shadow: 0 10px 20px rgba(0,0,0,0.15);
 }
 
@@ -94,18 +105,6 @@
     position: relative;
 }
 
-.cta-section::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="%23ffffff20" stroke-width="1" fill="none"/></svg>');
-    background-size: 200px 200px;
-    opacity: 0.2;
-}
-
 .btn-light-outline {
     color: white;
     border-color: white;
@@ -133,6 +132,15 @@
 
 /* Адаптивный дизайн */
 @media (max-width: 991.98px) {
+    .hero-section.hero-home::before {
+        position: absolute;
+        content: "";
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.4);
+    }
     .step-connection {
         display: none;
     }

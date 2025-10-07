@@ -9,12 +9,12 @@
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    transition: transform 0.3s;
+    transition: box-shadow 0.3s;
     margin-bottom: 1rem;
 }
 
 .faq-card:hover {
-    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
 }
 
 .faq-card .card-header {
