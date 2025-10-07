@@ -1,0 +1,83 @@
+fairness_verification_title: "Fairness Verification of Results"
+verify_authenticity: "Verify the authenticity of any roulette result. Our system ensures 100% transparency of the gameplay."
+verify_result: "Verify Result"
+how_it_works: "How it works"
+
+# Results table
+results_history: "Results History"
+search_by_id: "Search by ID"
+result_id: "ID"
+result_number: "Result"
+color: "Color"
+hash_column: "Hash"
+salt_hex: "Salt (HEX)"
+time: "Time"
+actions: "Actions"
+verify: "Verify"
+
+# Colors
+color_red: "Red"
+color_black: "Black"
+color_green: "Zero"
+
+# No results
+no_results: "No results found"
+
+# Verification form
+verification_title: "Result Verification"
+number_label: "Number (0-36):"
+salt_label: "Salt (HEX):"
+original_hash_label: "Hash (SHA-256):"
+verification_result_title: "Verification Result"
+computed_hash_label: "Computed Hash:"
+
+# How verification works
+how_verification_works: "How verification works"
+verification_explanation: "Before each round, the system generates a random number and a cryptographic salt, then calculates the SHA-256 hash."
+hash_publication: "The hash is published before the round starts, and the number and salt are revealed after its completion."
+self_verification: "You can independently verify whether the published hash matches the open data:"
+verification_formula: "SHA-256(number:salt)"
+verification_example: "Verification example:"
+example_number: "Number: 5"
+example_salt: "Salt: a1b2c3d4e5f6"
+example_hash: "Hash: e37f...0840"
+verification_instruction: "To verify, compute the SHA-256 hash of the string 5:a1b2c3d4e5f6 and compare it with the original hash. If they match, the result is fair."
+
+# Fair game system explanation
+fair_system_title: "How the fair game system works"
+generation_step: "Hash Generation"
+generation_desc: 'Before the round starts, the system generates a random number from 0 to 36 and a unique cryptographic salt. Then the SHA-256 hash of the string "number:salt" is calculated.'
+publication_step: "Hash Publication"
+publication_desc: "The hash is published before players start placing bets. This guarantees that the result is predetermined and cannot be changed after bets are placed."
+reveal_step: "Result Reveal"
+reveal_desc: "After the round ends, the system reveals the used number and salt. Anyone can verify whether the previously published hash matches this data."
+
+# Code example
+code_example_title: "Example of independent verification (in Go):"
+
+# FAQ section
+faq_question_1: "How can I be sure the results are not rigged?"
+faq_answer_1_p1: "Thanks to the pre-hashing system, the result of each round is determined in advance and cannot be changed after betting starts. The hash is published before the round starts, and after completion, you can verify its correspondence with the open data."
+faq_answer_1_p2: "The SHA-256 cryptographic algorithm mathematically guarantees that it is impossible to find another number and salt combination that would produce the same hash."
+
+faq_question_2: 'What is "salt" and why is it needed?'
+faq_answer_2_p1: "Salt is a random string of characters added to the number before calculating the hash. It is needed so that one cannot prepare in advance a table of correspondences of all possible numbers (from 0 to 36) to their hashes."
+faq_answer_2_p2: "Without salt, a malicious actor could simply look in such a table and find out which number will come up. Salt adds unpredictability and guarantees the uniqueness of the hash for each round, even if identical numbers are drawn."
+
+faq_question_3: "What tools can I use for verification?"
+faq_answer_3: "You can use:"
+verification_tools_1: "The built-in verification form on this page"
+verification_tools_2: "Online SHA-256 calculators (e.g., Online SHA-256)"
+verification_tools_3: 'Command line on Linux/Mac: echo -n "5:a1b2c3d4e5f6" | sha256sum'
+verification_tools_4: "Any programming language with a library for computing SHA-256 hashes"
+format_reminder: "Don't forget to use the number:salt format without spaces and other characters."
+
+# Modal verification
+modal_verify_title: "Result Verification"
+modal_verify_info: 'Click "Verify" to confirm the authenticity of the result'
+modal_number_label: "Number:"
+modal_salt_label: "Salt (HEX):"
+modal_original_hash: "Original Hash:"
+modal_computed_hash: "Computed Hash:"
+modal_close: "Close"
+modal_verify_btn: "Verify"

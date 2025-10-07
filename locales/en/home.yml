@@ -1,1 +1,41 @@
-social_casino_on_telegram: "Social casino on Telegram"
+social_casino_on_telegram: "Play-to-Earn game on Telegram"
+roulette_bot_description: "Play and win. «Sprut Black&Red» is a Telegram bot for playing roulette without investments, with the opportunity to win a share of the monetary prize pool every week."
+open_bot: "Start Game"
+verify_fairness: "Verify Fairness"
+features_title: "Why play «Sprut Black&Red»?"
+features_subtitle: "Advantages of our Play-to-Earn game:"
+
+# Feature cards
+fund_title: "Weekly Fund — $1,000"
+fund_desc: "Every player has a chance to make it into the weekly top and receive a share of the $1,000 prize fund. With the start of a new week, the payout can be withdrawn to a personal crypto wallet."
+free_title: "Completely Free Game"
+free_desc: "There are no fees or deposits in the game. Every player receives free bets daily for guessing the color that will appear on the roulette and improving their position in the rating."
+withdrawal_title: "Instant Fund Withdrawal"
+withdrawal_desc: "The game provides the possibility of instant reward withdrawal after accrual — without airdrops and long waits. Monetary accrual happens on Mondays, which can be immediately withdrawn to your crypto wallet."
+fairness_title: "Game Without Deception"
+fairness_desc: "Every color guess on the roulette is verified by an independent test of the SHA-256 cryptographic hash. This guarantees system transparency and eliminates the possibility of fraud."
+verification_title: "No Verification"
+verification_desc: "The game takes place right in Telegram. To start, it only takes 20 seconds: confirm you are of legal age, choose a country, specify a nickname, and subscribe to the bot's channel. These are all the conditions to start."
+no_ads_title: "No Ads"
+no_ads_desc: "You won't have to 'pay' for the free game with frequent views of long ads. Everything is created for immersion in the gameplay and focus on winning."
+
+# How it works section
+how_to_play_title: "How to start winning with «Sprut Black&Red»?"
+how_to_play_subtitle: "Three steps to victory"
+
+step1_title: "Registration"
+step1_desc: "Start takes only 20 seconds — after that, you can immediately enter the game and make winning bets."
+go_to_bot_1: "Register"
+
+step2_title: "Place a Bet"
+step2_desc: "In the main menu, click «Play» and choose: black, red, or Zero. The system provides 2880 free spins daily."
+go_to_bot_2: "Place a Bet"
+
+step3_title: "Win Every Week"
+step3_desc: "Collect prize points, climb the rating, and receive a share of the prize fund at the end of the week."
+go_to_bot_3: "Start Winning"
+
+# CTA section
+ready_to_start_title: "Dive into the competition for the weekly $ prize fund"
+ready_to_start_desc: "Activate the Sprut Black&Red bot — the game that pays real money."
+start_bot: "Launch Bot in Telegram"

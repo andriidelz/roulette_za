@@ -1,1 +1,35 @@
-social_casino_on_telegram: "Social casino on Telegram"
+# Navigation menu
+nav_home: "Home"
+nav_open_bot: "Open Bot"
+nav_results: "Results"
+nav_faq: "FAQ"
+nav_example: "Verification Example"
+
+# Footer
+about_roulette_bot: "About Sprut Games"
+about_description: "Telegram bot for social casino based on a simplified roulette principle with a fairness verification system."
+footer_links: "Links"
+footer_home: "Home"
+footer_results: "Results"
+footer_faq: "FAQ"
+footer_example: "Verification Example"
+footer_play: "Play"
+footer_telegram_bot: "Telegram Bot"
+footer_invite_friend: "Invite Friend"
+footer_our_rules: "Our Rules"
+footer_contacts: "Contacts"
+footer_support: "Support"
+all_rights_reserved: "All rights reserved"
+developed_by: "Developed by"
+
+# Common buttons and actions
+start: "Start"
+close: "Close"
+verify: "Verify"
+copy: "Copy"
+search: "Search"
+previous: "Previous"
+next: "Next"
+
+# Base template
+page_not_found: "Page not found"

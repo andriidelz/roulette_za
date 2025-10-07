@@ -1,0 +1,40 @@
+example_title: "SHA-256 Hash Verification Example"
+example_subtitle: "On this page, you can see an example implementation of the SHA-256 hash verification algorithm using JavaScript. You can use this code to independently verify our roulette results."
+
+code_for_verification: "Code for hash verification"
+copy_code: "Copy Code"
+how_to_use_code: "How to use this code:"
+usage_step1: "Copy the function code"
+usage_step2: "Add it to your JavaScript project"
+usage_step3: "Call the function with parameters: number, salt, and original hash"
+usage_step4: "The function will return an object with the verification result and additional information"
+
+web_crypto_note: "Note: This code uses the Web Crypto API, available in most modern browsers."
+
+try_yourself: "Try it yourself"
+number_input_label: "Number (0-36):"
+salt_input_label: "Salt (HEX):"
+hash_input_label: "Original hash:"
+hash_auto_calc: "Will be calculated automatically"
+hash_help_text: "Leave empty for automatic calculation and comparison."
+verify_btn: "Verify"
+
+verification_result: "Verification Result"
+waiting_verification: "Waiting for verification..."
+input_data: "Input Data:"
+computed_hash: "Computed Hash:"
+original_hash: "Original Hash:"
+
+how_hash_verification_works: "How does hash verification work?"
+
+step_data_generation: "Data Generation"
+step_data_desc: 'The system creates a string in the format "number:salt" (e.g., "5:a1b2c3d4e5f6"). Here, the number is the roulette round result (from 0 to 36), and the salt is a random string of characters.'
+
+step_hash_calculation: "Hash Calculation"
+step_hash_desc: "This string is converted into a byte array, to which the SHA-256 algorithm is applied. The result is a 64-character string in hexadecimal format."
+
+step_publication_verification: "Publication and Verification"
+step_publication_desc: "Only the hash is published before the round starts. After the round ends, the number and salt are revealed. You can independently compute the hash and verify that it matches the published one."
+
+why_guarantee_fairness: "Why does this guarantee fairness?"
+fairness_explanation: 'Since the hash is published before betting begins, and the result and salt are revealed after the round ends, the system cannot change the outcome after players have placed their bets. The SHA-256 cryptographic algorithm guarantees that it is impossible to find another "number:salt" pair that would produce the same hash.'
