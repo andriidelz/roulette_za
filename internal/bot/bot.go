@@ -201,8 +201,7 @@ func (b *Bot) Start() error {
 	b.StartUpdateCache()
 	// Запускаем планировщик для обновления рейтингов
 	b.StartRatingScheduler()
-	// Запускаем планировщик для обновления капч
-	b.StartUpdateCaptcha()
+
 
 	// Запускам емуляцию ставок по заданиям для пользователей
 	// b.gameHandler.initEmulate()

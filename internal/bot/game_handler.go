@@ -59,8 +59,9 @@ type GameHandler struct {
 	processMutex    sync.Mutex          // Мьютекс для доступа к processedRounds
 
 	prizeFundAmount float64 // значення з GetPrizeFund
-	topCount        int     // значення з GetPrizeFund
-	totalPoints     int     // значення з GetWeeklyRating
+	// topCount        int        // значення з GetPrizeFund
+	totalPoints    int        // значення з GetWeeklyRating
+	prizeFundMutex sync.Mutex // Мьютекс для доступа к призового фонду
 
 	roundMsgChan   chan RoundMessage
 	processingLock sync.Mutex
@@ -110,8 +111,8 @@ func NewGameHandler(bot *Bot, service service.Service, rabbitmqURL string) (*Gam
 		stopWorker:      make(chan struct{}),
 
 		prizeFundAmount: 1000.0, // По умолчанию
-		topCount:        100,    // По умолчанию
-		totalPoints:     0,      // По умолчанию
+		// topCount:        100,    // По умолчанию
+		totalPoints: 0, // По умолчанию
 	}
 
 	// Запускаем обработчик сообщений в отдельной горутине
@@ -664,19 +665,23 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	// Переменные для текста рейтинга
 	var ratingText string
 	var userShare float64 = 0.0
+
+	h.prizeFundMutex.Lock()
 	totalPoints := h.totalPoints
+	prizeFundAmount := h.prizeFundAmount
+	h.prizeFundMutex.Unlock()
 
 	if rating.Points > totalPoints {
 		totalPoints = rating.Points // totalPoints оновлюється з затримкою і є ймовірність що рейтинг користувача буде більше ніж загальна кількість балів
 	}
 	if rating.Points > 0 && totalPoints > 0 {
 		// Расчет доли пользователя
-		userShare = (float64(rating.Points) / float64(totalPoints)) * h.prizeFundAmount
+		userShare = (float64(rating.Points) / float64(totalPoints)) * prizeFundAmount
 	}
 
 	// Формируем сообщение о рейтинге
 	ratingTemplate := h.bot.getText("bidrating", language)
-	ratingText = fmt.Sprintf(ratingTemplate, rating.Points, rating.Position, userShare, h.prizeFundAmount)
+	ratingText = fmt.Sprintf(ratingTemplate, rating.Points, rating.Position, userShare, prizeFundAmount)
 
 	// Часть проверки баланса ставок
 	betsBalance, err := h.service.GetUserRemainingBets(dbUser.ID)
