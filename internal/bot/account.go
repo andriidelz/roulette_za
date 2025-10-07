@@ -31,13 +31,12 @@ const FeeAmount = 1.0
 // handleAccountCommand обрабатывает команду "Аккаунт" из главного меню
 func (b *Bot) handleAccountCommand(message *telego.Message) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем локализованный текст раздела аккаунта
 	options := b.prepareMessage("accstart", language)
@@ -83,7 +82,7 @@ func (b *Bot) handleBalanceCommand(message *telego.Message) {
 	user := message.From
 
 	// Получаем информацию о пользователе для проверки баланса
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err := b.getUser(user.ID)
 	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	if err != nil {
@@ -153,7 +152,7 @@ func (b *Bot) handleWithdrawCommand(message *telego.Message) {
 	user := message.From
 
 	// Получаем информацию о пользователе для проверки баланса
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err := b.getUser(user.ID)
 	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	if err != nil {
@@ -223,7 +222,7 @@ func (b *Bot) handleInputWithdrawAmountCommand(message *telego.Message) {
 	user := message.From
 
 	// Получаем информацию о пользователе для проверки баланса
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err := b.getUser(user.ID)
 	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 	if err != nil {
 		logger.Error.Printf("Error getting user: %v", err)
@@ -320,6 +319,7 @@ func (b *Bot) handleInputWithdrawAmountCommand(message *telego.Message) {
 	if err := b.service.UpdateUser(dbUser); err != nil {
 		logger.Error.Printf("Error updating user balance: %v", err)
 	}
+	b.updateUserCache(user.ID)
 
 	// Отправляем сообщение об успешном создании запроса
 	options := b.prepareMessage("withdrawsumok", language)
@@ -347,7 +347,7 @@ func (b *Bot) handleInputWithdrawWalletCommand(message *telego.Message) {
 	user := message.From
 
 	// Получаем информацию о пользователе
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err := b.getUser(user.ID)
 	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	if err != nil {
@@ -383,6 +383,7 @@ func (b *Bot) handleInputWithdrawWalletCommand(message *telego.Message) {
 	if err := b.service.UpdateUser(dbUser); err != nil {
 		logger.Error.Printf("Error updating user wallet address: %v", err)
 	}
+	b.updateUserCache(user.ID)
 
 	// Отправляем сообщение об успешном обновлении
 	options := b.prepareMessage("withdrawusdtchangeok", language)
@@ -417,17 +418,12 @@ func (b *Bot) handleRequestWithdrawCallback(query *telego.CallbackQuery) {
 	b.answerCallbackQuery(query.ID, "", false)
 
 	user := query.From
-	dbUser, err := b.service.GetUser(user.ID)
-	if err != nil {
-		// Регистрация пользователя, если он не найден
-		dbUser, err = b.service.RegisterUser(user.ID, user.Username, user.FirstName, user.LastName, "", user.LanguageCode)
-		if err != nil {
-			logger.Error.Printf("Error registering user: %v", err)
-			return
-		}
-	}
 
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
+	if err != nil {
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
+		return
+	}
 
 	// Переводим пользователя в раздел вывода
 	if query.Message != nil {
@@ -450,7 +446,7 @@ func (b *Bot) handleCheckWalletCallback(query *telego.CallbackQuery) {
 	user := query.From
 
 	// Получаем информацию о пользователе
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err := b.getUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user for withdrawal: %v", err)
 		return
@@ -526,7 +522,7 @@ func (b *Bot) handleCheckAmountCallback(query *telego.CallbackQuery) {
 	user := query.From
 
 	// Получаем информацию о пользователе
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err := b.getUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user for withdrawal: %v", err)
 		return
@@ -577,7 +573,7 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 	user := query.From
 
 	// Получаем информацию о пользователе
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err := b.getUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user for withdrawal: %v", err)
 		return
@@ -639,6 +635,7 @@ func (b *Bot) handleProcessWithdrawCallback(query *telego.CallbackQuery) {
 	if err := b.service.UpdateUser(dbUser); err != nil {
 		logger.Error.Printf("Error updating user balance: %v", err)
 	}
+	b.updateUserCache(user.ID)
 
 	// Отправляем сообщение об успешном создании запроса
 	options := b.prepareMessage("withdrawsumok", language)

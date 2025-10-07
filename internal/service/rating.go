@@ -28,15 +28,10 @@ func (s *ServiceImpl) GetWeeklyTopRating(limit int) ([]models.WeeklyRating, erro
 
 // GetUserRatingPosition получает текущую позицию пользователя в рейтинге
 // и его соседей (для отображения в интерфейсе)
-func (s *ServiceImpl) GetUserRatingPosition(telegramID int64, neighborsCount int) ([]models.WeeklyRating, int, error) {
-	// Получаем пользователя
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return nil, 0, err
-	}
+func (s *ServiceImpl) GetUserRatingPosition(userID uint, neighborsCount int) ([]models.WeeklyRating, int, error) {
 
 	// Обновляем рейтинг пользователя и пересчитываем позиции всех в рейтинге
-	if err := s.repo.UpdateWeeklyRatingForUser(user.ID); err != nil {
+	if err := s.repo.UpdateWeeklyRatingForUser(userID); err != nil {
 		return nil, 0, err
 	}
 
@@ -44,7 +39,7 @@ func (s *ServiceImpl) GetUserRatingPosition(telegramID int64, neighborsCount int
 	year, week := time.Now().ISOWeek()
 
 	// Получаем рейтинг пользователя и его соседей
-	neighbors, position, err := s.repo.GetUserRankAndNeighbors(user.ID, year, week, neighborsCount)
+	neighbors, position, err := s.repo.GetUserRankAndNeighbors(userID, year, week, neighborsCount)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -70,18 +65,13 @@ func (s *ServiceImpl) GetPointsToReachPrizeZone() (int, error) {
 
 // GetPointsNeededForUser возвращает количество баллов, которое пользователю необходимо
 // набрать для входа в призовую зону
-func (s *ServiceImpl) GetPointsNeededForUser(telegramID int64) (int, error) {
-	// Получаем пользователя
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return 0, err
-	}
+func (s *ServiceImpl) GetPointsNeededForUser(userID uint) (int, error) {
 
 	// Получаем текущую неделю и год
 	year, week := time.Now().ISOWeek()
 
 	// Получаем текущие баллы пользователя
-	userRating, err := s.repo.GetUserWeeklyRating(user.ID, year, week)
+	userRating, err := s.repo.GetUserWeeklyRating(userID, year, week)
 	if err != nil {
 		return 0, err
 	}

@@ -26,17 +26,16 @@ type Service interface {
 	GetDetailedUserStats(telegramID int64, period string) (map[string]int, error)
 
 	// Игра и раунды
-	MakeBet(telegramID int64, option models.BetOption) error
-	GetUserBets(telegramID int64, limit int) ([]models.Bet, error)
-	CanBetZero(telegramID int64) (bool, int, error)
-	GetUserRemainingBets(telegramID int64) (int, error) // Добавленный метод для проверки доступных ставок
+	MakeBet(userID uint, option models.BetOption) error
+	// GetUserBets(telegramID int64, limit int) ([]models.Bet, error)
+	CanBetZero(userID uint) (bool, int, error)
+	GetUserRemainingBets(userID uint) (int, error) // Добавленный метод для проверки доступных ставок
 	GetCurrentRound() (*models.HashEntry, error)
 	// StartNewRound() (*models.HashEntry, error)
 	StartNewRoundFromRotator() (*models.HashEntry, error)
 	CompleteRound(hashEntryID uint) error
-	GetRoundResult(hashEntryID uint) (models.BetOption, error)
-	ProcessAndGetBets(hashEntryID uint) ([]models.Bet, error)
-	GetUserBetsForRound(telegramID int64, hashEntryID uint) ([]models.Bet, error)
+	GetRoundResult(roundNumber int64) (models.BetOption, error)
+	GetUserBetsForRound(userID uint, hashEntryID uint) ([]models.Bet, error)
 	GetHashEntryByID(id uint) (*models.HashEntry, error)
 
 	// Статистика
@@ -55,9 +54,9 @@ type Service interface {
 	CancelPrizeDistribution(year, week int) error
 	GetPrizeFund(year, week int) (*models.PrizeFund, error)
 	GetWeeklyTopRating(limit int) ([]models.WeeklyRating, error)
-	GetUserRatingPosition(telegramID int64, neighborsCount int) ([]models.WeeklyRating, int, error)
+	GetUserRatingPosition(userID uint, neighborsCount int) ([]models.WeeklyRating, int, error)
 	GetPointsToReachPrizeZone() (int, error)
-	GetPointsNeededForUser(telegramID int64) (int, error)
+	GetPointsNeededForUser(userID uint) (int, error)
 	RefreshAllRatings() error
 	FormatRatingForDisplay(ratings []models.WeeklyRating, currentUserID int64) []string
 	GetPrizeDistributionStatus(year, week int) (string, error)
@@ -77,7 +76,7 @@ type Service interface {
 	GetLatestHashEntry() (*models.HashEntry, error)
 
 	// Методы для работы со страной пользователя
-	GetUserCountry(telegramID int64) (string, error)
+	// GetUserCountry(telegramID int64) (string, error)
 
 	UpdateUserLanguage(telegramID int64, languageCode string) error
 	UpdateUser(user *models.User) error
@@ -366,7 +365,7 @@ func (s *ServiceImpl) CompleteRound(hashEntryID uint) error {
 	}
 
 	// Обрабатываем ставки
-	_, err = s.ProcessAndGetBets(hashEntryID)
+	_, err = s.ProcessAndGetBets(hashEntryID, round.Number)
 	if err != nil {
 		return err
 	}
@@ -379,14 +378,10 @@ func (s *ServiceImpl) CompleteRound(hashEntryID uint) error {
 }
 
 // GetRoundResult получает результат раунда (цвет)
-func (s *ServiceImpl) GetRoundResult(hashEntryID uint) (models.BetOption, error) {
-	round, err := s.repo.GetHashEntryByID(hashEntryID)
-	if err != nil {
-		return "", err
-	}
+func (s *ServiceImpl) GetRoundResult(roundNumber int64) (models.BetOption, error) {
 
 	// Используем utils.GetColorForNumber для определения цвета
-	color := utils.GetColorForNumber(round.Number)
+	color := utils.GetColorForNumber(roundNumber)
 
 	// Преобразуем строку в models.BetOption
 	switch color {
@@ -402,7 +397,7 @@ func (s *ServiceImpl) GetRoundResult(hashEntryID uint) (models.BetOption, error)
 }
 
 // ProcessAndGetBets обрабатывает все ставки и возвращает список обработанных ставок
-func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint) ([]models.Bet, error) {
+func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]models.Bet, error) {
 	// Получаем все ставки для этого раунда с preload пользователей
 	bets, err := s.repo.GetBetsByHashEntryIDWithUsers(hashEntryID)
 	if err != nil {
@@ -414,7 +409,7 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint) ([]models.Bet, error) 
 	}
 
 	// Получаем результат раунда
-	result, err := s.GetRoundResult(hashEntryID)
+	option, err := s.GetRoundResult(roundNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -422,12 +417,12 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint) ([]models.Bet, error) 
 	// Обрабатываем каждую ставку
 	for i := range bets {
 		// Определяем, выиграла ли ставка
-		won := bets[i].Option == result
+		won := bets[i].Option == option
 
 		// Рассчитываем количество полученных баллов
 		points := 0
 		if won {
-			if result == models.Zero {
+			if option == models.Zero {
 				points = 10
 			} else {
 				points = 1
@@ -450,12 +445,7 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint) ([]models.Bet, error) 
 }
 
 // MakeBet делает ставку в текущем раунде
-func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
-	// Получаем пользователя
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return err
-	}
+func (s *ServiceImpl) MakeBet(userID uint, option models.BetOption) error {
 
 	// Получаем текущий раунд
 	currentRound, err := s.repo.GetActiveHashEntry()
@@ -472,12 +462,12 @@ func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	betKey := fmt.Sprintf("bet:%d:%d", telegramID, currentRound.ID)
+	betKey := fmt.Sprintf("bet:%d:%d", userID, currentRound.ID)
 
 	// SETNX возвращает true только если ключа не было (атомарная операция)
 	wasSet, err := s.redisClient.SetNX(ctx, betKey, "1", 30*time.Second).Result()
 	if err != nil {
-		logger.Error.Printf("Redis SETNX error for user %d: %v", telegramID, err)
+		logger.Error.Printf("Redis SETNX error for user %d: %v", userID, err)
 		// Продолжаем работу даже при ошибке Redis, проверим через БД
 	} else if !wasSet {
 		// Ключ уже существует - пользователь уже делал ставку
@@ -485,7 +475,7 @@ func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
 	}
 
 	// Дополнительная проверка в БД для надежности
-	existingBets, err := s.repo.GetUserBetsForHashEntry(user.ID, currentRound.ID)
+	existingBets, err := s.repo.GetUserBetsForHashEntry(userID, currentRound.ID)
 	if err != nil {
 		// Откатываем Redis ключ при ошибке БД
 		s.redisClient.Del(context.Background(), betKey)
@@ -500,7 +490,7 @@ func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
 
 	// Проверяем, может ли пользователь делать ставку на Zero
 	if option == models.Zero {
-		canBetZero, _, err := s.CanBetZero(telegramID)
+		canBetZero, _, err := s.CanBetZero(userID)
 		if err != nil {
 			s.redisClient.Del(context.Background(), betKey)
 			return err
@@ -514,7 +504,7 @@ func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
 
 	// Создаем новую ставку
 	bet := &models.Bet{
-		UserID:      user.ID,
+		UserID:      userID,
 		HashEntryID: currentRound.ID,
 		Option:      option,
 		CreatedAt:   time.Now(),
@@ -530,6 +520,7 @@ func (s *ServiceImpl) MakeBet(telegramID int64, option models.BetOption) error {
 	return nil
 }
 
+// unused
 // GetUserBets получает историю ставок пользователя
 func (s *ServiceImpl) GetUserBets(telegramID int64, limit int) ([]models.Bet, error) {
 	user, err := s.repo.GetUserByTelegramID(telegramID)
@@ -541,14 +532,10 @@ func (s *ServiceImpl) GetUserBets(telegramID int64, limit int) ([]models.Bet, er
 }
 
 // CanBetZero проверяет, может ли пользователь делать ставку на Zero
-func (s *ServiceImpl) CanBetZero(telegramID int64) (bool, int, error) {
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return false, 0, err
-	}
+func (s *ServiceImpl) CanBetZero(userID uint) (bool, int, error) {
 
 	// Получаем количество ставок за сегодня
-	dailyBets, err := s.repo.GetUserDailyBets(user.ID)
+	dailyBets, err := s.repo.GetUserDailyBets(userID)
 	if err != nil {
 		return false, 0, err
 	}
@@ -575,11 +562,7 @@ func (s *ServiceImpl) CanBetZero(telegramID int64) (bool, int, error) {
 }
 
 // GetUserRemainingBets получает количество доступных ставок для пользователя на сегодня
-func (s *ServiceImpl) GetUserRemainingBets(telegramID int64) (int, error) {
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return 0, err
-	}
+func (s *ServiceImpl) GetUserRemainingBets(userID uint) (int, error) {
 
 	// Получаем настройку дневного лимита ставок
 	setting, err := s.repo.GetSetting("daily_bets_limit")
@@ -595,7 +578,7 @@ func (s *ServiceImpl) GetUserRemainingBets(telegramID int64) (int, error) {
 	}
 
 	// Получаем количество ставок за сегодня
-	dailyBets, err := s.repo.GetUserDailyBets(user.ID)
+	dailyBets, err := s.repo.GetUserDailyBets(userID)
 	if err != nil {
 		return 0, err
 	}
@@ -605,13 +588,8 @@ func (s *ServiceImpl) GetUserRemainingBets(telegramID int64) (int, error) {
 }
 
 // GetUserBetsForRound получает ставки пользователя для конкретного раунда
-func (s *ServiceImpl) GetUserBetsForRound(telegramID int64, hashEntryID uint) ([]models.Bet, error) {
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.repo.GetUserBetsForHashEntry(user.ID, hashEntryID)
+func (s *ServiceImpl) GetUserBetsForRound(userID uint, hashEntryID uint) ([]models.Bet, error) {
+	return s.repo.GetUserBetsForHashEntry(userID, hashEntryID)
 }
 
 // GetHashEntryByID получает запись хеша (раунд) по ID
@@ -779,6 +757,7 @@ func (s *ServiceImpl) GetLatestHashEntry() (*models.HashEntry, error) {
 	return &entries[0], nil
 }
 
+// unused
 func (s *ServiceImpl) GetUserCountry(telegramID int64) (string, error) {
 	user, err := s.repo.GetUserByTelegramID(telegramID)
 	if err != nil {

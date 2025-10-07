@@ -12,13 +12,12 @@ import (
 // handleRatingCommand обрабатывает команду /rating
 func (b *Bot) handleRatingCommand(message *telego.Message) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
-		logger.Error.Printf("Error getting user: %v", err)
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 		return
 	}
-
-	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Отправляем стартовое сообщение о рейтинге
 	options := b.prepareMessage("ratingstart", language)
@@ -48,7 +47,7 @@ func (b *Bot) handleRatingCallbackQuery(query *telego.CallbackQuery) {
 // getWeeklyRating используется для вывода рейтинга в меню и в игре
 func (b *Bot) getWeeklyRating(telegramID int64, appLanguage string) (MessageOptions, string) {
 	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
-	dbUser, err := b.service.GetUser(telegramID)
+	dbUser, err := b.getUser(telegramID)
 	if err == nil {
 		b.service.GetRepo().UpdateWeeklyRatingForUser(dbUser.ID)
 	}
@@ -120,7 +119,7 @@ func (b *Bot) handleWeeklyRating(message *telego.Message) {
 // handlePersonalRating обрабатывает запрос на просмотр личной позиции в рейтинге
 func (b *Bot) handlePersonalRating(message *telego.Message) {
 	user := message.From
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err := b.getUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user: %v", err)
 		return
@@ -129,7 +128,7 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
 	// Получаем позицию пользователя и его соседей в рейтинге
-	neighbors, position, err := b.service.GetUserRatingPosition(user.ID, 2)
+	neighbors, position, err := b.service.GetUserRatingPosition(dbUser.ID, 2)
 	if err != nil {
 		logger.Error.Printf("Error getting user position: %v", err)
 		b.SendMessage(message.Chat.ID, b.prepareMessage("rating_error", language))
@@ -150,7 +149,7 @@ func (b *Bot) handlePersonalRating(message *telego.Message) {
 		formattedList := b.service.FormatRatingList(neighbors, user.ID, language)
 
 		// Получаем количество баллов, необходимое для входа в призовую зону
-		pointsNeeded, err := b.service.GetPointsNeededForUser(user.ID)
+		pointsNeeded, err := b.service.GetPointsNeededForUser(dbUser.ID)
 		if err != nil {
 			logger.Error.Printf("Error getting points needed: %v", err)
 			pointsNeeded = 0

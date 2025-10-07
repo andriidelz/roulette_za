@@ -23,7 +23,7 @@ func (b *Bot) handleMyIDCommand(message *telego.Message) {
 	originalUserID := user.ID
 
 	// Получаем информацию о пользователе из базы данных
-	dbUser, err := b.service.GetUser(user.ID)
+	dbUser, err := b.getUser(user.ID)
 	if err != nil {
 		logger.Error.Printf("Error getting user: %v", err)
 		b.SendMessage(message.Chat.ID, MessageOptions{
@@ -39,7 +39,7 @@ func (b *Bot) handleMyIDCommand(message *telego.Message) {
 	// Проверяем, эмулирует ли пользователь кого-то
 	if emulatedID, ok := emulatedUsers[originalUserID]; ok {
 		// Получаем информацию об эмулируемом пользователе
-		emulatedUser, emulErr := b.service.GetUser(emulatedID)
+		emulatedUser, emulErr := b.getUser(emulatedID)
 		if emulErr == nil {
 			idInfoText += fmt.Sprintf("\n\n⚠️ WARNING: Emulation is active!\n"+
 				"You are emulating user:\n"+
@@ -93,7 +93,7 @@ func (b *Bot) handleEmulateIDCommand(message *telego.Message) {
 	}
 
 	// Пытаемся найти пользователя по Telegram ID
-	targetUser, err := b.service.GetUser(targetID)
+	targetUser, err := b.getUser(targetID)
 	if err != nil {
 		b.SendMessage(message.Chat.ID, MessageOptions{
 			Text: fmt.Sprintf("⚠️ User with Telegram ID %d not found.", targetID),
