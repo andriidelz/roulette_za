@@ -1,0 +1,35 @@
+# Navigation menu
+nav_home: "Головна"
+nav_open_bot: "Відкрити бот"
+nav_results: "Результати"
+nav_faq: "FAQ"
+nav_example: "Приклад перевірки"
+
+# Footer
+about_roulette_bot: "О Sprut Games"
+about_description: "Телеграм-бот для соціального казино на основі спрощеного принципу гри у рулетку з системою перевірки чесності."
+footer_links: "Розділи"
+footer_home: "Головна"
+footer_results: "Результати"
+footer_faq: "FAQ"
+footer_example: "Приклад перевірки"
+footer_play: "Грати"
+footer_telegram_bot: "Відкрити бота"
+footer_invite_friend: "Запросити друга"
+footer_our_rules: "Правила гри"
+footer_contacts: "Контакти"
+footer_support: "Підтримка"
+all_rights_reserved: "Усі права захищені"
+developed_by: "Разработано"
+
+# Common buttons and actions
+start: "Старт"
+close: "Закрити"
+verify: "Перевірити"
+copy: "Копіювати"
+search: "Пошук"
+previous: "Попередня"
+next: "Наступна"
+
+# Base template
+page_not_found: "Сторінку не знайдено"
