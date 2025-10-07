@@ -76,25 +76,49 @@ function initVerificationForm() {
  * Инициализация кнопки копирования кода
  */
 function initCopyButton() {
+    const translations = {
+        en: {
+            copySuccess: 'Code copied successfully!',
+            copyError: 'Failed to copy code.',
+            copied: 'Copied!',
+            copy: 'Copy',
+        },
+        uk: {
+            copySuccess: 'Код успішно скопійований!',
+            copyError: 'Не вдалося скопіювати код.',
+            copied: 'Скопійовано!',
+            copy: 'Копіювати',
+        },
+        ru: {
+            copySuccess: 'Код успешно скопирован!',
+            copyError: 'Не удалось скопировать код.',
+            copied: 'Скопировано!',
+            copy: 'Копировать',
+        }
+    };
+
     const copyBtn = document.getElementById('copy-code-btn');
     if (!copyBtn) return;
+
+    const lang = document.documentElement.lang || 'en'; 
+    const text = translations[lang] || translations['en'];
     
     copyBtn.addEventListener('click', function() {
         const codeText = document.querySelector('.code-block-dark pre code').textContent;
         
         copyToClipboard(codeText, (success) => {
             if (success) {
-                this.textContent = 'Скопировано!';
+                this.textContent = text.copied;
                 setTimeout(() => {
-                    this.textContent = 'Копировать';
+                    this.textContent = text.copy;
                 }, 2000);
-                showNotification('Код успешно скопирован!', 'success');
+                showNotification(text.copySuccess, 'success');
             } else {
                 this.textContent = 'Ошибка';
                 setTimeout(() => {
-                    this.textContent = 'Копировать';
+                    this.textContent = text.copy;
                 }, 2000);
-                showNotification('Не удалось скопировать код.', 'error');
+                showNotification(text.copyError, 'error');
             }
         });
     });
