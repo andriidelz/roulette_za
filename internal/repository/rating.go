@@ -2,9 +2,10 @@ package repository
 
 import (
 	"fmt"
-	"roulette/internal/models"
 	"strconv"
 	"time"
+
+	"roulette/internal/models"
 
 	"gorm.io/gorm"
 )
@@ -56,7 +57,6 @@ func (r *PostgresRepository) GetUserRankAndNeighbors(userID uint, year, week int
 		Order("position ASC").
 		Preload("User").
 		Find(&ratings).Error
-
 	if err != nil {
 		return nil, 0, err
 	}
@@ -187,13 +187,68 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 	}
 
 	// Обновляем все рейтинги
-	return r.RefreshWeeklyRatingsPosition(year, week)
+	return nil
+}
+
+// UpdateWeeklyRatingForUsers обновляет рейтинг для нескольких пользователей за один запрос
+func (r *PostgresRepository) UpdateWeeklyRatingForUsers(userIDs []uint, year, week int) error {
+	if len(userIDs) == 0 {
+		return nil
+	}
+
+	// Начало недели
+	now := time.Now()
+	weekday := int(now.Weekday())
+	if weekday == 0 {
+		weekday = 7
+	}
+	startOfWeek := time.Date(now.Year(), now.Month(), now.Day()-weekday+1, 0, 0, 0, 0, now.Location())
+
+	// Один большой запрос вместо N запросов
+	query := `
+		INSERT INTO weekly_ratings (user_id, year, week, points, bets, efficiency, position, created_at, updated_at)
+		SELECT
+			b.user_id,
+			? as year,
+			? as week,
+			COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0) as points,
+			COUNT(*) as bets,
+			CASE
+				WHEN COUNT(*) > 0 THEN COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0)::float / COUNT(*)
+				ELSE 0
+			END as efficiency,
+			0 as position,
+			NOW() as created_at,
+			NOW() as updated_at
+		FROM bets b
+		WHERE b.user_id IN ? AND b.created_at >= ?
+		GROUP BY b.user_id
+		ON CONFLICT (user_id, year, week)
+		DO UPDATE SET
+			points = EXCLUDED.points,
+			bets = EXCLUDED.bets,
+			efficiency = EXCLUDED.efficiency,
+			updated_at = NOW()
+	`
+
+	return r.db.Exec(query, year, week, userIDs, startOfWeek).Error
 }
 
 // RefreshWeeklyRatingsPosition обновляет позиции всех пользователей в еженедельном рейтинге
 func (r *PostgresRepository) RefreshWeeklyRatingsPosition(year, week int) error {
+	// Используем транзакцию с advisory lock для координации
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+	defer tx.Rollback()
 
-	// ИСПРАВЛЕНИЕ: Обновляем порядок сортировки при обновлении позиций
+	// Получаем эксклюзивную блокировку на обновление рейтинга
+	lockKey := int64(year*1000 + week)
+	if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", lockKey).Error; err != nil {
+		return err
+	}
+
 	positionQuery := `
         WITH ranked AS (
             SELECT id, user_id, ROW_NUMBER() OVER (
@@ -208,7 +263,11 @@ func (r *PostgresRepository) RefreshWeeklyRatingsPosition(year, week int) error 
         WHERE wr.id = r.id AND wr.week = ? AND wr.year = ?
     `
 
-	return r.db.Exec(positionQuery, week, year, week, year).Error
+	if err := tx.Exec(positionQuery, week, year, week, year).Error; err != nil {
+		return err
+	}
+
+	return tx.Commit().Error
 }
 
 // GetPointsToReachPrizeZone возвращает количество баллов, необходимое для входа в призовую зону
@@ -261,7 +320,6 @@ func (r *PostgresRepository) CheckIfPrizesAlreadyDistributed(year, week int) (bo
 	err := r.db.Model(&models.WeeklyRating{}).
 		Where("year = ? AND week = ? AND prize > 0", year, week).
 		Count(&count).Error
-
 	if err != nil {
 		return false, err
 	}

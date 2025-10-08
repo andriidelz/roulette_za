@@ -58,6 +58,7 @@ type Repository interface {
 	FixPartiallyDistributedPrizes(year, week int, action string) error
 	DeleteRating(userID uint) error
 	UpdateWeeklyRatingForUser(userID uint) error
+	UpdateWeeklyRatingForUsers(userIDs []uint, year, week int) error
 	GetUserRankAndNeighbors(userID uint, year, week int, neighborsCount int) ([]models.WeeklyRating, int, error)
 	GetPointsToReachPrizeZone(year, week, topCount int) (int, error)
 	RefreshWeeklyRatingsPosition(year, week int) error
