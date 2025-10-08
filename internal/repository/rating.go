@@ -190,6 +190,50 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 	return nil
 }
 
+// UpdateWeeklyRatingForUsers обновляет рейтинг для нескольких пользователей за один запрос
+func (r *PostgresRepository) UpdateWeeklyRatingForUsers(userIDs []uint, year, week int) error {
+	if len(userIDs) == 0 {
+		return nil
+	}
+
+	// Начало недели
+	now := time.Now()
+	weekday := int(now.Weekday())
+	if weekday == 0 {
+		weekday = 7
+	}
+	startOfWeek := time.Date(now.Year(), now.Month(), now.Day()-weekday+1, 0, 0, 0, 0, now.Location())
+
+	// Один большой запрос вместо N запросов
+	query := `
+		INSERT INTO weekly_ratings (user_id, year, week, points, bets, efficiency, position, created_at, updated_at)
+		SELECT
+			b.user_id,
+			? as year,
+			? as week,
+			COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0) as points,
+			COUNT(*) as bets,
+			CASE
+				WHEN COUNT(*) > 0 THEN COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0)::float / COUNT(*)
+				ELSE 0
+			END as efficiency,
+			0 as position,
+			NOW() as created_at,
+			NOW() as updated_at
+		FROM bets b
+		WHERE b.user_id IN ? AND b.created_at >= ?
+		GROUP BY b.user_id
+		ON CONFLICT (user_id, year, week)
+		DO UPDATE SET
+			points = EXCLUDED.points,
+			bets = EXCLUDED.bets,
+			efficiency = EXCLUDED.efficiency,
+			updated_at = NOW()
+	`
+
+	return r.db.Exec(query, year, week, userIDs, startOfWeek).Error
+}
+
 // RefreshWeeklyRatingsPosition обновляет позиции всех пользователей в еженедельном рейтинге
 func (r *PostgresRepository) RefreshWeeklyRatingsPosition(year, week int) error {
 	// Используем транзакцию с advisory lock для координации

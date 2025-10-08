@@ -170,11 +170,20 @@ func (r *Rotator) Start() {
 				go func(betsList []models.Bet, y, w int, roundID uint) {
 					startTime := time.Now()
 
-					// Обновляем статистику для каждого игрока
+					// Собираем уникальные ID игроков
+					userIDsMap := make(map[uint]bool)
 					for _, bet := range betsList {
-						if err := r.service.GetRepo().UpdateWeeklyRatingForUser(bet.UserID); err != nil {
-							logger.Error.Printf("Error updating rating for user %d: %v", bet.UserID, err)
-						}
+						userIDsMap[bet.UserID] = true
+					}
+
+					userIDs := make([]uint, 0, len(userIDsMap))
+					for userID := range userIDsMap {
+						userIDs = append(userIDs, userID)
+					}
+
+					// Один запрос вместо N запросов
+					if err := r.service.UpdateWeeklyRatingForUsers(userIDs, y, w); err != nil {
+						logger.Error.Printf("Error batch updating ratings: %v", err)
 					}
 
 					// После обновления всех игроков - пересчитываем позиции
@@ -183,7 +192,7 @@ func (r *Rotator) Start() {
 					} else {
 						duration := time.Since(startTime)
 						logger.Info.Printf("Rating updated for %d players in round #%d, positions refreshed (took %v)",
-							len(betsList), roundID, duration)
+							len(userIDs), roundID, duration)
 					}
 				}(bets, year, week, currentRoundID)
 			}

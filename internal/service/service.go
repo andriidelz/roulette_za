@@ -41,6 +41,9 @@ type Service interface {
 	// Обработка ставок
 	ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]models.Bet, error)
 
+	// Батч-обновление рейтинга
+	UpdateWeeklyRatingForUsers(userIDs []uint, year, week int) error
+
 	// Статистика
 	GetTotalStats() (map[string]int64, error)
 	GetSuccessRateStats() (map[string]float64, error)
@@ -447,9 +450,12 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]
 	return bets, nil
 }
 
+func (s *ServiceImpl) UpdateWeeklyRatingForUsers(userIDs []uint, year, week int) error {
+	return s.repo.UpdateWeeklyRatingForUsers(userIDs, year, week)
+}
+
 // MakeBet делает ставку в текущем раунде
 func (s *ServiceImpl) MakeBet(userID uint, option models.BetOption) error {
-
 	// Получаем текущий раунд
 	currentRound, err := s.repo.GetActiveHashEntry()
 	if err != nil {
