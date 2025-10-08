@@ -7,6 +7,7 @@ import (
 
 	"roulette/internal/logger"
 	"roulette/internal/messaging"
+	"roulette/internal/models"
 	"roulette/internal/service"
 )
 
@@ -146,19 +147,45 @@ func (r *Rotator) Start() {
 			// Запоминаем ID завершенного раунда
 			lastCompletedRoundID = currentRoundID
 
-			// Запускаем пересчет рейтинга
-			go func(year, week int) {
-				if err := r.service.GetRepo().RefreshWeeklyRatingsPosition(year, week); err != nil {
-					logger.Error.Printf("Error refreshing ratings after round #%d: %v", currentRoundID, err)
-				}
-			}(time.Now().ISOWeek())
-
 			// Получаем обновленные данные о завершенном раунде
 			completedRound, err := r.service.GetHashEntryByID(currentRoundID)
 			if err != nil {
 				logger.Error.Printf("Error getting completed round #%d: %v", currentRoundID, err)
 				time.Sleep(1 * time.Second)
 				continue
+			}
+
+			// Обрабатываем ставки
+			bets, err := r.service.ProcessAndGetBets(currentRoundID, completedRound.Number)
+			if err != nil {
+				logger.Error.Printf("Error processing bets for round #%d: %v", currentRoundID, err)
+				// Продолжаем, даже если произошла ошибка
+				bets = []models.Bet{} // Пустой список
+			}
+
+			// Обновляем рейтинг
+			if len(bets) > 0 {
+				year, week := time.Now().ISOWeek()
+
+				go func(betsList []models.Bet, y, w int, roundID uint) {
+					startTime := time.Now()
+
+					// Обновляем статистику для каждого игрока
+					for _, bet := range betsList {
+						if err := r.service.GetRepo().UpdateWeeklyRatingForUser(bet.UserID); err != nil {
+							logger.Error.Printf("Error updating rating for user %d: %v", bet.UserID, err)
+						}
+					}
+
+					// После обновления всех игроков - пересчитываем позиции
+					if err := r.service.GetRepo().RefreshWeeklyRatingsPosition(y, w); err != nil {
+						logger.Error.Printf("Error refreshing ratings positions: %v", err)
+					} else {
+						duration := time.Since(startTime)
+						logger.Info.Printf("Rating updated for %d players in round #%d, positions refreshed (took %v)",
+							len(betsList), roundID, duration)
+					}
+				}(bets, year, week, currentRoundID)
 			}
 
 			// Создаем структуру с результатами раунда для отправки
@@ -223,7 +250,7 @@ func (r *Rotator) Start() {
 	}
 }
 
-// Stop останавливает процесс генерации хешей
+// Stop останавливает процесс генерации хешов
 func (r *Rotator) Stop() {
 	logger.Info.Println("Stopping hash rotator...")
 	r.cancelFunc()

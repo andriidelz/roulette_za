@@ -38,6 +38,9 @@ type Service interface {
 	GetUserBetsForRound(userID uint, hashEntryID uint) ([]models.Bet, error)
 	GetHashEntryByID(id uint) (*models.HashEntry, error)
 
+	// Обработка ставок
+	ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]models.Bet, error)
+
 	// Статистика
 	GetTotalStats() (map[string]int64, error)
 	GetSuccessRateStats() (map[string]float64, error)
