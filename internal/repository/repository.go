@@ -211,6 +211,7 @@ func (r *PostgresRepository) UpdateWeeklyRating(rating *models.WeeklyRating) err
 	return r.db.Save(rating).Error
 }
 
+// unused
 func (r *PostgresRepository) CalculateWeeklyRatings(year, week int) error {
 	// Выполняем прямой SQL запрос для расчета рейтингов на основе ставок
 	query := `
