@@ -3,10 +3,11 @@ package rotator
 import (
 	"context"
 	"log"
+	"time"
+
 	"roulette/internal/logger"
 	"roulette/internal/messaging"
 	"roulette/internal/service"
-	"time"
 )
 
 // Rotator отвечает за периодическую генерацию хешей и смену раундов
@@ -144,6 +145,13 @@ func (r *Rotator) Start() {
 
 			// Запоминаем ID завершенного раунда
 			lastCompletedRoundID = currentRoundID
+
+			// Запускаем пересчет рейтинга
+			go func(year, week int) {
+				if err := r.service.GetRepo().RefreshWeeklyRatingsPosition(year, week); err != nil {
+					logger.Error.Printf("Error refreshing ratings after round #%d: %v", currentRoundID, err)
+				}
+			}(time.Now().ISOWeek())
 
 			// Получаем обновленные данные о завершенном раунде
 			completedRound, err := r.service.GetHashEntryByID(currentRoundID)
