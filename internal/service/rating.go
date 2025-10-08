@@ -35,6 +35,10 @@ func (s *ServiceImpl) GetUserRatingPosition(userID uint, neighborsCount int) ([]
 		return nil, 0, err
 	}
 
+	if err := s.RefreshAllRatings(); err != nil {
+		return nil, 0, err
+	}
+
 	// Получаем текущую неделю и год
 	year, week := time.Now().ISOWeek()
 

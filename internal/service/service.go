@@ -55,7 +55,7 @@ type Service interface {
 	// Рейтинги
 	GetWeeklyRating(limit int) ([]models.WeeklyRating, error)
 	GetSuperRating(limit int) ([]models.SuperRating, error)
-	UpdateWeeklyRatings() error
+	// UpdateWeeklyRatings() error
 	DistributePrizes(year, week int) error
 	CancelPrizeDistribution(year, week int) error
 	GetPrizeFund(year, week int) (*models.PrizeFund, error)
@@ -619,6 +619,7 @@ func (s *ServiceImpl) GetSuperRating(limit int) ([]models.SuperRating, error) {
 	return s.repo.GetSuperRating(quarter, limit)
 }
 
+// unused
 // UpdateWeeklyRatings обновляет еженедельные рейтинги при начале новой недели
 // и создает новый рейтинг на основе актуальных настроек
 func (s *ServiceImpl) UpdateWeeklyRatings() error {
