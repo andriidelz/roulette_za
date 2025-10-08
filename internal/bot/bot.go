@@ -16,7 +16,6 @@ import (
 	"roulette/internal/metrics"
 	"roulette/internal/models"
 	"roulette/internal/service"
-	"roulette/internal/utils"
 
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
@@ -201,7 +200,6 @@ func (b *Bot) Start() error {
 	b.StartUpdateCache()
 	// Запускаем планировщик для обновления рейтингов
 	b.StartRatingScheduler()
-
 
 	// Запускам емуляцию ставок по заданиям для пользователей
 	// b.gameHandler.initEmulate()
@@ -743,11 +741,9 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	case b.getText("withdraw", language):
 		b.handleWithdrawCommand(message)
 	case b.getText("bonus", language):
-		// Временно просто возвращаем в меню аккаунта
-		b.handleAccountCommand(message)
+		b.handleBonusCommand(message)
 	case b.getText("buybets", language):
-		// Временно просто возвращаем в меню аккаунта
-		b.handleAccountCommand(message)
+		b.handleBuyBetsCommand(message)
 	case b.getText("exitacc", language):
 		b.handleHelpCommand(message) // Возврат в главное меню
 
@@ -1162,20 +1158,24 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		return
 
 	// Обработка других callback data
+	// деякі колбеки мають схожу логіку але викликаються з різних меню (faq, play)
+	// і взаємодія трохи інша
 	case "rules":
 		text := b.getText("rules", language)
 		b.updateOrSendMessage(query, text)
-	case "awards":
+	case "awards", "awards_play":
 		text := b.getText("awards", language)
 		b.updateOrSendMessage(query, text)
-	case "payments":
+	case "payments", "payments_play":
 		text := b.getText("payments", language)
 		b.updateOrSendMessage(query, text)
-	case "fairplay":
+	case "fairplay", "fairplay_play":
 		text := b.getText("fairplay", language)
 		b.updateOrSendMessage(query, text)
 
 		// Гра
+	case CallbackPlay:
+		b.gameHandler.handlePlay(query)
 	case CallbackStartRound:
 		b.gameHandler.handleStartRound(query)
 	case CallbackBetZeroLocked:
@@ -1295,6 +1295,15 @@ func (b *Bot) updateOrSendMessage(query *telego.CallbackQuery, text string) {
 	backButton := telego.InlineKeyboardButton{
 		Text:         b.getText("btn_back", language),
 		CallbackData: "back_to_start",
+	}
+	
+	callbackData := query.Data
+	// Якщо колбек був з меню гри то повернення має запустити меню гри
+	if strings.Contains(callbackData, "_play") {
+		backButton = telego.InlineKeyboardButton{
+			Text:         b.getText("btn_back", language),
+			CallbackData: CallbackPlay,
+		}
 	}
 	keyboard := &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
@@ -1616,37 +1625,6 @@ func (b *Bot) getText(key, languageCode string) (options string) {
 
 // SendMessage отправляет новое сообщение с указанными опциями
 func (b *Bot) SendMessage(chatID int64, options MessageOptions) error {
-	// Обрабатываем текст, заменяя литеральные \r\n на реальные переносы строк
-	// Используем двойной проход для избежания проблем с экранированием
-	processedText := strings.ReplaceAll(options.Text, "\\r\\n", "\n")
-	processedText = strings.ReplaceAll(processedText, "\r\n", "\n")
-	options.Text = processedText
-
-	// Собираем параметры для замены макросов
-	params := make(map[string]interface{})
-
-	// Добавляем глобальные макросы
-	for key, value := range b.service.GetGlobalMacros() {
-		params[key] = value
-	}
-	// Заменяем макросы в текстах с помощью общей функции
-	_, options.Text, _ = utils.ReplaceMacrosInTexts("", options.Text, "", params)
-
-	// Проверка на наличие шаблонов эмодзи в тексте
-	if strings.Contains(options.Text, "{{emoji:") {
-		// Обрабатываем кастомные эмодзи в формате {{emoji:id}}
-		emojiText, emojiEntities := utils.BuildMessageWithCustomEmojis(options.Text)
-		options.Text = emojiText
-
-		// Объединяем существующие сущности с новыми эмодзи-сущностями
-		if len(emojiEntities) > 0 {
-			if len(options.Entities) > 0 {
-				options.Entities = append(options.Entities, emojiEntities...)
-			} else {
-				options.Entities = emojiEntities
-			}
-		}
-	}
 
 	// Определяем тип сообщения
 	if options.MethodName == "" {

@@ -69,6 +69,7 @@ type GameHandler struct {
 }
 
 const (
+	CallbackPlay           = "startplay"
 	CallbackStartRound     = "startround"
 	CallbackGetResultRound = "get_result_"
 	CallbackBetRed         = "bet_red_"
@@ -763,7 +764,6 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 		logger.Error.Println(err)
 	} else {
 		options.VideoFileID = value
-		options.Text = "#" + value + "\n\n" + options.Text
 	}
 
 	h.bot.SendMessage(userID, options)
@@ -938,23 +938,36 @@ func (h *GameHandler) HandlePlayCommand(message *telego.Message) {
 
 	// Сначала отправляем сообщение с описанием игры
 	options := h.bot.prepareMessage("playstart1", language)
-
-	// Создаем inline клавиатуру
-	options.InlineKeyboard = &telego.InlineKeyboardMarkup{
-		InlineKeyboard: [][]telego.InlineKeyboardButton{
-			{
-				{Text: h.bot.getText("btn_awards", language), CallbackData: "awards"},
-				{Text: h.bot.getText("btn_payments", language), CallbackData: "payments"},
-				{Text: h.bot.getText("btn_fairplay", language), CallbackData: "fairplay"},
-			},
-			{
-				{Text: h.bot.getText("btn_startround", language), CallbackData: CallbackStartRound},
-			},
-		},
-	}
+	options.InlineKeyboard = h.createStartPlayKeyboard(language)
 
 	// Отправляем первое сообщение с описанием игры и кнопкой на правила
 	h.bot.SendMessage(message.Chat.ID, options)
+}
+
+// handlePlay обробляє колбек startplay
+func (h *GameHandler) handlePlay(query *telego.CallbackQuery) {
+	// Отвечаем на callback, чтобы убрать индикатор загрузки
+	h.bot.answerCallbackQuery(query.ID, "", false)
+
+	user := query.From
+
+	language, err := h.bot.getUserLang(user.ID, user.LanguageCode)
+	if err != nil {
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
+		return
+	}
+
+	// Сначала отправляем сообщение с описанием игры
+	options := h.bot.prepareMessage("playstart1", language)
+	options.InlineKeyboard = h.createStartPlayKeyboard(language)
+
+	// Обновляем сообщение
+	if query.Message != nil {
+		h.bot.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), options)
+	} else {
+		// Если сообщение недоступно, отправляем новое
+		h.bot.SendMessage(user.ID, options)
+	}
 }
 
 // handleStartRound - старт нового раунду гри
@@ -1098,6 +1111,22 @@ func (h *GameHandler) createBetKeyboard(language string, userID uint, currentRou
 			},
 			{
 				{Text: h.bot.getText("availablebets", language), CallbackData: CallbackBetAvailable},
+			},
+		},
+	}
+}
+
+// Створює клавіатуру для стартового меню гри
+func (h *GameHandler) createStartPlayKeyboard(language string) *telego.InlineKeyboardMarkup {
+	return &telego.InlineKeyboardMarkup{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{
+			{
+				{Text: h.bot.getText("btn_awards", language), CallbackData: "awards_play"},
+				{Text: h.bot.getText("btn_payments", language), CallbackData: "payments_play"},
+				{Text: h.bot.getText("btn_fairplay", language), CallbackData: "fairplay_play"},
+			},
+			{
+				{Text: h.bot.getText("btn_startround", language), CallbackData: CallbackStartRound},
 			},
 		},
 	}
