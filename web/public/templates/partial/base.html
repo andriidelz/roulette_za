@@ -2,7 +2,9 @@
 "public_navbar" .}} {{if eq .activeTab "home"}} {{template "public_home_content"
 .}} {{else if eq .activeTab "faq"}} {{template "public_faq_content" .}} {{else
 if eq .activeTab "hashes"}} {{template "public_hashes_content" .}} {{else if eq
-.activeTab "example"}} {{template "public_example_content" .}} {{else}}
+.activeTab "example"}} {{template "public_example_content" .}} {{else if eq
+.activeTab "privacy"}} {{template "public_privacy_content" .}} {{else if eq
+.activeTab "rules"}} {{template "public_rules_content" .}} {{else}}
 <!-- Страница не найдена -->
 <div class="container">
   <h1>{{ i18n .lang "page_not_found" }}</h1>
