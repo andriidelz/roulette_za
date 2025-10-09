@@ -169,9 +169,13 @@ func (r *Rotator) Start() {
 			if len(bets) > 0 {
 				year, week := time.Now().ISOWeek()
 
-				go func(betsList []models.Bet, y, w int, roundID uint) {
-					defer r.wg.Done()
+				// Capture variables for goroutine closure
+				betsList := bets
+				y := year
+				w := week
+				roundID := currentRoundID
 
+				r.wg.Go(func() { // ← Без параметров!
 					startTime := time.Now()
 
 					// Собираем уникальные ID игроков
@@ -199,7 +203,7 @@ func (r *Rotator) Start() {
 						logger.Info.Printf("Rating updated for %d players in round #%d, positions refreshed (took %v)",
 							len(userIDs), roundID, duration)
 					}
-				}(bets, year, week, currentRoundID)
+				})
 			}
 
 			// Создаем структуру с результатами раунда для отправки
