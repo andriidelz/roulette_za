@@ -38,8 +38,8 @@ lint:dockerfile-hadolint:
 
 lint:go-vet:
   stage: lint
-  image: golang:1.24-alpine
-  rules: [ { when: always } ]
+  image: golang:1.25-alpine
+  rules: [{ when: always }]
   before_script:
     - apk add --no-cache git
     - go mod download
@@ -48,8 +48,8 @@ lint:go-vet:
 
 lint:go-govulncheck:
   stage: lint
-  image: golang:1.24-alpine
-  rules: [ { when: always } ]
+  image: golang:1.25-alpine
+  rules: [{ when: always }]
   before_script:
     - apk add --no-cache git
     - go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -65,14 +65,14 @@ lint:go-govulncheck:
 
 lint:go-gosec:
   stage: lint
-  image: golang:1.24-alpine
-  rules: [ { when: always } ]
+  image: golang:1.25-alpine
+  rules: [{ when: always }]
   before_script:
     - go install github.com/securego/gosec/v2/cmd/gosec@latest
     - export PATH=$PATH:/go/bin
     - go mod download
   script:
-    - gosec -no-fail -fmt json -out gosec.json ./...    # -no-fail <— чтобы job не падал
+    - gosec -no-fail -fmt json -out gosec.json ./... # -no-fail <— чтобы job не падал
   artifacts:
     when: always
     paths: [gosec.json]
@@ -82,8 +82,8 @@ lint:go-gosec:
 # ============== TEST ==============
 test:go-unit:
   stage: test
-  image: golang:1.24-alpine
-  rules: [ { when: always } ]
+  image: golang:1.25-alpine
+  rules: [{ when: always }]
   before_script:
     - apk add --no-cache git build-base
     - go mod download
