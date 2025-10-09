@@ -543,7 +543,12 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 		checkSystemText := h.bot.getText("systemcheck", language)
 		roundIDBase62 := utils.ToBase62(uint(round.ID))
 		options.Text = "#" + roundIDBase62 + "\n\n" + options.Text
-		checkSystemURL := fmt.Sprintf("%s/hashes/?id=%s", webPage, roundIDBase62)
+
+		langURL := language + "/"
+		if language == "uk" {
+			langURL = ""
+		}
+		checkSystemURL := fmt.Sprintf("%s/%shashes/?id=%s", webPage, langURL, roundIDBase62)
 
 		viewRatingText := h.bot.getText("viewrating", language)
 
@@ -711,7 +716,11 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	// Добавляем первый ряд с двумя кнопками: проверка раунда и просмотр рейтинга
 	checkSystemText := h.bot.getText("systemcheck", language)
 	roundIDBase62 := utils.ToBase62(uint(round.ID))
-	checkSystemURL := fmt.Sprintf("%s/hashes/?id=%s", webPage, roundIDBase62)
+	langURL := language + "/"
+	if language == "uk" {
+		langURL = ""
+	}
+	checkSystemURL := fmt.Sprintf("%s/%shashes/?id=%s", webPage, langURL, roundIDBase62)
 
 	options.Text = "#" + roundIDBase62 + "\n\n" + options.Text
 
