@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"roulette/internal/logger"
-	"roulette/internal/utils"
 	"strconv"
 	"strings"
 	"time"
+
+	"roulette/internal/logger"
 
 	"github.com/mymmrac/telego"
 	"github.com/redis/go-redis/v9"
@@ -178,7 +178,6 @@ func (b *Bot) MakeRequestDeferred(chatID, order int64, param MessageOptions) err
 }
 
 func (b *Bot) MakeRequestDeferredErr(chatID int64, errText string) {
-
 	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// Проверяем была ли отправка за период указанный в userErrorExpiration сообщений об ошибке
@@ -215,101 +214,135 @@ func (b *Bot) sendBotQueue() {
 	ticker := time.NewTicker(sendInterval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		countMess := 0
-		maxMessages := limitMessPerInterval
+	// Cleanup ticker - run less frequently
+	cleanupTicker := time.NewTicker(30 * time.Second)
+	defer cleanupTicker.Stop()
 
-		readyUsers := b.getReadyUsers()
-		if len(readyUsers) == 0 {
+	for {
+		select {
+		case <-ticker.C:
+			// Process messages (existing logic)
+			countMess := 0
+			maxMessages := limitMessPerInterval
+
+			readyUsers := b.getReadyUsers()
+			if len(readyUsers) == 0 {
+				continue
+			}
+
+			// Worker pool logic (keep existing code)
+			const workerCount = 25
+			jobs := make(chan int64, len(readyUsers))
+			results := make(chan bool, len(readyUsers))
+
+			// Start workers
+			for w := 1; w <= workerCount; w++ {
+				go func(workerId int) {
+					for chatID := range jobs {
+						// Remove cleanup from here!
+						// Don't call ZRemRangeByScore in worker
+
+						ctx := context.Background()
+
+						// Get message from queue
+						queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
+						msgs, err := b.redisDB.ZRangeByScore(ctx, queueKey, &redis.ZRangeBy{
+							Min:   "0",
+							Max:   "+inf",
+							Count: 1,
+						}).Result()
+						if err != nil {
+							logger.Error.Println("Error ZRangeByScore:", err)
+							results <- false
+							continue
+						} else if len(msgs) == 0 {
+							results <- false
+							continue
+						}
+
+						// Remove message from queue
+						err = b.redisDB.ZRem(ctx, queueKey, msgs[0]).Err()
+						if err != nil {
+							logger.Error.Printf("Error ZRem %s: %v", queueKey, err)
+						}
+
+						// Unmarshal and send
+						options := MessageOptions{}
+						if err = json.Unmarshal([]byte(msgs[0]), &options); err != nil {
+							logger.Error.Printf("Worker %d: Error Unmarshal for %s: %v\n", workerId, queueKey, err)
+							results <- false
+							continue
+						}
+
+						b.sendDeferredMessage(chatID, options)
+						results <- true
+					}
+				}(w)
+			}
+
+			// Send jobs
+			for _, chatID := range readyUsers {
+				if countMess >= maxMessages {
+					break
+				}
+				jobs <- chatID
+				countMess++
+			}
+			close(jobs)
+
+			// Collect results
+			successCount := 0
+			for i := 0; i < countMess; i++ {
+				if <-results {
+					successCount++
+				}
+			}
+
+			logger.Info.Printf("Processed messages: %d/%d", successCount, countMess)
+
+		case <-cleanupTicker.C:
+			// Cleanup expired messages periodically
+			b.cleanupExpiredMessages()
+		}
+	}
+}
+
+func (b *Bot) cleanupExpiredMessages() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	now := time.Now().UnixNano()
+
+	// Get all user queue keys using SCAN
+	pattern := "user:*:set_queue"
+	iter := b.redisDB.Scan(ctx, 0, pattern, 100).Iterator()
+
+	totalRemoved := 0
+	for iter.Next(ctx) {
+		queueKey := iter.Val()
+
+		// Remove expired messages (score >= 10 and < now)
+		removed, err := b.redisDB.ZRemRangeByScore(ctx, queueKey, "10", fmt.Sprintf("%d", now)).Result()
+		if err != nil {
+			logger.Error.Printf("Error cleaning %s: %v", queueKey, err)
 			continue
 		}
 
-		// Создаем worker pool для параллельной обработки
-		const workerCount = 25 // Оптимальное количество воркеров
-		jobs := make(chan int64, len(readyUsers))
-		results := make(chan bool, len(readyUsers))
-
-		// Запускаем воркеры
-		for w := 1; w <= workerCount; w++ {
-			go func(workerId int) {
-				for chatID := range jobs {
-
-					// Очищаем старые сообщения которые не получилось отправить
-					now := time.Now().UnixNano()
-					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-					defer cancel()
-					// Минимальное 10, с score 0 идут приоритетные сообщения. Они не удаляется и будут отправлены в первую очередь
-					removedCount, err := b.redisDB.ZRemRangeByScore(ctx, userQueueKeyPrefix, "10", fmt.Sprintf("%d", now)).Result()
-					if err != nil {
-						logger.Error.Println("Error removing expired elements:", err)
-					} else if removedCount > 0 {
-						logger.Error.Printf("Removed %d expired elements from sorted set.\n", removedCount)
-					}
-
-					ctx = context.Background()
-
-					// Пробуем получить сообщение для пользователя из очереди
-					queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)
-					msgs, err := b.redisDB.ZRangeByScore(ctx, queueKey, &redis.ZRangeBy{
-						Min:   "0",
-						Max:   "+inf",
-						Count: 1, // Получаем одно сообщение
-					}).Result()
-					if err != nil {
-						logger.Error.Println("Error ZRangeByScore:", err)
-						results <- false
-						continue
-					} else if len(msgs) == 0 {
-						logger.Error.Println("There is no messages", queueKey)
-						results <- false
-						continue
-					}
-
-					// Удаляем сообщение из очереди
-					err = b.redisDB.ZRem(ctx, queueKey, msgs[0]).Err()
-					if err != nil {
-						logger.Error.Printf("Error ZRem %s: %v", queueKey, err)
-					}
-
-					// Если сообщение есть превращаем его в структуру
-					options := MessageOptions{}
-					if err = json.Unmarshal([]byte(msgs[0]), &options); err != nil {
-						logger.Error.Printf("Worker %d: Error Unmarshal for %s: %v\n", workerId, queueKey, err)
-						results <- false
-						continue
-					}
-
-					// Отправляем сообщение
-					b.sendDeferredMessage(chatID, options)
-					results <- true
-				}
-			}(w)
+		if removed > 0 {
+			totalRemoved += int(removed)
 		}
+	}
 
-		// Отправляем задания
-		for _, chatID := range readyUsers {
-			if countMess >= maxMessages {
-				break
-			}
-			jobs <- chatID
-			countMess++
-		}
-		close(jobs)
+	if err := iter.Err(); err != nil {
+		logger.Error.Printf("Error scanning queue keys: %v", err)
+	}
 
-		// Собираем результаты
-		successCount := 0
-		for i := 0; i < countMess; i++ {
-			if <-results {
-				successCount++
-			}
-		}
-
-		logger.Info.Printf("Processed messages: %d/%d", successCount, countMess)
+	if totalRemoved > 0 {
+		logger.Info.Printf("Cleanup: removed %d expired messages from queues", totalRemoved)
 	}
 }
 
 func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
-
 	var err error
 	var messageType string
 	mes := &telego.Message{}
@@ -515,22 +548,31 @@ func (b *Bot) getReadyUsers() []int64 {
 	defer cancel()
 
 	now := time.Now().Unix()
+
+	// Get ready users sorted by next send time
 	members, err := b.redisDB.ZRangeByScore(ctx, userSendTaskKey, &redis.ZRangeBy{
 		Min:   "0",
 		Max:   fmt.Sprintf("%d", now),
-		Count: int64(limitMessPerInterval),
+		Count: int64(limitMessPerInterval * 2), // Get more candidates
 	}).Result()
 	if err != nil {
 		logger.Error.Println(err)
+		return nil
 	}
 
+	// Shuffle to prevent starvation
+	// Users with close nextSendTime get random order
 	userIDs := make([]int64, 0, len(members))
 	for _, member := range members {
 		if userID, err := strconv.ParseInt(member, 10, 64); err == nil {
 			userIDs = append(userIDs, userID)
-		} else {
-			logger.Error.Printf("Could not parse '%s': %v\n", member, err)
 		}
 	}
+
+	// Limit to actual batch size
+	if len(userIDs) > limitMessPerInterval {
+		userIDs = userIDs[:limitMessPerInterval]
+	}
+
 	return userIDs
 }

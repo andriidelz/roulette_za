@@ -22,6 +22,8 @@ func (a *AdminPanel) setupPublicRoutes() {
 		public.GET("/hashes", a.publicHashes)
 		public.GET("/faq", a.publicFAQ)
 		public.GET("/example", a.publicExample)
+		public.GET("/privacy", a.publicPrivacy)
+		public.GET("/rules", a.publicRules)
 
 		// API для проверки хешей (публичный доступ)
 		public.POST("/api/verify-hash", a.publicVerifyHashAPI)
@@ -227,6 +229,36 @@ func (a *AdminPanel) publicExample(c *gin.Context) {
 		"jsFiles": []string{
 			"example.js",
 		},
+	})
+}
+
+// Политика конфиденциальности
+func (a *AdminPanel) publicPrivacy(c *gin.Context) {
+	userLang := utils.GetUserLang(c)
+
+	c.HTML(http.StatusOK, "public_privacy", gin.H{
+		"lang": userLang,
+		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"common", "privacy"})),
+
+		"title":     "Roulette Bot | Социальное казино в Telegram",
+		"activeTab": "privacy",
+		"cssFiles":  []string{},
+		"jsFiles": []string{},
+	})
+}
+
+// Страница правил
+func (a *AdminPanel) publicRules(c *gin.Context) {
+	userLang := utils.GetUserLang(c)
+
+	c.HTML(http.StatusOK, "public_rules", gin.H{
+		"lang": userLang,
+		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"common", "rules"})),
+
+		"title":     "Roulette Bot | Социальное казино в Telegram",
+		"activeTab": "rules",
+		"cssFiles":  []string{},
+		"jsFiles": []string{},
 	})
 }
 

@@ -88,6 +88,6 @@ payments_conditions_text_2: "The fee for each withdrawal is $1, and is automatic
 support_title: "I have a problem or a question not listed here. What should I do?"
 support_answer: "If you have questions not covered in the FAQ, or you have encountered a problem, you can contact our support service:"
 contact_method1: "Use the /contact command in the bot and describe your problem"
-contact_method2: "Write to our support service in Telegram: @r."
+contact_method2: "Write to our support service in Telegram: @sprutgames_supportbot."
 support_response_time: "We will try to respond to your request within 24 hours. Your feedback is very important to us, and we are constantly working to improve our service."
 support_rules: "When sending a message to support, try to describe your request in as much detail as possible. A clear, detailed, and understandable description will help resolve the issue faster without unnecessary clarifications. Thank you for your understanding!"

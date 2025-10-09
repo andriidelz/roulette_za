@@ -46,10 +46,10 @@ func (b *Bot) handleRatingCallbackQuery(query *telego.CallbackQuery) {
 
 // getWeeklyRating используется для вывода рейтинга в меню и в игре
 func (b *Bot) getWeeklyRating(telegramID int64, appLanguage string) (MessageOptions, string) {
-	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
 	dbUser, err := b.getUser(telegramID)
-	if err == nil {
-		b.service.GetRepo().UpdateWeeklyRatingForUser(dbUser.ID)
+	if err != nil {
+		// Если не удалось получить пользователя, используем язык из параметра
+		return b.prepareMessage("rating_error", appLanguage), appLanguage
 	}
 
 	language := getLanguage(dbUser.LanguageCode, appLanguage)

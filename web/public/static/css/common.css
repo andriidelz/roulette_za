@@ -7,6 +7,7 @@
     --success-color: #198754;
     --danger-color: #dc3545;
     --warning-color: #ffc107;
+    --transition: 0.3s ease;
 }
 
 /* Базовые стили */
@@ -26,6 +27,19 @@ body {
 .navbar-brand img {
     height: 30px;
     margin-right: 8px;
+}
+
+.lang-link {
+    cursor: pointer;
+    transition: backgroundColor var(--transition);
+}
+
+.lang-link:hover {
+    background-color: #2e3235;
+}
+
+.lang-link:active {
+    background-color: #34383b;
 }
 
 /* Секция с заголовком */

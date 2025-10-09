@@ -58,6 +58,7 @@ type Repository interface {
 	FixPartiallyDistributedPrizes(year, week int, action string) error
 	DeleteRating(userID uint) error
 	UpdateWeeklyRatingForUser(userID uint) error
+	UpdateWeeklyRatingForUsers(userIDs []uint, year, week int) error
 	GetUserRankAndNeighbors(userID uint, year, week int, neighborsCount int) ([]models.WeeklyRating, int, error)
 	GetPointsToReachPrizeZone(year, week, topCount int) (int, error)
 	RefreshWeeklyRatingsPosition(year, week int) error
@@ -210,6 +211,7 @@ func (r *PostgresRepository) UpdateWeeklyRating(rating *models.WeeklyRating) err
 	return r.db.Save(rating).Error
 }
 
+// unused
 func (r *PostgresRepository) CalculateWeeklyRatings(year, week int) error {
 	// Выполняем прямой SQL запрос для расчета рейтингов на основе ставок
 	query := `

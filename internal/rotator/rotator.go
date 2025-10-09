@@ -3,10 +3,13 @@ package rotator
 import (
 	"context"
 	"log"
+	"sync"
+	"time"
+
 	"roulette/internal/logger"
 	"roulette/internal/messaging"
+	"roulette/internal/models"
 	"roulette/internal/service"
-	"time"
 )
 
 // Rotator отвечает за периодическую генерацию хешей и смену раундов
@@ -16,6 +19,7 @@ type Rotator struct {
 	ctx        context.Context
 	cancelFunc context.CancelFunc
 	rabbitmq   *messaging.RabbitMQ
+	wg         sync.WaitGroup
 }
 
 // NewRotator создает новый экземпляр ротатора
@@ -153,6 +157,55 @@ func (r *Rotator) Start() {
 				continue
 			}
 
+			// Обрабатываем ставки
+			bets, err := r.service.ProcessAndGetBets(currentRoundID, completedRound.Number)
+			if err != nil {
+				logger.Error.Printf("Error processing bets for round #%d: %v", currentRoundID, err)
+				// Продолжаем, даже если произошла ошибка
+				bets = []models.Bet{} // Пустой список
+			}
+
+			// Обновляем рейтинг
+			if len(bets) > 0 {
+				year, week := time.Now().ISOWeek()
+
+				// Capture variables for goroutine closure
+				betsList := bets
+				y := year
+				w := week
+				roundID := currentRoundID
+
+				r.wg.Go(func() { // ← Без параметров!
+					startTime := time.Now()
+
+					// Собираем уникальные ID игроков
+					userIDsMap := make(map[uint]bool)
+					for _, bet := range betsList {
+						userIDsMap[bet.UserID] = true
+					}
+
+					userIDs := make([]uint, 0, len(userIDsMap))
+					for userID := range userIDsMap {
+						userIDs = append(userIDs, userID)
+					}
+
+					// Один запрос вместо N запросов
+					if err := r.service.UpdateWeeklyRatingForUsers(userIDs, y, w); err != nil {
+						logger.Error.Printf("Error batch updating ratings: %v", err)
+						return // Exit goroutine on error
+					}
+
+					// После обновления всех игроков - пересчитываем позиции
+					if err := r.service.GetRepo().RefreshWeeklyRatingsPosition(y, w); err != nil {
+						logger.Error.Printf("Error refreshing ratings positions: %v", err)
+					} else {
+						duration := time.Since(startTime)
+						logger.Info.Printf("Rating updated for %d players in round #%d, positions refreshed (took %v)",
+							len(userIDs), roundID, duration)
+					}
+				})
+			}
+
 			// Создаем структуру с результатами раунда для отправки
 			option, err := r.service.GetRoundResult(completedRound.Number)
 			if err != nil {
@@ -215,10 +268,25 @@ func (r *Rotator) Start() {
 	}
 }
 
-// Stop останавливает процесс генерации хешей
+// Stop останавливает процесс генерации хешов
 func (r *Rotator) Stop() {
 	logger.Info.Println("Stopping hash rotator...")
-	r.cancelFunc()
+	r.cancelFunc() // Stop round generation loop
+
+	// Wait for active rating updates with timeout
+	logger.Info.Println("Waiting for rating updates to complete...")
+	done := make(chan struct{})
+	go func() {
+		r.wg.Wait() // Wait for all goroutines to finish
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		logger.Info.Println("All rating updates completed successfully")
+	case <-time.After(30 * time.Second):
+		logger.Warning.Println("Rating updates timeout exceeded - forcing shutdown")
+	}
 
 	// Закрываем соединение с RabbitMQ
 	if r.rabbitmq != nil {

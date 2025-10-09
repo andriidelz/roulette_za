@@ -38,6 +38,12 @@ type Service interface {
 	GetUserBetsForRound(userID uint, hashEntryID uint) ([]models.Bet, error)
 	GetHashEntryByID(id uint) (*models.HashEntry, error)
 
+	// Обработка ставок
+	ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]models.Bet, error)
+
+	// Батч-обновление рейтинга
+	UpdateWeeklyRatingForUsers(userIDs []uint, year, week int) error
+
 	// Статистика
 	GetTotalStats() (map[string]int64, error)
 	GetSuccessRateStats() (map[string]float64, error)
@@ -49,7 +55,7 @@ type Service interface {
 	// Рейтинги
 	GetWeeklyRating(limit int) ([]models.WeeklyRating, error)
 	GetSuperRating(limit int) ([]models.SuperRating, error)
-	UpdateWeeklyRatings() error
+	// UpdateWeeklyRatings() error
 	DistributePrizes(year, week int) error
 	CancelPrizeDistribution(year, week int) error
 	GetPrizeFund(year, week int) (*models.PrizeFund, error)
@@ -444,9 +450,12 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]
 	return bets, nil
 }
 
+func (s *ServiceImpl) UpdateWeeklyRatingForUsers(userIDs []uint, year, week int) error {
+	return s.repo.UpdateWeeklyRatingForUsers(userIDs, year, week)
+}
+
 // MakeBet делает ставку в текущем раунде
 func (s *ServiceImpl) MakeBet(userID uint, option models.BetOption) error {
-
 	// Получаем текущий раунд
 	currentRound, err := s.repo.GetActiveHashEntry()
 	if err != nil {
@@ -610,6 +619,7 @@ func (s *ServiceImpl) GetSuperRating(limit int) ([]models.SuperRating, error) {
 	return s.repo.GetSuperRating(quarter, limit)
 }
 
+// unused
 // UpdateWeeklyRatings обновляет еженедельные рейтинги при начале новой недели
 // и создает новый рейтинг на основе актуальных настроек
 func (s *ServiceImpl) UpdateWeeklyRatings() error {

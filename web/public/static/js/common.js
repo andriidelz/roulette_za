@@ -15,13 +15,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Активация выпадающих меню
     initDropdowns();
 
-    initLangToggle();
 });
 
 function setCurrentLanguage() {
-    const storedLang = localStorage.getItem('language');
-    const currentLang = storedLang ? storedLang : document.documentElement.getAttribute('lang');
-    document.documentElement.setAttribute('lang', currentLang);
+    const pathname = window.location.pathname;
+    const currentLang = pathname.startsWith('/en/') ? 'en' : pathname.startsWith('/ru/') ? 'ru' : 'uk';
+
     const languages = document.querySelectorAll('[data-lang]');
     const currentFlag = document.querySelector('.lang-flag');
 
@@ -33,19 +32,6 @@ function setCurrentLanguage() {
             })
             lang.classList.add('d-none');
         }        
-    });
-}
-
-function initLangToggle() {
-    const langLinks = document.querySelectorAll('.lang-link');
-    langLinks.forEach((link) => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const selectedLang = link.parentElement.getAttribute('data-lang');
-            document.documentElement.setAttribute('lang', selectedLang);
-            localStorage.setItem('language', selectedLang);
-            window.location.reload();
-        });
     });
 }
 

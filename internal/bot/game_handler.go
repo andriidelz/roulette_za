@@ -647,13 +647,6 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 
 	// Формируем часть о рейтинге
 
-	// TMP: нужно запускать 1 раз после конца раунда но перед выводом
-	// Пересчитываем балы и эффективность пользователя и
-	// обновляем позиции всех пользователей
-	if err := h.service.GetRepo().UpdateWeeklyRatingForUser(dbUser.ID); err != nil {
-		logger.Error.Printf("Error refreshing ratings before getting position: %v", err)
-	}
-
 	// Получаем текущий рейтинг пользователя
 	year, week := time.Now().ISOWeek()
 	rating, err := h.service.GetRepo().GetUserWeeklyRating(dbUser.ID, year, week)
