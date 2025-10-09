@@ -3,6 +3,7 @@ package rotator
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"roulette/internal/logger"
@@ -18,6 +19,7 @@ type Rotator struct {
 	ctx        context.Context
 	cancelFunc context.CancelFunc
 	rabbitmq   *messaging.RabbitMQ
+	wg         sync.WaitGroup
 }
 
 // NewRotator создает новый экземпляр ротатора
@@ -167,7 +169,13 @@ func (r *Rotator) Start() {
 			if len(bets) > 0 {
 				year, week := time.Now().ISOWeek()
 
-				go func(betsList []models.Bet, y, w int, roundID uint) {
+				// Capture variables for goroutine closure
+				betsList := bets
+				y := year
+				w := week
+				roundID := currentRoundID
+
+				r.wg.Go(func() { // ← Без параметров!
 					startTime := time.Now()
 
 					// Собираем уникальные ID игроков
@@ -184,6 +192,7 @@ func (r *Rotator) Start() {
 					// Один запрос вместо N запросов
 					if err := r.service.UpdateWeeklyRatingForUsers(userIDs, y, w); err != nil {
 						logger.Error.Printf("Error batch updating ratings: %v", err)
+						return // Exit goroutine on error
 					}
 
 					// После обновления всех игроков - пересчитываем позиции
@@ -194,7 +203,7 @@ func (r *Rotator) Start() {
 						logger.Info.Printf("Rating updated for %d players in round #%d, positions refreshed (took %v)",
 							len(userIDs), roundID, duration)
 					}
-				}(bets, year, week, currentRoundID)
+				})
 			}
 
 			// Создаем структуру с результатами раунда для отправки
@@ -262,7 +271,22 @@ func (r *Rotator) Start() {
 // Stop останавливает процесс генерации хешов
 func (r *Rotator) Stop() {
 	logger.Info.Println("Stopping hash rotator...")
-	r.cancelFunc()
+	r.cancelFunc() // Stop round generation loop
+
+	// Wait for active rating updates with timeout
+	logger.Info.Println("Waiting for rating updates to complete...")
+	done := make(chan struct{})
+	go func() {
+		r.wg.Wait() // Wait for all goroutines to finish
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		logger.Info.Println("All rating updates completed successfully")
+	case <-time.After(30 * time.Second):
+		logger.Warning.Println("Rating updates timeout exceeded - forcing shutdown")
+	}
 
 	// Закрываем соединение с RabbitMQ
 	if r.rabbitmq != nil {
