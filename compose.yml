@@ -62,8 +62,8 @@ x-pgadmin-config: &pgadmin-config
   PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-postgres@postgres.com}
   PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-postgres}
   PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
-  PGADMIN_CONFIG_SERVER_MODE: "False"
-  PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+  PGADMIN_CONFIG_SERVER_MODE: ${PGADMIN_SERVER_MODE:-"False"}
+  PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: ${PGADMIN_MASTER_PASSWORD_REQUIRED:-"False"}
 
 # Admin panel configuration
 x-admin-config: &admin-config
