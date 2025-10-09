@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"roulette/internal/utils"
 	"roulette/internal/logger"
 
 	"github.com/mymmrac/telego"
@@ -55,6 +56,39 @@ const (
 
 // MakeRequestDeferred Постановка сообщения в очередь на отправку
 func (b *Bot) MakeRequestDeferred(chatID, order int64, param MessageOptions) error {
+
+	// Обрабатываем текст, заменяя литеральные \r\n на реальные переносы строк
+	// Используем двойной проход для избежания проблем с экранированием
+	processedText := strings.ReplaceAll(param.Text, "\\r\\n", "\n")
+	processedText = strings.ReplaceAll(processedText, "\r\n", "\n")
+	param.Text = processedText
+
+	// Собираем параметры для замены макросов
+	params := make(map[string]interface{})
+
+	// Добавляем глобальные макросы
+	for key, value := range b.service.GetGlobalMacros() {
+		params[key] = value
+	}
+	// Заменяем макросы в текстах с помощью общей функции
+	_, param.Text, _ = utils.ReplaceMacrosInTexts("", param.Text, "", params)
+
+	// Проверка на наличие шаблонов эмодзи в тексте
+	if strings.Contains(param.Text, "{{emoji:") {
+		// Обрабатываем кастомные эмодзи в формате {{emoji:id}}
+		emojiText, emojiEntities := utils.BuildMessageWithCustomEmojis(param.Text)
+		param.Text = emojiText
+
+		// Объединяем существующие сущности с новыми эмодзи-сущностями
+		if len(emojiEntities) > 0 {
+			if len(param.Entities) > 0 {
+				param.Entities = append(param.Entities, emojiEntities...)
+			} else {
+				param.Entities = emojiEntities
+			}
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
