@@ -19,9 +19,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function setCurrentLanguage() {
-    const storedLang = localStorage.getItem('language');
-    const currentLang = storedLang ? storedLang : document.documentElement.getAttribute('lang');
-    document.documentElement.setAttribute('lang', currentLang);
+    const pathname = window.location.pathname;
+    const currentLang = pathname.startsWith('/en/') ? 'en' : pathname.startsWith('/ru/') ? 'ru' : 'uk';
+
     const languages = document.querySelectorAll('[data-lang]');
     const currentFlag = document.querySelector('.lang-flag');
 
@@ -41,10 +41,19 @@ function initLangToggle() {
     langLinks.forEach((link) => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
+            const currentUrl = window.location.href;
+            const url = new URL(currentUrl);
             const selectedLang = link.parentElement.getAttribute('data-lang');
-            document.documentElement.setAttribute('lang', selectedLang);
-            localStorage.setItem('language', selectedLang);
-            window.location.reload();
+            if (selectedLang === 'uk') {
+                url.pathname = url.pathname.replace(/^\/(en|ru)\//, '') || '/';              
+            } else {
+                if (url.pathname.startsWith('/ru/')) {
+                    url.pathname = url.pathname.replace(/^\/ru/, '/en');
+                } else {
+                    url.pathname = '/en' + url.pathname;                    
+                }
+            }
+            window.location.href = url.toString();
         });
     });
 }
