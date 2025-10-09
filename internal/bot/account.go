@@ -77,6 +77,42 @@ func (b *Bot) createAccountKeyboard(language string) *telego.ReplyKeyboardMarkup
 	}
 }
 
+// handleBonusCommand - вивід бонусів
+func (b *Bot) handleBonusCommand(message *telego.Message) {
+	user := message.From
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
+	if err != nil {
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
+		return
+	}
+
+	// Получаем локализированный текст для раздела "Bonus"
+	options := b.prepareMessage("bonusm", language)
+	options.ReplyKeyboard = b.createAccountKeyboard(language)
+
+	// Отправляем текст правил
+	b.SendMessage(message.Chat.ID, options)
+}
+
+// handleBuyBetsCommand - отримання ставок
+func (b *Bot) handleBuyBetsCommand(message *telego.Message) {
+	user := message.From
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
+	if err != nil {
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
+		return
+	}
+
+	// Получаем локализированный текст для раздела "BuyBets"
+	options := b.prepareMessage("buybetsm", language)
+	options.ReplyKeyboard = b.createAccountKeyboard(language)
+
+	// Отправляем текст правил
+	b.SendMessage(message.Chat.ID, options)
+}
+
 // Модифицируем существующий метод handleBalanceCommand
 func (b *Bot) handleBalanceCommand(message *telego.Message) {
 	user := message.From
