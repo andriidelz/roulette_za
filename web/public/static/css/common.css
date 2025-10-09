@@ -42,10 +42,6 @@ body {
     background-color: #34383b;
 }
 
-.fi:before {
-    content: "" !important;
-}
-
 /* Секция с заголовком */
 .hero-section {
     background-color: var(--dark-color);
