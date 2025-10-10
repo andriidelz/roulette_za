@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"roulette/internal/models"
-	"roulette/internal/utils"
 	"strings"
 	"time"
+
+	"roulette/internal/models"
+	"roulette/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -266,8 +267,15 @@ func (a *AdminPanel) localizationExport(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "application/json; charset=utf-8")
 
-	// Отправляем JSON
-	c.JSON(http.StatusOK, exportData)
+	// Отправляем JSON без экранирования HTML
+	c.Status(http.StatusOK)
+	encoder := json.NewEncoder(c.Writer)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(exportData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to encode JSON"})
+		return
+	}
 }
 
 // Экспорт всех локализаций
@@ -300,8 +308,15 @@ func (a *AdminPanel) exportAllLocalizations(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "application/json; charset=utf-8")
 
-	// Отправляем JSON
-	c.JSON(http.StatusOK, allLocalizations)
+	// Отправляем JSON без экранирования HTML
+	c.Status(http.StatusOK)
+	encoder := json.NewEncoder(c.Writer)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(allLocalizations); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to encode JSON"})
+		return
+	}
 }
 
 // Обработчик импорта локализаций
@@ -328,23 +343,32 @@ func (a *AdminPanel) localizationImport(c *gin.Context) {
 		return
 	}
 
+	// Создаем декодер с отключенным экранированием HTML
+	decoder := json.NewDecoder(strings.NewReader(string(buf)))
+
 	// Пытаемся распарсить как импорт одного языка
 	var singleImport LocalizationImportData
-	if err := json.Unmarshal(buf, &singleImport); err == nil && singleImport.Language != "" {
+	if err := decoder.Decode(&singleImport); err == nil && singleImport.Language != "" {
 		a.importSingleLanguage(c, singleImport)
 		return
 	}
 
+	// Сбрасываем декодер для новой попытки
+	decoder = json.NewDecoder(strings.NewReader(string(buf)))
+
 	// Пытаемся распарсить как импорт всех языков
 	var multiImport map[string]LocalizationExportData
-	if err := json.Unmarshal(buf, &multiImport); err == nil {
+	if err := decoder.Decode(&multiImport); err == nil {
 		a.importMultipleLanguages(c, multiImport)
 		return
 	}
 
+	// Сбрасываем декодер для новой попытки
+	decoder = json.NewDecoder(strings.NewReader(string(buf)))
+
 	// Пытаемся распарсить как экспорт одного языка
 	var exportImport LocalizationExportData
-	if err := json.Unmarshal(buf, &exportImport); err == nil && exportImport.Language != "" {
+	if err := decoder.Decode(&exportImport); err == nil && exportImport.Language != "" {
 		singleImport = LocalizationImportData{
 			Language:      exportImport.Language,
 			Localizations: exportImport.Localizations,
