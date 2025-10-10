@@ -489,6 +489,11 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		}
 	}()
 
+	// Ignore all messages from groups, only respond in private chats
+	if message.Chat.Type != telego.ChatTypePrivate {
+		return
+	}
+
 	user := message.From
 	if b.checkActiveTask(user.ID) {
 		return // Вже виконується рутина
@@ -769,6 +774,12 @@ func (b *Bot) handleMessage(message *telego.Message) {
 
 // handleCallbackQuery обрабатывает callback-запиты
 func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
+	// Ignore all callbacks from groups, only respond in private chats
+	if query.Message != nil && query.Message.GetChat().Type != telego.ChatTypePrivate {
+		b.answerCallbackQuery(query.ID, "", false)
+		return
+	}
+
 	// Валидация пользователя
 	user := query.From
 	if b.checkActiveTask(user.ID) {
