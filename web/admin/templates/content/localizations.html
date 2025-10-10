@@ -1,761 +1,1123 @@
-{{- define "localizations" -}}
-  {{template "header" .}}
-  {{template "navbar" .}}
-  <div class="d-flex">
-    {{template "sidebar" .}}
-    <main class="main-content flex-grow-1">
-      <div class="container-fluid">
-        <div class="row mb-4">
-          <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-              <h1>Локализации</h1>
-              <div class="btn-group">
-                <!-- Export/Import Dropdown -->
-                <div class="btn-group me-2" role="group">
-                  <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-download"></i> Экспорт
-                  </button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="/admin/localization/export" download>
+{{- define "localizations" -}} {{template "header" .}} {{template "navbar" .}}
+<div class="d-flex">
+  {{template "sidebar" .}}
+  <main class="main-content flex-grow-1">
+    <div class="container-fluid">
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center">
+            <h1>Локализации</h1>
+            <div class="btn-group">
+              <!-- Export/Import Dropdown -->
+              <div class="btn-group me-2" role="group">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary dropdown-toggle"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  <i class="bi bi-download"></i> Экспорт
+                </button>
+                <ul class="dropdown-menu">
+                  <li>
+                    <a
+                      class="dropdown-item"
+                      href="/admin/localization/export"
+                      download
+                    >
                       <i class="bi bi-globe"></i> Все языки
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="/admin/localization/export?lang=uk" download>
+                    </a>
+                  </li>
+                  <li><hr class="dropdown-divider" /></li>
+                  <li>
+                    <a
+                      class="dropdown-item"
+                      href="/admin/localization/export?lang=uk"
+                      download
+                    >
                       <i class="bi bi-flag"></i> Украинский
-                    </a></li>
-                    <li><a class="dropdown-item" href="/admin/localization/export?lang=ru" download>
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      class="dropdown-item"
+                      href="/admin/localization/export?lang=ru"
+                      download
+                    >
                       <i class="bi bi-flag"></i> Русский
-                    </a></li>
-                    <li><a class="dropdown-item" href="/admin/localization/export?lang=en" download>
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      class="dropdown-item"
+                      href="/admin/localization/export?lang=en"
+                      download
+                    >
                       <i class="bi bi-flag"></i> Английский
-                    </a></li>
-                  </ul>
-                </div>
-                
-                <button type="button" class="btn btn-outline-info me-2" data-bs-toggle="modal" data-bs-target="#importModal">
-                  <i class="bi bi-upload"></i> Импорт
-                </button>
-                
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addKeyModal">
-                  <i class="bi bi-plus-circle"></i> Добавить ключ
-                </button>
+                    </a>
+                  </li>
+                </ul>
               </div>
-            </div>
-          </div>
-        </div>
 
-        <div class="card mb-3">
-          <div class="card-header bg-info text-white">
-            <h6 class="mb-0">
-              <i class="bi bi-info-circle me-1"></i> Доступные макросы
-              <button class="btn btn-sm btn-link text-white float-end" type="button" data-bs-toggle="collapse" data-bs-target="#macrosHelp" aria-expanded="false">
-                <i class="bi bi-chevron-down"></i>
+              <button
+                type="button"
+                class="btn btn-outline-info me-2"
+                data-bs-toggle="modal"
+                data-bs-target="#importModal"
+              >
+                <i class="bi bi-upload"></i> Импорт
               </button>
-            </h6>
-          </div>
-          <div class="collapse" id="macrosHelp">
-            <div class="card-body">
-              <p class="small">Макросы вставляются в текст в формате <code>{имя_макроса}</code> и автоматически заменяются при отправке уведомления.</p>
-              
-              <!-- Содержимое табов -->
-              <div class="tab-content pt-2" id="macrosTabContent">
-                <!-- Глобальные макросы -->
-                <div class="tab-pane fade show active" id="global-macros" role="tabpanel">
-                  <h6 class="mb-2">Глобальные макросы, доступные во всех типах уведомлений:</h6>
-                  <table class="table table-sm table-striped">
-                    <thead>
-                      <tr>
-                        <th>Макрос</th>
-                        <th>Описание</th>
-                        <th>Пример</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td><code>{daily_bets_limit}</code></td>
-                        <td>Лимит ставок за день</td>
-                        <td>2880</td>
-                      </tr>
-                      <tr>
-                        <td><code>{daily_bets_zero_limit}</code></td>
-                        <td>Лимит ставок для Zero</td>
-                        <td>100</td>
-                      </tr>
-                      <tr>
-                        <td><code>{minimum_withdrawal}</code></td>
-                        <td>Минимальная сумма для вывода</td>
-                        <td>10.00</td>
-                      </tr>
-                      <tr>
-                        <td><code>{prize_fund}</code></td>
-                        <td>Сумма недельного призового фонда</td>
-                        <td>1000.00</td>
-                      </tr>
-                      <tr>
-                        <td><code>{prize_top}</code></td>
-                        <td>Количество призовых мест</td>
-                        <td>100</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-             </div>
+
+              <button
+                type="button"
+                class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#addKeyModal"
+              >
+                <i class="bi bi-plus-circle"></i> Добавить ключ
+              </button>
             </div>
           </div>
         </div>
+      </div>
 
-        <div class="card">
-          <div class="card-header">
-            <ul class="nav nav-tabs card-header-tabs" id="localization-tabs" role="tablist">
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" id="en-tab" data-bs-toggle="tab" data-bs-target="#en" type="button" role="tab" aria-controls="en" aria-selected="false">Английский</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" id="ru-tab" data-bs-toggle="tab" data-bs-target="#ru" type="button" role="tab" aria-controls="ru" aria-selected="false">Русский</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="uk-tab" data-bs-toggle="tab" data-bs-target="#uk" type="button" role="tab" aria-controls="uk" aria-selected="true">Украинский</button>
-              </li>
-            </ul>
-          </div>
+      <div class="card mb-3">
+        <div class="card-header bg-info text-white">
+          <h6 class="mb-0">
+            <i class="bi bi-info-circle me-1"></i> Доступные макросы
+            <button
+              class="btn btn-sm btn-link text-white float-end"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#macrosHelp"
+              aria-expanded="false"
+            >
+              <i class="bi bi-chevron-down"></i>
+            </button>
+          </h6>
+        </div>
+        <div class="collapse" id="macrosHelp">
           <div class="card-body">
-            <div class="mb-3">
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input type="text" class="form-control" id="search-localizations" placeholder="Поиск по ключу или значению...">
-              </div>
-            </div>
+            <p class="small">
+              Макросы вставляются в текст в формате <code>{имя_макроса}</code> и
+              автоматически заменяются при отправке уведомления.
+            </p>
 
-            <div class="tab-content" id="localization-content">
-              <!-- Ukrainian localization -->
-              <div class="tab-pane fade show active" id="uk" role="tabpanel" aria-labelledby="uk-tab">
-                <div class="table-responsive">
-                  <table class="table table-hover localization-table" id="uk-table">
-                    <thead>
-                      <tr>
-                        <th width="30%">Ключ</th>
-                        <th>Значения</th>
-                        <th width="120px">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {{range .localizations.uk}}
-                      <tr data-key="{{.Key}}">
-                        <td>{{.Key}}</td>
-                        <td>
-                          <div class="localization-value">{{.Value}}</div>
-                        </td>
-                        <td>
-                          <div class="btn-group">
-                            <button class="btn btn-sm btn-outline-primary edit-localization">
-                              <i class="bi bi-pencil"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger delete-localization">
-                              <i class="bi bi-trash"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {{else}}
-                      <tr>
-                        <td colspan="3" class="text-center">
-                          <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle me-2"></i>Нет записей для украинской локализации
-                          </div>
-                        </td>
-                      </tr>
-                      {{end}}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <!-- English localization -->
-              <div class="tab-pane fade" id="en" role="tabpanel" aria-labelledby="en-tab">
-                <div class="table-responsive">
-                  <table class="table table-hover localization-table" id="en-table">
-                    <thead>
-                      <tr>
-                        <th width="30%">Ключ</th>
-                        <th>Значения</th>
-                        <th width="120px">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {{range .localizations.en}}
-                      <tr data-key="{{.Key}}">
-                        <td>{{.Key}}</td>
-                        <td>
-                          <div class="localization-value">{{.Value}}</div>
-                        </td>
-                        <td>
-                          <div class="btn-group">
-                            <button class="btn btn-sm btn-outline-primary edit-localization">
-                              <i class="bi bi-pencil"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger delete-localization">
-                              <i class="bi bi-trash"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {{else}}
-                      <tr>
-                        <td colspan="3" class="text-center">
-                          <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle me-2"></i>Нет записей для английской локализации
-                          </div>
-                        </td>
-                      </tr>
-                      {{end}}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <!-- Russian localization -->
-              <div class="tab-pane fade" id="ru" role="tabpanel" aria-labelledby="ru-tab">
-                <div class="table-responsive">
-                  <table class="table table-hover localization-table" id="ru-table">
-                    <thead>
-                      <tr>
-                        <th width="30%">Ключ</th>
-                        <th>Значения</th>
-                        <th width="120px">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {{range .localizations.ru}}
-                      <tr data-key="{{.Key}}">
-                        <td>{{.Key}}</td>
-                        <td>
-                          <div class="localization-value">{{.Value}}</div>
-                        </td>
-                        <td>
-                          <div class="btn-group">
-                            <button class="btn btn-sm btn-outline-primary edit-localization">
-                              <i class="bi bi-pencil"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger delete-localization">
-                              <i class="bi bi-trash"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {{else}}
-                      <tr>
-                        <td colspan="3" class="text-center">
-                          <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle me-2"></i>Нет записей для русской локализации
-                          </div>
-                        </td>
-                      </tr>
-                      {{end}}
-                    </tbody>
-                  </table>
-                </div>
+            <!-- Содержимое табов -->
+            <div class="tab-content pt-2" id="macrosTabContent">
+              <!-- Глобальные макросы -->
+              <div
+                class="tab-pane fade show active"
+                id="global-macros"
+                role="tabpanel"
+              >
+                <h6 class="mb-2">
+                  Глобальные макросы, доступные во всех типах уведомлений:
+                </h6>
+                <table class="table table-sm table-striped">
+                  <thead>
+                    <tr>
+                      <th>Макрос</th>
+                      <th>Описание</th>
+                      <th>Пример</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>{daily_bets_limit}</code></td>
+                      <td>Лимит ставок за день</td>
+                      <td>2880</td>
+                    </tr>
+                    <tr>
+                      <td><code>{daily_bets_zero_limit}</code></td>
+                      <td>Лимит ставок для Zero</td>
+                      <td>100</td>
+                    </tr>
+                    <tr>
+                      <td><code>{minimum_withdrawal}</code></td>
+                      <td>Минимальная сумма для вывода</td>
+                      <td>10.00</td>
+                    </tr>
+                    <tr>
+                      <td><code>{prize_fund}</code></td>
+                      <td>Сумма недельного призового фонда</td>
+                      <td>1000.00</td>
+                    </tr>
+                    <tr>
+                      <td><code>{prize_top}</code></td>
+                      <td>Количество призовых мест</td>
+                      <td>100</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </main>
-  </div>
 
-  <!-- Модальное окно для редактирования/создания нового ключа локализации -->
-  <div class="modal fade" id="addKeyModal" tabindex="-1" aria-labelledby="addKeyModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="addKeyModalLabel">Добавить новый ключ локализации</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="card">
+        <div class="card-header">
+          <ul
+            class="nav nav-tabs card-header-tabs"
+            id="localization-tabs"
+            role="tablist"
+          >
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="en-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#en"
+                type="button"
+                role="tab"
+                aria-controls="en"
+                aria-selected="false"
+              >
+                Английский
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="ru-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#ru"
+                type="button"
+                role="tab"
+                aria-controls="ru"
+                aria-selected="false"
+              >
+                Русский
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link active"
+                id="uk-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#uk"
+                type="button"
+                role="tab"
+                aria-controls="uk"
+                aria-selected="true"
+              >
+                Украинский
+              </button>
+            </li>
+          </ul>
         </div>
-        <div class="modal-body">
-          <form id="add-localization-form">
-            <input type="hidden" id="localization-id" name="id" value="">
-            <div class="mb-3">
-              <label for="localization-key" class="form-label">Ключ</label>
-              <input type="text" class="form-control" id="localization-key" required>
-              <div class="form-text">Используйте только латинские буквы, цифры и нижнее подчеркивание. Например: welcome_message</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input
+                type="text"
+                class="form-control"
+                id="search-localizations"
+                placeholder="Поиск по ключу или значению..."
+              />
             </div>
-            
-            <!-- Сообщение -->
-            <div class="mb-3">
-              <label for="en-value" class="form-label">Английский</label>
-              <textarea class="form-control" id="en-value" rows="3" required></textarea>
-            </div>
-            
-            <div class="mb-3">
-              <label for="ru-value" class="form-label">Русский</label>
-              <textarea class="form-control" id="ru-value" rows="3" required></textarea>
-            </div>
-
-            <div class="mb-3">
-              <label for="uk-value" class="form-label">Украинский</label>
-              <textarea class="form-control" id="uk-value" rows="3" required></textarea>
-            </div>
-
-            <!-- Изображения -->
-            <div class="card mb-3">
-              <div class="card-header">
-                <h6 class="mb-0">Изображения</h6>
-              </div>
-              <div class="card-body">
-                <div class="row">
-                  <div class="col-md-4">
-                    <label for="edit-image-en-input" class="form-label">English</label>
-                    <input type="url" class="form-control" id="edit-image-en-input" name="image[en]" placeholder="https://example.com/image_en.jpg">
-                    <div class="form-text">URL изображения для английской версии</div>
-                  </div>
-                  <div class="col-md-4">
-                    <label for="edit-image-ru-input" class="form-label">Русский</label>
-                    <input type="url" class="form-control" id="edit-image-ru-input" name="image[ru]" placeholder="https://example.com/image_ru.jpg">
-                    <div class="form-text">URL изображения для русской версии</div>
-                  </div>
-                  <div class="col-md-4">
-                    <label for="edit-image-uk-input" class="form-label">Українська</label>
-                    <input type="url" class="form-control" id="edit-image-uk-input" name="image[uk]" placeholder="https://example.com/image_uk.jpg">
-                    <div class="form-text">URL изображения для украинской версии</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <!-- Видео -->
-            <div class="card mb-3">
-              <div class="card-header">
-                <h6 class="mb-0">Видео</h6>
-              </div>
-              <div class="card-body">
-                <div class="row">
-                  <div class="col-md-4">
-                    <label for="edit-video-en-input" class="form-label">English</label>
-                    <input type="url" class="form-control" id="edit-video-en-input" name="video[en]" placeholder="https://example.com/video_en.jpg">
-                    <div class="form-text">URL видео для английской версии</div>
-                  </div>
-                  <div class="col-md-4">
-                    <label for="edit-video-ru-input" class="form-label">Русский</label>
-                    <input type="url" class="form-control" id="edit-video-ru-input" name="video[ru]" placeholder="https://example.com/video_ru.jpg">
-                    <div class="form-text">URL видео для русской версии</div>
-                  </div>
-                  <div class="col-md-4">
-                    <label for="edit-video-uk-input" class="form-label">Українська</label>
-                    <input type="url" class="form-control" id="edit-video-uk-input" name="video[uk]" placeholder="https://example.com/video_uk.jpg">
-                    <div class="form-text">URL видео для украинской версии</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-          <button type="button" class="btn btn-primary" id="save-localization">Сохранить</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Модальное окно импорта локализаций -->
-  <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="importModalLabel">Импорт локализаций</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>
-            <strong>Поддерживаемые форматы:</strong>
-            <ul class="mb-0 mt-2">
-              <li>JSON файлы экспорта одного языка</li>
-              <li>JSON файлы экспорта всех языков</li>
-              <li>Пользовательские JSON файлы с корректной структурой</li>
-            </ul>
           </div>
-          
-          <form id="import-form" enctype="multipart/form-data">
-            <div class="mb-3">
-              <label for="localization-file" class="form-label">Выберите JSON файл</label>
-              <input type="file" class="form-control" id="localization-file" name="localization_file" accept=".json" required>
-              <div class="form-text">Максимальный размер файла: 10MB</div>
-            </div>
-            
-            <div class="mb-3">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="replace-existing">
-                <label class="form-check-label" for="replace-existing">
-                  Заменить существующие записи
-                </label>
-                <div class="form-text">Если отключено, существующие записи не будут изменены</div>
+
+          <div class="tab-content" id="localization-content">
+            <!-- Ukrainian localization -->
+            <div
+              class="tab-pane fade show active"
+              id="uk"
+              role="tabpanel"
+              aria-labelledby="uk-tab"
+            >
+              <div class="table-responsive">
+                <table
+                  class="table table-hover localization-table"
+                  id="uk-table"
+                >
+                  <thead>
+                    <tr>
+                      <th width="30%">Ключ</th>
+                      <th>Значение</th>
+                      <th width="120px">Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {{range .localizations.uk}}
+                    <tr data-key="{{.Key}}">
+                      <td>{{.Key}}</td>
+                      <td>
+                        <div
+                          class="localization-value"
+                          data-raw-value="{{.Value}}"
+                        ></div>
+                      </td>
+                      <td>
+                        <div class="btn-group">
+                          <button
+                            class="btn btn-sm btn-outline-primary edit-localization"
+                          >
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                          <button
+                            class="btn btn-sm btn-outline-danger delete-localization"
+                          >
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {{else}}
+                    <tr>
+                      <td colspan="3" class="text-center">
+                        <div class="alert alert-info mb-0">
+                          <i class="bi bi-info-circle me-2"></i>Нет записей для
+                          украинской локализации
+                        </div>
+                      </td>
+                    </tr>
+                    {{end}}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <!-- Progress bar -->
-            <div class="progress d-none mb-3" id="import-progress">
-              <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+            <!-- English localization -->
+            <div
+              class="tab-pane fade"
+              id="en"
+              role="tabpanel"
+              aria-labelledby="en-tab"
+            >
+              <div class="table-responsive">
+                <table
+                  class="table table-hover localization-table"
+                  id="en-table"
+                >
+                  <thead>
+                    <tr>
+                      <th width="30%">Ключ</th>
+                      <th>Значение</th>
+                      <th width="120px">Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {{range .localizations.en}}
+                    <tr data-key="{{.Key}}">
+                      <td>{{.Key}}</td>
+                      <td>
+                        <div
+                          class="localization-value"
+                          data-raw-value="{{.Value}}"
+                        ></div>
+                      </td>
+                      <td>
+                        <div class="btn-group">
+                          <button
+                            class="btn btn-sm btn-outline-primary edit-localization"
+                          >
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                          <button
+                            class="btn btn-sm btn-outline-danger delete-localization"
+                          >
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {{else}}
+                    <tr>
+                      <td colspan="3" class="text-center">
+                        <div class="alert alert-info mb-0">
+                          <i class="bi bi-info-circle me-2"></i>Нет записей для
+                          английской локализации
+                        </div>
+                      </td>
+                    </tr>
+                    {{end}}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            <!-- Import results -->
-            <div id="import-results" class="d-none"></div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-          <button type="button" class="btn btn-primary" id="start-import">
-            <i class="bi bi-upload"></i> Импортировать
-          </button>
+            <!-- Russian localization -->
+            <div
+              class="tab-pane fade"
+              id="ru"
+              role="tabpanel"
+              aria-labelledby="ru-tab"
+            >
+              <div class="table-responsive">
+                <table
+                  class="table table-hover localization-table"
+                  id="ru-table"
+                >
+                  <thead>
+                    <tr>
+                      <th width="30%">Ключ</th>
+                      <th>Значение</th>
+                      <th width="120px">Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {{range .localizations.ru}}
+                    <tr data-key="{{.Key}}">
+                      <td>{{.Key}}</td>
+                      <td>
+                        <div
+                          class="localization-value"
+                          data-raw-value="{{.Value}}"
+                        ></div>
+                      </td>
+                      <td>
+                        <div class="btn-group">
+                          <button
+                            class="btn btn-sm btn-outline-primary edit-localization"
+                          >
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                          <button
+                            class="btn btn-sm btn-outline-danger delete-localization"
+                          >
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {{else}}
+                    <tr>
+                      <td colspan="3" class="text-center">
+                        <div class="alert alert-info mb-0">
+                          <i class="bi bi-info-circle me-2"></i>Нет записей для
+                          русской локализации
+                        </div>
+                      </td>
+                    </tr>
+                    {{end}}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </main>
+</div>
 
-  <!-- Модальное окно подтверждения удаления -->
-  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="deleteConfirmModalLabel">Подтверждение удаления</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p>Вы уверены, что хотите удалить локализацию с ключом <strong id="delete-key-name"></strong>?</p>
-          <p class="text-danger">Это действие нельзя отменить. Локализация будет удалена для всех языков.</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-          <button type="button" class="btn btn-danger" id="confirm-delete">Удалить</button>
-        </div>
+<!-- Модальное окно для редактирования/создания нового ключа локализации -->
+<div
+  class="modal fade"
+  id="addKeyModal"
+  tabindex="-1"
+  aria-labelledby="addKeyModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addKeyModalLabel">
+          Добавить новый ключ локализации
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="add-localization-form">
+          <input type="hidden" id="localization-id" name="id" value="" />
+          <div class="mb-3">
+            <label for="localization-key" class="form-label">Ключ</label>
+            <input
+              type="text"
+              class="form-control"
+              id="localization-key"
+              required
+            />
+            <div class="form-text">
+              Используйте только латинские буквы, цифры и нижнее подчеркивание.
+              Например: welcome_message
+            </div>
+          </div>
+
+          <!-- Сообщение -->
+          <div class="mb-3">
+            <label for="en-value" class="form-label">Английский</label>
+            <textarea
+              class="form-control"
+              id="en-value"
+              rows="3"
+              required
+            ></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label for="ru-value" class="form-label">Русский</label>
+            <textarea
+              class="form-control"
+              id="ru-value"
+              rows="3"
+              required
+            ></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label for="uk-value" class="form-label">Украинский</label>
+            <textarea
+              class="form-control"
+              id="uk-value"
+              rows="3"
+              required
+            ></textarea>
+          </div>
+
+          <!-- Изображения -->
+          <div class="card mb-3">
+            <div class="card-header">
+              <h6 class="mb-0">Изображения</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-4">
+                  <label for="edit-image-en-input" class="form-label"
+                    >English</label
+                  >
+                  <input
+                    type="url"
+                    class="form-control"
+                    id="edit-image-en-input"
+                    name="image[en]"
+                    placeholder="https://example.com/image_en.jpg"
+                  />
+                  <div class="form-text">
+                    URL изображения для английской версии
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label for="edit-image-ru-input" class="form-label"
+                    >Русский</label
+                  >
+                  <input
+                    type="url"
+                    class="form-control"
+                    id="edit-image-ru-input"
+                    name="image[ru]"
+                    placeholder="https://example.com/image_ru.jpg"
+                  />
+                  <div class="form-text">
+                    URL изображения для русской версии
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label for="edit-image-uk-input" class="form-label"
+                    >Українська</label
+                  >
+                  <input
+                    type="url"
+                    class="form-control"
+                    id="edit-image-uk-input"
+                    name="image[uk]"
+                    placeholder="https://example.com/image_uk.jpg"
+                  />
+                  <div class="form-text">
+                    URL изображения для украинской версии
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Видео -->
+          <div class="card mb-3">
+            <div class="card-header">
+              <h6 class="mb-0">Видео</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-4">
+                  <label for="edit-video-en-input" class="form-label"
+                    >English</label
+                  >
+                  <input
+                    type="url"
+                    class="form-control"
+                    id="edit-video-en-input"
+                    name="video[en]"
+                    placeholder="https://example.com/video_en.jpg"
+                  />
+                  <div class="form-text">URL видео для английской версии</div>
+                </div>
+                <div class="col-md-4">
+                  <label for="edit-video-ru-input" class="form-label"
+                    >Русский</label
+                  >
+                  <input
+                    type="url"
+                    class="form-control"
+                    id="edit-video-ru-input"
+                    name="video[ru]"
+                    placeholder="https://example.com/video_ru.jpg"
+                  />
+                  <div class="form-text">URL видео для русской версии</div>
+                </div>
+                <div class="col-md-4">
+                  <label for="edit-video-uk-input" class="form-label"
+                    >Українська</label
+                  >
+                  <input
+                    type="url"
+                    class="form-control"
+                    id="edit-video-uk-input"
+                    name="video[uk]"
+                    placeholder="https://example.com/video_uk.jpg"
+                  />
+                  <div class="form-text">URL видео для украинской версии</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Отмена
+        </button>
+        <button type="button" class="btn btn-primary" id="save-localization">
+          Сохранить
+        </button>
       </div>
     </div>
   </div>
+</div>
 
-  {{template "footer" .}}
+<!-- Модальное окно импорта локализаций -->
+<div
+  class="modal fade"
+  id="importModal"
+  tabindex="-1"
+  aria-labelledby="importModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importModalLabel">Импорт локализаций</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Поддерживаемые форматы:</strong>
+          <ul class="mb-0 mt-2">
+            <li>JSON файлы экспорта одного языка</li>
+            <li>JSON файлы экспорта всех языков</li>
+            <li>Пользовательские JSON файлы с корректной структурой</li>
+          </ul>
+        </div>
 
-  <script>
-    $(document).ready(function() {
-      // Existing code for editing, deleting, and adding localizations
+        <form id="import-form" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="localization-file" class="form-label"
+              >Выберите JSON файл</label
+            >
+            <input
+              type="file"
+              class="form-control"
+              id="localization-file"
+              name="localization_file"
+              accept=".json"
+              required
+            />
+            <div class="form-text">Максимальный размер файла: 10MB</div>
+          </div>
 
-/**
- * Редактирование шаблона уведомления
- * @param {string} id ID шаблона (если не указан, создается новый)
-*/
-  function editLocalization(id) {
-    // Сбрасываем форму
-    $('#add-localization-form')[0].reset();
+          <div class="mb-3">
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="replace-existing"
+              />
+              <label class="form-check-label" for="replace-existing">
+                Заменить существующие записи
+              </label>
+              <div class="form-text">
+                Если отключено, существующие записи не будут изменены
+              </div>
+            </div>
+          </div>
 
-    // Открываем модальное окно
-    const addKeyModal = new bootstrap.Modal(document.getElementById('addKeyModal'));
-    
-    // Устанавливаем заголовок для редактирования
-    document.getElementById('addKeyModalLabel').textContent = 'Редактировать ключ локализации';
-    
-    // Показываем модальное окно перед загрузкой данных
-    addKeyModal.show();
-    
-    // Загружаем данные шаблона
-    fetch(`/admin/api/localizations/${id}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            return response.json();
+          <!-- Progress bar -->
+          <div class="progress d-none mb-3" id="import-progress">
+            <div
+              class="progress-bar progress-bar-striped progress-bar-animated"
+              role="progressbar"
+              style="width: 0%"
+            ></div>
+          </div>
+
+          <!-- Import results -->
+          <div id="import-results" class="d-none"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Отмена
+        </button>
+        <button type="button" class="btn btn-primary" id="start-import">
+          <i class="bi bi-upload"></i> Импортировать
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div
+  class="modal fade"
+  id="deleteConfirmModal"
+  tabindex="-1"
+  aria-labelledby="deleteConfirmModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteConfirmModalLabel">
+          Подтверждение удаления
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <p>
+          Вы уверены, что хотите удалить локализацию с ключом
+          <strong id="delete-key-name"></strong>?
+        </p>
+        <p class="text-danger">
+          Это действие нельзя отменить. Локализация будет удалена для всех
+          языков.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Отмена
+        </button>
+        <button type="button" class="btn btn-danger" id="confirm-delete">
+          Удалить
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{template "footer" .}}
+
+<script>
+  $(document).ready(function () {
+    // Render HTML in localization values on page load
+    $(".localization-value").each(function () {
+      const rawValue = $(this).attr("data-raw-value");
+      if (rawValue) {
+        $(this).html(rawValue);
+      }
+    });
+
+    /**
+     * Decode HTML entities
+     * @param {string} html - HTML string with entities
+     * @returns {string} Decoded string
+     */
+    function decodeHTMLEntities(html) {
+      const txt = document.createElement("textarea");
+      txt.innerHTML = html;
+      return txt.value;
+    }
+
+    /**
+     * Редактирование шаблона уведомления
+     * @param {string} id ID шаблона (если не указан, создается новый)
+     */
+    function editLocalization(id) {
+      // Сбрасываем форму
+      $("#add-localization-form")[0].reset();
+
+      // Открываем модальное окно
+      const addKeyModal = new bootstrap.Modal(
+        document.getElementById("addKeyModal")
+      );
+
+      // Устанавливаем заголовок для редактирования
+      document.getElementById("addKeyModalLabel").textContent =
+        "Редактировать ключ локализации";
+
+      // Показываем модальное окно перед загрузкой данных
+      addKeyModal.show();
+
+      // Загружаем данные шаблона
+      fetch(`/admin/api/localizations/${id}`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+          return response.json();
         })
-        .then(data => {
-            // Заполняем базовые поля формы
-            document.getElementById('localization-id').value = id;
-            
-            // Устанавливаем значение, но блокируем взаимодействие
-            const key = document.getElementById('localization-key');
-            key.value = id;
-            key.setAttribute('disabled', 'disabled');
-            
-                document.getElementById('en-value').value = data.enData.Value || '';
-                document.getElementById('ru-value').value = data.ruData.Value || '';
-                document.getElementById('uk-value').value = data.ukData.Value || '';
-   
-            // Заполняем URL изображений для разных языков
-                document.getElementById('edit-image-en-input').value = data.enData.Image || '';
-                document.getElementById('edit-image-ru-input').value = data.ruData.Image || '';
-                document.getElementById('edit-image-uk-input').value = data.ukData.Image || '';
-        
-            // Заполняем URL видео для разных языков
-                document.getElementById('edit-video-en-input').value = data.enData.Video || '';
-                document.getElementById('edit-video-ru-input').value = data.ruData.Video || '';
-                document.getElementById('edit-video-uk-input').value = data.ukData.Video || '';
-        })
-        .catch(error => {
-            console.error('Error loading template for edit:', error);
+        .then((data) => {
+          // Заполняем базовые поля формы
+          document.getElementById("localization-id").value = id;
 
-            // Показываем сообщение об ошибке
-            showNotification('Ошибка загрузки данных шаблона: ' + error.message, 'danger');
+          // Устанавливаем значение, но блокируем взаимодействие
+          const key = document.getElementById("localization-key");
+          key.value = id;
+          key.setAttribute("disabled", "disabled");
+
+          // Decode HTML entities before setting values
+          document.getElementById("en-value").value = decodeHTMLEntities(
+            data.enData.Value || ""
+          );
+          document.getElementById("ru-value").value = decodeHTMLEntities(
+            data.ruData.Value || ""
+          );
+          document.getElementById("uk-value").value = decodeHTMLEntities(
+            data.ukData.Value || ""
+          );
+
+          // Заполняем URL изображений для разных языков
+          document.getElementById("edit-image-en-input").value =
+            data.enData.Image || "";
+          document.getElementById("edit-image-ru-input").value =
+            data.ruData.Image || "";
+          document.getElementById("edit-image-uk-input").value =
+            data.ukData.Image || "";
+
+          // Заполняем URL видео для разных языков
+          document.getElementById("edit-video-en-input").value =
+            data.enData.Video || "";
+          document.getElementById("edit-video-ru-input").value =
+            data.ruData.Video || "";
+          document.getElementById("edit-video-uk-input").value =
+            data.ukData.Video || "";
+        })
+        .catch((error) => {
+          console.error("Error loading template for edit:", error);
+
+          // Показываем сообщение об ошибке
+          showNotification(
+            "Ошибка загрузки данных шаблона: " + error.message,
+            "danger"
+          );
         });
+    }
+
+    $(".edit-localization").click(function () {
+      const row = $(this).closest("tr");
+      const id = row.data("key");
+      editLocalization(id);
+    });
+
+    // Delete localization
+    $(".delete-localization").click(function () {
+      const key = $(this).closest("tr").data("key");
+      $("#delete-key-name").text(key);
+      $("#deleteConfirmModal").modal("show");
+      $("#confirm-delete").data("key", key);
+    });
+
+    // Confirm delete
+    $("#confirm-delete").click(function () {
+      const key = $(this).data("key");
+
+      $.ajax({
+        url: "/admin/localization/" + key + "/delete",
+        type: "POST",
+        success: function (response) {
+          if (response.success) {
+            $('tr[data-key="' + key + '"]').remove();
+            $("#deleteConfirmModal").modal("hide");
+            showNotification("Локализация успешно удалена", "success");
+          } else {
+            showNotification(
+              "Ошибка при удалении: " + response.error,
+              "danger"
+            );
+          }
+        },
+        error: function () {
+          showNotification("Ошибка соединения с сервером", "danger");
+        },
+      });
+    });
+
+    // Add new localization
+    $("#save-localization").click(function () {
+      const id = document.getElementById("localization-id").value;
+      const key = $("#localization-key").val();
+
+      // Собираем локализации сообщения
+      const ukValue = $("#uk-value").val();
+      const enValue = $("#en-value").val();
+      const ruValue = $("#ru-value").val();
+
+      if (!key || !ukValue || !enValue || !ruValue) {
+        showNotification("Все поля должны быть заполнены", "warning");
+        return;
       }
 
-      $('.edit-localization').click(function() {
-        const row = $(this).closest('tr');
-        const id = row.data('key');
-        editLocalization(id);
-      });
+      if (!/^[a-zA-Z0-9_]+$/.test(key)) {
+        showNotification(
+          "Ключ может содержать только латинские буквы, цифры и нижнее подчеркивание",
+          "warning"
+        );
+        return;
+      }
 
-      // Delete localization
-      $('.delete-localization').click(function() {
-        const key = $(this).closest('tr').data('key');
-        $('#delete-key-name').text(key);
-        $('#deleteConfirmModal').modal('show');
-        $('#confirm-delete').data('key', key);
+      // Собираем URL изображений для разных языков
+      const image = {
+        en: document.getElementById("edit-image-en-input").value,
+        ru: document.getElementById("edit-image-ru-input").value,
+        uk: document.getElementById("edit-image-uk-input").value,
+      };
+      // Собираем URL видео для разных языков
+      const video = {
+        en: document.getElementById("edit-video-en-input").value,
+        ru: document.getElementById("edit-video-ru-input").value,
+        uk: document.getElementById("edit-video-uk-input").value,
+      };
+
+      // Определяем URL и метод запроса
+      const requestUrl = id ? `${id}` : "add";
+
+      $.ajax({
+        url: "/admin/localization/" + requestUrl,
+        type: "POST",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify({
+          key: key,
+          message: {
+            uk: ukValue,
+            en: enValue,
+            ru: ruValue,
+          },
+          image: image,
+          video: video,
+        }),
+        success: function (response) {
+          if (response.success) {
+            // Создаем или заменяем текст в строке
+            addLocalizationRow("uk", key, ukValue);
+            addLocalizationRow("en", key, enValue);
+            addLocalizationRow("ru", key, ruValue);
+
+            $("#add-localization-form")[0].reset();
+            $("#addKeyModal").modal("hide");
+            showNotification("Локализация успешно сохранена", "success");
+          } else {
+            showNotification(
+              "Ошибка при сохранении: " + response.error,
+              "danger"
+            );
+          }
+        },
+        error: function () {
+          showNotification("Ошибка соединения с сервером", "danger");
+        },
       });
-      
-      // Confirm delete
-      $('#confirm-delete').click(function() {
-        const key = $(this).data('key');
-        
-        $.ajax({
-          url: '/admin/localization/' + key + '/delete',
-          type: 'POST',
-          success: function(response) {
+    });
+
+    // Import functionality
+    $("#start-import").click(function () {
+      const fileInput = $("#localization-file")[0];
+      const file = fileInput.files[0];
+
+      if (!file) {
+        showNotification("Выберите файл для импорта", "warning");
+        return;
+      }
+
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        showNotification(
+          "Файл слишком большой. Максимальный размер: 10MB",
+          "danger"
+        );
+        return;
+      }
+
+      // Check file extension
+      if (!file.name.toLowerCase().endsWith(".json")) {
+        showNotification("Поддерживаются только JSON файлы", "danger");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("localization_file", file);
+
+      // Show progress
+      $("#import-progress").removeClass("d-none");
+      $("#import-results").addClass("d-none");
+      $("#start-import")
+        .prop("disabled", true)
+        .html('<i class="bi bi-hourglass-split"></i> Импортируется...');
+
+      // Animate progress bar
+      let progress = 0;
+      const progressInterval = setInterval(function () {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        $("#import-progress .progress-bar").css("width", progress + "%");
+      }, 200);
+
+      $.ajax({
+        url: "/admin/localization/import",
+        type: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (response) {
+          clearInterval(progressInterval);
+          $("#import-progress .progress-bar").css("width", "100%");
+
+          setTimeout(function () {
+            $("#import-progress").addClass("d-none");
+
             if (response.success) {
-              $('tr[data-key="' + key + '"]').remove();
-              $('#deleteConfirmModal').modal('hide');
-              showNotification('Локализация успешно удалена', 'success');
+              displayImportResults(response);
+              showNotification("Импорт успешно завершен!", "success");
+
+              // Reload page after 3 seconds to show updated data
+              setTimeout(function () {
+                location.reload();
+              }, 3000);
             } else {
-              showNotification('Ошибка при удалении: ' + response.error, 'danger');
+              displayImportError(response);
             }
-          },
-          error: function() {
-            showNotification('Ошибка соединения с сервером', 'danger');
+
+            $("#start-import")
+              .prop("disabled", false)
+              .html('<i class="bi bi-upload"></i> Импортировать');
+          }, 500);
+        },
+        error: function (xhr) {
+          clearInterval(progressInterval);
+          $("#import-progress").addClass("d-none");
+          $("#start-import")
+            .prop("disabled", false)
+            .html('<i class="bi bi-upload"></i> Импортировать');
+
+          let errorMessage = "Ошибка соединения с сервером";
+          if (xhr.responseJSON && xhr.responseJSON.error) {
+            errorMessage = xhr.responseJSON.error;
           }
-        });
+
+          displayImportError({
+            error: errorMessage,
+            invalid_keys: xhr.responseJSON?.invalid_keys,
+          });
+        },
       });
-      
-      // Add new localization
-      $('#save-localization').click(function() {
-        const id = document.getElementById('localization-id').value;
-        const key = $('#localization-key').val();
+    });
 
-        // Собираем локализации сообщения
-        const ukValue = $('#uk-value').val();
-        const enValue = $('#en-value').val();
-        const ruValue = $('#ru-value').val();
-        
-        if (!key || !ukValue || !enValue || !ruValue) {
-          showNotification('Все поля должны быть заполнены', 'warning');
-          return;
-        }
-        
-        if (!/^[a-zA-Z0-9_]+$/.test(key)) {
-          showNotification('Ключ может содержать только латинские буквы, цифры и нижнее подчеркивание', 'warning');
-          return;
-        }
-        
-        // Собираем URL изображений для разных языков
-        const image = {
-          en:document.getElementById('edit-image-en-input').value,
-          ru:document.getElementById('edit-image-ru-input').value,
-          uk:document.getElementById('edit-image-uk-input').value,
-        };
-        // Собираем URL видео для разных языков
-        const video = {
-          en:document.getElementById('edit-video-en-input').value,
-          ru:document.getElementById('edit-video-ru-input').value,
-          uk:document.getElementById('edit-video-uk-input').value,
-        };
+    // Search functionality
+    $("#search-localizations").on("keyup", function () {
+      const value = $(this).val().toLowerCase();
 
-        
-        // Определяем URL и метод запроса
-        const requestUrl = id ? `${id}` : 'add';
+      $(".localization-table tbody tr").filter(function () {
+        const key = $(this).find("td:first").text().toLowerCase();
+        const textValue = $(this)
+          .find(".localization-value")
+          .text()
+          .toLowerCase();
 
-        $.ajax({
-          url: '/admin/localization/'+requestUrl,
-          type: 'POST',
-          dataType: 'json',
-          contentType: 'application/json',
-          data: JSON.stringify({
-            key: key,
-            message: {
-              uk: ukValue,
-              en: enValue,
-              ru: ruValue
-            },
-            image: image,
-            video: video,
-          }),
-          success: function(response) {
-            if (response.success) {
-
-              // Создаем или заменяем текст в строке
-              addLocalizationRow('uk', key, ukValue);
-              addLocalizationRow('en', key, enValue);
-              addLocalizationRow('ru', key, ruValue);
-              
-              $('#add-localization-form')[0].reset();
-              $('#addKeyModal').modal('hide');
-              showNotification('Локализация успешно сохранена', 'success');
-            } else {
-              showNotification('Ошибка при сохранении: ' + response.error, 'danger');
-            }
-          },
-          error: function() {
-            showNotification('Ошибка соединения с сервером', 'danger');
-          }
-        });
+        $(this).toggle(
+          key.indexOf(value) > -1 || textValue.indexOf(value) > -1
+        );
       });
+    });
 
-      // Import functionality
-      $('#start-import').click(function() {
-        const fileInput = $('#localization-file')[0];
-        const file = fileInput.files[0];
-        
-        if (!file) {
-          showNotification('Выберите файл для импорта', 'warning');
-          return;
-        }
-        
-        // Check file size (10MB limit)
-        if (file.size > 10 * 1024 * 1024) {
-          showNotification('Файл слишком большой. Максимальный размер: 10MB', 'danger');
-          return;
-        }
-        
-        // Check file extension
-        if (!file.name.toLowerCase().endsWith('.json')) {
-          showNotification('Поддерживаются только JSON файлы', 'danger');
-          return;
-        }
-        
-        const formData = new FormData();
-        formData.append('localization_file', file);
-        
-        // Show progress
-        $('#import-progress').removeClass('d-none');
-        $('#import-results').addClass('d-none');
-        $('#start-import').prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Импортируется...');
-        
-        // Animate progress bar
-        let progress = 0;
-        const progressInterval = setInterval(function() {
-          progress += Math.random() * 15;
-          if (progress > 90) progress = 90;
-          $('#import-progress .progress-bar').css('width', progress + '%');
-        }, 200);
-        
-        $.ajax({
-          url: '/admin/localization/import',
-          type: 'POST',
-          data: formData,
-          processData: false,
-          contentType: false,
-          success: function(response) {
-            clearInterval(progressInterval);
-            $('#import-progress .progress-bar').css('width', '100%');
-            
-            setTimeout(function() {
-              $('#import-progress').addClass('d-none');
-              
-              if (response.success) {
-                displayImportResults(response);
-                showNotification('Импорт успешно завершен!', 'success');
-                
-                // Reload page after 3 seconds to show updated data
-                setTimeout(function() {
-                  location.reload();
-                }, 3000);
-              } else {
-                displayImportError(response);
-              }
-              
-              $('#start-import').prop('disabled', false).html('<i class="bi bi-upload"></i> Импортировать');
-            }, 500);
-          },
-          error: function(xhr) {
-            clearInterval(progressInterval);
-            $('#import-progress').addClass('d-none');
-            $('#start-import').prop('disabled', false).html('<i class="bi bi-upload"></i> Импортировать');
-            
-            let errorMessage = 'Ошибка соединения с сервером';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-              errorMessage = xhr.responseJSON.error;
-            }
-            
-            displayImportError({error: errorMessage, invalid_keys: xhr.responseJSON?.invalid_keys});
-          }
-        });
-      });
-      
-      // Search functionality
-      $('#search-localizations').on('keyup', function() {
-        const value = $(this).val().toLowerCase();
-        
-        $('.localization-table tbody tr').filter(function() {
-          const key = $(this).find('td:first').text().toLowerCase();
-          const textValue = $(this).find('.localization-value').text().toLowerCase();
-          
-          $(this).toggle(key.indexOf(value) > -1 || textValue.indexOf(value) > -1);
-        });
-      });
-      
-      // Helper functions
-      function displayImportResults(response) {
-        let html = '<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i><strong>Импорт завершен успешно!</strong></div>';
-        
-        if (response.language) {
-          // Single language import
-          html += `
+    // Helper functions
+    function displayImportResults(response) {
+      let html =
+        '<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i><strong>Импорт завершен успешно!</strong></div>';
+
+      if (response.language) {
+        // Single language import
+        html += `
             <div class="card">
               <div class="card-body">
-                <h6 class="card-title">Результаты импорта для языка: ${getLanguageName(response.language)}</h6>
+                <h6 class="card-title">Результаты импорта для языка: ${getLanguageName(
+                  response.language
+                )}</h6>
                 <ul class="list-unstyled mb-0">
-                  <li><strong>Импортировано новых:</strong> ${response.imported_count}</li>
-                  <li><strong>Обновлено существующих:</strong> ${response.updated_count}</li>
-                  <li><strong>Всего обработано:</strong> ${response.total_count}</li>
+                  <li><strong>Импортировано новых:</strong> ${
+                    response.imported_count
+                  }</li>
+                  <li><strong>Обновлено существующих:</strong> ${
+                    response.updated_count
+                  }</li>
+                  <li><strong>Всего обработано:</strong> ${
+                    response.total_count
+                  }</li>
                 </ul>
               </div>
             </div>
           `;
-        } else if (response.languages) {
-          // Multiple languages import
-          html += `
+      } else if (response.languages) {
+        // Multiple languages import
+        html += `
             <div class="card">
               <div class="card-body">
                 <h6 class="card-title">Результаты импорта</h6>
                 <p><strong>Обработано языков:</strong> ${response.processed_languages}</p>
                 <p><strong>Всего импортировано:</strong> ${response.total_imported}</p>
                 <p><strong>Всего обновлено:</strong> ${response.total_updated}</p>
-                
+
                 <h6 class="mt-3">Детализация по языкам:</h6>
           `;
-          
-          for (const [lang, stats] of Object.entries(response.languages)) {
-            html += `
+
+        for (const [lang, stats] of Object.entries(response.languages)) {
+          html += `
               <div class="mb-2">
                 <strong>${getLanguageName(lang)}:</strong>
-                импортировано ${stats.imported_count}, обновлено ${stats.updated_count}, всего ${stats.total_count}
+                импортировано ${stats.imported_count}, обновлено ${
+            stats.updated_count
+          }, всего ${stats.total_count}
               </div>
             `;
-          }
-          
-          html += '</div></div>';
         }
-        
-        $('#import-results').html(html).removeClass('d-none');
+
+        html += "</div></div>";
       }
-      
-      function displayImportError(response) {
-        let html = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i><strong>Ошибка импорта:</strong> ${response.error}</div>`;
-        
-        if (response.invalid_keys && response.invalid_keys.length > 0) {
-          html += `
+
+      $("#import-results").html(html).removeClass("d-none");
+    }
+
+    function displayImportError(response) {
+      let html = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i><strong>Ошибка импорта:</strong> ${response.error}</div>`;
+
+      if (response.invalid_keys && response.invalid_keys.length > 0) {
+        html += `
             <div class="card">
               <div class="card-body">
                 <h6 class="card-title text-danger">Некорректные ключи:</h6>
                 <ul class="list-unstyled mb-0">
           `;
-          
-          response.invalid_keys.forEach(key => {
-            html += `<li><code>${key}</code></li>`;
-          });
-          
-          html += `
+
+        response.invalid_keys.forEach((key) => {
+          html += `<li><code>${key}</code></li>`;
+        });
+
+        html += `
                 </ul>
                 <div class="form-text mt-2">
                   Ключи должны содержать только латинские буквы, цифры и знак подчеркивания
@@ -763,38 +1125,48 @@
               </div>
             </div>
           `;
-        }
-        
-        $('#import-results').html(html).removeClass('d-none');
-        showNotification('Ошибка при импорте: ' + response.error, 'danger');
       }
-      
-      function getLanguageName(code) {
-        const names = {
-          'uk': 'Украинский',
-          'ru': 'Русский', 
-          'en': 'Английский'
-        };
-        return names[code] || code;
+
+      $("#import-results").html(html).removeClass("d-none");
+      showNotification("Ошибка при импорте: " + response.error, "danger");
+    }
+
+    function getLanguageName(code) {
+      const names = {
+        uk: "Украинский",
+        ru: "Русский",
+        en: "Английский",
+      };
+      return names[code] || code;
+    }
+
+    function addLocalizationRow(language, key, value) {
+      if (
+        $("#" + language + "-table").find('tr[data-key="' + key + '"]').length >
+        0
+      ) {
+        const row = $("#" + language + "-table").find(
+          'tr[data-key="' + key + '"]'
+        );
+        row
+          .find(".localization-value")
+          .html(value)
+          .attr("data-raw-value", value);
+        return;
       }
-      
-      function addLocalizationRow(language, key, value) {
-        if ($('#' + language + '-table').find('tr[data-key="' + key + '"]').length > 0) {
-          const row = $('#' + language + '-table').find('tr[data-key="' + key + '"]');
-          row.find('.localization-value').text(value);
-          return;
-        }
-        
-        const table = $('#' + language + '-table');
-        if (table.find('tbody tr td[colspan="3"]').length > 0) {
-          table.find('tbody').empty();
-        }
-        
-        const newRow = `
+
+      const table = $("#" + language + "-table");
+      if (table.find('tbody tr td[colspan="3"]').length > 0) {
+        table.find("tbody").empty();
+      }
+
+      const escapedValue = value.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+      const newRow = `
           <tr data-key="${key}">
             <td>${key}</td>
             <td>
-              <div class="localization-value">${value}</div>
+              <div class="localization-value" data-raw-value="${escapedValue}">${value}</div>
             </td>
             <td>
               <div class="btn-group">
@@ -808,28 +1180,28 @@
             </td>
           </tr>
         `;
-        
-        table.find('tbody').append(newRow);
-        bindLocalizationEvents(table.find('tr[data-key="' + key + '"]'));
-      }
-      
-      function bindLocalizationEvents(row) {
-        row.find('.edit-localization').click(function() {
-          const row = $(this).closest('tr');
-          const id = row.data('key');
-          editLocalization(id);
-        });
-        
-        row.find('.delete-localization').click(function() {
-          const key = $(this).closest('tr').data('key');
-          $('#delete-key-name').text(key);
-          $('#deleteConfirmModal').modal('show');
-          $('#confirm-delete').data('key', key);
-        });
-      }
-      
-      function showNotification(message, type) {
-        const notification = $(`
+
+      table.find("tbody").append(newRow);
+      bindLocalizationEvents(table.find('tr[data-key="' + key + '"]'));
+    }
+
+    function bindLocalizationEvents(row) {
+      row.find(".edit-localization").click(function () {
+        const row = $(this).closest("tr");
+        const id = row.data("key");
+        editLocalization(id);
+      });
+
+      row.find(".delete-localization").click(function () {
+        const key = $(this).closest("tr").data("key");
+        $("#delete-key-name").text(key);
+        $("#deleteConfirmModal").modal("show");
+        $("#confirm-delete").data("key", key);
+      });
+    }
+
+    function showNotification(message, type) {
+      const notification = $(`
           <div class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
               <div class="toast-body">
@@ -839,20 +1211,22 @@
             </div>
           </div>
         `);
-        
-        if ($('#notification-container').length === 0) {
-          $('body').append('<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>');
-        }
-        
-        $('#notification-container').append(notification);
-        
-        const toast = new bootstrap.Toast(notification);
-        toast.show();
-        
-        notification.on('hidden.bs.toast', function() {
-          $(this).remove();
-        });
+
+      if ($("#notification-container").length === 0) {
+        $("body").append(
+          '<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>'
+        );
       }
-    });
-  </script>
+
+      $("#notification-container").append(notification);
+
+      const toast = new bootstrap.Toast(notification);
+      toast.show();
+
+      notification.on("hidden.bs.toast", function () {
+        $(this).remove();
+      });
+    }
+  });
+</script>
 {{end}}
