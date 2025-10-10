@@ -729,7 +729,9 @@
     $(".localization-value").each(function () {
       const rawValue = $(this).attr("data-raw-value");
       if (rawValue) {
-        $(this).html(rawValue);
+        // Replace newlines with <br> tags for display
+        const displayValue = rawValue.replace(/\n/g, "<br>");
+        $(this).html(displayValue);
       }
     });
 
@@ -1148,9 +1150,11 @@
         const row = $("#" + language + "-table").find(
           'tr[data-key="' + key + '"]'
         );
+        // Replace newlines with <br> for display
+        const displayValue = value.replace(/\n/g, "<br>");
         row
           .find(".localization-value")
-          .html(value)
+          .html(displayValue)
           .attr("data-raw-value", value);
         return;
       }
@@ -1161,12 +1165,14 @@
       }
 
       const escapedValue = value.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      // Replace newlines with <br> for display
+      const displayValue = value.replace(/\n/g, "<br>");
 
       const newRow = `
           <tr data-key="${key}">
             <td>${key}</td>
             <td>
-              <div class="localization-value" data-raw-value="${escapedValue}">${value}</div>
+              <div class="localization-value" data-raw-value="${escapedValue}">${displayValue}</div>
             </td>
             <td>
               <div class="btn-group">
