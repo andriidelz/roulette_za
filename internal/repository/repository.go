@@ -54,7 +54,7 @@ type Repository interface {
 	UpdateWeeklyRating(rating *models.WeeklyRating) error
 	CalculateWeeklyRatings(year, week int) error
 	GetSuperRating(period string, limit int) ([]models.SuperRating, error)
-	UpdateSuperRating(rating *models.SuperRating) error
+	// UpdateSuperRating(rating *models.SuperRating) error
 	FixPartiallyDistributedPrizes(year, week int, action string) error
 	DeleteRating(userID uint) error
 	UpdateWeeklyRatingForUser(userID uint) error
@@ -263,6 +263,7 @@ func (r *PostgresRepository) GetSuperRating(period string, limit int) ([]models.
 	return ratings, nil
 }
 
+// unused
 func (r *PostgresRepository) UpdateSuperRating(rating *models.SuperRating) error {
 	return r.db.Save(rating).Error
 }
