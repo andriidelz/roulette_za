@@ -63,7 +63,6 @@ type Service interface {
 	GetUserRatingPosition(userID uint, neighborsCount int) ([]models.WeeklyRating, int, error)
 	GetPointsToReachPrizeZone() (int, error)
 	GetPointsNeededForUser(userID uint) (int, error)
-	RefreshAllRatings() error
 	FormatRatingForDisplay(ratings []models.WeeklyRating, currentUserID int64) []string
 	GetPrizeDistributionStatus(year, week int) (string, error)
 	FormatRatingList(ratings []models.WeeklyRating, currentUserID int64, language string) string
