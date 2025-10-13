@@ -1,5 +1,5 @@
 fairness_verification_title: "Fairness Verification of Results"
-verify_authenticity: "Verify the authenticity of any roulette result. Our system ensures 100% transparency of the gameplay."
+verify_authenticity: "Verify the authenticity of any roulette result. Our system guarantees 100% transparency of the gameplay."
 verify_result: "Verify Result"
 how_it_works: "How it works"
 
@@ -35,7 +35,7 @@ computed_hash_label: "Computed Hash:"
 how_verification_works: "How verification works"
 verification_explanation: "Before each round, the system generates a random number and a cryptographic salt, then calculates the SHA-256 hash."
 hash_publication: "The hash is published before the round starts, and the number and salt are revealed after its completion."
-self_verification: "You can independently verify whether the published hash matches the open data:"
+self_verification: "You can easily verify whether the published hash matches the open data:"
 verification_formula: "SHA-256(number:salt)"
 verification_example: "Verification example:"
 example_number: "Number: 5"
@@ -65,7 +65,7 @@ faq_answer_2_p1: "Salt is a random string of characters added to the number befo
 faq_answer_2_p2: "Without salt, a malicious actor could simply look in such a table and find out which number will come up. Salt adds unpredictability and guarantees the uniqueness of the hash for each round, even if identical numbers are drawn."
 
 faq_question_3: "What tools can I use for verification?"
-faq_answer_3: "You can use:"
+faq_answer_3: "You can use any of the following tools:"
 verification_tools_1: "The built-in verification form on this page"
 verification_tools_2: "Online SHA-256 calculators (e.g., Online SHA-256)"
 verification_tools_3: 'Command line on Linux/Mac: echo -n "5:a1b2c3d4e5f6" | sha256sum'

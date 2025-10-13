@@ -1,5 +1,5 @@
 faq_title: "Frequently Asked Questions"
-faq_subtitle: "Answers to popular questions about the Roulette bot and the fairness verification system."
+faq_subtitle: "Answers to the most common questions about the Sprut Black&Red bot and the fairness verification system."
 verify_results: "Verify Results"
 
 # Navigation tabs
@@ -16,7 +16,7 @@ main_features: "Sprut Black&Red has unique advantages:"
 feature_1: "Weekly prize pool of $1,000;"
 feature_2: "No verification required;"
 feature_3: "No participation fees or deposits of any kind;"
-feature_4: "Instant reward withdrawal - no airdrops or long waits;"
+feature_4: "Instant reward withdrawal — no airdrops or long waiting times;"
 feature_5: "Transparent drawing system with the ability to independently verify each guess."
 
 # Language support
@@ -25,7 +25,7 @@ languages_list: "🌐 Sprut Black&Red supports the following languages:"
 language_russian: "Russian"
 language_ukrainian: "Ukrainian"
 language_english: "English"
-change_language: "You can change the language at any time using the /settings command or the corresponding button in the bot menu."
+change_language: "You can change the language at any time using the /settings command or the dedicated button in the bot menu."
 
 # Rules
 rules: "What are the game rules?"
@@ -39,7 +39,7 @@ rules_points_title: "🧮 Points System"
 rules_points_text_1: "🔴 Red — 1 point"
 rules_points_text_2: "⚫ Black — 1 point"
 rules_points_text_3: "🟢 Zero — 10 points"
-rules_rating_title: "🔝 Rating and Prize Fund Distribution"
+rules_rating_title: "🔝 Rating and Prize Pool Distribution"
 rules_rating_text: "All points earned during the calendar week are summed up and form the overall rating. The player's position in the rating determines the calculation coefficient and share in the weekly prize pool."
 
 # Safety
@@ -61,16 +61,16 @@ safety_summary: "This ensures 100% fair and unpredictable results."
 # Rewards
 rewards: "How are rewards distributed?"
 rewards_text: "💰 Rewards in Sprut Black&Red are distributed according to the players' game ratings. The weekly rating is formed based on the number of successful sector color guesses. All player actions are saved in statistics."
-rewards_distribution_title: "💵 Prize Fund Distribution."
-rewards_distribution_text: "The prize fund is divided on Mondays (UTC+0 time) proportionally to the number of successful guesses."
-rewards_example: "Hypothetical example (if fund = $1,000):"
+rewards_distribution_title: "💵 Prize Pool Distribution"
+rewards_distribution_text: "The prize pool is divided on Mondays (UTC+0 time) proportionally to the number of successful guesses."
+rewards_example: "Example (if the prize pool = $1,000):"
 rewards_example_text_1: "🔹 Top 100 players together made 1000 guesses → price per 1 guess = $1."
-rewards_example_text_2: "🔹 If a player guessed 100 times — they will receive $100."
-rewards_example_text_3: "🔹 If guessed 10 times — will receive $10."
-rewards_identical_results: "⚖️ In case of identical results in the rating"
+rewards_example_text_2: "🔹 If a player guesses 100 times — they receive $100."
+rewards_example_text_3: "🔹 If a player guesses 10 times — they receive $10."
+rewards_identical_results: "⚖️ In case of identical results in the ranking"
 rewards_identical_results_text: "If several players have the same number of guesses, the higher place is taken by the one who earned more points in fewer attempts (whose guessing efficiency is higher)."
 rewards_payments_title: "💳 Payments"
-rewards_payments_text: "The reward is automatically credited to the internal account. Withdrawal is possible after the player creates a request."
+rewards_payments_text: "The reward is automatically credited to your internal account. Withdrawal becomes available once you submit a request."
 
 # Payments
 payments: "How are funds paid out?"
@@ -79,15 +79,15 @@ payments_accrual_text: "Rewards are automatically credited on Mondays after the 
 payments_withdrawal_title: "💳 Withdrawal"
 payments_withdrawal_text: "If rewards on the balance exceed $10, they can be withdrawn to a personal crypto wallet. To do this, in the menu, click: «Account» ➡️ «Withdraw» ➡️ «Request Withdrawal». Then the player confirms an already added wallet or can add a new one."
 payments_terms_title: "⚡ Payout Terms"
-payments_terms_text: "Funds are received within 24 hours after the request. Usually, it happens faster."
+payments_terms_text: "Funds are processed within 24 hours after the request — usually much faster."
 payments_conditions_title: "📌 Mandatory Conditions:"
 payments_conditions_text_1: "Withdrawal is made only in USDT stablecoin. The transfer is made in the TRC20 network. The minimum withdrawal amount is $10."
-payments_conditions_text_2: "The fee for each withdrawal is $1, and is automatically deducted from the withdrawal amount."
+payments_conditions_text_2: "The withdrawal fee is $1 and is automatically deducted from the payout amount."
 
 # Support section
 support_title: "I have a problem or a question not listed here. What should I do?"
-support_answer: "If you have questions not covered in the FAQ, or you have encountered a problem, you can contact our support service:"
+support_answer: "ℹ️ If you have any questions not covered in the FAQ, or if you’ve encountered a problem or have a suggestion — you can always contact our support team:"
 contact_method1: "Use the /contact command in the bot and describe your problem"
-contact_method2: "Write to our support service in Telegram: @sprutgames_supportbot."
-support_response_time: "We will try to respond to your request within 24 hours. Your feedback is very important to us, and we are constantly working to improve our service."
+contact_method2: "Write to our support team on Telegram: @sprutgames_supportbot."
+support_response_time: "⏰ We usually reply within 24 hours. Your feedback is very important to us, and we are constantly improving our service."
 support_rules: "When sending a message to support, try to describe your request in as much detail as possible. A clear, detailed, and understandable description will help resolve the issue faster without unnecessary clarifications. Thank you for your understanding!"
