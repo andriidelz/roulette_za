@@ -35,12 +35,11 @@ func (s *ServiceImpl) GetUserRatingPosition(userID uint, neighborsCount int) ([]
 		return nil, 0, err
 	}
 
-	if err := s.RefreshAllRatings(); err != nil {
+	// Получаем текущий год и неделю
+	year, week := time.Now().ISOWeek()
+	if err := s.repo.RefreshWeeklyRatingsPosition(year, week); err != nil {
 		return nil, 0, err
 	}
-
-	// Получаем текущую неделю и год
-	year, week := time.Now().ISOWeek()
 
 	// Получаем рейтинг пользователя и его соседей
 	neighbors, position, err := s.repo.GetUserRankAndNeighbors(userID, year, week, neighborsCount)
@@ -102,13 +101,6 @@ func (s *ServiceImpl) GetPointsNeededForUser(userID uint) (int, error) {
 
 	// Возвращаем разницу между минимальным количеством баллов и текущими баллами пользователя
 	return minPoints - userRating.Points, nil
-}
-
-// RefreshAllRatings обновляет позиции всех пользователей в рейтинге
-func (s *ServiceImpl) RefreshAllRatings() error {
-	// Получаем текущий год и неделю
-	year, week := time.Now().ISOWeek()
-	return s.repo.RefreshWeeklyRatingsPosition(year, week)
 }
 
 // FormatRatingForDisplay форматирует рейтинг для отображения
