@@ -202,10 +202,12 @@ func (s *ServiceImpl) RegisterUser(telegramID int64, username, firstName, lastNa
 		avatarURL = avatar
 	}
 
-	exists, _ := s.repo.CheckSourceKeyExists(source)
-	if !exists {
-		source = ""
-		logger.Error.Println("Error find source", telegramID, source)
+	if source != "" {
+		exists, _ := s.repo.CheckSourceKeyExists(source)
+		if !exists {
+			logger.Error.Println("Error find source", telegramID, source)
+			source = ""
+		}
 	}
 
 	// Создаем нового пользователя

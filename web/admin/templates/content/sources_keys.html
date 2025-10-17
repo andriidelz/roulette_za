@@ -113,7 +113,7 @@
                     <div class="mb-3">
                         <label for="key" class="form-label">Ключ</label>
                         <input type="text" class="form-control" id="key" required>
-                        <div class="form-text">Используйте только латинские буквы и цифры</div>
+                        <div class="form-text">Используйте только латинские буквы и цифры до 20 символов</div>
                     </div>
 
                     <div class="mb-3">
@@ -201,12 +201,16 @@
             if (!key || !name) {
                 showNotification('Все поля должны быть заполнены', 'warning');
                 return;
-            }
+            };
 
             if (!/^[a-z0-9]+$/.test(key)) {
                 showNotification('Ключ может содержать только латинские буквы и цифры', 'warning');
                 return;
-            }
+            };
+            if (key.length > 20) {
+                showNotification('Ключ длиной до 20 символов', 'warning');
+                return;
+            };
 
             $.ajax({
                 url: '/admin/sources/keys/add',
