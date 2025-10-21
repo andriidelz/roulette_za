@@ -196,8 +196,12 @@ func (r *RabbitMQ) Publish(ctx context.Context, routingKey string, msgType strin
 	)
 
 	if err != nil {
-		// Помечаем соединение как разорванное для последующего переподключения
-		r.isConnected = false
+		if r.conn.IsClosed() {
+			// Помечаем соединение как разорванное для последующего переподключения
+			r.isConnected = false
+		}
+		logger.Error.Printf("error publishing message: %v", err)
+
 		return fmt.Errorf("error publishing message: %w", err)
 	}
 
