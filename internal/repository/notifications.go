@@ -234,6 +234,10 @@ func (r *PostgresRepository) GetUsersForNotificationTask(task *models.Notificati
 	case "all":
 		// Все пользователи, не нужны дополнительные фильтры
 
+	case "unregistered":
+		// Таргетинг незареєстрованих
+		query = query.Where("registered = ?", false)
+
 	case "country":
 		// Таргетинг по странам
 		if len(task.TargetParams.Countries) > 0 {

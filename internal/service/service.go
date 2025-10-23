@@ -83,7 +83,6 @@ type Service interface {
 	// Методы для работы со страной пользователя
 	// GetUserCountry(telegramID int64) (string, error)
 
-	UpdateUserLanguage(telegramID int64, languageCode string) error
 	UpdateUser(user *models.User) error
 
 	// Вывод средств
