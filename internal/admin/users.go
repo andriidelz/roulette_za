@@ -71,6 +71,7 @@ func (a *AdminPanel) usersList(c *gin.Context) {
 			"CountryEmoji": countryEmoji,
 			"Balance":      user.Balance,
 			"Banned":       user.Banned,
+			"Registered":   user.Registered,
 			"CreatedAt":    user.CreatedAt,
 			"UpdatedAt":    user.UpdatedAt,
 			"DailyBets":    dailyBets,

@@ -778,19 +778,6 @@ func (s *ServiceImpl) GetUserCountry(telegramID int64) (string, error) {
 	return s.repo.GetUserCountry(user.ID)
 }
 
-func (s *ServiceImpl) UpdateUserLanguage(telegramID int64, languageCode string) error {
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return err
-	}
-
-	// Обновляем язык пользователя
-	user.LanguageCode = languageCode
-
-	// Обновляем пользователя в базе данных
-	return s.repo.UpdateUser(user)
-}
-
 // UpdateUser обновляет информацию о пользователе
 func (s *ServiceImpl) UpdateUser(user *models.User) error {
 	return s.repo.UpdateUser(user)
