@@ -254,6 +254,66 @@ services:
       start_period: 10s
     logging: *infrastructure-logging
 
+  rabbitmq-monitor:
+    image: alpine:3.18
+    container_name: roulette-rabbitmq-monitor
+    environment:
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASS: ${RABBITMQ_PASS:-guest}
+      RABBITMQ_HOST: rabbitmq
+      CONNECTION_THRESHOLD: ${RABBITMQ_CONNECTION_THRESHOLD:-500}
+      CHECK_INTERVAL: ${RABBITMQ_CHECK_INTERVAL:-60}
+    volumes:
+      - ./shared-data/logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint:
+      - sh
+      - -c
+      - |
+        apk add --no-cache bash curl
+        mkdir -p /app/logs
+        exec bash << 'BASHEOF'
+        set -euo pipefail
+        LOG_FILE="/app/logs/rabbitmq-monitor.log"
+        get_connection_count() {
+          local base_url="http://$${RABBITMQ_HOST}:15672/api"
+          local auth=$$(echo -n "$${RABBITMQ_USER}:$${RABBITMQ_PASS}" | base64)
+          local response=$$(curl -s -H "Authorization: Basic $${auth}" "$${base_url}/connections" 2>/dev/null || echo '[]')
+          echo "$${response}" | grep -o '"name"' | wc -l
+        }
+        restart_services() {
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] Connection threshold ($${CONNECTION_THRESHOLD}) exceeded. Restarting..." >> "$${LOG_FILE}"
+          docker-compose stop bot rotator admin 2>/dev/null || true
+          docker-compose restart rabbitmq
+          sleep 10
+          docker-compose up -d bot rotator admin 2>/dev/null || true
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] Services restarted" >> "$${LOG_FILE}"
+        }
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] RabbitMQ monitor started" >> "$${LOG_FILE}"
+        while true; do
+          count=$$(get_connection_count)
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] RabbitMQ connections: $${count}" >> "$${LOG_FILE}"
+          if [ "$${count}" -gt "$${CONNECTION_THRESHOLD}" ]; then
+            restart_services
+            sleep 300
+          fi
+          sleep "$${CHECK_INTERVAL}"
+        done
+        BASHEOF
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.2"
+        reservations:
+          memory: 64M
+          cpus: "0.1"
+    logging: *default-logging
+
   bot:
     image: ${IMAGE_NAME:-local/roulette-apps}:${IMAGE_TAG:-dev}
     container_name: roulette-bot
