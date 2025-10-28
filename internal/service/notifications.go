@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"roulette/internal/config"
 	"roulette/internal/data"
 	"roulette/internal/logger"
 	"roulette/internal/messaging"
@@ -775,12 +774,11 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 	}
 
 	// Подключаемся к RabbitMQ
-	rmq, err := messaging.NewRabbitMQ(s.getRabbitMQURL(), "roulette_events", "notification_service")
+	rmq, err := s.getRabbitMQConnection()
 	if err != nil {
-		logger.Error.Printf("Error connecting to RabbitMQ: %v", err)
+		logger.Error.Printf("Error getting RabbitMQ connection: %v", err)
 		return err
 	}
-	defer rmq.Close()
 
 	// Устанавливаем таймаут для отправки сообщения
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -803,13 +801,6 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 		user.ID, user.TelegramID, title, message)
 
 	return nil
-}
-
-// getRabbitMQURL возвращает URL для подключения к RabbitMQ
-func (s *ServiceImpl) getRabbitMQURL() string {
-	// Получаем URL из конфигурации
-	cfg := config.NewConfig()
-	return cfg.RabbitMQURL
 }
 
 // CheckTopRatingEntries проверяет пользователей, вошедших в топ рейтинга и отправляет им уведомления
