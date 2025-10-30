@@ -101,6 +101,8 @@ type Service interface {
 	// Автоматические уведомления
 	HandleBalanceUpdate(userID uint, amount float64) error
 	HandleTopRatingEntry(userID uint, position int) error
+	CheckPendingRegistration() error
+	CheckTopRatingEntries() error
 
 	GetNotificationTasks(status string, page, perPage int) ([]models.NotificationTask, int64, error)
 	GetNotificationRecipients(taskID uint, status string, page, limit int) ([]models.NotificationRecipient, int64, error)
@@ -111,7 +113,6 @@ type Service interface {
 	GetPendingNotificationTasks() ([]models.NotificationTask, error)
 	GetNotificationTasksStats(period string) (*models.NotificationStatistics, error)
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)
-	CheckTopRatingEntries() error
 	GetGlobalMacros() map[string]interface{}
 	// Вспомогательный метод для доступа к репозиторию
 	GetRepo() repository.Repository
