@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"sync"
 	"time"
 
+	"roulette/internal/config"
 	"roulette/internal/logger"
+	"roulette/internal/messaging"
 	"roulette/internal/models"
 	"roulette/internal/repository"
 	"roulette/internal/utils"
@@ -114,6 +117,10 @@ type Service interface {
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)
 	CheckTopRatingEntries() error
 	GetGlobalMacros() map[string]interface{}
+
+	// Закрытие ресурсов при остановке сервиса
+	Close() error
+
 	// Вспомогательный метод для доступа к репозиторию
 	GetRepo() repository.Repository
 }
@@ -122,15 +129,80 @@ type ServiceImpl struct {
 	repo          repository.Repository
 	telegramToken string // Токен для доступа к Telegram API
 	redisClient   *redis.Client
+
+	// RabbitMQ connection pool
+	rmqMutex      sync.Mutex
+	rmqConnection *messaging.RabbitMQ
 }
 
 // NewService створює новий екземпляр сервісу
 func NewService(repo repository.Repository, telegramToken string, redisClient *redis.Client) Service {
-	return &ServiceImpl{
+	svc := &ServiceImpl{
 		repo:          repo,
 		telegramToken: telegramToken,
 		redisClient:   redisClient,
 	}
+
+	// Initialize RabbitMQ connection on service creation
+	if err := svc.initRabbitMQ(); err != nil {
+		logger.Error.Printf("Warning: Failed to initialize RabbitMQ connection: %v", err)
+		// Continue without RabbitMQ - it will try to reconnect on first use
+	}
+
+	return svc
+}
+
+// initRabbitMQ initializes persistent RabbitMQ connection
+func (s *ServiceImpl) initRabbitMQ() error {
+	s.rmqMutex.Lock()
+	defer s.rmqMutex.Unlock()
+
+	cfg := config.NewConfig()
+	rmq, err := messaging.NewRabbitMQ(cfg.RabbitMQURL, "roulette_events", "notification_service")
+	if err != nil {
+		return fmt.Errorf("failed to connect to RabbitMQ: %w", err)
+	}
+
+	s.rmqConnection = rmq
+	logger.Info.Println("RabbitMQ connection initialized successfully")
+	return nil
+}
+
+// getRabbitMQConnection returns existing connection or creates a new one
+func (s *ServiceImpl) getRabbitMQConnection() (*messaging.RabbitMQ, error) {
+	s.rmqMutex.Lock()
+	defer s.rmqMutex.Unlock()
+
+	// Check if connection exists and is alive
+	if s.rmqConnection != nil {
+		// Connection exists, return it
+		return s.rmqConnection, nil
+	}
+
+	// Reconnect if connection is lost
+	cfg := config.NewConfig()
+	rmq, err := messaging.NewRabbitMQ(cfg.RabbitMQURL, "roulette_events", "notification_service")
+	if err != nil {
+		return nil, fmt.Errorf("failed to reconnect to RabbitMQ: %w", err)
+	}
+
+	s.rmqConnection = rmq
+	logger.Info.Println("RabbitMQ connection re-established")
+	return s.rmqConnection, nil
+}
+
+// Close closes RabbitMQ connection on service shutdown
+func (s *ServiceImpl) Close() error {
+	s.rmqMutex.Lock()
+	defer s.rmqMutex.Unlock()
+
+	if s.rmqConnection != nil {
+		logger.Info.Println("Closing RabbitMQ connection...")
+		err := s.rmqConnection.Close()
+		s.rmqConnection = nil
+		return err
+	}
+	return nil
 }
 
 // Реалізація методів для користувачів
