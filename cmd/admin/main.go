@@ -48,6 +48,14 @@ func main() {
 	// Створюємо сервіс
 	svc := service.NewService(repo, cfg.TelegramToken, nil)
 
+	// IMPORTANT: Ensure RabbitMQ connection is closed on shutdown
+	defer func() {
+		logger.Info.Println("Closing service connections...")
+		if err := svc.Close(); err != nil {
+			logger.Error.Printf("Error closing service: %v", err)
+		}
+	}()
+
 	// Инициализируем фабрику платежных провайдеров
 	paymentFactory, defaultProvider, err := config.InitPaymentProviders(db)
 	if err != nil {
