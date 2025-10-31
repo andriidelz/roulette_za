@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"roulette/internal/utils"
 	"roulette/internal/logger"
+	"roulette/internal/utils"
 
 	"github.com/mymmrac/telego"
 	"github.com/redis/go-redis/v9"
@@ -374,10 +374,13 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 		} else {
 			mes, err = b.updatePhoto(chatID, messageID, options)
 		}
+		if err != nil {
+			logger.Error.Printf("Error send %d: %v", chatID, err)
+		}
 		messageID = mes.MessageID
 
 		// для капчі зберігаємо id останньої відправленої капчі щоб замінити її
-		err = b.redisDB.Set(cont, captchaMess, messageID, 0).Err()
+		err = b.redisDB.Set(cont, captchaMess, messageID, userCaptchaExpiration).Err()
 		if err != nil {
 			logger.Error.Printf("Error Set %d: %v", chatID, err)
 		}

@@ -38,8 +38,10 @@ const (
 	// Redis key для пользователей которые ожидают на проверку капчи
 	// В случае нахождения пользователя все дальнейшие действия будут заблокированы
 	// до прохождения капчи
-	userCaptchaKeyPrefix         = "user:%d:captcha"              // необходимо пройти капчу, значение - правильный ответ
-	userCaptchaMessPrefix        = "user:%d:captcha_mes"          // telegram id останнього повідомлення з капчею для оновлення повідомлення
+	userCaptchaKeyPrefix  = "user:%d:captcha"     // необходимо пройти капчу, значение - правильный ответ
+	userCaptchaExpiration = 2 * time.Hour         // період поки очікуємо капчу
+	userCaptchaMessPrefix = "user:%d:captcha_mes" // telegram id останнього повідомлення з капчею для оновлення повідомлення
+
 	userCaptchaUpdateKey         = "users:captcha_update"         // пользователи которым нужно обновить капчу
 	userCaptchaUpdateCountPrefix = "user:%d:captcha_update_count" // кол-во обновлений капчи если нет ответа
 
@@ -304,7 +306,7 @@ func (b *Bot) captchaMessage(telegramID int64, language string) MessageOptions {
 	}
 
 	// Добавляем пользователя с указанием правильного ответа
-	err = b.redisDB.Set(cont, captchaKey, correctText, 0).Err()
+	err = b.redisDB.Set(cont, captchaKey, correctText, userCaptchaExpiration).Err()
 	if err != nil {
 		logger.Error.Printf("Error Set %d: %v", telegramID, err)
 	}
@@ -360,10 +362,9 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 	language, err := b.getUserLang(user.ID, user.LanguageCode)
 	if err != nil {
 		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
-		return
 	}
 
-	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	cont, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	captchaKey := fmt.Sprintf(userCaptchaKeyPrefix, user.ID)
@@ -371,15 +372,17 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 	captchaWrongCountKey := fmt.Sprintf(userCaptchaWrongCountPrefix, user.ID)
 	captchaBanCountKey := fmt.Sprintf(userCaptchaBanCountPrefix, user.ID)
 
+	// Извлекаем код капчи
+	option := strings.TrimPrefix(query.Data, CallbackCaptcha)
+	var sendAsMessage bool
+
 	val, err := b.redisDB.Get(cont, captchaKey).Result()
 	if err != nil {
 		logger.Error.Printf("Error Get %d: %v", user.ID, err)
-		return
-	}
-
-	// Извлекаем код капчи
-	option := strings.TrimPrefix(query.Data, CallbackCaptcha)
-	if val != option {
+		// Ключ не знайдений, можливо - капча була вже вирішена і це повторний запит 
+		// або пройшов час userCaptchaExpiration
+		sendAsMessage = true
+	} else if val != option {
 		// невірна відповідь на капчу
 
 		wrongCount, err := b.redisDB.Get(cont, captchaWrongCountKey).Int64()
@@ -503,8 +506,13 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 		logger.Error.Printf("Error in pipeline execution: %v", pipeErr)
 	}
 
-	correctText := b.getText("captcha_correct", language)
-
-	// Отвечаем на callback c текстом что капча успешно решена
-	b.answerCallbackQuery(query.ID, correctText, true)
+	if sendAsMessage {
+		// Якщо була помилка при знаходженні ключа скоріше за все повторне натискання
+		// відправляємо той же текст як повідомлення
+		b.answerCallbackQuery(query.ID, "", false)
+		b.SendMessage(query.Message.GetChat().ID, b.prepareMessage("captcha_correct", language))
+	} else {
+		// Отвечаем на callback c текстом что капча успешно решена
+		b.answerCallbackQuery(query.ID, b.getText("captcha_correct", language), true)
+	}
 }
