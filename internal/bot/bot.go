@@ -819,6 +819,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	}
 
 	if b.captchaBan(user.ID) {
+		b.answerCallbackQuery(query.ID, b.getText("captcha_text", language), true)
 		return
 	}
 
@@ -833,6 +834,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	// Проверка на повышенную активность пользователя
 	switch b.captchaUserActivity(user.ID) {
 	case "wait":
+		b.answerCallbackQuery(query.ID, b.getText("captcha_text", language), true)
 		return
 	case "needCaptcha":
 		b.SendMessage(query.Message.GetChat().ID, b.captchaMessage(user.ID, language))
