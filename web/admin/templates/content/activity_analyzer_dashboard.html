@@ -197,7 +197,7 @@
   });
 
   function loadDashboard() {
-    $.get('/api/user-activity-analyzer/dashboard', function(data) {
+    $.get('/admin/api/user-activity-analyzer/dashboard', function(data) {
       $('#totalUsers').text(data.total_users.toLocaleString());
       $('#totalActions').text(data.total_actions.toLocaleString());
       $('#actionsLastHour').text(data.actions_last_hour.toLocaleString());
@@ -219,7 +219,7 @@
     if (timeFrom) params.append('time_from', new Date(timeFrom).toISOString());
     if (timeTo) params.append('time_to', new Date(timeTo).toISOString());
 
-    $.get('/api/user-activity-analyzer/users/top?' + params.toString(), function(data) {
+    $.get('/admin/api/user-activity-analyzer/users/top?' + params.toString(), function(data) {
       renderUsersTable(data);
       $('#loading').hide();
     }).fail(function() {
@@ -270,12 +270,12 @@
 
   function loadTimeline() {
     // Load activity timeline
-    $.get('/api/user-activity-analyzer/timeline?interval=hour&limit=48', function(data) {
+    $.get('/admin/api/user-activity-analyzer/timeline?interval=hour&limit=48', function(data) {
       renderTimelineChart(data);
     });
 
     // Load top action types
-    $.get('/api/user-activity-analyzer/top-action-types?limit=10', function(data) {
+    $.get('/admin/api/user-activity-analyzer/top-action-types?limit=10', function(data) {
       renderActionTypesChart(data);
     });
   }
