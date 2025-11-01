@@ -11,7 +11,7 @@ import (
 // setupActivityAnalyzerRoutes sets up all activity analyzer routes
 func (a *AdminPanel) setupActivityAnalyzerAPIRoutes() {
 	// Activity analyzer API group - protected by auth
-	analyzer := a.router.Group("/api/user-activity-analyzer")
+	analyzer := a.router.Group("/admin/api/user-activity-analyzer")
 	analyzer.Use(a.ipFilterMiddleware(), a.authRequired())
 	{
 		// Dashboard & overview
