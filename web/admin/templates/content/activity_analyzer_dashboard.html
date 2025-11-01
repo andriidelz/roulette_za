@@ -1,0 +1,408 @@
+{{define "activity_analyzer_dashboard"}}
+  {{template "header" .}}
+  {{template "navbar" .}}
+  <div class="d-flex">
+    {{template "sidebar" .}}
+    <main class="main-content flex-grow-1">
+      <div class="container-fluid">
+
+        <div class="row">
+          <div class="col-12">
+            <h1 class="mb-4">Анализатор активности</h1>
+          </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+          <div class="col-md-3">
+            <div class="card stat-card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-2">Всего пользователей</h6>
+                    <h3 class="mb-0" id="totalUsers">-</h3>
+                  </div>
+                  <div class="stat-icon text-primary" style="font-size: 2.5rem;">
+                    <i class="bi bi-people"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card stat-card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-2">Всего действий</h6>
+                    <h3 class="mb-0" id="totalActions">-</h3>
+                  </div>
+                  <div class="stat-icon text-success" style="font-size: 2.5rem;">
+                    <i class="bi bi-activity"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card stat-card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-2">Действий за час</h6>
+                    <h3 class="mb-0" id="actionsLastHour">-</h3>
+                  </div>
+                  <div class="stat-icon text-warning" style="font-size: 2.5rem;">
+                    <i class="bi bi-clock-history"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card stat-card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-2">Подозрительных</h6>
+                    <h3 class="mb-0 text-danger" id="suspiciousUsers">-</h3>
+                  </div>
+                  <div class="stat-icon text-danger" style="font-size: 2.5rem;">
+                    <i class="bi bi-exclamation-triangle"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Фильтры</h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label">Время от</label>
+                <input type="datetime-local" class="form-control" id="timeFrom">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Время до</label>
+                <input type="datetime-local" class="form-control" id="timeTo">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Мин. действий</label>
+                <input type="number" class="form-control" id="minActions" value="10" min="1">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Лимит</label>
+                <input type="number" class="form-control" id="limitUsers" value="50" min="1" max="200">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary w-100" onclick="applyFilters()">
+                  <i class="bi bi-search"></i> Применить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> График активности (48ч)</h5>
+              </div>
+              <div class="card-body">
+                <div style="position: relative; height: 300px;">
+                  <canvas id="timelineChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Топ типов действий</h5>
+              </div>
+              <div class="card-body">
+                <div style="position: relative; height: 300px;">
+                  <canvas id="actionTypesChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Suspicious Users Table -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="bi bi-table"></i> Топ подозрительных пользователей
+              <span class="badge bg-secondary ms-2" id="usersCount">0</span>
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="text-center mb-3" id="loading" style="display: none;">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>Telegram ID</th>
+                    <th>Всего действий</th>
+                    <th>За час</th>
+                    <th>За 24ч</th>
+                    <th>Капчи</th>
+                    <th>Ставки</th>
+                    <th>Сред. интервал</th>
+                    <th>Мин. интервал</th>
+                    <th>Оценка риска</th>
+                    <th>Действие</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTable">
+                  <!-- Will be filled by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  {{template "footer" .}}
+{{end}}
+
+{{define "additionalScripts_activity_analyzer_dashboard"}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  let timelineChart = null;
+  let actionTypesChart = null;
+
+  // Load dashboard on page load
+  $(document).ready(function() {
+    loadDashboard();
+    loadTopUsers();
+    loadTimeline();
+  });
+
+  function loadDashboard() {
+    $.get('/api/user-activity-analyzer/dashboard', function(data) {
+      $('#totalUsers').text(data.total_users.toLocaleString());
+      $('#totalActions').text(data.total_actions.toLocaleString());
+      $('#actionsLastHour').text(data.actions_last_hour.toLocaleString());
+      $('#suspiciousUsers').text(data.suspicious_users.toLocaleString());
+    }).fail(function() {
+      console.error('Не удалось загрузить статистику дашборда');
+    });
+  }
+
+  function loadTopUsers() {
+    $('#loading').show();
+
+    const params = new URLSearchParams();
+    params.append('limit', $('#limitUsers').val() || 50);
+    params.append('min_actions', $('#minActions').val() || 10);
+
+    const timeFrom = $('#timeFrom').val();
+    const timeTo = $('#timeTo').val();
+    if (timeFrom) params.append('time_from', new Date(timeFrom).toISOString());
+    if (timeTo) params.append('time_to', new Date(timeTo).toISOString());
+
+    $.get('/api/user-activity-analyzer/users/top?' + params.toString(), function(data) {
+      renderUsersTable(data);
+      $('#loading').hide();
+    }).fail(function() {
+      $('#loading').hide();
+      alert('Не удалось загрузить пользователей');
+    });
+  }
+
+  function renderUsersTable(users) {
+    const tbody = $('#usersTable');
+    tbody.empty();
+    $('#usersCount').text(users.length);
+
+    if (users.length === 0) {
+      tbody.append('<tr><td colspan="10" class="text-center text-muted">Пользователи не найдены</td></tr>');
+      return;
+    }
+
+    users.forEach(user => {
+      const scoreClass = user.suspicion_score >= 50 ? 'bg-danger' :
+                       user.suspicion_score >= 25 ? 'bg-warning' : 'bg-success';
+
+      const row = `
+        <tr class="user-row" onclick="viewUser(${user.telegram_id})" style="cursor: pointer;">
+          <td><strong>${user.telegram_id}</strong></td>
+          <td>${user.total_actions.toLocaleString()}</td>
+          <td>${user.last_hour_actions}</td>
+          <td>${user.last_24h_actions}</td>
+          <td>${user.captcha_count}</td>
+          <td>${user.bet_count}</td>
+          <td>${user.avg_interval_seconds.toFixed(2)}с</td>
+          <td>${user.min_interval_seconds.toFixed(2)}с</td>
+          <td>
+            <span class="badge ${scoreClass}" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;">
+              ${user.suspicion_score.toFixed(0)}
+            </span>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); viewUser(${user.telegram_id})">
+              <i class="bi bi-eye"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+      tbody.append(row);
+    });
+  }
+
+  function loadTimeline() {
+    // Load activity timeline
+    $.get('/api/user-activity-analyzer/timeline?interval=hour&limit=48', function(data) {
+      renderTimelineChart(data);
+    });
+
+    // Load top action types
+    $.get('/api/user-activity-analyzer/top-action-types?limit=10', function(data) {
+      renderActionTypesChart(data);
+    });
+  }
+
+  function renderTimelineChart(data) {
+    const ctx = document.getElementById('timelineChart').getContext('2d');
+
+    if (timelineChart) {
+      timelineChart.destroy();
+    }
+
+    const labels = data.map(d => new Date(d.timestamp).toLocaleString('ru-RU', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit'
+    })).reverse();
+
+    const values = data.map(d => d.action_count).reverse();
+
+    timelineChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Действия',
+          data: values,
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.1)',
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+
+  function renderActionTypesChart(data) {
+    const ctx = document.getElementById('actionTypesChart').getContext('2d');
+
+    if (actionTypesChart) {
+      actionTypesChart.destroy();
+    }
+
+    if (data.length === 0) {
+      return;
+    }
+
+    const labels = data.map(d => d.action_type);
+    const values = data.map(d => d.count);
+    const colors = [
+      'rgba(255, 99, 132, 0.6)',
+      'rgba(54, 162, 235, 0.6)',
+      'rgba(255, 206, 86, 0.6)',
+      'rgba(75, 192, 192, 0.6)',
+      'rgba(153, 102, 255, 0.6)',
+      'rgba(255, 159, 64, 0.6)',
+      'rgba(199, 199, 199, 0.6)',
+      'rgba(83, 102, 255, 0.6)',
+      'rgba(255, 99, 255, 0.6)',
+      'rgba(99, 255, 132, 0.6)'
+    ];
+
+    actionTypesChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors.slice(0, data.length)
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              boxWidth: 15,
+              font: {
+                size: 11
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function applyFilters() {
+    loadTopUsers();
+  }
+
+  function viewUser(telegramId) {
+    window.location.href = `/admin/activity-analyzer/user/${telegramId}`;
+  }
+
+  // Auto-refresh every 30 seconds
+  setInterval(function() {
+    loadDashboard();
+    loadTopUsers();
+  }, 30000);
+</script>
+
+<style>
+  .stat-card {
+    transition: transform 0.2s;
+  }
+  .stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+  .user-row:hover {
+    background-color: #f8f9fa;
+  }
+</style>
+{{end}}

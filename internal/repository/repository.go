@@ -152,6 +152,18 @@ type Repository interface {
 	CheckNotificationSent(userID uint, notificationType string, date string) (bool, error)
 	SaveNotificationSent(userID uint, notificationType string, date string) error
 
+	// Activity Analyzer methods
+	GetActivityDashboardStats() (*models.ActivityDashboardStats, error)
+	GetTopActivityUsers(limit int, timeFrom, timeTo *time.Time, minActions int) ([]models.UserActivityStats, error)
+	GetUserActivityStats(telegramID int64, timeFrom, timeTo *time.Time) (*models.UserActivityStats, error)
+	GetUserActivityLogsForAnalyzer(telegramID int64, limit int, actionType string) ([]models.UserActivityLog, error)
+	GetUserActivityTimeline(telegramID int64, interval string, timeFrom, timeTo *time.Time, actionType string) ([]models.ActionTimeSeries, error)
+	GetUserActionDistribution(telegramID int64, timeFrom, timeTo *time.Time) ([]models.ActionTypeDistribution, error)
+	GetUserActivityIntervals(telegramID int64, limit int) ([]models.IntervalStats, error)
+	GetAllActionTypes() ([]string, error)
+	GetOverallActivityTimeline(interval string, timeFrom, timeTo *time.Time, limit int) ([]models.ActionTimeSeries, error)
+	GetTopActionTypes(limit int) ([]models.ActionTypeDistribution, error)
+
 	// Закрытие соединения
 	Close() error
 }
