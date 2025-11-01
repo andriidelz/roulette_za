@@ -224,7 +224,7 @@
   });
 
   function loadActionTypes() {
-    $.get('/api/user-activity-analyzer/action-types', function(data) {
+    $.get('/admin/api/user-activity-analyzer/action-types', function(data) {
       const select = $('#actionTypeSelect');
       data.forEach(type => {
         select.append(`<option value="${type}">${type}</option>`);
@@ -239,7 +239,7 @@
     if (timeFrom) params.append('time_from', new Date(timeFrom).toISOString());
     if (timeTo) params.append('time_to', new Date(timeTo).toISOString());
 
-    $.get(`/api/user-activity-analyzer/users/${telegramId}/detail?${params.toString()}`, function(data) {
+    $.get(`/admin/api/user-activity-analyzer/users/${telegramId}/detail?${params.toString()}`, function(data) {
       renderStats(data.stats);
       renderSuspicionFactors(data.suspicion_factors);
       renderDistributionChart(data.action_distribution);
@@ -289,7 +289,7 @@
     if (timeTo) params.append('time_to', new Date(timeTo).toISOString());
     if (actionType) params.append('action_type', actionType);
 
-    $.get(`/api/user-activity-analyzer/users/${telegramId}/timeline?${params.toString()}`, function(data) {
+    $.get(`/admin/api/user-activity-analyzer/users/${telegramId}/timeline?${params.toString()}`, function(data) {
       renderTimelineChart(data);
     });
   }
