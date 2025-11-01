@@ -62,7 +62,6 @@ func (a *AdminPanel) Start() error {
 
 // Настройка роутов
 func (a *AdminPanel) setupRoutes() {
-
 	a.router.SetFuncMap(tplFuncMap)
 
 	files1, _ := filepath.Glob("web/**/templates/*.html")
@@ -83,9 +82,6 @@ func (a *AdminPanel) setupRoutes() {
 
 	// Настройка роутов уведомлений
 	a.setupNotificationsRoutes()
-
-	// Настройка роутов анализатора активности
-	a.setupActivityAnalyzerRoutes()
 
 	// Авторизация
 	auth := a.router.Group("/")
@@ -114,6 +110,9 @@ func (a *AdminPanel) setupRoutes() {
 		// JSON API для данных пользователя
 		admin.GET("/user/:id/json", a.getUserJSON)
 		admin.GET("/user/:id/stats/json", a.getUserDetailedStats)
+
+		admin.GET("/activity-analyzer", a.activityAnalyzerDashboardPage)
+		admin.GET("/activity-analyzer/user/:telegram_id", a.userActivityDetailPage)
 
 		admin.GET("/stats", a.statistics)
 
@@ -159,6 +158,8 @@ func (a *AdminPanel) setupRoutes() {
 			api.GET("/localizations/:key", a.getLocalizationsByKey)
 		}
 	}
+
+	a.setupActivityAnalyzerAPIRoutes()
 }
 
 // Middleware для фильтрации по IP
