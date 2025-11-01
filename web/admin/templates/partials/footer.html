@@ -20,6 +20,10 @@
   {{template "additionalScripts_rating_details" .}}
 {{else if eq .activeTab "settings"}}
   {{template "additionalScripts_settings" .}}
+{{else if eq .activeTab "activity_analyzer"}}
+  {{template "additionalScripts_activity_analyzer_dashboard" .}}
+{{else if eq .activeTab "activity_analyzer_user"}}
+  {{template "additionalScripts_user_activity_detail" .}}
 {{end}}
 
 </html>

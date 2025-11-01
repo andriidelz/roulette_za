@@ -84,6 +84,9 @@ func (a *AdminPanel) setupRoutes() {
 	// Настройка роутов уведомлений
 	a.setupNotificationsRoutes()
 
+	// Настройка роутов анализатора активности
+	a.setupActivityAnalyzerRoutes()
+
 	// Авторизация
 	auth := a.router.Group("/")
 	auth.Use(a.ipFilterMiddleware())
