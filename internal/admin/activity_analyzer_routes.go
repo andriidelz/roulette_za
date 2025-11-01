@@ -9,7 +9,7 @@ import (
 )
 
 // setupActivityAnalyzerRoutes sets up all activity analyzer routes
-func (a *AdminPanel) setupActivityAnalyzerRoutes() {
+func (a *AdminPanel) setupActivityAnalyzerAPIRoutes() {
 	// Activity analyzer API group - protected by auth
 	analyzer := a.router.Group("/api/user-activity-analyzer")
 	analyzer.Use(a.ipFilterMiddleware(), a.authRequired())
@@ -31,14 +31,6 @@ func (a *AdminPanel) setupActivityAnalyzerRoutes() {
 			user.GET("/timeline", a.getUserActivityTimeline)
 			user.GET("/actions", a.getUserRecentActions)
 		}
-	}
-
-	// Web pages for activity analyzer
-	analyzerPages := a.router.Group("/admin/activity-analyzer")
-	analyzerPages.Use(a.ipFilterMiddleware(), a.authRequired())
-	{
-		analyzerPages.GET("/", a.activityAnalyzerDashboardPage)
-		analyzerPages.GET("/user/:telegram_id", a.userActivityDetailPage)
 	}
 }
 
