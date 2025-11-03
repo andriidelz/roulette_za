@@ -15,6 +15,7 @@ import (
 	"roulette/internal/logger"
 	"roulette/internal/metrics"
 	"roulette/internal/models"
+	"roulette/internal/repository"
 	"roulette/internal/service"
 
 	"github.com/mymmrac/telego"
@@ -44,6 +45,7 @@ type Bot struct {
 	settingsMutex     sync.Mutex
 	settings          map[string]int64 // Карта налаштувань
 	testMode          bool             // тестовий сервіс
+	handleUpdateFunc  UpdateHandler
 }
 
 // Константы для команд и callback-запитов
@@ -125,6 +127,10 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 	}
 
 	b.gameHandler = gameHandler
+
+	b.handleUpdateFunc = b.handleUpdateImpl
+	repo := service.GetRepo().(*repository.PostgresRepository)
+	b.handleUpdateFunc = NewActivityLoggerMiddleware(repo, b.handleUpdateFunc)
 
 	return b, nil
 }
@@ -247,11 +253,11 @@ func (b *Bot) processUpdate(update telego.Update) {
 					logger.Error.Printf("Panic in update handler: %v", r)
 				}
 			}()
-			b.handleUpdate(upd)
+			b.handleUpdateFunc(upd)
 		}(update)
 	} else {
 		logger.Error.Printf("Extreme load: %d goroutines, falling back to sync processing", runtime.NumGoroutine())
-		b.handleUpdate(update)
+		b.handleUpdateFunc(update)
 	}
 }
 
@@ -288,7 +294,7 @@ func (b *Bot) Stop() {
 }
 
 // handleUpdate обрабатывает одно обновление
-func (b *Bot) handleUpdate(update telego.Update) {
+func (b *Bot) handleUpdateImpl(update telego.Update) {
 	// Обработка сообщений
 	if update.Message != nil && update.Message.Text != "" {
 		b.handleMessage(update.Message)
@@ -819,6 +825,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	}
 
 	if b.captchaBan(user.ID) {
+		b.answerCallbackQuery(query.ID, b.getText("captcha_text", language), true)
 		return
 	}
 
@@ -833,6 +840,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	// Проверка на повышенную активность пользователя
 	switch b.captchaUserActivity(user.ID) {
 	case "wait":
+		b.answerCallbackQuery(query.ID, b.getText("captcha_text", language), true)
 		return
 	case "needCaptcha":
 		b.SendMessage(query.Message.GetChat().ID, b.captchaMessage(user.ID, language))

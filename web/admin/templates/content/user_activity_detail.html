@@ -1,0 +1,481 @@
+{{define "user_activity_detail"}}
+  {{template "header" .}}
+  {{template "navbar" .}}
+  <div class="d-flex">
+    {{template "sidebar" .}}
+    <main class="main-content flex-grow-1">
+      <div class="container-fluid">
+
+        <div class="row">
+          <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h1>Детали активности пользователя</h1>
+              <a href="/admin/activity-analyzer/" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Назад
+              </a>
+            </div>
+            <div class="alert alert-info">
+              <strong>Telegram ID:</strong> <span id="userTelegramId">{{ .TelegramID }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Stats Cards -->
+        <div class="row mb-4">
+          <div class="col-md-2">
+            <div class="card stat-card border-0 shadow-sm">
+              <div class="card-body text-center">
+                <h6 class="text-muted mb-1">Всего действий</h6>
+                <h4 class="mb-0" id="statTotalActions">-</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card stat-card border-0 shadow-sm">
+              <div class="card-body text-center">
+                <h6 class="text-muted mb-1">За час</h6>
+                <h4 class="mb-0 text-warning" id="statLastHour">-</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card stat-card border-0 shadow-sm">
+              <div class="card-body text-center">
+                <h6 class="text-muted mb-1">За 24ч</h6>
+                <h4 class="mb-0 text-info" id="statLast24h">-</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card stat-card border-0 shadow-sm">
+              <div class="card-body text-center">
+                <h6 class="text-muted mb-1">Сред. интервал</h6>
+                <h4 class="mb-0" id="statAvgInterval">-</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card stat-card border-0 shadow-sm">
+              <div class="card-body text-center">
+                <h6 class="text-muted mb-1">Мин. интервал</h6>
+                <h4 class="mb-0 text-danger" id="statMinInterval">-</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card stat-card border-0 shadow-sm">
+              <div class="card-body text-center">
+                <h6 class="text-muted mb-1">Оценка риска</h6>
+                <h4 class="mb-0" id="statSuspicionScore">-</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Фильтры временной шкалы</h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label">Время от</label>
+                <input type="datetime-local" class="form-control" id="timeFrom">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Время до</label>
+                <input type="datetime-local" class="form-control" id="timeTo">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Интервал</label>
+                <select class="form-select" id="intervalSelect">
+                  <option value="hour" selected>Час</option>
+                  <option value="day">День</option>
+                  <option value="minute">Минута</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Тип действия</label>
+                <select class="form-select" id="actionTypeSelect">
+                  <option value="">Все типы</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary w-100" onclick="applyFilters()">
+                  <i class="bi bi-search"></i> Применить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Suspicion Factors -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="bi bi-exclamation-triangle"></i> Анализ подозрительности
+            </h5>
+          </div>
+          <div class="card-body">
+            <div id="suspicionFactors">
+              <!-- Will be filled by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+          <div class="col-md-8">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header">
+                <h5 class="mb-0">
+                  <i class="bi bi-graph-up"></i> График активности
+                </h5>
+              </div>
+              <div class="card-body">
+                <div style="position: relative; height: 350px;">
+                  <canvas id="timelineChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header">
+                <h5 class="mb-0">
+                  <i class="bi bi-pie-chart"></i> Распределение действий
+                </h5>
+              </div>
+              <div class="card-body">
+                <div style="position: relative; height: 350px;">
+                  <canvas id="distributionChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Intervals Chart -->
+        <div class="row mb-4">
+          <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header">
+                <h5 class="mb-0">
+                  <i class="bi bi-clock-history"></i> Временные интервалы между действиями (последние 100)
+                </h5>
+              </div>
+              <div class="card-body">
+                <div style="position: relative; height: 350px;">
+                  <canvas id="intervalsChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Actions Table -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="bi bi-list-ul"></i> Последние действия
+              <span class="badge bg-secondary ms-2" id="actionsCount">0</span>
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover table-sm">
+                <thead class="table-light">
+                  <tr>
+                    <th>Время</th>
+                    <th>Тип действия</th>
+                    <th>Chat ID</th>
+                    <th>Message ID</th>
+                    <th>Данные</th>
+                  </tr>
+                </thead>
+                <tbody id="actionsTable">
+                  <!-- Will be filled by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  {{template "footer" .}}
+{{end}}
+
+{{define "additionalScripts_user_activity_detail"}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  const telegramId = {{ .TelegramID }};
+  let timelineChart = null;
+  let distributionChart = null;
+  let intervalsChart = null;
+
+  $(document).ready(function() {
+    loadActionTypes();
+    loadUserDetail();
+  });
+
+  function loadActionTypes() {
+    $.get('/admin/api/user-activity-analyzer/action-types', function(data) {
+      const select = $('#actionTypeSelect');
+      data.forEach(type => {
+        select.append(`<option value="${type}">${type}</option>`);
+      });
+    });
+  }
+
+  function loadUserDetail() {
+    const params = new URLSearchParams();
+    const timeFrom = $('#timeFrom').val();
+    const timeTo = $('#timeTo').val();
+    if (timeFrom) params.append('time_from', new Date(timeFrom).toISOString());
+    if (timeTo) params.append('time_to', new Date(timeTo).toISOString());
+
+    $.get(`/admin/api/user-activity-analyzer/users/${telegramId}/detail?${params.toString()}`, function(data) {
+      renderStats(data.stats);
+      renderSuspicionFactors(data.suspicion_factors);
+      renderDistributionChart(data.action_distribution);
+      renderRecentActions(data.recent_actions);
+      renderIntervals(data.intervals);
+      loadTimeline();
+    }).fail(function() {
+      alert('Не удалось загрузить детали пользователя');
+    });
+  }
+
+  function renderStats(stats) {
+    $('#statTotalActions').text(stats.total_actions.toLocaleString());
+    $('#statLastHour').text(stats.last_hour_actions);
+    $('#statLast24h').text(stats.last_24h_actions);
+    $('#statAvgInterval').text(stats.avg_interval_seconds.toFixed(2) + 'с');
+    $('#statMinInterval').text(stats.min_interval_seconds.toFixed(2) + 'с');
+
+    const score = stats.suspicion_score;
+    const scoreColor = score >= 50 ? 'text-danger' : score >= 25 ? 'text-warning' : 'text-success';
+    $('#statSuspicionScore').html(`<span class="${scoreColor}">${score.toFixed(0)}</span>`);
+  }
+
+  function renderSuspicionFactors(factors) {
+    const container = $('#suspicionFactors');
+    container.empty();
+
+    factors.forEach(factor => {
+      let factorClass = 'alert-success';
+      if (factor.includes('🔴')) factorClass = 'alert-danger';
+      else if (factor.includes('🟡')) factorClass = 'alert-warning';
+      else if (factor.includes('🟠')) factorClass = 'alert-warning';
+
+      container.append(`<div class="alert ${factorClass}" style="border-left: 4px solid; margin: 0.5rem 0;">${factor}</div>`);
+    });
+  }
+
+  function loadTimeline() {
+    const params = new URLSearchParams();
+    params.append('interval', $('#intervalSelect').val());
+
+    const timeFrom = $('#timeFrom').val();
+    const timeTo = $('#timeTo').val();
+    const actionType = $('#actionTypeSelect').val();
+
+    if (timeFrom) params.append('time_from', new Date(timeFrom).toISOString());
+    if (timeTo) params.append('time_to', new Date(timeTo).toISOString());
+    if (actionType) params.append('action_type', actionType);
+
+    $.get(`/admin/api/user-activity-analyzer/users/${telegramId}/timeline?${params.toString()}`, function(data) {
+      renderTimelineChart(data);
+    });
+  }
+
+  function renderTimelineChart(data) {
+    const ctx = document.getElementById('timelineChart').getContext('2d');
+
+    if (timelineChart) {
+      timelineChart.destroy();
+    }
+
+    const labels = data.map(d => new Date(d.timestamp).toLocaleString('ru-RU', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }));
+
+    const values = data.map(d => d.action_count);
+
+    timelineChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Действия',
+          data: values,
+          backgroundColor: 'rgba(54, 162, 235, 0.6)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderDistributionChart(data) {
+    const ctx = document.getElementById('distributionChart').getContext('2d');
+
+    if (distributionChart) {
+      distributionChart.destroy();
+    }
+
+    const labels = data.map(d => d.action_type);
+    const values = data.map(d => d.count);
+    const colors = generateColors(data.length);
+
+    distributionChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              boxWidth: 12,
+              font: {
+                size: 10
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderIntervals(data) {
+    const ctx = document.getElementById('intervalsChart').getContext('2d');
+
+    if (intervalsChart) {
+      intervalsChart.destroy();
+    }
+
+    const labels = data.map((d, i) => i + 1);
+    const values = data.map(d => d.interval_seconds);
+
+    intervalsChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Интервал (секунды)',
+          data: values,
+          borderColor: 'rgb(255, 99, 132)',
+          backgroundColor: 'rgba(255, 99, 132, 0.1)',
+          tension: 0.1,
+          fill: true,
+          pointRadius: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Секунды'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Номер действия (обратный хронологический порядок)'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderRecentActions(actions) {
+    const tbody = $('#actionsTable');
+    tbody.empty();
+    $('#actionsCount').text(actions.length);
+
+    if (actions.length === 0) {
+      tbody.append('<tr><td colspan="5" class="text-center text-muted">Действия не найдены</td></tr>');
+      return;
+    }
+
+    actions.slice(0, 50).forEach(action => {
+      const timestamp = new Date(action.created_at).toLocaleString('ru-RU');
+      const messageId = action.message_id || '-';
+      const dataStr = action.action_data ? JSON.stringify(action.action_data).substring(0, 100) : '-';
+
+      const row = `
+        <tr>
+          <td>${timestamp}</td>
+          <td><span class="badge bg-info" style="font-size: 0.85rem;">${action.action_type}</span></td>
+          <td>${action.chat_id}</td>
+          <td>${messageId}</td>
+          <td><small class="text-muted">${dataStr}</small></td>
+        </tr>
+      `;
+      tbody.append(row);
+    });
+  }
+
+  function generateColors(count) {
+    const colors = [
+      'rgba(255, 99, 132, 0.6)',
+      'rgba(54, 162, 235, 0.6)',
+      'rgba(255, 206, 86, 0.6)',
+      'rgba(75, 192, 192, 0.6)',
+      'rgba(153, 102, 255, 0.6)',
+      'rgba(255, 159, 64, 0.6)',
+      'rgba(199, 199, 199, 0.6)',
+      'rgba(83, 102, 255, 0.6)',
+      'rgba(255, 99, 255, 0.6)',
+      'rgba(99, 255, 132, 0.6)'
+    ];
+    return colors.slice(0, count);
+  }
+
+  function applyFilters() {
+    loadUserDetail();
+  }
+</script>
+
+<style>
+  .stat-card {
+    transition: transform 0.2s;
+  }
+  .stat-card:hover {
+    transform: translateY(-2px);
+  }
+</style>
+{{end}}

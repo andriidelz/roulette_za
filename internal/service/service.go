@@ -118,6 +118,15 @@ type Service interface {
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)
 	GetGlobalMacros() map[string]interface{}
 
+	// Activity Analyzer methods
+	GetActivityDashboardData() (*models.ActivityDashboardStats, error)
+	GetTopSuspiciousUsers(limit int, timeFrom, timeTo *time.Time, minActions int) ([]models.UserActivityStats, error)
+	GetUserActivityDetail(telegramID int64, timeFrom, timeTo *time.Time) (*models.UserActivityDetail, error)
+	GetUserActivityTimeline(telegramID int64, interval string, timeFrom, timeTo *time.Time, actionType string) ([]models.ActionTimeSeries, error)
+	GetAllActivityActionTypes() ([]string, error)
+	GetOverallActivityTimeline(interval string, timeFrom, timeTo *time.Time, limit int) ([]models.ActionTimeSeries, error)
+	GetTopActionTypes(limit int) ([]models.ActionTypeDistribution, error)
+
 	// Закрытие ресурсов при остановке сервиса
 	Close() error
 
