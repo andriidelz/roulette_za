@@ -227,6 +227,9 @@ function viewTask(id) {
                 case 'activity':
                     targetTypeText = 'По активности';
                     break;
+                case 'unregistered':
+                    targetTypeText = 'Без регистрации';
+                    break;
                 case 'custom':
                     targetTypeText = 'Выборочно';
                     break;
@@ -335,7 +338,11 @@ function viewTask(id) {
                         targetParamsHTML += '</ul>';
                     }
                     break;
-                    
+
+                    case 'unregistered':
+                    targetParamsHTML = '<p>Без регистрации</p>';
+                    break;
+
                 case 'custom':
                     targetParamsHTML = `<p><strong>Выбранные пользователи:</strong> ${totalUsers} чел.</p>`;
                     break;

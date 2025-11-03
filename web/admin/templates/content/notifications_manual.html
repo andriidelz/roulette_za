@@ -93,6 +93,8 @@
                     <span class="badge bg-primary">По странам</span>
                   {{else if eq .TargetType "activity"}}
                     <span class="badge bg-warning">По активности</span>
+                  {{else if eq .TargetType "unregistered"}}
+                    <span class="badge bg-warning">Без регистрации</span>
                   {{else if eq .TargetType "custom"}}
                     <span class="badge bg-secondary">Выборочно</span>
                   {{else}}

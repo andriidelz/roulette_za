@@ -86,7 +86,6 @@ type Service interface {
 	// Методы для работы со страной пользователя
 	// GetUserCountry(telegramID int64) (string, error)
 
-	UpdateUserLanguage(telegramID int64, languageCode string) error
 	UpdateUser(user *models.User) error
 
 	// Вывод средств
@@ -105,6 +104,8 @@ type Service interface {
 	// Автоматические уведомления
 	HandleBalanceUpdate(userID uint, amount float64) error
 	HandleTopRatingEntry(userID uint, position int) error
+	CheckPendingRegistration() error
+	CheckTopRatingEntries() error
 
 	GetNotificationTasks(status string, page, perPage int) ([]models.NotificationTask, int64, error)
 	GetNotificationRecipients(taskID uint, status string, page, limit int) ([]models.NotificationRecipient, int64, error)
@@ -115,7 +116,6 @@ type Service interface {
 	GetPendingNotificationTasks() ([]models.NotificationTask, error)
 	GetNotificationTasksStats(period string) (*models.NotificationStatistics, error)
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)
-	CheckTopRatingEntries() error
 	GetGlobalMacros() map[string]interface{}
 
 	// Activity Analyzer methods
@@ -857,19 +857,6 @@ func (s *ServiceImpl) GetUserCountry(telegramID int64) (string, error) {
 	}
 
 	return s.repo.GetUserCountry(user.ID)
-}
-
-func (s *ServiceImpl) UpdateUserLanguage(telegramID int64, languageCode string) error {
-	user, err := s.repo.GetUserByTelegramID(telegramID)
-	if err != nil {
-		return err
-	}
-
-	// Обновляем язык пользователя
-	user.LanguageCode = languageCode
-
-	// Обновляем пользователя в базе данных
-	return s.repo.UpdateUser(user)
 }
 
 // UpdateUser обновляет информацию о пользователе

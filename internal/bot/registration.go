@@ -207,6 +207,7 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 
 	// Обновляем статус подтверждения возраста
 	dbUser.AgeVerified = &isAdult
+	dbUser.Registered = b.isRegistrationComplete(dbUser)
 	err = b.service.UpdateUser(dbUser)
 	if err != nil {
 		logger.Error.Printf("Error updating user age verification: %v", err)
@@ -551,7 +552,7 @@ func (b *Bot) RequireCompleteRegistration(chatID, userID int64, command string) 
 	}
 
 	// Проверяем полноту регистрации
-	if !b.isRegistrationComplete(dbUser) {
+	if dbUser.Banned || !b.isRegistrationComplete(dbUser) {
 
 		if dbUser.AgeVerified != nil && !*dbUser.AgeVerified {
 			// Пользователь не подтвердил совершеннолетие - показываем сообщение о блокировке
@@ -684,11 +685,6 @@ func (b *Bot) isRegistrationComplete(user *models.User) bool {
 
 	// 3. Язык должен быть установлен
 	if user.LanguageCode == "" {
-		return false
-	}
-
-	// 4. Пользователь не должен быть забанен
-	if user.Banned {
 		return false
 	}
 

@@ -631,6 +631,15 @@ func (s *ServiceImpl) HandleTopRatingEntry(userID uint, position int) error {
 	return autoNotif.HandleTopRatingEntry(userID, position)
 }
 
+// HandleTopRatingEntry обробляє повідомлення про незавершену реєстрацію
+func (s *ServiceImpl) HandleRegistration(userID uint) error {
+	// Создаем сервис автоматических уведомлений
+	autoNotif := NewAutoNotificationService(s)
+
+	// Отправляем уведомление о входе в топ рейтинга
+	return autoNotif.HandleRegistration(userID)
+}
+
 func (s *ServiceImpl) GetPendingNotificationTasks() ([]models.NotificationTask, error) {
 	return s.repo.GetPendingNotificationTasks()
 }
@@ -799,6 +808,54 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 	// Если все прошло успешно, логируем информацию
 	logger.Info.Printf("Notification sent for user %d (%d): %s - %s",
 		user.ID, user.TelegramID, title, message)
+
+	return nil
+}
+
+// CheckPendingRegistration обробляє повідомлення про незавершену реєстрацію
+func (s *ServiceImpl) CheckPendingRegistration() error {
+
+	task := &models.NotificationTask{
+		TargetType: "unregistered",
+	}
+
+	// Находим пользователей, соответствующих критериям таргетинга
+	users, err := s.repo.GetUsersForNotificationTask(task)
+	if err != nil {
+		return err
+	}
+
+	// Если пользователи не найдены
+	if len(users) == 0 {
+		logger.Error.Println("CheckPendingRegistration: does not find unregistered")
+		return nil
+	}
+
+	// Для каждого пользователя незаконченной регистрации, отправлялось ли ему уже уведомление
+	for i := range users {
+		// Проверяем, было ли уже отправлено уведомление сегодня
+		notificationSent, err := s.repo.CheckNotificationSent(users[i].ID, "user_unregistered", time.Now().Format("2006-01-02"))
+		if err != nil {
+			logger.Error.Printf("Error checking notification status for user %d: %v", users[i].ID, err)
+			continue
+		}
+
+		// Если уведомление уже было отправлено сегодня, пропускаем этого пользователя
+		if notificationSent {
+			continue
+		}
+
+		// Отправляем уведомление о незаконченной регистрации
+		if err := s.HandleRegistration(users[i].ID); err != nil {
+			logger.Error.Printf("Error sending unregistered notification to user %d: %v", users[i].ID, err)
+			// Продолжаем обработку других пользователей
+		} else {
+			// Сохраняем информацию о том, что уведомление было отправлено
+			if err := s.repo.SaveNotificationSent(users[i].ID, "user_unregistered", time.Now().Format("2006-01-02")); err != nil {
+				logger.Error.Printf("Error saving notification status for user %d: %v", users[i].ID, err)
+			}
+		}
+	}
 
 	return nil
 }

@@ -71,6 +71,54 @@ func (s *AutoNotificationService) HandleBalanceUpdated(userID uint, amount float
 	return nil
 }
 
+// HandleRegistration обробляє повідомлення про незавершену реєстрацію
+func (s *AutoNotificationService) HandleRegistration(userID uint) error {
+	templates, _, err := s.service.GetNotificationTemplates("automatic", 1, 100)
+	if err != nil {
+		return err
+	}
+	var ratingTemplate *models.NotificationTemplate
+	for _, tpl := range templates {
+		if tpl.TriggerEvent == "user_unregistered" && tpl.Active {
+			ratingTemplate = &tpl
+			break
+		}
+	}
+
+	if ratingTemplate == nil {
+		logger.Info.Printf("No active template found for 'user_unregistered' event")
+		return nil
+	}
+
+	user, err := s.service.GetRepo().GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	// Рассчитываем время отправки - 20:00 по локальному времени пользователя
+	scheduledTime := s.calculateTimeFor8PM(user.Country)
+
+	// Создаем параметры таргетирования для конкретного пользователя
+	targetParams := models.NotificationTargetParams{
+		UserIDs: []uint{user.ID},
+	}
+
+	// Создаем макросы для пользователя
+	userMacros := map[string]interface{}{}
+
+	macrosForUsers := map[uint]map[string]interface{}{
+		user.ID: userMacros,
+	}
+
+	_, err = s.service.CreateNotificationTask(ratingTemplate.ID, "custom", targetParams, &scheduledTime, macrosForUsers)
+	if err != nil {
+		logger.Error.Printf("Ошибка при создании задачи уведомления: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 // HandleTopRatingEntered обрабатывает событие входа в топ рейтинга и отправляет уведомление
 func (s *AutoNotificationService) HandleTopRatingEntry(userID uint, position int) error {
 	templates, _, err := s.service.GetNotificationTemplates("automatic", 1, 100)

@@ -916,6 +916,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 		// Для других стран - просто сохраняем выбор
 		dbUser.Country = countryCode
+		dbUser.Registered = b.isRegistrationComplete(dbUser)
+
 		if err := b.service.UpdateUser(dbUser); err != nil {
 			logger.Error.Printf("Error updating user country: %v", err)
 			if query.Message != nil {
@@ -1082,7 +1084,9 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Обновляем язык пользователя в базе данных
 		user.LanguageCode = langCode
 		dbUser.LanguageCode = langCode
-		if err := b.service.UpdateUserLanguage(dbUser.TelegramID, langCode); err != nil {
+		dbUser.Registered = b.isRegistrationComplete(dbUser)
+
+		if err := b.service.UpdateUser(dbUser); err != nil {
 			b.answerCallbackQuery(query.ID, "Error saving language", true)
 			return
 		}
@@ -1313,7 +1317,7 @@ func (b *Bot) updateOrSendMessage(query *telego.CallbackQuery, text string) {
 		Text:         b.getText("btn_back", language),
 		CallbackData: "back_to_start",
 	}
-	
+
 	callbackData := query.Data
 	// Якщо колбек був з меню гри то повернення має запустити меню гри
 	if strings.Contains(callbackData, "_play") {
