@@ -110,6 +110,11 @@ func main() {
 				if err := svc.CheckTopRatingEntries(); err != nil {
 					logger.Error.Printf("Error checking top rating entries: %v", err)
 				}
+
+				logger.Info.Println("Starting scheduled unregistered entries...")
+				if err := svc.CheckPendingRegistration(); err != nil {
+					logger.Error.Printf("Error checking top rating entries: %v", err)
+				}
 			}
 		}
 	}()

@@ -104,8 +104,10 @@
                                     <td>
                                         {{ if .Banned }}
                                         <span class="badge bg-danger">Бан</span>
-                                        {{ else }}
+                                        {{ else if .Registered }}
                                         <span class="badge bg-success">Активен</span>
+                                        {{ else }}
+                                        <span class="badge bg-danger">Не зарегистрирован</span>
                                         {{ end }}
                                     </td>
                                     <td>

@@ -24,6 +24,8 @@
                 <td>
                   {{if eq .TriggerEvent "user_registered"}}
                     Регистрация пользователя
+                  {{else if eq .TriggerEvent "user_unregistered"}}
+                    Без регистрации
                   {{else if eq .TriggerEvent "weekly_rating_updated"}}
                     Обновление еженедельного рейтинга
                   {{else if eq .TriggerEvent "bet_won"}}
