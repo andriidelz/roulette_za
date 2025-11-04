@@ -135,7 +135,7 @@ type Repository interface {
 	DeleteNotificationTask(id uint) error
 	CreateNotificationRecipient(recipient *models.NotificationRecipient) error
 	DeleteNotificationTemplate(id uint) error
-	GetActivityFiltersWithUserCounts() ([]models.ActivityFilterOption, error)
+	// GetActivityFiltersWithUserCounts() ([]models.ActivityFilterOption, error)
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)
 	GetNotificationRecipients(taskID uint, status string, page, pageSize int) ([]models.NotificationRecipient, int64, error)
 	GetNotificationTaskByID(id uint) (*models.NotificationTask, error)

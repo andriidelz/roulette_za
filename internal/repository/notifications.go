@@ -261,24 +261,24 @@ func (r *PostgresRepository) GetUsersForNotificationTask(task *models.Notificati
 			for _, filter := range task.TargetParams.ActivityFilters {
 				switch filter {
 				case "inactive_3days":
-					// Пользователи, активные от 12 часов до 3 дней назад
-					conditions = append(conditions, "(last_activity_at >= ? AND last_activity_at <= ?)")
-					values = append(values, threeDay, twelveHour)
+					// Пользователи зарегистрированные, активные от 12 часов до 3 дней назад
+					conditions = append(conditions, "(registered = ? AND last_activity_at >= ? AND last_activity_at <= ?)")
+					values = append(values, true, threeDay, twelveHour)
 
 				case "inactive_7days":
-					// Пользователи, активные от 3 до 7 дней назад
-					conditions = append(conditions, "(last_activity_at >= ? AND last_activity_at <= ?)")
-					values = append(values, sevenDay, threeDay)
+					// Пользователи зарегистрированные, активные от 3 до 7 дней назад
+					conditions = append(conditions, "(registered = ? AND last_activity_at >= ? AND last_activity_at <= ?)")
+					values = append(values, true, sevenDay, threeDay)
 
 				case "inactive_14days":
-					// Пользователи, активные от 7 до 14 дней назад
-					conditions = append(conditions, "(last_activity_at >= ? AND last_activity_at <= ?)")
-					values = append(values, fourteenDay, sevenDay)
+					// Пользователи зарегистрированные, активные от 7 до 14 дней назад
+					conditions = append(conditions, "(registered = ? AND last_activity_at >= ? AND last_activity_at <= ?)")
+					values = append(values, true, fourteenDay, sevenDay)
 
 				case "inactive_more_14days":
-					// Пользователи, активные более 14 дней назад
-					conditions = append(conditions, "last_activity_at <= ?")
-					values = append(values, fourteenDay)
+					// Пользователи зарегистрированные, активные более 14 дней назад
+					conditions = append(conditions, "(registered = ? AND last_activity_at <= ?)")
+					values = append(values, true, fourteenDay)
 				}
 			}
 
@@ -435,6 +435,7 @@ func (r *PostgresRepository) GetCountriesWithUserCounts() ([]models.CountryOptio
 	return options, nil
 }
 
+// unused
 // GetActivityFiltersWithUserCounts получает список фильтров активности с количеством пользователей
 func (r *PostgresRepository) GetActivityFiltersWithUserCounts() ([]models.ActivityFilterOption, error) {
 	now := time.Now()

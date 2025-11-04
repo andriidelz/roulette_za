@@ -549,10 +549,11 @@ func (s *ServiceImpl) GetCountriesWithUserCounts() ([]models.CountryOption, erro
 	return s.repo.GetCountriesWithUserCounts()
 }
 
-// GetActivityFiltersWithUserCounts получает список фильтров активности с количеством пользователей
-func (s *ServiceImpl) GetActivityFiltersWithUserCounts() ([]models.ActivityFilterOption, error) {
-	return s.repo.GetActivityFiltersWithUserCounts()
-}
+// unused
+// // GetActivityFiltersWithUserCounts получает список фильтров активности с количеством пользователей
+// func (s *ServiceImpl) GetActivityFiltersWithUserCounts() ([]models.ActivityFilterOption, error) {
+// 	return s.repo.GetActivityFiltersWithUserCounts()
+// }
 
 // CancelNotificationTask отменяет задачу
 func (s *ServiceImpl) CancelNotificationTask(id uint) error {
