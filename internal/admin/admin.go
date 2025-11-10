@@ -132,6 +132,7 @@ func (a *AdminPanel) setupRoutes() {
 		admin.GET("/super-ratings", a.superRatingsList)
 		admin.GET("/super-rating/:period", a.superRatingDetails)
 
+		admin.GET("/withdrawals/stat", a.withdrawalsStat)
 		admin.GET("/withdrawals", a.withdrawalsList)
 		admin.POST("/withdrawal/:id/approve", a.withdrawalApprove)
 		admin.POST("/withdrawal/:id/reject", a.withdrawalReject)

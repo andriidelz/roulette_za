@@ -3,9 +3,95 @@ package repository
 import (
 	"fmt"
 	"roulette/internal/models"
+	"time"
+
+	"gorm.io/gorm"
 )
 
 // Реалізація методів для виведення коштів
+
+// GetWithdrawalsStat отримує статистику по виплатам за період
+func (r *PostgresRepository) GetWithdrawalsStat(dateFrom, dateTo string) ([]models.WithdrawalStat, error) {
+
+	var stats []models.WithdrawalStat
+	err := r.db.Where("created_at >= ? AND created_at <= ?", dateFrom, dateTo).Find(&stats).Error
+	if err != nil {
+		return stats, err
+	}
+
+	return stats, nil
+}
+
+// FindWithdrawalsStat отримує або створює запис в статистиці по виплатам
+func (r *PostgresRepository) FindWithdrawalsStat(day string) (models.WithdrawalStat, error) {
+
+	var data models.WithdrawalStat
+
+	err := r.db.Where("day = ?", day).First(&data).Error
+
+	if err == gorm.ErrRecordNotFound {
+		// Створюємо новий запис
+		data = models.WithdrawalStat{
+			Day:       day,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+
+		if err := r.db.Create(&data).Error; err != nil {
+			return data, err
+		}
+	} else if err != nil {
+		return data, err
+	}
+	return data, nil
+}
+
+// RecalculateWithdrawalsStat - періодичне оновлення статистики
+func (r *PostgresRepository) RecalculateWithdrawalsStat(id string) (models.WithdrawalStat, error) {
+
+	data, err := r.FindWithdrawalsStat(id)
+	if err != nil {
+		return data, err
+	}
+
+	// Сума балансів
+	var balance float64
+	err = r.db.Model(&models.User{}).Where("banned = ? ", false).Select("COALESCE(SUM(balance), 0)").Scan(&balance).Error
+	if err != nil {
+		return data, err
+	}
+	data.Balance = balance
+
+	// Запрошено до виплати
+	var withdrawal float64
+	now := time.Now().UTC() // Час в UTC
+	from := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	to := from.AddDate(0, 0, 1)
+
+	err = r.db.Model(&models.Withdrawal{}).Where("created_at >= ? AND created_at <= ?", from, to).Select(
+		"COALESCE(SUM(amount), 0)").Scan(&withdrawal).Error
+	if err != nil {
+		return data, err
+	}
+	data.Withdrawal = withdrawal
+
+	// Виплачено
+	var payout float64
+	err = r.db.Model(&models.Withdrawal{}).Where("status = ? AND created_at >= ? AND created_at <= ?", "completed", from, to).Select(
+		"COALESCE(SUM(amount), 0)").Scan(&payout).Error
+	if err != nil {
+		return data, err
+	}
+	data.Payout = payout
+
+	return data, r.UpdateWithdrawalsStat(&data)
+}
+
+// UpdateWithdrawalsStat обновляет всю запись о статистике
+func (r *PostgresRepository) UpdateWithdrawalsStat(data *models.WithdrawalStat) error {
+	data.UpdatedAt = time.Now()
+	return r.db.Save(data).Error
+}
 
 func (r *PostgresRepository) CreateWithdrawal(withdrawal *models.Withdrawal) error {
 	return r.db.Create(withdrawal).Error

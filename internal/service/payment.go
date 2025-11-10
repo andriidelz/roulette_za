@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log"
+	"roulette/internal/logger"
 	"roulette/internal/models"
 	"roulette/internal/payment"
 	"roulette/internal/repository"
@@ -358,6 +359,24 @@ func (s *PaymentService) CheckPendingWithdrawals() error {
 
 	log.Printf("[PaymentService] Completed checking withdrawals. Updated %d of %d withdrawals",
 		updatedCount, len(withdrawals))
+
+	return nil
+}
+
+// UpdateWithdrawalStat periodically update withdrawals_stat via API
+func (s *PaymentService) UpdateWithdrawalStat() error {
+	log.Printf("[PaymentService] Starting periodic statistic of processing withdrawals")
+
+	now := time.Now().UTC() // Час в UTC
+	day := now.Format("2006-01-02")
+
+	data, err := s.repo.RecalculateWithdrawalsStat(day)
+	if err != nil {
+		log.Printf("[PaymentService] Error createWithdrawalsStat in database: %v", err)
+		return err
+	}
+
+	logger.Error.Println(data)
 
 	return nil
 }
