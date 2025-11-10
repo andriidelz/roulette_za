@@ -2,10 +2,39 @@ package admin
 
 import (
 	"net/http"
+	"roulette/internal/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
+
+func (a *AdminPanel) withdrawalsStat(c *gin.Context) {
+
+	params := struct {
+		Period   string `form:"period" json:"period"`
+		DateFrom string `form:"dateFrom" json:"dateFrom"`
+		DateTo   string `form:"dateTo" json:"dateTo"`
+	}{}
+
+	if err := c.Bind(&params); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err := utils.PeriodControl(&params.DateFrom, &params.DateTo, &params.Period)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	data, err := a.repo.GetWithdrawalsStat(params.DateFrom, params.DateTo)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, data)
+}
 
 // Список запитів на виведення коштів
 func (a *AdminPanel) withdrawalsList(c *gin.Context) {

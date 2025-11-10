@@ -94,6 +94,11 @@ func main() {
 			if err := paymentSvc.CheckPendingWithdrawals(); err != nil {
 				logger.Error.Printf("Error checking pending withdrawals: %v", err)
 			}
+
+			// Оновлення статистики виплат
+			if err := paymentSvc.UpdateWithdrawalStat(); err != nil {
+				logger.Error.Printf("Error checking pending withdrawals: %v", err)
+			}
 		}
 	}()
 
