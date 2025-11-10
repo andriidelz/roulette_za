@@ -761,6 +761,7 @@ func (s *ServiceImpl) DistributePrizes(year, week int) error {
 		return fmt.Errorf("total points is zero for week %d/%d", year, week)
 	}
 
+	var totalPrize float64
 	// Розподіляємо призовий фонд пропорційно балам
 	for _, rating := range ratings {
 		prize := (float64(rating.Points) / float64(totalPoints)) * prizeFund.Amount
@@ -777,6 +778,8 @@ func (s *ServiceImpl) DistributePrizes(year, week int) error {
 		}
 
 		user.Balance += prize
+		totalPrize += prize
+
 		if err := s.repo.UpdateUser(user); err != nil {
 			return err
 		}
@@ -786,6 +789,19 @@ func (s *ServiceImpl) DistributePrizes(year, week int) error {
 			logger.Error.Printf("Error sending balance update notification to user %d: %v", user.ID, err)
 			// Продолжаем обработку других пользователей
 		}
+	}
+
+	now := time.Now().UTC() // Час в UTC
+	data, err := s.repo.FindWithdrawalsStat(now.Format("2006-01-02"))
+	if err != nil {
+		return err
+	}
+logger.Error.Println(now, totalPrize)
+
+	// Нараховано виплат
+	data.Earn = totalPrize
+	if err := s.repo.UpdateWithdrawalsStat(&data); err != nil {
+		return err
 	}
 
 	// Позначаємо призовий фонд як оброблений

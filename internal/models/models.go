@@ -193,3 +193,16 @@ type Withdrawal struct {
 	ProviderID      string `gorm:"size:255;index"`
 	TransactionHash string `gorm:"size:255"`
 }
+
+type WithdrawalStat struct {
+	ID  uint   `gorm:"primaryKey"`
+	Day string `gorm:"size:12;index"`
+
+	Earn       float64 `gorm:"default:0"` // Начислено выплат
+	Withdrawal float64 `gorm:"default:0"` // Запрошено к выплате
+	Payout     float64 `gorm:"default:0"` // Выплачено
+	Balance    float64 `gorm:"default:0"` // Остаток на балансах
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}

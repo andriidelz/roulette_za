@@ -104,6 +104,11 @@ type Repository interface {
 	UpdateWithdrawalStatus(id uint, status string) error
 	GetWithdrawalByProviderID(providerName, providerID string) (*models.Withdrawal, error)
 	UpdateWithdrawal(withdrawal *models.Withdrawal) error
+	// Статистика по виплатам
+	GetWithdrawalsStat(dateFrom, dateTo string) ([]models.WithdrawalStat, error)
+	FindWithdrawalsStat(day string) (models.WithdrawalStat, error)
+	RecalculateWithdrawalsStat(day string) (models.WithdrawalStat, error)
+	UpdateWithdrawalsStat(data *models.WithdrawalStat) error
 
 	// Админ-функции
 	GetWithdrawalByID(id uint) (*models.Withdrawal, error)
@@ -135,7 +140,7 @@ type Repository interface {
 	DeleteNotificationTask(id uint) error
 	CreateNotificationRecipient(recipient *models.NotificationRecipient) error
 	DeleteNotificationTemplate(id uint) error
-	GetActivityFiltersWithUserCounts() ([]models.ActivityFilterOption, error)
+	// GetActivityFiltersWithUserCounts() ([]models.ActivityFilterOption, error)
 	GetCountriesWithUserCounts() ([]models.CountryOption, error)
 	GetNotificationRecipients(taskID uint, status string, page, pageSize int) ([]models.NotificationRecipient, int64, error)
 	GetNotificationTaskByID(id uint) (*models.NotificationTask, error)
