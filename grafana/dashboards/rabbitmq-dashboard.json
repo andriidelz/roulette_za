@@ -664,7 +664,7 @@
                         "uid": "PBFA97CFB590B2093"
                     },
                     "editorMode": "code",
-                    "expr": "rabbitmq_process_resident_memory_bytes",
+                    "expr": "rabbitmq_node_mem_used",
                     "legendFormat": "Memory",
                     "range": true,
                     "refId": "A"
@@ -757,7 +757,7 @@
                         "uid": "PBFA97CFB590B2093"
                     },
                     "editorMode": "code",
-                    "expr": "rabbitmq_process_open_fds / rabbitmq_process_max_fds",
+                    "expr": "rabbitmq_fd_used / rabbitmq_fd_available",
                     "legendFormat": "File Descriptors (used/max)",
                     "range": true,
                     "refId": "A"
