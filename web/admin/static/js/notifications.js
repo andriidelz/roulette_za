@@ -622,6 +622,8 @@ function createNotificationTask() {
             resetCreateButton();
             return;
         }
+        let dateObject = new Date(scheduledAt);
+        scheduledAt = dateObject.toISOString();
     } else {
         // Для немедленной отправки используем текущее время
         const now = new Date();

@@ -238,11 +238,12 @@ services:
       - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     environment:
       <<: *rabbitmq-env
+      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: "0.75"
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: "1"
+          memory: 4G
+          cpus: "2"
         reservations:
           memory: 512M
           cpus: "0.5"

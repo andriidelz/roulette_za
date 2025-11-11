@@ -796,7 +796,6 @@ func (s *ServiceImpl) DistributePrizes(year, week int) error {
 	if err != nil {
 		return err
 	}
-logger.Error.Println(now, totalPrize)
 
 	// Нараховано виплат
 	data.Earn = totalPrize
