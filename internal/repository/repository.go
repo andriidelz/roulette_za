@@ -168,6 +168,7 @@ type Repository interface {
 	GetAllActionTypes() ([]string, error)
 	GetOverallActivityTimeline(interval string, timeFrom, timeTo *time.Time, limit int) ([]models.ActionTimeSeries, error)
 	GetTopActionTypes(limit int) ([]models.ActionTypeDistribution, error)
+	DeleteOldActivityLogs(olderThan time.Time) (int64, error)
 
 	// Закрытие соединения
 	Close() error
