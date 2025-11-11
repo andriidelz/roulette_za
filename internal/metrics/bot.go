@@ -12,6 +12,7 @@ type BotMetrics struct {
 	MessageQueueTime     *prometheus.HistogramVec
 
 	// Игровые метрики
+	ActiveUsers    prometheus.Gauge
 	ActivePlayers  prometheus.Gauge
 	BetsByType     *prometheus.CounterVec
 	CommandLatency *prometheus.HistogramVec
@@ -53,6 +54,12 @@ func NewBotMetrics(registry *prometheus.Registry) *BotMetrics {
 			[]string{"priority"}, // normal, high
 		),
 
+		ActiveUsers: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "roulette_bot_active_users",
+				Help: "Number of users currently",
+			},
+		),
 		// Игровые метрики
 		ActivePlayers: prometheus.NewGauge(
 			prometheus.GaugeOpts{
@@ -93,6 +100,7 @@ func NewBotMetrics(registry *prometheus.Registry) *BotMetrics {
 		bm.TelegramErrors,
 		bm.MessageQueueSize,
 		bm.MessageQueueTime,
+		bm.ActiveUsers,
 		bm.ActivePlayers,
 		bm.BetsByType,
 		bm.CommandLatency,
@@ -119,6 +127,10 @@ func (bm *BotMetrics) UpdateQueueSize(size float64) {
 
 func (bm *BotMetrics) RecordQueueTime(priority string, duration float64) {
 	bm.MessageQueueTime.WithLabelValues(priority).Observe(duration)
+}
+
+func (bm *BotMetrics) SetActiveUsers(count float64) {
+	bm.ActiveUsers.Set(count)
 }
 
 // Игровые метрики
