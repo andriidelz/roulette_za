@@ -279,6 +279,10 @@ func (b *Bot) refreshActiveUsers() {
 	data := b.activeUsers
 	b.activeUsersMutex.Unlock()
 
+	if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+		metrics.Bot.SetActiveUsers(float64(len(data)))
+	}
+
 	for userID := range data {
 
 		logger.Error.Println("UpdateUserActivity", userID)
