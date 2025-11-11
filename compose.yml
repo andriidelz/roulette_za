@@ -231,6 +231,7 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: roulette-rabbitmq
+    hostname: roulette-rabbitmq-node
     ports:
       - "127.0.0.1:15672:15672"
     volumes:
@@ -238,7 +239,6 @@ services:
       - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     environment:
       <<: *rabbitmq-env
-      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: "0.75"
     deploy:
       resources:
         limits:
