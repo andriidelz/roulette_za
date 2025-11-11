@@ -147,6 +147,22 @@ func main() {
 		}
 	}()
 
+	hourTicker := time.NewTicker(1 * time.Hour)
+	go func() {
+		for range hourTicker.C {
+
+			oldData := time.Now().AddDate(0, 0, -3)
+			logger.Info.Println("Starting DeleteOldActivityLogs older that: ", oldData)
+			// Clear database
+			count, err := repo.DeleteOldActivityLogs(oldData)
+			if err != nil {
+				logger.Error.Printf("Failed to create activity log: %v", err)
+			}
+
+			logger.Info.Println("Finish DeleteOldActivityLogs... ", count)
+		}
+	}()
+
 	// Виводимо повідомлення про запуск
 	logger.Info.Printf("Admin panel started on http://localhost:%s", cfg.AdminPort)
 
