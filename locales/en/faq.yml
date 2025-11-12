@@ -56,7 +56,7 @@ safety_steps_text_1: "Take the number and salt provided after the round"
 safety_steps_text_2: 'Create a string: [number]:[salt]'
 safety_steps_text_3: "Compute the SHA-256 hash"
 safety_steps_text_4: "Compare with the hash provided at the beginning of the round"
-safety_summary: "This ensures 100% fair and unpredictable results."
+safety_summary: "This ensures 100%% fair and unpredictable results."
 
 # Rewards
 rewards: "How are rewards distributed?"
