@@ -89,7 +89,7 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 
 	opts := []telego.BotOption{
 		telego.WithAPIServer(cfg.TelegramAPIURL),
-		telego.WithDefaultLogger(true, true),
+		telego.WithDefaultLogger(cfg.TelegramDebugMode, true),
 	}
 
 	if cfg.TelegramTestMode {
@@ -1646,7 +1646,6 @@ func (b *Bot) getText(key, languageCode string) (options string) {
 
 // SendMessage отправляет новое сообщение с указанными опциями
 func (b *Bot) SendMessage(chatID int64, options MessageOptions) error {
-
 	// Определяем тип сообщения
 	if options.MethodName == "" {
 		if options.PhotoPath != "" || options.PhotoFileID != "" {

@@ -14,6 +14,7 @@ type Config struct {
 
 	// Телеграм
 	TelegramAPIURL           string
+	TelegramDebugMode        bool
 	TelegramTestMode         bool
 	TelegramToken            string
 	TelegramName             string // название бота
@@ -52,6 +53,7 @@ func NewConfig() *Config {
 		// Телеграм
 
 		TelegramAPIURL:           getEnv("TELEGRAM_API_URL", "https://api.telegram.org"),
+		TelegramDebugMode:        getEnvBool("TELEGRAM_DEBUG_MODE", false),
 		TelegramTestMode:         getEnvBool("TELEGRAM_TEST_MODE", false),
 		TelegramToken:            getEnv("TELEGRAM_TOKEN", ""),
 		TelegramName:             getEnv("TELEGRAM_NAME", ""),
