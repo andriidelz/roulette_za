@@ -428,7 +428,7 @@ func (h *GameHandler) handleRoundCompletion() {
 				return
 			}
 
-			logger.Info.Printf("Round #%d result: %s (number: %d)", roundID, option, round.Number)
+			// logger.Info.Printf("Round #%d result: %s (number: %d)", roundID, option, round.Number)
 
 			// Уведомляем игрока о результате
 			if err := h.notifyPlayerAboutResult(userID, round, option); err != nil {
@@ -500,7 +500,7 @@ func (h *GameHandler) handleGetResultRound(query *telego.CallbackQuery) {
 
 // notifyPlayerAboutResult уведомляет игрока о результате раунда
 func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEntry, result models.BetOption) error {
-	logger.Info.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, round.ID)
+	// logger.Info.Printf("notifyPlayerAboutResult called for user %d, round #%d", userID, round.ID)
 
 	// Получаем пользователя
 	dbUser, err := h.bot.getUser(userID)
@@ -784,7 +784,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 
 // MakeBet делает ставку в текущем раунде
 func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOption) error {
-	logger.Info.Printf("MakeBet called for user %d with option %s", userID, option)
+	// logger.Info.Printf("MakeBet called for user %d with option %s", userID, option)
 
 	// Получаем пользователя
 	dbUser, err := h.bot.getUser(userID)
