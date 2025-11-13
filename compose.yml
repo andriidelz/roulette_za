@@ -30,6 +30,7 @@ x-redis-config: &redis-config
 # Telegram configuration
 x-telegram-config: &telegram-config
   TELEGRAM_API_URL: ${TELEGRAM_API_URL}
+  TELEGRAM_DEBUG_MODE: ${TELEGRAM_DEBUG_MODE}
   TELEGRAM_TEST_MODE: ${TELEGRAM_TEST_MODE}
   TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
   TELEGRAM_NAME: ${TELEGRAM_NAME}
