@@ -281,7 +281,7 @@ func (b *Bot) refreshActiveUsers() {
 
 	for userID := range data {
 
-		logger.Error.Println("UpdateUserActivity", userID)
+		// logger.Error.Println("UpdateUserActivity", userID)
 		if err := b.service.UpdateUserActivity(userID); err != nil {
 			logger.Error.Printf("Error UpdateUserActivity: %d, %v", userID, err)
 		}

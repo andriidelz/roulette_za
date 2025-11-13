@@ -1528,6 +1528,7 @@ func (b *Bot) answerCallbackQuery(queryID string, text string, showAlert bool) {
 	})
 	if err != nil {
 		logger.Error.Printf("Error answering callback query: %v", err)
+		logger.Error.Printf("Error answering callback text: %v", text)
 	}
 }
 
@@ -1949,9 +1950,7 @@ func (b *Bot) sendPhotoFile(chatID int64, photoPath string, delPhoto bool, param
 		// то через какое то время запускаем функцию удаления фото
 		go func() {
 			time.Sleep(20 * time.Second)
-			e := os.Remove(photoPath)
-			logger.Error.Println("Remove photo file")
-			if e != nil {
+			if e := os.Remove(photoPath); e != nil {
 				logger.Error.Println("failed to remove photo file: %w", err)
 			}
 		}()
