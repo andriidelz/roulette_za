@@ -131,6 +131,11 @@ $(document).ready(function () {
             // Сохраняем токен и удаляем его из списка
             var token = actionTokens[tokenKey];
             delete actionTokens[tokenKey];
+            
+            if (withdrawalId === 'all') {
+                // для всіх виплат видаляємо всі токени
+                actionTokens = {};
+            }
 
             // Блокируем кнопку и показываем индикатор загрузки
             btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Обработка...');

@@ -69,6 +69,27 @@ func (a *AdminPanel) withdrawalsList(c *gin.Context) {
 // Подтверждение вывода средств
 func (a *AdminPanel) withdrawalApprove(c *gin.Context) {
 	// Получаем ID запроса
+	if c.Param("id") == "all" {
+		// Підтвердити всі
+		// Получаем список запросов на вывод со статусом "pending"
+		pendingWithdrawals, err := a.repo.GetPendingWithdrawals()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		for i := range pendingWithdrawals {
+			if err := a.paymentService.ApproveWithdrawal(pendingWithdrawals[i].ID); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true})
+		return
+	}
+
+	// Один запит
 	withdrawalID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID запроса"})
