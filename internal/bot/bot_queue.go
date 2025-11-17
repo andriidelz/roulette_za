@@ -376,13 +376,14 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 		}
 		if err != nil {
 			logger.Error.Printf("Error send %d: %v", chatID, err)
-		}
-		messageID = mes.MessageID
+		} else if mes != nil {
+			messageID = mes.MessageID
 
-		// для капчі зберігаємо id останньої відправленої капчі щоб замінити її
-		err = b.redisDB.Set(cont, captchaMess, messageID, userCaptchaExpiration).Err()
-		if err != nil {
-			logger.Error.Printf("Error Set %d: %v", chatID, err)
+			// для капчі зберігаємо id останньої відправленої капчі щоб замінити її
+			err = b.redisDB.Set(cont, captchaMess, messageID, userCaptchaExpiration).Err()
+			if err != nil {
+				logger.Error.Printf("Error Set %d: %v", chatID, err)
+			}
 		}
 
 	case editMessageMedia:
