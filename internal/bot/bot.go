@@ -1996,9 +1996,7 @@ func (b *Bot) updatePhoto(chatID int64, messageID int, options MessageOptions) (
 			// то через какое то время запускаем функцию удаления фото
 			go func() {
 				time.Sleep(20 * time.Second)
-				e := os.Remove(options.PhotoPath)
-				logger.Error.Println("Remove photo file")
-				if e != nil {
+				if e := os.Remove(options.PhotoPath); e != nil {
 					logger.Error.Println("failed to remove photo file: %w", err)
 				}
 			}()

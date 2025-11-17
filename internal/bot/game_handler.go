@@ -530,7 +530,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	if bet.GetResult {
 		if time.Since(bet.CreatedAt).Seconds() < 20 {
 			// раунд ще не закінчився, ніяк не відповідаємо
-			logger.Error.Printf("Not complited %d: ", userID)
+			// logger.Error.Printf("Not complited %d: ", userID)
 			return nil
 		}
 		// Якщо з моменту створення раунду пройшло більше 20 сек
