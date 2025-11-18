@@ -77,6 +77,8 @@ const (
 	CallbackBetZero        = "bet_zero_"
 	CallbackBetZeroLocked  = "locked_bet_zero"
 	CallbackBetAvailable   = "availablebets"
+	// boost
+	CallbackBetBoostInfo = "bet_boost_info"
 
 	userWaitBetResultPrefix = "game:waiting_bet_result" // Карта игроков, ожидающих результатов
 	userWaitNewRoundPrefix  = "game:waiting_new_round"  // Карта игроков, ожидающих результатов
@@ -690,6 +692,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	}
 
 	var betsBalanceText string
+	var betsBoostText string
 	var additionalMessage string
 
 	if betsBalance <= 0 {
@@ -702,8 +705,14 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 		betsBalanceText = fmt.Sprintf(betsBalanceTemplate, betsBalance)
 	}
 
+	if rating.Points == 0 {
+		betsBoostText = h.bot.getText("bet_boost_lock_msg", language)
+	} else {
+		betsBoostText = h.bot.getText("bet_boost_unlock_msg", language)
+	}
+
 	// Объединяем части сообщения
-	options.Text = options.Text + "\n\n" + ratingText + "\n\n" + betsBalanceText
+	options.Text = options.Text + "\n\n" + ratingText + "\n\n" + betsBalanceText + "\n\n" + betsBoostText
 
 	// Если есть дополнительное сообщение для недостаточного баланса, добавляем его
 	if additionalMessage != "" {
@@ -730,6 +739,9 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
 		{Text: checkSystemText, URL: checkSystemURL},
 		{Text: viewRatingText, CallbackData: "view_rating"},
+	})
+	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
+		{Text: h.bot.getText("btn_bet_boost_info", language), CallbackData: CallbackBetBoostInfo},
 	})
 	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
 		{Text: h.bot.getText("next_round", language), CallbackData: CallbackStartRound},
@@ -896,6 +908,36 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 	}()
 
 	return nil
+}
+
+// handleBoostInfo присилаємо інформацію про буст
+func (h *GameHandler) handleBoostInfo(query *telego.CallbackQuery) {
+	h.bot.answerCallbackQuery(query.ID, "", false)
+
+	user := query.From
+	dbUser, err := h.bot.getUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error get user: %v", err)
+		return
+	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
+
+	options := h.bot.prepareMessage("bet_boost_info_msg", language)
+	// Создаем кнопки
+	var inlineButtons [][]telego.InlineKeyboardButton
+
+	inlineButtons = append(inlineButtons, []telego.InlineKeyboardButton{
+		{Text: h.bot.getText("next_round", language), CallbackData: CallbackStartRound},
+	})
+
+	// Создаем inline клавиатуру с кнопками
+	options.InlineKeyboard = &telego.InlineKeyboardMarkup{
+		InlineKeyboard: inlineButtons,
+	}
+
+	// Отправляем объединенное сообщение с клавиатурой
+	h.bot.SendMessage(user.ID, options)
 }
 
 // handleAvailableBets присылаем игроку доступное количество ставок

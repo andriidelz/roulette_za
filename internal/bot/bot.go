@@ -1208,7 +1208,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.answerCallbackQuery(query.ID, zeroText, false)
 	case CallbackBetAvailable:
 		b.gameHandler.handleAvailableBets(query)
-
+	case CallbackBetBoostInfo:
+		b.gameHandler.handleBoostInfo(query)
 	case CallbackBack:
 		b.handleBackToMainMenu(query)
 	case "view_rating":
