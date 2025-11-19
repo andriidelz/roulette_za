@@ -36,6 +36,14 @@ x-telegram-config: &telegram-config
   TELEGRAM_NAME: ${TELEGRAM_NAME}
   TELEGRAM_RESERVE_CHANNEL_ID: ${TELEGRAM_RESERVE_CHANNEL_ID}
 
+# Webhook configuration
+x-webhook-config: &webhook-config
+  WEBHOOK_ENABLED: ${WEBHOOK_ENABLED:-false}
+  WEBHOOK_URL: ${WEBHOOK_URL:-http://localhost}
+  WEBHOOK_PATH: ${WEBHOOK_PATH:-/webhook}
+  WEBHOOK_LISTEN_ADDR: ${WEBHOOK_LISTEN_ADDR:-:8443}
+  WEBHOOK_SECRET_TOKEN: ${WEBHOOK_SECRET_TOKEN}
+
 # Payment configuration
 x-payment-config: &payment-config
   DEFAULT_PAYMENT_PROVIDER: ${DEFAULT_PAYMENT_PROVIDER:-mock}
@@ -326,6 +334,7 @@ services:
           *database-config,
           *rabbitmq-config,
           *telegram-config,
+          *webhook-config,
           *payment-config,
           *redis-config,
         ]
@@ -350,6 +359,7 @@ services:
     volumes:
       - ./shared-data/files/video:/files/video
     ports:
+      - "127.0.0.1:8443:8443"
       - "127.0.0.1:9101:9101"
     extra_hosts:
       - "host.docker.internal:host-gateway"
