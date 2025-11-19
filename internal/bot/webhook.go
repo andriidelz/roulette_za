@@ -1,25 +1,24 @@
 package bot
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"time"
 
 	"roulette/internal/logger"
 
+	"github.com/goccy/go-json"
 	"github.com/mymmrac/telego"
+	"github.com/valyala/fasthttp"
 )
 
-// WebhookServer handles incoming webhook requests from Telegram
+// WebhookServer handles incoming webhook requests from Telegram using fasthttp
 type WebhookServer struct {
 	bot         *Bot
-	server      *http.Server
+	server      *fasthttp.Server
 	webhookURL  string
-	webhookPath string // Path for webhook URL (e.g., /webhook)
-	secretToken string // Secret token for validation via X-Telegram-Bot-Api-Secret-Token header
+	webhookPath string
+	secretToken string
+	listenAddr  string
 }
 
 // NewWebhookServer creates a new webhook server
@@ -29,18 +28,16 @@ func NewWebhookServer(bot *Bot, listenAddr, webhookURL, webhookPath, secretToken
 		webhookURL:  webhookURL,
 		webhookPath: webhookPath,
 		secretToken: secretToken,
+		listenAddr:  listenAddr,
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc(webhookPath, ws.handleWebhook)
-	mux.HandleFunc("/health", ws.handleHealthCheck)
-
-	ws.server = &http.Server{
-		Addr:         listenAddr,
-		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  60 * time.Second,
+	ws.server = &fasthttp.Server{
+		Handler:            ws.requestHandler,
+		ReadTimeout:        10 * time.Second,
+		WriteTimeout:       10 * time.Second,
+		IdleTimeout:        60 * time.Second,
+		MaxRequestBodySize: 10 * 1024 * 1024, // 10MB
+		ReduceMemoryUsage:  true,
 	}
 
 	return ws
@@ -61,17 +58,17 @@ func (ws *WebhookServer) Start() error {
 		URL:                fullWebhookURL,
 		MaxConnections:     100,
 		DropPendingUpdates: false,
-		SecretToken:        ws.secretToken, // Telegram will send this in X-Telegram-Bot-Api-Secret-Token header
+		SecretToken:        ws.secretToken,
 	}); err != nil {
 		return fmt.Errorf("failed to set webhook: %w", err)
 	}
 
 	logger.Info.Printf("Webhook set successfully: %s (secret token configured)", fullWebhookURL)
 
-	// Start the HTTP server
+	// Start the fasthttp server
 	go func() {
-		logger.Info.Printf("Starting webhook server on %s", ws.server.Addr)
-		if err := ws.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		logger.Info.Printf("Starting webhook server on %s (fasthttp)", ws.listenAddr)
+		if err := ws.server.ListenAndServe(ws.listenAddr); err != nil {
 			logger.Error.Printf("Webhook server error: %v", err)
 		}
 	}()
@@ -88,11 +85,8 @@ func (ws *WebhookServer) Stop() error {
 		logger.Warning.Printf("Failed to delete webhook on stop: %v", err)
 	}
 
-	// Shutdown HTTP server
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := ws.server.Shutdown(ctx); err != nil {
+	// Shutdown fasthttp server
+	if err := ws.server.Shutdown(); err != nil {
 		return fmt.Errorf("failed to shutdown webhook server: %w", err)
 	}
 
@@ -100,49 +94,60 @@ func (ws *WebhookServer) Stop() error {
 	return nil
 }
 
+// requestHandler is the main fasthttp request handler
+func (ws *WebhookServer) requestHandler(ctx *fasthttp.RequestCtx) {
+	path := string(ctx.Path())
+
+	switch path {
+	case ws.webhookPath:
+		ws.handleWebhook(ctx)
+	case "/health":
+		ws.handleHealthCheck(ctx)
+	default:
+		ctx.SetStatusCode(fasthttp.StatusNotFound)
+		ctx.SetBodyString("Not Found")
+	}
+}
+
 // handleWebhook processes incoming webhook requests from Telegram
-func (ws *WebhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+func (ws *WebhookServer) handleWebhook(ctx *fasthttp.RequestCtx) {
+	// Check method
+	if !ctx.IsPost() {
+		ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
+		ctx.SetBodyString("Method not allowed")
 		return
 	}
 
 	// Validate secret token from header if configured
 	if ws.secretToken != "" {
-		receivedToken := r.Header.Get("X-Telegram-Bot-Api-Secret-Token")
+		receivedToken := string(ctx.Request.Header.Peek("X-Telegram-Bot-Api-Secret-Token"))
 		if receivedToken != ws.secretToken {
-			logger.Warning.Printf("Invalid secret token received from %s", r.RemoteAddr)
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			logger.Warning.Printf("Invalid secret token received from %s", ctx.RemoteAddr())
+			ctx.SetStatusCode(fasthttp.StatusUnauthorized)
+			ctx.SetBodyString("Unauthorized")
 			return
 		}
 	}
 
-	// Read request body
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		logger.Error.Printf("Failed to read webhook body: %v", err)
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
 	// Parse update
 	var update telego.Update
-	if err := json.Unmarshal(body, &update); err != nil {
+	if err := json.Unmarshal(ctx.PostBody(), &update); err != nil {
 		logger.Error.Printf("Failed to parse webhook update: %v", err)
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+		ctx.SetBodyString("Bad request")
 		return
 	}
 
 	// Process update
-	ws.bot.processUpdate(update)
+	go ws.bot.processUpdate(update)
 
 	// Respond with 200 OK
-	w.WriteHeader(http.StatusOK)
+	ctx.SetStatusCode(fasthttp.StatusOK)
+	ctx.SetBodyString("OK")
 }
 
 // handleHealthCheck provides a health check endpoint
-func (ws *WebhookServer) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+func (ws *WebhookServer) handleHealthCheck(ctx *fasthttp.RequestCtx) {
+	ctx.SetStatusCode(fasthttp.StatusOK)
+	ctx.SetBodyString("OK")
 }
