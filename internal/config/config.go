@@ -20,6 +20,13 @@ type Config struct {
 	TelegramName             string // название бота
 	TelegramReserveChannelID string
 
+	// Webhook configuration
+	WebhookEnabled     bool   // Enable webhook mode (false = long polling)
+	WebhookURL         string // Public webhook URL (e.g., https://yourdomain.com)
+	WebhookListenAddr  string // Local address to listen on (e.g., :8443)
+	WebhookPath        string // Path for webhook (e.g., /webhook)
+	WebhookSecretToken string // Secret token for X-Telegram-Bot-Api-Secret-Token header validation
+
 	// Адмін-панель
 	AdminPort        string
 	AdminUsername    string
@@ -58,6 +65,13 @@ func NewConfig() *Config {
 		TelegramToken:            getEnv("TELEGRAM_TOKEN", ""),
 		TelegramName:             getEnv("TELEGRAM_NAME", ""),
 		TelegramReserveChannelID: getEnv("TELEGRAM_RESERVE_CHANNEL_ID", ""),
+
+		// Webhook settings
+		WebhookEnabled:     getEnv("WEBHOOK_ENABLED", "false") == "true",
+		WebhookURL:         getEnv("WEBHOOK_URL", ""),
+		WebhookListenAddr:  getEnv("WEBHOOK_LISTEN_ADDR", ":8443"),
+		WebhookPath:        getEnv("WEBHOOK_PATH", "/webhook"),
+		WebhookSecretToken: getEnv("WEBHOOK_SECRET_TOKEN", ""),
 
 		// Адмін-панель
 		AdminPort:        getEnv("ADMIN_PORT", "8080"),

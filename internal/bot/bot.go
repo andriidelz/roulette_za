@@ -46,6 +46,8 @@ type Bot struct {
 	settings          map[string]int64 // Карта налаштувань
 	testMode          bool             // тестовий сервіс
 	handleUpdateFunc  UpdateHandler
+	webhookServer     *WebhookServer // Webhook server for production mode
+	useWebhook        bool           // Flag to determine if webhook mode is enabled
 }
 
 // Константы для команд и callback-запитов
@@ -112,6 +114,7 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 		redisDB:      NewRedisClient(cfg),
 		metrics:      nil,
 		testMode:     cfg.TelegramTestMode,
+		useWebhook:   cfg.WebhookEnabled,
 
 		localizations: map[string]map[string]models.Localization{},
 		activeUsers:   map[int64]bool{},
@@ -131,6 +134,20 @@ func NewBot(token string, service service.Service, cfg *config.Config) (*Bot, er
 	b.handleUpdateFunc = b.handleUpdateImpl
 	repo := service.GetRepo().(*repository.PostgresRepository)
 	b.handleUpdateFunc = NewActivityLoggerMiddleware(repo, b.handleUpdateFunc)
+
+	// Initialize webhook server if webhook mode is enabled
+	if b.useWebhook {
+		b.webhookServer = NewWebhookServer(
+			b,
+			cfg.WebhookListenAddr,
+			cfg.WebhookURL,
+			cfg.WebhookPath,
+			cfg.WebhookSecretToken,
+		)
+		logger.Info.Println("Bot initialized in webhook mode")
+	} else {
+		logger.Info.Println("Bot initialized in long polling mode")
+	}
 
 	return b, nil
 }
@@ -196,8 +213,27 @@ func (b *Bot) Start() error {
 		// Продолжаем работу, так как это не критическая ошибка
 	}
 
-	// Запускаем обработку обновлений в фоновом режиме
-	go b.processUpdatesLoop()
+	// Start based on mode
+	if b.useWebhook {
+		// Webhook mode
+		if err := b.webhookServer.Start(); err != nil {
+			return fmt.Errorf("failed to start webhook server: %w", err)
+		}
+		logger.Info.Println("Bot started in webhook mode")
+	} else {
+		// Long polling mode
+
+		if err := b.bot.DeleteWebhook(b.ctx, &telego.DeleteWebhookParams{
+			DropPendingUpdates: false,
+		}); err != nil {
+			logger.Warning.Printf("Failed to delete webhook: %v", err)
+		} else {
+			logger.Info.Println("Webhook deleted successfully")
+		}
+
+		go b.processUpdatesLoop()
+		logger.Info.Println("Bot started in long polling mode")
+	}
 
 	// Запускаем отправку сообщений
 	go b.sendBotQueue()
@@ -275,6 +311,13 @@ func (b *Bot) Stop() {
 	// Отменяем контекст - это остановит длинный поллинг
 	if b.cancel != nil {
 		b.cancel()
+	}
+
+	// Stop webhook server if running
+	if b.useWebhook && b.webhookServer != nil {
+		if err := b.webhookServer.Stop(); err != nil {
+			logger.Error.Printf("Error stopping webhook server: %v", err)
+		}
 	}
 
 	// Останавливаем игровой обработчик
