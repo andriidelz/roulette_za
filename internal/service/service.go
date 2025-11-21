@@ -29,7 +29,7 @@ type Service interface {
 	GetDetailedUserStats(telegramID int64, period string) (map[string]int, error)
 
 	// Игра и раунды
-	MakeBet(userID uint, option models.BetOption) error
+	MakeBet(userID uint, point int, option models.BetOption) error
 	// GetUserBets(telegramID int64, limit int) ([]models.Bet, error)
 	CanBetZero(userID uint) (bool, int, error)
 	GetUserRemainingBets(userID uint) (int, error) // Добавленный метод для проверки доступных ставок
@@ -509,7 +509,15 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]
 
 		// Рассчитываем количество полученных баллов
 		points := 0
-		if won {
+		// Якщо ставка в балах
+		if bets[i].BetPoint > 0 {
+			if won {
+				points = bets[i].BetPoint
+			} else {
+				points = bets[i].BetPoint * -1 // якщо програв то сума зменшується
+			}
+
+		} else if won {
 			if option == models.Zero {
 				points = 10
 			} else {
@@ -537,7 +545,7 @@ func (s *ServiceImpl) UpdateWeeklyRatingForUsers(userIDs []uint, year, week int)
 }
 
 // MakeBet делает ставку в текущем раунде
-func (s *ServiceImpl) MakeBet(userID uint, option models.BetOption) error {
+func (s *ServiceImpl) MakeBet(userID uint, point int, option models.BetOption) error {
 	// Получаем текущий раунд
 	currentRound, err := s.repo.GetActiveHashEntry()
 	if err != nil {
@@ -598,6 +606,7 @@ func (s *ServiceImpl) MakeBet(userID uint, option models.BetOption) error {
 		UserID:      userID,
 		HashEntryID: currentRound.ID,
 		Option:      option,
+		BetPoint:    point,
 		CreatedAt:   time.Now(),
 	}
 

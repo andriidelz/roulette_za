@@ -211,7 +211,7 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUsers(userIDs []uint, year, we
 			b.user_id,
 			? as year,
 			? as week,
-			COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0) as points,
+			COALESCE(SUM(b.points), 0) as points,
 			COUNT(*) as bets,
 			CASE
 				WHEN COUNT(*) > 0 THEN COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0)::float / COUNT(*)

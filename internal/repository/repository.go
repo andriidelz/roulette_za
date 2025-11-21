@@ -238,7 +238,7 @@ func (r *PostgresRepository) CalculateWeeklyRatings(year, week int) error {
 			b.user_id,
 			?,                         -- week
 			?,                         -- year
-			COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0) as points,
+			COALESCE(SUM(b.points), 0) as points,
 			COUNT(*) as bets,
 			CASE WHEN COUNT(*) > 0 THEN COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0)::float / COUNT(*) ELSE 0 END, -- efficiency
 			0,                         -- position (будет обновлено позже)

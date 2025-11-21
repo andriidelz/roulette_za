@@ -59,6 +59,7 @@ type Bet struct {
 	Option      BetOption `gorm:"size:10"`
 	Won         bool      `gorm:"default:false"`
 	GetResult   bool      `gorm:"default:false"` // Історія того чи отримував користувач результат своєї ставки
+	BetPoint    int       `gorm:"default:0"`     // Поставлені бали
 	Points      int       `gorm:"default:0"`     // Отримані бали
 	CreatedAt   time.Time
 }
