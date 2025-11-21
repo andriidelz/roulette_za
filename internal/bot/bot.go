@@ -1130,20 +1130,26 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	// Bet boost
 	if strings.HasPrefix(callbackData, "bet_set_boost_") {
 
-		pointBoost := 0
+		cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		pointBoost, err := b.redisDB.Get(cont, fmt.Sprintf(userPointsBoostPrefix, user.ID)).Int()
+		if err != nil && err != redis.Nil {
+			logger.Error.Printf("Error Get %d: %v", user.ID, err)
+		}
+
 		switch callbackData {
 		case CallbackBetBoostOne:
-			pointBoost = 1
+			pointBoost += 1
 		case CallbackBetBoostTwo:
-			pointBoost = 2
+			pointBoost += 2
 		case CallbackBetBoostFive:
-			pointBoost = 5
+			pointBoost += 5
 		case CallbackBetBoostTen:
-			pointBoost = 10
+			pointBoost += 10
 		case CallbackBetBoostFifteen:
-			pointBoost = 15
+			pointBoost += 15
 		case CallbackBetBoostTwenty:
-			pointBoost = 20
+			pointBoost += 20
 		case CallbackBetBoostKeep:
 			// не змінюєм PointBoost = PointBoost
 		case CallbackBetBoostSkip:

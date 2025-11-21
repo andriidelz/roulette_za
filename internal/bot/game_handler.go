@@ -1088,12 +1088,12 @@ func (h *GameHandler) handleStartMess(query *telego.CallbackQuery) {
 	if pointBoost == 0 {
 		// Користувач, який не підвищував ставку і має на балансі рейтингові бали
 		options = h.bot.prepareMessage("bet_boost_prompt_msg", language)
-		options.InlineKeyboard = h.createBetBoostKeyboard(language, rating.Points)
+		options.InlineKeyboard = h.createBetBoostKeyboard(language, rating.Points-pointBoost)
 	} else {
 		// Користувач, який підвищив ставку
 		options = h.bot.prepareMessage("bet_adjust_prompt_msg", language)
 		options.Text = fmt.Sprintf(options.Text, pointBoost)
-		options.InlineKeyboard = h.updateBetBoostKeyboard(language, rating.Points)
+		options.InlineKeyboard = h.updateBetBoostKeyboard(language, rating.Points-pointBoost)
 	}
 
 	h.bot.SendMessage(user.ID, options)
