@@ -87,7 +87,7 @@ const (
 	CallbackBetBoostTwenty  = "bet_set_boost_20"
 	CallbackBetBoostManual  = "bet_set_boost_"
 	CallbackBetMulti        = "bet_set_boost_multi"
-	CallbackBetManual       = "bet_set_boost_manual"
+	CallbackBetManual       = "bet_set_manual_boost"
 	CallbackBetLocked       = "bet_locked_boost"
 	CallbackBetBoostSkip    = "bet_set_boost_skip"
 	CallbackBetBoostKeep    = "bet_set_boost_keep"
