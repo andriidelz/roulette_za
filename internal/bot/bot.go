@@ -727,6 +727,14 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			}
 			b.handleInputWithdrawWalletCommand(message)
 			return
+		case StateInputBoost:
+			// Для ввода буста требуется завершенная регистрация
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "") {
+				b.stateManager.ClearState(user.ID)
+				return
+			}
+			b.gameHandler.handleInputBoost(message, messageID)
+			return
 		}
 	}
 
@@ -1181,6 +1189,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		}
 
 		switch callbackData {
+		case CallbackBetMulti:
+			pointBoost *= 2
 		case CallbackBetBoostOne:
 			pointBoost += 1
 		case CallbackBetBoostTwo:
@@ -1197,6 +1207,27 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			// не змінюєм PointBoost = PointBoost
 		case CallbackBetBoostSkip:
 			pointBoost = 0 // встановлюєм 0
+		default:
+			amountText := strings.TrimPrefix(callbackData, "bet_set_boost_")
+
+			// Преревірка валідності
+			point, err := strconv.ParseUint(amountText, 10, 64)
+			if err != nil {
+				// Невірний формат
+				b.SendMessage(query.Message.GetChat().ID, b.prepareMessage("input_invalid_msg", language))
+				return
+			}
+			pointBoost = int(point)
+		}
+
+		year, week := time.Now().ISOWeek()
+		rating, err := b.service.GetRepo().GetUserWeeklyRating(dbUser.ID, year, week)
+		if err != nil {
+			logger.Error.Printf("Error get rating: %v", err)
+		}
+		if rating.Points < pointBoost {
+			b.answerCallbackQuery(query.ID, b.getText("boost_limit", language), true)
+			return
 		}
 
 		// Оновлюємо буст
@@ -1287,6 +1318,13 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.updateOrSendMessage(query, text)
 
 		// Гра
+	case CallbackBetManual:
+		// Очікуєм ввід бусту
+		b.stateManager.SetState(user.ID, StateInputBoost, query.Message.GetMessageID())
+
+		b.SendMessage(query.Message.GetChat().ID, b.prepareMessage("enter_bet_amount", language))
+
+		return
 	case CallbackPlay:
 		b.gameHandler.handlePlay(query)
 	case CallbackStartRound:
