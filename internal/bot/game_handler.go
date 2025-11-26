@@ -85,11 +85,16 @@ const (
 	CallbackBetBoostTen     = "bet_set_boost_10"
 	CallbackBetBoostFifteen = "bet_set_boost_15"
 	CallbackBetBoostTwenty  = "bet_set_boost_20"
+	CallbackBetBoostManual  = "bet_set_boost_"
+	CallbackBetMulti        = "bet_set_boost_multi"
+	CallbackBetManual       = "bet_set_boost_manual"
 	CallbackBetLocked       = "bet_locked_boost"
 	CallbackBetBoostSkip    = "bet_set_boost_skip"
 	CallbackBetBoostKeep    = "bet_set_boost_keep"
 
 	userPointsBoostPrefix = "user:%d:point_boost"
+
+	betHighPercent = 15 // процент рейтингу вище якого при мануальному вводі бусту буде попередження
 
 	userWaitBetResultPrefix = "game:waiting_bet_result" // Карта игроков, ожидающих результатов
 	userWaitNewRoundPrefix  = "game:waiting_new_round"  // Карта игроков, ожидающих результатов
@@ -1088,15 +1093,150 @@ func (h *GameHandler) handleStartMess(query *telego.CallbackQuery) {
 	if pointBoost == 0 {
 		// Користувач, який не підвищував ставку і має на балансі рейтингові бали
 		options = h.bot.prepareMessage("bet_boost_prompt_msg", language)
-		options.InlineKeyboard = h.createBetBoostKeyboard(language, rating.Points-pointBoost)
+		options.InlineKeyboard = h.createBetBoostKeyboard(language, rating.Points, pointBoost)
 	} else {
 		// Користувач, який підвищив ставку
 		options = h.bot.prepareMessage("bet_adjust_prompt_msg", language)
 		options.Text = fmt.Sprintf(options.Text, pointBoost)
-		options.InlineKeyboard = h.updateBetBoostKeyboard(language, rating.Points-pointBoost)
+		options.InlineKeyboard = h.updateBetBoostKeyboard(language, rating.Points, pointBoost)
 	}
 
 	h.bot.SendMessage(user.ID, options)
+}
+
+// handleInputBoost обробляє ввод буста вручну
+func (h *GameHandler) handleInputBoost(message *telego.Message, messageID int) {
+	user := message.From
+
+	if len(message.Text) > 0 {
+		dbUser, err := h.bot.getUser(user.ID)
+		if err != nil {
+			logger.Error.Printf("Error getting user: %v", err)
+			h.bot.stateManager.ClearState(user.ID)
+			return
+		}
+
+		language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
+
+		stateErrorsPrefix := fmt.Sprintf(userStateErrorsPrefix, user.ID)
+		// Преревірка валідності
+		amountText := strings.TrimSpace(message.Text)
+		pointBoost, err := strconv.ParseUint(amountText, 10, 64)
+		if err != nil || pointBoost <= 0 {
+
+			// перевірка кількості неправильних введень
+			cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			stateErrors, err := h.bot.redisDB.Get(cont, stateErrorsPrefix).Int()
+			if err != nil {
+				logger.Error.Printf("Error Get %d: %v", user.ID, err)
+			}
+
+			if stateErrors >= 1 {
+				options := h.bot.prepareMessage("input_invalid2_msg", language)
+				options.InlineKeyboard = &telego.InlineKeyboardMarkup{
+					InlineKeyboard: [][]telego.InlineKeyboardButton{
+						{
+							{Text: h.bot.getText("next_round", language), CallbackData: CallbackStartRound},
+						},
+					},
+				}
+
+				// Оновлюємо кількості неправильних введень
+				cont, cancel = context.WithTimeout(context.Background(), 15*time.Second)
+				defer cancel()
+				errRedis := h.bot.redisDB.Set(cont, stateErrorsPrefix, 0, 0).Err()
+				if errRedis != nil {
+					logger.Error.Printf("Error Set %d: %v", user.ID, errRedis)
+				}
+
+				// Очищаем состояние
+				h.bot.stateManager.ClearState(user.ID)
+				h.bot.SendMessage(message.Chat.ID, options)
+				return
+			}
+
+			// Оновлюємо кількості неправильних введень
+			cont, cancel = context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			errRedis := h.bot.redisDB.Set(cont, stateErrorsPrefix, stateErrors+1, 0).Err()
+			if errRedis != nil {
+				logger.Error.Printf("Error Set %d: %v", user.ID, errRedis)
+			}
+
+			if pointBoost <= 0 {
+				// 0
+				h.bot.SendMessage(message.Chat.ID, h.bot.prepareMessage("input_invalid_zero_msg", language))
+				return
+			}
+
+			// Невірний формат
+			h.bot.SendMessage(message.Chat.ID, h.bot.prepareMessage("input_invalid_msg", language))
+			return
+		}
+
+		// Оновлюємо кількості неправильних введень
+		cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		errRedis := h.bot.redisDB.Set(cont, stateErrorsPrefix, 0, 0).Err()
+		if errRedis != nil {
+			logger.Error.Printf("Error Set %d: %v", user.ID, errRedis)
+		}
+
+		// Очищаем состояние
+		h.bot.stateManager.ClearState(user.ID)
+
+		year, week := time.Now().ISOWeek()
+		rating, err := h.service.GetRepo().GetUserWeeklyRating(dbUser.ID, year, week)
+		if err != nil {
+			logger.Error.Printf("Error get rating: %v", err)
+		}
+
+		if rating.Points < int(pointBoost) {
+			// Більше ніж рейтинг
+
+			options := h.bot.prepareMessage("low_rating_balance_msg", language)
+			options.InlineKeyboard = &telego.InlineKeyboardMarkup{
+				InlineKeyboard: [][]telego.InlineKeyboardButton{
+					{
+						{Text: h.bot.getText("btn_reset_bet", language), CallbackData: CallbackBetBoostSkip},
+						{Text: h.bot.getText("btn_keep_bet", language), CallbackData: CallbackBetBoostKeep},
+					},
+				},
+			}
+			h.bot.SendMessage(message.Chat.ID, options)
+			return
+		}
+
+		// Якщо введена ставка більше певного відсотку від загального рейтингу
+		if rating.Points*betHighPercent/100 < int(pointBoost) {
+
+			options := h.bot.prepareMessage("bet_high_percent", language)
+			options.Text = fmt.Sprintf(options.Text, pointBoost, rating.Points)
+			options.InlineKeyboard = &telego.InlineKeyboardMarkup{
+				InlineKeyboard: [][]telego.InlineKeyboardButton{
+					{
+						{Text: h.bot.getText("btn_confirm_bet", language), CallbackData: CallbackBetBoostManual + fmt.Sprint(pointBoost)},
+						{Text: h.bot.getText("btn_betboost_manual", language), CallbackData: CallbackBetManual},
+						{Text: h.bot.getText("btn_reset_bet", language), CallbackData: CallbackBetBoostSkip},
+					},
+				},
+			}
+			h.bot.SendMessage(message.Chat.ID, options)
+			return
+		}
+
+		// Оновлюємо буст
+		cont, cancel = context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		err = h.bot.redisDB.Set(cont, fmt.Sprintf(userPointsBoostPrefix, user.ID), pointBoost, 0).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set %d: %v", user.ID, err)
+		}
+
+		// Відправляємо новий раунд
+		_ = h.sendNewRound(language, user.ID, dbUser.ID)
+	}
 }
 
 // handleStartRound - старт нового раунду гри
@@ -1278,7 +1418,8 @@ func (h *GameHandler) createStartPlayKeyboard(language string) *telego.InlineKey
 }
 
 // createBetBoostKeyboard створює клавіатуру для бусту
-func (h *GameHandler) createBetBoostKeyboard(language string, points int) *telego.InlineKeyboardMarkup {
+func (h *GameHandler) createBetBoostKeyboard(language string, ratingPoint, pointBoost int) *telego.InlineKeyboardMarkup {
+	points := ratingPoint - pointBoost
 	return &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
@@ -1289,6 +1430,7 @@ func (h *GameHandler) createBetBoostKeyboard(language string, points int) *teleg
 				h.checkLockKeyboard(points >= 20, language, "btn_betboost_20", CallbackBetBoostTwenty),
 			},
 			{
+				{Text: h.bot.getText("btn_betboost_manual", language), CallbackData: CallbackBetManual},
 				{Text: h.bot.getText("btn_betboost_skip", language), CallbackData: CallbackBetBoostSkip},
 			},
 		},
@@ -1296,16 +1438,19 @@ func (h *GameHandler) createBetBoostKeyboard(language string, points int) *teleg
 }
 
 // updateBetBoostKeyboard оновлює клавіатуру для бусту
-func (h *GameHandler) updateBetBoostKeyboard(language string, points int) *telego.InlineKeyboardMarkup {
-
+func (h *GameHandler) updateBetBoostKeyboard(language string, ratingPoint, pointBoost int) *telego.InlineKeyboardMarkup {
+	points := ratingPoint - pointBoost
 	return &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
-				h.checkLockKeyboard(points >= 1, language, "btn_betboost_1", CallbackBetBoostOne),
+				h.checkLockKeyboard(ratingPoint >= pointBoost*2, language, "btn_mult_x2", CallbackBetMulti),
 				h.checkLockKeyboard(points >= 5, language, "btn_betboost_5", CallbackBetBoostFive),
 				h.checkLockKeyboard(points >= 10, language, "btn_betboost_10", CallbackBetBoostTen),
 				h.checkLockKeyboard(points >= 15, language, "btn_betboost_15", CallbackBetBoostFifteen),
 				h.checkLockKeyboard(points >= 20, language, "btn_betboost_20", CallbackBetBoostTwenty),
+			},
+			{
+				{Text: h.bot.getText("btn_betboost_manual", language), CallbackData: CallbackBetManual},
 			},
 			{
 				{Text: h.bot.getText("btn_reset_bet", language), CallbackData: CallbackBetBoostSkip},
