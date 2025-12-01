@@ -85,7 +85,7 @@ const (
 	CallbackBetBoostTen     = "bet_set_boost_10"
 	CallbackBetBoostFifteen = "bet_set_boost_15"
 	CallbackBetBoostTwenty  = "bet_set_boost_20"
-	CallbackBetBoostManual  = "bet_set_boost_"
+	CallbackBetBoostManual  = "bet_set_boost_manual_"
 	CallbackBetMulti        = "bet_set_boost_multi"
 	CallbackBetManual       = "bet_set_manual_boost"
 	CallbackBetLocked       = "bet_locked_boost"
@@ -1054,10 +1054,8 @@ func (h *GameHandler) handleStartMess(query *telego.CallbackQuery) {
 	}
 
 	year, week := time.Now().ISOWeek()
-	rating, err := h.service.GetRepo().GetUserWeeklyRating(dbUser.ID, year, week)
-	if err != nil {
-		logger.Error.Printf("Error get rating: %v", err)
-	}
+
+	points := h.service.GetPoints(dbUser.ID, year, week)
 
 	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -1067,7 +1065,7 @@ func (h *GameHandler) handleStartMess(query *telego.CallbackQuery) {
 	}
 
 	// Якщо не має на балансі рейтингових балів - (новий користувач, новий тиждень, програш)
-	if rating.Points < 1 {
+	if points < 1 {
 
 		// якщо був буст то обнуляєм його
 		if pointBoost != 0 {
@@ -1093,12 +1091,12 @@ func (h *GameHandler) handleStartMess(query *telego.CallbackQuery) {
 	if pointBoost == 0 {
 		// Користувач, який не підвищував ставку і має на балансі рейтингові бали
 		options = h.bot.prepareMessage("bet_boost_prompt_msg", language)
-		options.InlineKeyboard = h.createBetBoostKeyboard(language, rating.Points, pointBoost)
+		options.InlineKeyboard = h.createBetBoostKeyboard(language, points, pointBoost)
 	} else {
 		// Користувач, який підвищив ставку
 		options = h.bot.prepareMessage("bet_adjust_prompt_msg", language)
 		options.Text = fmt.Sprintf(options.Text, pointBoost)
-		options.InlineKeyboard = h.updateBetBoostKeyboard(language, rating.Points, pointBoost)
+		options.InlineKeyboard = h.updateBetBoostKeyboard(language, points, pointBoost)
 	}
 
 	h.bot.SendMessage(user.ID, options)
@@ -1187,12 +1185,12 @@ func (h *GameHandler) handleInputBoost(message *telego.Message, messageID int) {
 		h.bot.stateManager.ClearState(user.ID)
 
 		year, week := time.Now().ISOWeek()
-		rating, err := h.service.GetRepo().GetUserWeeklyRating(dbUser.ID, year, week)
+		points := h.service.GetPoints(dbUser.ID, year, week)
 		if err != nil {
 			logger.Error.Printf("Error get rating: %v", err)
 		}
 
-		if rating.Points < int(pointBoost) {
+		if points < int(pointBoost) {
 			// Більше ніж рейтинг
 
 			options := h.bot.prepareMessage("low_rating_balance_msg", language)
@@ -1209,10 +1207,10 @@ func (h *GameHandler) handleInputBoost(message *telego.Message, messageID int) {
 		}
 
 		// Якщо введена ставка більше певного відсотку від загального рейтингу
-		if rating.Points*betHighPercent/100 < int(pointBoost) {
+		if points*betHighPercent/100 < int(pointBoost) {
 
 			options := h.bot.prepareMessage("bet_high_percent", language)
-			options.Text = fmt.Sprintf(options.Text, pointBoost, rating.Points)
+			options.Text = fmt.Sprintf(options.Text, pointBoost, points)
 			options.InlineKeyboard = &telego.InlineKeyboardMarkup{
 				InlineKeyboard: [][]telego.InlineKeyboardButton{
 					{
