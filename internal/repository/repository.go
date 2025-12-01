@@ -52,7 +52,6 @@ type Repository interface {
 	GetWeeklyRating(year, week int, limit int) ([]models.WeeklyRating, error)
 	GetUserWeeklyRating(userID uint, year, week int) (*models.WeeklyRating, error)
 	UpdateWeeklyRating(rating *models.WeeklyRating) error
-	CalculateWeeklyRatings(year, week int) error
 	GetSuperRating(period string, limit int) ([]models.SuperRating, error)
 	// UpdateSuperRating(rating *models.SuperRating) error
 	FixPartiallyDistributedPrizes(year, week int, action string) error
@@ -227,41 +226,6 @@ func (r *PostgresRepository) GetUserWeeklyRating(userID uint, year, week int) (*
 
 func (r *PostgresRepository) UpdateWeeklyRating(rating *models.WeeklyRating) error {
 	return r.db.Save(rating).Error
-}
-
-// unused
-func (r *PostgresRepository) CalculateWeeklyRatings(year, week int) error {
-	// Выполняем прямой SQL запрос для расчета рейтингов на основе ставок
-	query := `
-		INSERT INTO weekly_ratings (user_id, week, year, points, bets, efficiency, position, created_at, updated_at)
-		SELECT 
-			b.user_id,
-			?,                         -- week
-			?,                         -- year
-			COALESCE(SUM(b.points), 0) as points,
-			COUNT(*) as bets,
-			CASE WHEN COUNT(*) > 0 THEN COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0)::float / COUNT(*) ELSE 0 END, -- efficiency
-			0,                         -- position (будет обновлено позже)
-			NOW(),                     -- created_at
-			NOW()                      -- updated_at
-		FROM bets b INNER JOIN users u 
-		ON b.user_id = u.id
-		WHERE u.banned IS NOT TRUE AND DATE_PART('week', b.created_at) = ? AND DATE_PART('year', b.created_at) = ?
-		GROUP BY b.user_id
-		ON CONFLICT (user_id, week, year) 
-		DO UPDATE SET
-			points = EXCLUDED.points,
-			bets = EXCLUDED.bets,
-			efficiency = EXCLUDED.efficiency,
-			updated_at = NOW()
-	`
-
-	if err := r.db.Exec(query, week, year, week, year).Error; err != nil {
-		return err
-	}
-
-	// Обновляем позиции в рейтинге
-	return r.RefreshWeeklyRatingsPosition(year, week)
 }
 
 func (r *PostgresRepository) GetSuperRating(period string, limit int) ([]models.SuperRating, error) {

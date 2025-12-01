@@ -1208,8 +1208,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		case CallbackBetBoostSkip:
 			pointBoost = 0 // встановлюєм 0
 		default:
-			amountText := strings.TrimPrefix(callbackData, "bet_set_boost_")
-
+			amountText := strings.TrimPrefix(callbackData, CallbackBetBoostManual)
 			// Преревірка валідності
 			point, err := strconv.ParseUint(amountText, 10, 64)
 			if err != nil {
@@ -1221,11 +1220,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		}
 
 		year, week := time.Now().ISOWeek()
-		rating, err := b.service.GetRepo().GetUserWeeklyRating(dbUser.ID, year, week)
-		if err != nil {
-			logger.Error.Printf("Error get rating: %v", err)
-		}
-		if rating.Points < pointBoost {
+		points := b.service.GetPoints(dbUser.ID, year, week)
+		if points < pointBoost {
 			b.answerCallbackQuery(query.ID, b.getText("boost_limit", language), true)
 			return
 		}

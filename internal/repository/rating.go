@@ -150,8 +150,8 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 		}
 	}
 
-	// Рассчитываем эффективность: очки / количество ставок
-	efficiency := float64(totalPoints) / float64(totalBets)
+	// Рассчитываем эффективность: wonBets / количество ставок
+	efficiency := float64(wonBets) / float64(totalBets)
 
 	// Создаем или обновляем запись рейтинга
 	var rating models.WeeklyRating
@@ -214,7 +214,7 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUsers(userIDs []uint, year, we
 			COALESCE(SUM(b.points), 0) as points,
 			COUNT(*) as bets,
 			CASE
-				WHEN COUNT(*) > 0 THEN COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0)::float / COUNT(*)
+				WHEN COUNT(*) > 0 THEN COALESCE(SUM(CASE WHEN b.won THEN 1 ELSE 0 END), 0)::float / COUNT(*)
 				ELSE 0
 			END as efficiency,
 			0 as position,
