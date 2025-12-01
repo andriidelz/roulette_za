@@ -144,8 +144,8 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 	wonBets := 0
 
 	for _, bet := range bets {
+		totalPoints += bet.Points
 		if bet.Won {
-			totalPoints += bet.Points
 			wonBets++
 		}
 	}
