@@ -92,6 +92,6 @@ func (s *ServiceImpl) GetSourceByDate(dateFrom, dateTo string) ([]map[string]int
 }
 
 // GetSourceByDate возвращает кол-во регистраций по источнику
-func (s *ServiceImpl) GetSource() ([]map[string]interface{}, error) {
+func (s *ServiceImpl) GetSource() (map[string]map[string]interface{}, error) {
 	return s.repo.GetSource()
 }

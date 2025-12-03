@@ -53,7 +53,7 @@ type Service interface {
 	GetTopPlayersBySuccessRate(limit int) ([]map[string]interface{}, error)
 	GetTopPlayersByAttempts(limit int) ([]map[string]interface{}, error)
 	GetSourceByDate(dateFrom, dateTo string) ([]map[string]interface{}, error)
-	GetSource() ([]map[string]interface{}, error)
+	GetSource() (map[string]map[string]interface{}, error)
 
 	// Рейтинги
 	GetWeeklyRating(limit int) ([]models.WeeklyRating, error)
