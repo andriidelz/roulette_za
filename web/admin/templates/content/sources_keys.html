@@ -53,6 +53,7 @@
                                 <tr>
                                     <th width="30%">Ключ</th>
                                     <th>Название</th>
+                                    <th>Кол-во запусков</th>
                                     <th>Кол-во регистраций</th>
                                     <th width="120px">Действия</th>
                                 </tr>
@@ -68,7 +69,8 @@
                                             <input type="text" class="form-control" id="name" value="{{.SourceKey.Name}}">
                                         </div>
                                     </td>
-                                    <td>{{.Count}}</td>
+                                    <td>{{.CountOpen}}</td>
+                                    <td>{{.CountReg}}</td>
                                     <td>
                                         <div class="btn-group">
                                             <button class="btn btn-sm btn-outline-primary edit-source">

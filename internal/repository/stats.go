@@ -394,13 +394,15 @@ ORDER BY created_at DESC, source_key DESC;
 }
 
 // GetSource возвращает кол-во регистраций по источникам
-func (r *PostgresRepository) GetSource() ([]map[string]interface{}, error) {
-	var result []map[string]interface{}
+func (r *PostgresRepository) GetSource() (map[string]map[string]interface{}, error) {
+	result := map[string]map[string]interface{}{}
 
 	// SQL запрос для получения кол-ва регистраций по источнику
 	// WHERE source = ref_key
 	rows, err := r.db.Raw(`
-SELECT u.source AS source_key, COALESCE(k.name, u.source) AS source, COUNT(u.id) 
+SELECT u.source AS source_key, COALESCE(k.name, u.source) AS source, 
+	COUNT(u.id) AS count_open,
+	COUNT(CASE WHEN u.registered THEN 1 ELSE NULL END) AS count_reg
 FROM public.users u LEFT OUTER JOIN "source_keys" k
 ON u.source = k.key
 GROUP BY source, k.name, source_key
@@ -414,18 +416,18 @@ ORDER BY source DESC;
 
 	for rows.Next() {
 		var source_key, source string
-		var count int
+		var count_open, count_reg int
 
-		if err := rows.Scan(&source_key, &source, &count); err != nil {
+		if err := rows.Scan(&source_key, &source, &count_open, &count_reg); err != nil {
 			return nil, err
 		}
 
-		player := map[string]interface{}{
+		result[source_key] = map[string]interface{}{
 			"source_key": source_key,
 			"source":     source,
-			"count":      count,
+			"count_open": count_open,
+			"count_reg":  count_reg,
 		}
-		result = append(result, player)
 	}
 
 	return result, nil

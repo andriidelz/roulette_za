@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"fmt"
 	"net/http"
 	"roulette/internal/logger"
 	"roulette/internal/models"
@@ -12,7 +11,8 @@ import (
 type (
 	sourcesKeysStruct struct {
 		SourceKey models.SourceKey
-		Count     interface{}
+		CountOpen interface{}
+		CountReg  interface{}
 	}
 )
 
@@ -35,26 +35,19 @@ func (a *AdminPanel) sourcesKeysPage(c *gin.Context) {
 		return
 	}
 
-	statMap := map[string]interface{}{}
 	statData := []sourcesKeysStruct{}
-	for i := range stat {
-		if key, ok := stat[i]["source_key"]; ok {
-			if count, ok1 := stat[i]["count"]; ok1 {
-				statMap[fmt.Sprint(key)] = count
-			}
-		}
-	}
-
 	for i := range sources {
 		data := sourcesKeysStruct{SourceKey: sources[i]}
-		if count, ok := statMap[sources[i].Key]; ok {
-			data.Count = count
+		if count, ok := stat[sources[i].Key]; ok {
+			if count_open, ok1 := count["count_open"]; ok1 {
+				data.CountOpen = count_open
+			}
+			if count_reg, ok1 := count["count_reg"]; ok1 {
+				data.CountReg = count_reg
+			}
 		}
 		statData = append(statData, data)
 	}
-
-	logger.Error.Println(sources)
-	logger.Error.Println(statData)
 
 	c.HTML(http.StatusOK, "sources_keys", gin.H{
 		"title":        "Admin-panel - Referral Link",
