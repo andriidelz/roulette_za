@@ -1098,8 +1098,8 @@ func (h *GameHandler) handleStartMess(query *telego.CallbackQuery) {
 	} else if points < pointBoost {
 		// Користувач має бали на балансі але їх сума менше тепершньої ставки
 		options = h.bot.prepareMessage("bet_adjust_no_points_msg", language)
-		options.Text = fmt.Sprintf(options.Text, pointBoost)
-		options.InlineKeyboard = h.updateBetBoostKeyboard(language, pointBoost, points)
+		options.Text = fmt.Sprintf(options.Text, pointBoost, points)
+		options.InlineKeyboard = h.updateBetBoostKeyboard(language, points, pointBoost)
 
 	} else {
 		// Користувач, має бали на балансі і їх розміру достатньо для теперішньої ставки
