@@ -1148,8 +1148,6 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		switch callbackData {
 		case CallbackBetMulti:
 			pointBoost *= 2
-		case CallbackBetBoostOne:
-			pointBoost += 1
 		case CallbackBetBoostTwo:
 			pointBoost += 2
 		case CallbackBetBoostFive:
@@ -1275,7 +1273,13 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Очікуєм ввід бусту
 		b.stateManager.SetState(user.ID, StateInputBoost, query.Message.GetMessageID())
 
-		b.SendMessage(query.Message.GetChat().ID, b.prepareMessage("enter_bet_amount", language))
+		if query.Message != nil {
+			b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(),
+				b.prepareMessage("enter_bet_amount", language))
+		} else {
+			// Если сообщение недоступно, отправляем новое
+			b.SendMessage(user.ID, b.prepareMessage("enter_bet_amount", language))
+		}
 
 		return
 	case CallbackPlay:
