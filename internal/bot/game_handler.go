@@ -79,7 +79,6 @@ const (
 	CallbackBetAvailable   = "availablebets"
 	// boost
 	CallbackBetBoostInfo    = "bet_boost_info"
-	CallbackBetBoostOne     = "bet_set_boost_1"
 	CallbackBetBoostTwo     = "bet_set_boost_2"
 	CallbackBetBoostFive    = "bet_set_boost_5"
 	CallbackBetBoostTen     = "bet_set_boost_10"
@@ -723,8 +722,11 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 
 	if rating.Points == 0 {
 		betsBoostText = h.bot.getText("bet_boost_lock_msg", language)
-	} else {
+	} else if won && rating.WonBets == 1 {
+		// якщо це перша ставка гравця в рейтингу (після реєстрації або перша цього тижня)
 		betsBoostText = h.bot.getText("bet_boost_unlock_msg", language)
+	} else {
+		betsBoostText = h.bot.getText("bet_boost_motivation_msg", language)
 	}
 
 	// Объединяем части сообщения
@@ -1089,11 +1091,18 @@ func (h *GameHandler) handleStartMess(query *telego.CallbackQuery) {
 
 	options := MessageOptions{}
 	if pointBoost == 0 {
-		// Користувач, який не підвищував ставку і має на балансі рейтингові бали
+		// Користувач має бали на балансі і не підвищував ставку
 		options = h.bot.prepareMessage("bet_boost_prompt_msg", language)
 		options.InlineKeyboard = h.createBetBoostKeyboard(language, points, pointBoost)
+
+	} else if points < pointBoost {
+		// Користувач має бали на балансі але їх сума менше тепершньої ставки
+		options = h.bot.prepareMessage("bet_adjust_no_points_msg", language)
+		options.Text = fmt.Sprintf(options.Text, pointBoost)
+		options.InlineKeyboard = h.updateBetBoostKeyboard(language, pointBoost, points)
+
 	} else {
-		// Користувач, який підвищив ставку
+		// Користувач, має бали на балансі і їх розміру достатньо для теперішньої ставки
 		options = h.bot.prepareMessage("bet_adjust_prompt_msg", language)
 		options.Text = fmt.Sprintf(options.Text, pointBoost)
 		options.InlineKeyboard = h.updateBetBoostKeyboard(language, points, pointBoost)
@@ -1120,7 +1129,7 @@ func (h *GameHandler) handleInputBoost(message *telego.Message, messageID int) {
 		// Преревірка валідності
 		amountText := strings.TrimSpace(message.Text)
 		pointBoost, err := strconv.ParseUint(amountText, 10, 64)
-		if err != nil || pointBoost <= 0 {
+		if err != nil || pointBoost <= 1 {
 
 			// перевірка кількості неправильних введень
 			cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -1162,8 +1171,8 @@ func (h *GameHandler) handleInputBoost(message *telego.Message, messageID int) {
 				logger.Error.Printf("Error Set %d: %v", user.ID, errRedis)
 			}
 
-			if pointBoost <= 0 {
-				// 0
+			if pointBoost <= 1 {
+				// 0 або 1
 				h.bot.SendMessage(message.Chat.ID, h.bot.prepareMessage("input_invalid_zero_msg", language))
 				return
 			}
@@ -1220,7 +1229,14 @@ func (h *GameHandler) handleInputBoost(message *telego.Message, messageID int) {
 					},
 				},
 			}
-			h.bot.SendMessage(message.Chat.ID, options)
+
+			if message != nil {
+				h.bot.UpdateMessage(message.Chat.ID, messageID, options)
+			} else {
+				// Если сообщение недоступно, отправляем новое
+				h.bot.SendMessage(message.Chat.ID, options)
+			}
+
 			return
 		}
 
@@ -1319,20 +1335,19 @@ func (h *GameHandler) sendNewRound(language string, telegramID int64, userID uin
 
 	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	pointBoost, err := h.bot.redisDB.Get(cont, fmt.Sprintf(userPointsBoostPrefix, userID)).Int()
+
+	pointBoost, err := h.bot.redisDB.Get(cont, fmt.Sprintf(userPointsBoostPrefix, telegramID)).Int()
 	if err != nil {
-		logger.Error.Printf("Error Get %d: %v", userID, err)
+		logger.Error.Printf("Error Get %d: %v", telegramID, err)
 	}
 
 	options := MessageOptions{}
 	if pointBoost == 0 {
 		options = h.bot.prepareMessage("round_info_countdown", language)
 		options.Text = fmt.Sprintf(options.Text, roundIDBase62, currentRound.Hash, remainingSeconds)
-
 	} else {
 		options = h.bot.prepareMessage("nextbid15_boost", language)
 		options.Text = fmt.Sprintf(options.Text, roundIDBase62, currentRound.Hash, remainingSeconds, pointBoost)
-
 	}
 	options.InlineKeyboard = h.createBetKeyboard(language, userID, currentRound.ID)
 
@@ -1421,7 +1436,6 @@ func (h *GameHandler) createBetBoostKeyboard(language string, ratingPoint, point
 	return &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{
 			{
-				h.checkLockKeyboard(points >= 1, language, "btn_betboost_1", CallbackBetBoostOne),
 				h.checkLockKeyboard(points >= 2, language, "btn_betboost_2", CallbackBetBoostTwo),
 				h.checkLockKeyboard(points >= 5, language, "btn_betboost_5", CallbackBetBoostFive),
 				h.checkLockKeyboard(points >= 10, language, "btn_betboost_10", CallbackBetBoostTen),

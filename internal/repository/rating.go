@@ -165,6 +165,7 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 			Week:       week,
 			Points:     totalPoints,
 			Bets:       totalBets,
+			WonBets:    wonBets,
 			Efficiency: efficiency,
 			Position:   r.getLastWeeklyRatingPosition() + 1, // Устанавливаем последнюю позицию
 			CreatedAt:  time.Now(),
@@ -203,10 +204,9 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUsers(userIDs []uint, year, we
 		weekday = 7
 	}
 	startOfWeek := time.Date(now.Year(), now.Month(), now.Day()-weekday+1, 0, 0, 0, 0, now.Location())
-
 	// Один большой запрос вместо N запросов
 	query := `
-		INSERT INTO weekly_ratings (user_id, year, week, points, bets, efficiency, position, created_at, updated_at)
+		INSERT INTO weekly_ratings (user_id, year, week, points, bets, efficiency, position, created_at, updated_at, won_bets)
 		SELECT
 			b.user_id,
 			? as year,
@@ -219,7 +219,8 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUsers(userIDs []uint, year, we
 			END as efficiency,
 			0 as position,
 			NOW() as created_at,
-			NOW() as updated_at
+			NOW() as updated_at,
+			COUNT(CASE WHEN b.won THEN 1 END) as won_bets
 		FROM bets b
 		WHERE b.user_id IN ? AND b.created_at >= ?
 		GROUP BY b.user_id
@@ -227,6 +228,7 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUsers(userIDs []uint, year, we
 		DO UPDATE SET
 			points = EXCLUDED.points,
 			bets = EXCLUDED.bets,
+			won_bets = EXCLUDED.won_bets,
 			efficiency = EXCLUDED.efficiency,
 			updated_at = NOW()
 	`
