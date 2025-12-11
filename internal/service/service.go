@@ -518,14 +518,18 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]
 		// Якщо ставка в балах
 		if bets[i].BetPoint > 0 {
 			if won {
-				points = bets[i].BetPoint
+				if option == models.Zero {
+					points = bets[i].BetPoint * 35
+				} else {
+					points = bets[i].BetPoint
+				}
 			} else {
 				points = bets[i].BetPoint * -1 // якщо програв то сума зменшується
 			}
 
 		} else if won {
 			if option == models.Zero {
-				points = 35
+				points = 1 * 35
 			} else {
 				points = 1
 			}
