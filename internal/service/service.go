@@ -29,7 +29,7 @@ type Service interface {
 	GetDetailedUserStats(telegramID int64, period string) (map[string]int, error)
 
 	// Игра и раунды
-	MakeBet(userID uint, option models.BetOption) error
+	MakeBet(userID uint, point int, option models.BetOption) error
 	// GetUserBets(telegramID int64, limit int) ([]models.Bet, error)
 	CanBetZero(userID uint) (bool, int, error)
 	GetUserRemainingBets(userID uint) (int, error) // Добавленный метод для проверки доступных ставок
@@ -58,7 +58,7 @@ type Service interface {
 	// Рейтинги
 	GetWeeklyRating(limit int) ([]models.WeeklyRating, error)
 	GetSuperRating(limit int) ([]models.SuperRating, error)
-	// UpdateWeeklyRatings() error
+	GetPoints(userID uint, year, week int) int
 	DistributePrizes(year, week int) error
 	CancelPrizeDistribution(year, week int) error
 	GetPrizeFund(year, week int) (*models.PrizeFund, error)
@@ -139,6 +139,9 @@ type ServiceImpl struct {
 	telegramToken string // Токен для доступа к Telegram API
 	redisClient   *redis.Client
 
+	pointsMap      map[uint]int
+	pointsMapMutex sync.Mutex
+
 	// RabbitMQ connection pool
 	rmqMutex      sync.Mutex
 	rmqConnection *messaging.RabbitMQ
@@ -150,6 +153,7 @@ func NewService(repo repository.Repository, telegramToken string, redisClient *r
 		repo:          repo,
 		telegramToken: telegramToken,
 		redisClient:   redisClient,
+		pointsMap:     map[uint]int{},
 	}
 
 	// Initialize RabbitMQ connection on service creation
@@ -502,6 +506,8 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]
 		return nil, err
 	}
 
+	newPointsMap := map[uint]int{}
+
 	// Обрабатываем каждую ставку
 	for i := range bets {
 		// Определяем, выиграла ли ставка
@@ -509,9 +515,21 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]
 
 		// Рассчитываем количество полученных баллов
 		points := 0
-		if won {
+		// Якщо ставка в балах
+		if bets[i].BetPoint > 0 {
+			if won {
+				if option == models.Zero {
+					points = bets[i].BetPoint * 35
+				} else {
+					points = bets[i].BetPoint
+				}
+			} else {
+				points = bets[i].BetPoint * -1 // якщо програв то сума зменшується
+			}
+
+		} else if won {
 			if option == models.Zero {
-				points = 10
+				points = 1 * 35
 			} else {
 				points = 1
 			}
@@ -521,6 +539,8 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]
 		bets[i].Won = won
 		bets[i].Points = points
 
+		newPointsMap[bets[i].UserID] = points
+
 		// Сохраняем обновленную ставку в БД
 		if err := s.repo.UpdateBet(&bets[i]); err != nil {
 			logger.Error.Printf("Error updating bet for user %d in round %d: %v",
@@ -529,7 +549,55 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]
 		}
 	}
 
+	// після оновлення тут ставок іде перерахунок всього рейтингу окремою функцією
+	// але це відбувається з затримкою для отримання актуальних балів користувача
+	// беремо старий рейтинг який в цей момент ще не перераховано
+	// і додаємо бали за цей раунд що щойно відбувся
+	ratings, err := s.GetWeeklyRating(0)
+	if err != nil {
+		logger.Error.Printf("Error getting GetWeeklyRating: %v", err)
+		s.pointsMapMutex.Lock()
+		s.pointsMap = map[uint]int{}
+		s.pointsMapMutex.Unlock()
+	} else {
+		pointsMap := map[uint]int{}
+		for i := range ratings {
+			newPoint, ok := newPointsMap[ratings[i].UserID]
+			if !ok {
+				newPoint = 0
+			}
+			pointsMap[ratings[i].UserID] = ratings[i].Points + newPoint
+		}
+
+		s.pointsMapMutex.Lock()
+		s.pointsMap = pointsMap
+		s.pointsMapMutex.Unlock()
+	}
+
 	return bets, nil
+}
+
+// Отримання балансу рейтингових балів користувача
+func (s *ServiceImpl) GetPoints(userID uint, year, week int) int {
+
+	s.pointsMapMutex.Lock()
+	points, ok := s.pointsMap[userID]
+	s.pointsMapMutex.Unlock()
+	if ok {
+		return points
+	}
+	log.Println("rating not found in map", userID, year, week)
+
+	rating, err := s.repo.GetUserWeeklyRating(userID, year, week)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	if rating == nil {
+		log.Println("rating not found ", userID, year, week)
+		return 0
+	}
+	return rating.Points
 }
 
 func (s *ServiceImpl) UpdateWeeklyRatingForUsers(userIDs []uint, year, week int) error {
@@ -537,7 +605,7 @@ func (s *ServiceImpl) UpdateWeeklyRatingForUsers(userIDs []uint, year, week int)
 }
 
 // MakeBet делает ставку в текущем раунде
-func (s *ServiceImpl) MakeBet(userID uint, option models.BetOption) error {
+func (s *ServiceImpl) MakeBet(userID uint, point int, option models.BetOption) error {
 	// Получаем текущий раунд
 	currentRound, err := s.repo.GetActiveHashEntry()
 	if err != nil {
@@ -598,6 +666,7 @@ func (s *ServiceImpl) MakeBet(userID uint, option models.BetOption) error {
 		UserID:      userID,
 		HashEntryID: currentRound.ID,
 		Option:      option,
+		BetPoint:    point,
 		CreatedAt:   time.Now(),
 	}
 
@@ -699,35 +768,6 @@ func (s *ServiceImpl) GetSuperRating(limit int) ([]models.SuperRating, error) {
 	now := time.Now()
 	quarter := fmt.Sprintf("%d-Q%d", now.Year(), (now.Month()-1)/3+1)
 	return s.repo.GetSuperRating(quarter, limit)
-}
-
-// unused
-// UpdateWeeklyRatings обновляет еженедельные рейтинги при начале новой недели
-// и создает новый рейтинг на основе актуальных настроек
-func (s *ServiceImpl) UpdateWeeklyRatings() error {
-	// Получаем предыдущую неделю (поскольку это вызывается в понедельник)
-	now := time.Now()
-	previousDate := now.AddDate(0, 0, -1) // Воскресенье
-	prevYear, prevWeek := previousDate.ISOWeek()
-
-	// Текущая неделя (началась сегодня)
-	currentYear, currentWeek := now.ISOWeek()
-
-	// Обновляем рейтинги для предыдущей недели
-	if err := s.repo.CalculateWeeklyRatings(prevYear, prevWeek); err != nil {
-		return fmt.Errorf("error calculating ratings for previous week: %w", err)
-	}
-
-	// Проверяем существование призового фонда для текущей недели
-	_, err := s.repo.GetPrizeFundWithoutCreation(currentYear, currentWeek)
-	if err != nil {
-		// Если призовой фонд не найден, создаем новый
-		if err := s.CreateNewPrizeFund(currentYear, currentWeek); err != nil {
-			return fmt.Errorf("error creating new weekly rating: %w", err)
-		}
-	}
-
-	return nil
 }
 
 func (s *ServiceImpl) DistributePrizes(year, week int) error {

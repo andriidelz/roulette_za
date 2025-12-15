@@ -19,7 +19,10 @@ type StateManager struct {
 
 // Константы состояний
 const (
+	userStateErrorsPrefix = "user:%d:state_errors" // кількість неправильних введень текстових значень підряд
+
 	StateNone                = ""
+	StateInputBoost          = "input_boost"
 	StateInputName           = "input_name"
 	StateInputWallet         = "input_wallet"
 	StateInputNickname       = "input_nickname"        // создание никнейма при регистрации

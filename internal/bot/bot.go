@@ -727,6 +727,14 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			}
 			b.handleInputWithdrawWalletCommand(message)
 			return
+		case StateInputBoost:
+			// Для ввода буста требуется завершенная регистрация
+			if !b.RequireCompleteRegistration(message.Chat.ID, message.From.ID, "") {
+				b.stateManager.ClearState(user.ID)
+				return
+			}
+			b.gameHandler.handleInputBoost(message, messageID)
+			return
 		}
 	}
 
@@ -1164,6 +1172,72 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		return
 	}
 
+	// Bet boost locked
+	if callbackData == CallbackBetLocked {
+		b.answerCallbackQuery(query.ID, b.getText("boost_limit", language), true)
+		return
+	}
+
+	// Bet boost
+	if strings.HasPrefix(callbackData, "bet_set_boost_") {
+
+		cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		pointBoost, err := b.redisDB.Get(cont, fmt.Sprintf(userPointsBoostPrefix, user.ID)).Int()
+		if err != nil && err != redis.Nil {
+			logger.Error.Printf("Error Get %d: %v", user.ID, err)
+		}
+
+		switch callbackData {
+		case CallbackBetMulti:
+			pointBoost *= 2
+		case CallbackBetBoostTwo:
+			pointBoost += 2
+		case CallbackBetBoostFive:
+			pointBoost += 5
+		case CallbackBetBoostTen:
+			pointBoost += 10
+		case CallbackBetBoostFifteen:
+			pointBoost += 15
+		case CallbackBetBoostTwenty:
+			pointBoost += 20
+		case CallbackBetBoostKeep:
+			// не змінюєм PointBoost = PointBoost
+		case CallbackBetBoostSkip:
+			pointBoost = 0 // встановлюєм 0
+		default:
+			amountText := strings.TrimPrefix(callbackData, CallbackBetBoostManual)
+			// Преревірка валідності
+			point, err := strconv.ParseUint(amountText, 10, 64)
+			if err != nil {
+				// Невірний формат
+				b.SendMessage(query.Message.GetChat().ID, b.prepareMessage("input_invalid_msg", language))
+				return
+			}
+			pointBoost = int(point)
+		}
+
+		year, week := time.Now().ISOWeek()
+		points := b.service.GetPoints(dbUser.ID, year, week)
+		if points < pointBoost {
+			b.answerCallbackQuery(query.ID, b.getText("boost_limit", language), true)
+			return
+		}
+
+		// Оновлюємо буст
+		if callbackData != CallbackBetBoostKeep {
+			cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+
+			err = b.redisDB.Set(cont, fmt.Sprintf(userPointsBoostPrefix, user.ID), pointBoost, 0).Err()
+			if err != nil {
+				logger.Error.Printf("Error Set %d: %v", user.ID, err)
+			}
+		}
+
+		b.gameHandler.handleStartRound(query)
+	}
+
 	charToTrimAfter := "_"
 	lastIndex := strings.LastIndex(callbackData, charToTrimAfter)
 
@@ -1238,10 +1312,23 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.updateOrSendMessage(query, text)
 
 		// Гра
+	case CallbackBetManual:
+		// Очікуєм ввід бусту
+		b.stateManager.SetState(user.ID, StateInputBoost, query.Message.GetMessageID())
+
+		if query.Message != nil {
+			b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(),
+				b.prepareMessage("enter_bet_amount", language))
+		} else {
+			// Если сообщение недоступно, отправляем новое
+			b.SendMessage(user.ID, b.prepareMessage("enter_bet_amount", language))
+		}
+
+		return
 	case CallbackPlay:
 		b.gameHandler.handlePlay(query)
 	case CallbackStartRound:
-		b.gameHandler.handleStartRound(query)
+		b.gameHandler.handleStartMess(query)
 	case CallbackBetZeroLocked:
 		// Обработка нажатия на заблокированную кнопку Zero
 		_, remaining, _ := b.service.CanBetZero(dbUser.ID)
@@ -1251,7 +1338,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.answerCallbackQuery(query.ID, zeroText, false)
 	case CallbackBetAvailable:
 		b.gameHandler.handleAvailableBets(query)
-
+	case CallbackBetBoostInfo:
+		b.gameHandler.handleBoostInfo(query)
 	case CallbackBack:
 		b.handleBackToMainMenu(query)
 	case "view_rating":

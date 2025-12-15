@@ -144,14 +144,14 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 	wonBets := 0
 
 	for _, bet := range bets {
+		totalPoints += bet.Points
 		if bet.Won {
-			totalPoints += bet.Points
 			wonBets++
 		}
 	}
 
-	// Рассчитываем эффективность: очки / количество ставок
-	efficiency := float64(totalPoints) / float64(totalBets)
+	// Рассчитываем эффективность: wonBets / количество ставок
+	efficiency := float64(wonBets) / float64(totalBets)
 
 	// Создаем или обновляем запись рейтинга
 	var rating models.WeeklyRating
@@ -165,6 +165,7 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUser(userID uint) error {
 			Week:       week,
 			Points:     totalPoints,
 			Bets:       totalBets,
+			WonBets:    wonBets,
 			Efficiency: efficiency,
 			Position:   r.getLastWeeklyRatingPosition() + 1, // Устанавливаем последнюю позицию
 			CreatedAt:  time.Now(),
@@ -203,23 +204,23 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUsers(userIDs []uint, year, we
 		weekday = 7
 	}
 	startOfWeek := time.Date(now.Year(), now.Month(), now.Day()-weekday+1, 0, 0, 0, 0, now.Location())
-
 	// Один большой запрос вместо N запросов
 	query := `
-		INSERT INTO weekly_ratings (user_id, year, week, points, bets, efficiency, position, created_at, updated_at)
+		INSERT INTO weekly_ratings (user_id, year, week, points, bets, efficiency, position, created_at, updated_at, won_bets)
 		SELECT
 			b.user_id,
 			? as year,
 			? as week,
-			COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0) as points,
+			COALESCE(SUM(b.points), 0) as points,
 			COUNT(*) as bets,
 			CASE
-				WHEN COUNT(*) > 0 THEN COALESCE(SUM(CASE WHEN b.won THEN b.points ELSE 0 END), 0)::float / COUNT(*)
+				WHEN COUNT(*) > 0 THEN COALESCE(SUM(CASE WHEN b.won THEN 1 ELSE 0 END), 0)::float / COUNT(*)
 				ELSE 0
 			END as efficiency,
 			0 as position,
 			NOW() as created_at,
-			NOW() as updated_at
+			NOW() as updated_at,
+			COUNT(CASE WHEN b.won THEN 1 END) as won_bets
 		FROM bets b
 		WHERE b.user_id IN ? AND b.created_at >= ?
 		GROUP BY b.user_id
@@ -227,6 +228,7 @@ func (r *PostgresRepository) UpdateWeeklyRatingForUsers(userIDs []uint, year, we
 		DO UPDATE SET
 			points = EXCLUDED.points,
 			bets = EXCLUDED.bets,
+			won_bets = EXCLUDED.won_bets,
 			efficiency = EXCLUDED.efficiency,
 			updated_at = NOW()
 	`

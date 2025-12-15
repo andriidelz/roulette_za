@@ -59,6 +59,7 @@ type Bet struct {
 	Option      BetOption `gorm:"size:10"`
 	Won         bool      `gorm:"default:false"`
 	GetResult   bool      `gorm:"default:false"` // Історія того чи отримував користувач результат своєї ставки
+	BetPoint    int       `gorm:"default:0"`     // Поставлені бали
 	Points      int       `gorm:"default:0"`     // Отримані бали
 	CreatedAt   time.Time
 }
@@ -90,6 +91,7 @@ type WeeklyRating struct {
 	Year       int     `gorm:"index"`
 	Points     int     `gorm:"default:0"`
 	Bets       int     `gorm:"default:0"`
+	WonBets    int     `gorm:"default:0"`
 	Efficiency float64 `gorm:"default:0"` // Points / Bets
 	Position   int     `gorm:"default:0"` // Позиція в рейтингу
 	Prize      float64 `gorm:"default:0"` // Виграш
