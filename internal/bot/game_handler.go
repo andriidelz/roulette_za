@@ -662,7 +662,12 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 		options = h.bot.prepareMessage("winmessage", language)
 		options.Text = fmt.Sprintf(options.Text, points)
 	} else {
-		options = h.bot.prepareMessage("losemessage", language)
+		if bet.BetPoint > 0 {
+			options = h.bot.prepareMessage("losemessage_boost", language)
+			options.Text = fmt.Sprintf(options.Text, bet.BetPoint)
+		} else {
+			options = h.bot.prepareMessage("losemessage", language)
+		}
 	}
 
 	options.Text = h.bot.getText(resultLangKey, language) + "\n\n" + options.Text
@@ -1098,7 +1103,11 @@ func (h *GameHandler) handleStartMess(query *telego.CallbackQuery) {
 	} else if points < pointBoost {
 		// Користувач має бали на балансі але їх сума менше тепершньої ставки
 		options = h.bot.prepareMessage("bet_adjust_no_points_msg", language)
-		options.Text = fmt.Sprintf(options.Text, pointBoost, points)
+
+		options.Text = fmt.Sprintf(options.Text,
+			pointBoost, utils.PluralWord(utils.Lang(language), pointBoost, "points"),
+			points, utils.PluralWord(utils.Lang(language), points, "points"),
+		)
 		options.InlineKeyboard = h.updateBetBoostKeyboard(language, points, pointBoost)
 
 	} else {
@@ -1203,11 +1212,13 @@ func (h *GameHandler) handleInputBoost(message *telego.Message, messageID int) {
 			// Більше ніж рейтинг
 
 			options := h.bot.prepareMessage("low_rating_balance_msg", language)
+			options.Text = fmt.Sprintf(options.Text, points)
 			options.InlineKeyboard = &telego.InlineKeyboardMarkup{
 				InlineKeyboard: [][]telego.InlineKeyboardButton{
 					{
 						{Text: h.bot.getText("btn_reset_bet", language), CallbackData: CallbackBetBoostSkip},
 						{Text: h.bot.getText("btn_keep_bet", language), CallbackData: CallbackBetBoostKeep},
+						{Text: h.bot.getText("btn_betboost_manual", language), CallbackData: CallbackBetManual},
 					},
 				},
 			}
@@ -1225,6 +1236,8 @@ func (h *GameHandler) handleInputBoost(message *telego.Message, messageID int) {
 					{
 						{Text: h.bot.getText("btn_confirm_bet", language), CallbackData: CallbackBetBoostManual + fmt.Sprint(pointBoost)},
 						{Text: h.bot.getText("btn_betboost_manual", language), CallbackData: CallbackBetManual},
+					},
+					{
 						{Text: h.bot.getText("btn_reset_bet", language), CallbackData: CallbackBetBoostSkip},
 					},
 				},
