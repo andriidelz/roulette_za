@@ -4,7 +4,7 @@ type Lang string
 
 const (
 	RU Lang = "ru"
-	UA Lang = "ua"
+	UA Lang = "uk"
 	EN Lang = "en"
 )
 
