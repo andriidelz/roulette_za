@@ -55,6 +55,8 @@
                                     <th>Название</th>
                                     <th>Кол-во запусков</th>
                                     <th>Кол-во регистраций</th>
+                                    <th>Кол-во активных</th>
+                                    <th>Кол-во boost</th>
                                     <th width="120px">Действия</th>
                                 </tr>
                             </thead>
@@ -71,6 +73,8 @@
                                     </td>
                                     <td>{{.CountOpen}}</td>
                                     <td>{{.CountReg}}</td>
+                                    <td>{{.CountBet}}</td>
+                                    <td>{{.CountBoost}}</td>
                                     <td>
                                         <div class="btn-group">
                                             <button class="btn btn-sm btn-outline-primary edit-source">
@@ -86,7 +90,7 @@
                                 </tr>
                                 {{else}}
                                 <tr>
-                                    <td colspan="3" class="text-center">
+                                    <td colspan="10" class="text-center">
                                         <div class="alert alert-info mb-0">
                                             <i class="bi bi-info-circle me-2"></i>Нет записей
                                         </div>

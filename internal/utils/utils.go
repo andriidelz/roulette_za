@@ -165,6 +165,8 @@ func CheckTimeBefore(dateTo, dateFrom *string) (bool, bool) {
 	if err2 != nil || err1 != nil {
 		return false, true
 	}
+	to = to.AddDate(0, 0, 1)
+	*dateTo = to.Format("2006-01-02")
 	return from.Before(to), false
 }
 
