@@ -2,6 +2,7 @@ package repository
 
 import (
 	"roulette/internal/models"
+	"sort"
 
 	"gorm.io/gorm"
 )
@@ -353,14 +354,18 @@ func (r *PostgresRepository) GetTopPlayersByAttempts(limit int) ([]map[string]in
 }
 
 // GetSourceByDate возвращает кол-во регистраций по источникам и по дням
-func (r *PostgresRepository) GetSourceByDate(dateFrom, dateTo string) ([]map[string]interface{}, error) {
-	var result []map[string]interface{}
+func (r *PostgresRepository) GetSourceByDate(dateFrom, dateTo string) ([]models.SourcesKeysStruct, error) {
+	data := map[string]models.SourcesKeysStruct{}
+	result := []models.SourcesKeysStruct{}
 
+	// Запит фільтру по CreatedAt
 	// SQL запрос для получения кол-ва регистраций по источнику
 	// ::date скорочена нотація Postgres для приведення значення в формат
 	// WHERE source = ref_key
 	rows, err := r.db.Raw(`
-SELECT u.source AS source_key, u.created_at::date, COALESCE(k.name, u.source) AS source, COUNT(u.id)
+SELECT u.source AS source_key, u.created_at::date::text, COALESCE(k.name, u.source) AS source, 
+	COUNT(u.id) AS count_open,
+	COUNT(CASE WHEN u.registered THEN 1 ELSE NULL END) AS count_reg
 FROM public.users u LEFT OUTER JOIN "source_keys" k
 ON u.source = k.key
 WHERE u.created_at >= ? and u.created_at <= ?
@@ -375,34 +380,131 @@ ORDER BY created_at DESC, source_key DESC;
 
 	for rows.Next() {
 		var created_at, source_key, source string
-		var count int
+		var count_open, count_reg int
 
-		if err := rows.Scan(&source_key, &created_at, &source, &count); err != nil {
+		if err := rows.Scan(&source_key, &created_at, &source, &count_open, &count_reg); err != nil {
 			return nil, err
 		}
 
-		player := map[string]interface{}{
-			"created_at": created_at,
-			"source_key": source_key,
-			"source":     source,
-			"count":      count,
+		data[source_key] = models.SourcesKeysStruct{
+			Date: created_at,
+			SourceKey: models.SourceKey{
+				Key:  source_key,
+				Name: source,
+			},
+			CountOpen: count_open,
+			CountReg:  count_reg,
 		}
-		result = append(result, player)
 	}
+
+	// Запит фільтру по даті BetAt
+	rows, err = r.db.Raw(`
+SELECT u.source AS source_key, u.bet_at::date::text, COALESCE(k.name, u.source) AS source, 
+	COUNT(u.id) AS count_bet
+FROM public.users u LEFT OUTER JOIN "source_keys" k
+ON u.source = k.key
+WHERE u.bet_at >= ? and u.bet_at <= ?
+GROUP BY u.bet_at::date, source, source_key, k.name
+ORDER BY bet_at DESC, source_key DESC;
+	`, dateFrom, dateTo).Rows()
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var bet_at, source_key, source string
+		var count_bet int
+
+		if err := rows.Scan(&source_key, &bet_at, &source, &count_bet); err != nil {
+			return nil, err
+		}
+
+		if v, ok := data[source_key]; ok {
+			v.CountBet = count_bet
+			data[source_key] = v
+		} else {
+			data[source_key] = models.SourcesKeysStruct{
+				Date: bet_at,
+				SourceKey: models.SourceKey{
+					Key:  source_key,
+					Name: source,
+				},
+				CountBet: count_bet,
+			}
+		}
+	}
+
+	// Запит фільтру по даті BetBoostAt
+	rows, err = r.db.Raw(`
+SELECT u.source AS source_key, u.bet_boost_at::date::text, COALESCE(k.name, u.source) AS source, 
+	COUNT(u.id) AS count_boost
+FROM public.users u LEFT OUTER JOIN "source_keys" k
+ON u.source = k.key
+WHERE u.bet_boost_at >= ? and u.bet_boost_at <= ?
+GROUP BY u.bet_boost_at::date, source, source_key, k.name
+ORDER BY bet_boost_at DESC, source_key DESC;
+	`, dateFrom, dateTo).Rows()
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var bet_boost_at, source_key, source string
+		var count_boost int
+
+		if err := rows.Scan(&source_key, &bet_boost_at, &source, &count_boost); err != nil {
+			return nil, err
+		}
+
+		if v, ok := data[source_key]; ok {
+			v.CountBoost = count_boost
+			data[source_key] = v
+		} else {
+			data[source_key] = models.SourcesKeysStruct{
+				Date: bet_boost_at,
+				SourceKey: models.SourceKey{
+					Key:  source_key,
+					Name: source,
+				},
+				CountBoost: count_boost,
+			}
+		}
+	}
+
+	for _, v := range data {
+		result = append(result, v)
+	}
+
+	// Сортуємо по даті і ключам
+	sort.Slice(result, func(i, j int) bool {
+
+		// Primary sort key: дата
+		if result[i].Date != result[j].Date {
+			return result[i].Date > result[j].Date
+		}
+		// Secondary sort key: ключ
+		return result[i].SourceKey.Key < result[j].SourceKey.Key
+	})
 
 	return result, nil
 }
 
 // GetSource возвращает кол-во регистраций по источникам
-func (r *PostgresRepository) GetSource() (map[string]map[string]interface{}, error) {
-	result := map[string]map[string]interface{}{}
+func (r *PostgresRepository) GetSource() (map[string]models.SourcesKeysStruct, error) {
+	result := map[string]models.SourcesKeysStruct{}
 
 	// SQL запрос для получения кол-ва регистраций по источнику
 	// WHERE source = ref_key
 	rows, err := r.db.Raw(`
 SELECT u.source AS source_key, COALESCE(k.name, u.source) AS source, 
 	COUNT(u.id) AS count_open,
-	COUNT(CASE WHEN u.registered THEN 1 ELSE NULL END) AS count_reg
+	COUNT(CASE WHEN u.registered THEN 1 ELSE NULL END) AS count_reg,
+	COUNT(CASE WHEN u.bet THEN 1 ELSE NULL END) AS count_bet,
+	COUNT(CASE WHEN u.bet_boost THEN 1 ELSE NULL END) AS count_boost
 FROM public.users u LEFT OUTER JOIN "source_keys" k
 ON u.source = k.key
 GROUP BY source, k.name, source_key
@@ -416,17 +518,21 @@ ORDER BY source DESC;
 
 	for rows.Next() {
 		var source_key, source string
-		var count_open, count_reg int
+		var count_open, count_reg, count_bet, count_boost int
 
-		if err := rows.Scan(&source_key, &source, &count_open, &count_reg); err != nil {
+		if err := rows.Scan(&source_key, &source, &count_open, &count_reg, &count_bet, &count_boost); err != nil {
 			return nil, err
 		}
 
-		result[source_key] = map[string]interface{}{
-			"source_key": source_key,
-			"source":     source,
-			"count_open": count_open,
-			"count_reg":  count_reg,
+		result[source_key] = models.SourcesKeysStruct{
+			SourceKey: models.SourceKey{
+				Key:  source_key,
+				Name: source,
+			},
+			CountOpen:  count_open,
+			CountReg:   count_reg,
+			CountBet:   count_bet,
+			CountBoost: count_boost,
 		}
 	}
 

@@ -30,6 +30,15 @@
                     <!-- Выбор периода -->
                     <div class="row mb-4">
                         <div class="col-md-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="bi bi-clock fs-1 me-3 text-primary"></i>
+                                <div>
+                                    <h5 class="card-title mb-0">Серверное время</h5>
+                                    <div class="text-muted small">Часовой пояс: UTC+0 (GMT)</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
                             <div class="btn-group" role="group">
                                 <button type="button" class="btn btn-outline-primary" data-period="day">День</button>
                                 <button type="button" class="btn btn-outline-primary" data-period="week">Неделя</button>
@@ -38,7 +47,7 @@
                                     data-period="year">Год</button>
                             </div>
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-md-4">
                             <div class="input-group">
                                 <span class="input-group-text">Период</span>
                                 <input type="date" class="form-control" id="start-date">
@@ -51,13 +60,24 @@
                         </div>
                     </div>
 
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="search-sources"
+                                placeholder="Поиск по ключу или значению...">
+                        </div>
+                    </div>
+                    
                     <div class="table-responsive">
                         <table class="table table-hover card-view-on-mobile" id="stat_table">
                             <thead>
                                 <tr>
-                                    <th>Дата регистрации</th>
+                                    <th>Дата</th>
                                     <th>Источник</th>
-                                    <th>Кол-во пользователей</th>
+                                    <th>Кол-во запусков</th>
+                                    <th>Кол-во регистраций</th>
+                                    <th>Кол-во активных</th>
+                                    <th>Кол-во boost</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -102,7 +122,6 @@
         });
 
         function update() {
-            console.log(filter);
             tableRef.innerHTML = "";
 
             $.ajax({
@@ -115,13 +134,15 @@
                         return;
                     }
 
-                    console.log(response.result);
                     response.result.forEach((cell, index) => {
                         //insert Row
                         tableRef.insertRow().innerHTML =
-                            '<tr><td>' + cell.created_at + '</td>' +
-                            '<td>' + cell.source + '</td>' +
-                            '<td>' + cell.count + '</td></tr>';
+                            '<tr><td>' + cell.date + '</td>' +
+                            '<td><div class="source-value">' + cell.source.Name + '</div></td>' +
+                            '<td>' + cell.count_open + '</td>' +
+                            '<td>' + cell.count_reg + '</td>' +
+                            '<td>' + cell.count_bet + '</td>' +
+                            '<td>' + cell.count_boost + '</td></tr>';
                     });
 
                 },
@@ -133,6 +154,18 @@
         }
 
         update();
+
+        // Search functionality
+        $('#search-sources').on('keyup', function () {
+            const value = $(this).val().toLowerCase();
+
+            $('#stat_table tbody tr').filter(function () {
+                const key = $(this).find('td:first').text().toLowerCase();
+                const textValue = $(this).find('.source-value').text().toLowerCase();
+
+                $(this).toggle(key.indexOf(value) > -1 || textValue.indexOf(value) > -1);
+            });
+        });
     });
 </script>
 {{end}}

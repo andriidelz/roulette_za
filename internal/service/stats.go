@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"roulette/internal/models"
 	"time"
 )
 
@@ -87,11 +88,11 @@ func (s *ServiceImpl) GetTopPlayersByAttempts(limit int) ([]map[string]interface
 }
 
 // GetSourceByDate возвращает кол-во регистраций по источнику и по дням
-func (s *ServiceImpl) GetSourceByDate(dateFrom, dateTo string) ([]map[string]interface{}, error) {
+func (s *ServiceImpl) GetSourceByDate(dateFrom, dateTo string) ([]models.SourcesKeysStruct, error) {
 	return s.repo.GetSourceByDate(dateFrom, dateTo)
 }
 
 // GetSourceByDate возвращает кол-во регистраций по источнику
-func (s *ServiceImpl) GetSource() (map[string]map[string]interface{}, error) {
+func (s *ServiceImpl) GetSource() (map[string]models.SourcesKeysStruct, error) {
 	return s.repo.GetSource()
 }
