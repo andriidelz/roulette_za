@@ -355,7 +355,7 @@ func (r *PostgresRepository) GetTopPlayersByAttempts(limit int) ([]map[string]in
 
 // GetSourceByDate возвращает кол-во регистраций по источникам и по дням
 func (r *PostgresRepository) GetSourceByDate(dateFrom, dateTo string) ([]models.SourcesKeysStruct, error) {
-	data := map[string]models.SourcesKeysStruct{}
+	data := map[string]map[string]models.SourcesKeysStruct{}
 	result := []models.SourcesKeysStruct{}
 
 	// Запит фільтру по CreatedAt
@@ -369,7 +369,7 @@ SELECT u.source AS source_key, u.created_at::date::text, COALESCE(k.name, u.sour
 FROM public.users u LEFT OUTER JOIN "source_keys" k
 ON u.source = k.key
 WHERE u.created_at >= ? and u.created_at <= ?
-GROUP BY u.created_at::date, source, source_key, k.name
+GROUP BY u.created_at::date::text, source, source_key, k.name
 ORDER BY created_at DESC, source_key DESC;
 	`, dateFrom, dateTo).Rows()
 
@@ -386,7 +386,7 @@ ORDER BY created_at DESC, source_key DESC;
 			return nil, err
 		}
 
-		data[source_key] = models.SourcesKeysStruct{
+		record := models.SourcesKeysStruct{
 			Date: created_at,
 			SourceKey: models.SourceKey{
 				Key:  source_key,
@@ -395,6 +395,12 @@ ORDER BY created_at DESC, source_key DESC;
 			CountOpen: count_open,
 			CountReg:  count_reg,
 		}
+		day, ok := data[created_at]
+		if !ok {
+			day = map[string]models.SourcesKeysStruct{}
+		}
+		day[source_key] = record
+		data[created_at] = day
 	}
 
 	// Запит фільтру по даті BetAt
@@ -404,7 +410,7 @@ SELECT u.source AS source_key, u.bet_at::date::text, COALESCE(k.name, u.source) 
 FROM public.users u LEFT OUTER JOIN "source_keys" k
 ON u.source = k.key
 WHERE u.bet_at >= ? and u.bet_at <= ?
-GROUP BY u.bet_at::date, source, source_key, k.name
+GROUP BY u.bet_at::date::text, source, source_key, k.name
 ORDER BY bet_at DESC, source_key DESC;
 	`, dateFrom, dateTo).Rows()
 
@@ -421,11 +427,13 @@ ORDER BY bet_at DESC, source_key DESC;
 			return nil, err
 		}
 
-		if v, ok := data[source_key]; ok {
-			v.CountBet = count_bet
-			data[source_key] = v
-		} else {
-			data[source_key] = models.SourcesKeysStruct{
+		day, ok := data[bet_at]
+		if !ok {
+			day = map[string]models.SourcesKeysStruct{}
+		}
+		record, ok1 := day[source_key]
+		if !ok1 {
+			record = models.SourcesKeysStruct{
 				Date: bet_at,
 				SourceKey: models.SourceKey{
 					Key:  source_key,
@@ -433,7 +441,11 @@ ORDER BY bet_at DESC, source_key DESC;
 				},
 				CountBet: count_bet,
 			}
+		} else {
+			record.CountBet = count_bet
 		}
+		day[source_key] = record
+		data[bet_at] = day
 	}
 
 	// Запит фільтру по даті BetBoostAt
@@ -443,7 +455,7 @@ SELECT u.source AS source_key, u.bet_boost_at::date::text, COALESCE(k.name, u.so
 FROM public.users u LEFT OUTER JOIN "source_keys" k
 ON u.source = k.key
 WHERE u.bet_boost_at >= ? and u.bet_boost_at <= ?
-GROUP BY u.bet_boost_at::date, source, source_key, k.name
+GROUP BY u.bet_boost_at::date::text, source, source_key, k.name
 ORDER BY bet_boost_at DESC, source_key DESC;
 	`, dateFrom, dateTo).Rows()
 
@@ -460,11 +472,13 @@ ORDER BY bet_boost_at DESC, source_key DESC;
 			return nil, err
 		}
 
-		if v, ok := data[source_key]; ok {
-			v.CountBoost = count_boost
-			data[source_key] = v
-		} else {
-			data[source_key] = models.SourcesKeysStruct{
+		day, ok := data[bet_boost_at]
+		if !ok {
+			day = map[string]models.SourcesKeysStruct{}
+		}
+		record, ok1 := day[source_key]
+		if !ok1 {
+			record = models.SourcesKeysStruct{
 				Date: bet_boost_at,
 				SourceKey: models.SourceKey{
 					Key:  source_key,
@@ -472,11 +486,17 @@ ORDER BY bet_boost_at DESC, source_key DESC;
 				},
 				CountBoost: count_boost,
 			}
+		} else {
+			record.CountBoost = count_boost
 		}
+		day[source_key] = record
+		data[bet_boost_at] = day
 	}
 
-	for _, v := range data {
-		result = append(result, v)
+	for _, day := range data {
+		for _, v := range day {
+			result = append(result, v)
+		}
 	}
 
 	// Сортуємо по даті і ключам
