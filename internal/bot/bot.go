@@ -586,16 +586,12 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			}
 		}
 	}
-	if err == nil && dbUser.Banned {
+	if err == nil && dbUser.Banned || b.captchaBan(user.ID) {
 		// Если пользователь забанен, молча игнорируем сообщение
 		return
 	}
 
 	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
-
-	if b.captchaBan(user.ID) {
-		return
-	}
 
 	// Проверка на повышенную активность пользователя
 	switch b.captchaUserActivity(user.ID) {
