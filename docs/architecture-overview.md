@@ -46,7 +46,7 @@ roulette/
 │   └── captcha-go/        # Captcha generation
 ├── web/                   # Static web assets
 ├── migrations/            # Database migrations
-├── shared-data/           # Docker volumes data
+├── shared-data/           # Docker volumes data + files
 ├── compose.yml           # Production compose
 ├── compose.dev.yml       # Development compose
 └── Dockerfile            # Multi-stage build
