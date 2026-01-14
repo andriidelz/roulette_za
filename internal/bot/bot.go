@@ -407,13 +407,13 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData st
 		// виводимо капчу у рендомний час з першої секунди 4 хвилини по 59 секунду 5 хвилини
 		go func() {
 			time.Sleep(time.Duration(rand.Intn(120)) * time.Second)
-			h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language))
+			h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language, "captcha_bet_activity"))
 		}()
 	}
 	switch h.bot.captchaBetDuplicate(user.ID, string(option)) {
 	case "needCaptcha":
 		h.bot.answerCallbackQuery(query.ID, "", false)
-		h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language))
+		h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language, "bet_duplicate"))
 		return
 	}
 
@@ -598,7 +598,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	case "wait":
 		return
 	case "needCaptcha":
-		b.SendMessage(message.Chat.ID, b.captchaMessage(user.ID, language))
+		b.SendMessage(message.Chat.ID, b.captchaMessage(user.ID, language, "captcha_user_activity"))
 		return
 	}
 
@@ -890,7 +890,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		b.answerCallbackQuery(query.ID, b.getText("captcha_text", language), true)
 		return
 	case "needCaptcha":
-		b.SendMessage(query.Message.GetChat().ID, b.captchaMessage(user.ID, language))
+		b.SendMessage(query.Message.GetChat().ID, b.captchaMessage(user.ID, language, "captcha_user_activity"))
 		return
 	}
 

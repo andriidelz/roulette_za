@@ -244,9 +244,16 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 		withdrawals = []models.Withdrawal{}
 	}
 
+	banLog, err := a.repo.GetBanLog(user.ID)
+	if err != nil {
+		logger.Error.Printf("Failed to get ban log: %v", err)
+		banLog = models.UserBanLog{}
+	}
+
 	c.HTML(http.StatusOK, "user_details", gin.H{
 		"title":            fmt.Sprintf("Admin-panel - Користувач %s", user.Username),
 		"user":             user,
+		"banLog":           banLog,
 		"botName":          a.settings.BotName,
 		"stats":            stats,
 		"rating":           rating,

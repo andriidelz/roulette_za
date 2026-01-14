@@ -29,6 +29,10 @@ func (b *Bot) StartUpdateCaptcha() {
 		return
 	}
 
+	b.settingsMutex.Lock()
+	countRefreshCaptcha, _ := b.settings["captcha_refresh_count"]
+	b.settingsMutex.Unlock()
+
 	for i := range allUsers {
 		userID, err := strconv.ParseInt(allUsers[i], 10, 64)
 		if err != nil {
@@ -52,7 +56,7 @@ func (b *Bot) StartUpdateCaptcha() {
 		}
 		val++
 
-		if val > 3 {
+		if val > countRefreshCaptcha {
 
 			// Было отправлено 3 одновления капчи. Прекращаем отправку.
 			// Удаляем из список пользователей которые ожидают капчу
@@ -82,7 +86,7 @@ func (b *Bot) StartUpdateCaptcha() {
 			}
 
 			// Присилаємо нову капчу
-			b.SendMessage(userID, b.captchaMessage(userID, language))
+			b.SendMessage(userID, b.captchaMessage(userID, language, "refresh"))
 		}
 	}
 }
@@ -161,9 +165,20 @@ func (b *Bot) refreshMinuteCache() {
 
 	settingsMap := map[string]int64{}
 	params := []string{
-		"captcha_bet_activity",  // Лимит ставок за период betActivityExpiration
-		"captcha_user_activity", // Лимит действий за период userActivityExpiration
-		"captcha_bet_points",    // Лимит баллов для запуска капчи
+		"captcha_bet_activity",      // Лимит ставок за период betActivityExpiration
+		"captcha_bet_activity_ttl",  // Период ставок для лимита (сек)
+		"captcha_user_activity",     // Лимит действий за период userActivityExpiration
+		"captcha_user_activity_ttl", // Период действий для лимита (сек)
+		"captcha_bet_points",        // Лимит баллов для запуска капчи
+		"captcha_bet_duplicate_ttl", // Период дубликатов ставок (сек)
+
+		"captcha_ttl",           // Время ожидания капчи (мин)
+		"captcha_refresh_count", // Кол-во обновлений
+		"captcha_need_count",    // Кол-во этапов
+		"captcha_wrong_count",   // Кол-во неправильнх ответов
+		"captcha_ban_count",     // Кол-во банов
+		"captcha_ban_short_ttl", // Время бана short (мин)
+		"captcha_ban_long_ttl",  // Время бана long (мин)
 	}
 
 	for i := range params {

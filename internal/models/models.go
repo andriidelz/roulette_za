@@ -38,6 +38,21 @@ type User struct {
 	UpdatedAt      time.Time
 }
 
+// UserBanLog
+type UserBanLog struct {
+	ID         uint   `gorm:"primaryKey"`
+	UserID     uint   `gorm:"index"`
+	TypeStatus string `gorm:"size:50"`
+	Reason     string `gorm:"size:50"`
+	Active     bool   `gorm:"default:false"` // true if user is currently banned because of this record
+	Stage      int    `gorm:"default:0"`
+	Wrong      int    `gorm:"default:0"`
+	Refresh    int    `gorm:"default:0"`
+	UntilTo    time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 // HashEntry представляє запис хешу (раунд) в базі даних
 type HashEntry struct {
 	gorm.Model

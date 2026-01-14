@@ -379,8 +379,12 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 		} else if mes != nil {
 			messageID = mes.MessageID
 
+			b.settingsMutex.Lock()
+			captchaTTL, _ := b.settings["captcha_ttl"]
+			b.settingsMutex.Unlock()
+
 			// для капчі зберігаємо id останньої відправленої капчі щоб замінити її
-			err = b.redisDB.Set(cont, captchaMess, messageID, userCaptchaExpiration).Err()
+			err = b.redisDB.Set(cont, captchaMess, messageID, time.Minute*time.Duration(captchaTTL)).Err()
 			if err != nil {
 				logger.Error.Printf("Error Set %d: %v", chatID, err)
 			}

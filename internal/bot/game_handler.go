@@ -809,7 +809,7 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 	if won {
 		switch h.bot.captchaBetPoints(userID, points) {
 		case "needCaptcha":
-			h.bot.SendMessage(userID, h.bot.captchaMessage(userID, language))
+			h.bot.SendMessage(userID, h.bot.captchaMessage(userID, language, "captcha_bet_points"))
 			return nil
 		}
 	}

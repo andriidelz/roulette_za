@@ -158,3 +158,22 @@ func (r *PostgresRepository) GetUsersActivityCount(telegramIDs []int64, from, to
 
 	return counts, nil
 }
+
+// CreateBanLog creates a new ban log
+func (r *PostgresRepository) CreateBanLog(log *models.UserBanLog) error {
+	return r.db.Create(log).Error
+}
+
+// UpdateBet обновляет информацию о ставке
+func (r *PostgresRepository) UpdateBanLog(log *models.UserBanLog) error {
+	return r.db.Save(log).Error
+}
+
+func (r *PostgresRepository) GetBanLog(userID uint) (models.UserBanLog, error) {
+	var log models.UserBanLog
+	err := r.db.Where("id = ? AND active = ?", userID, true).First(&log).Error
+	if err != nil {
+		return models.UserBanLog{}, err
+	}
+	return log, nil
+}
