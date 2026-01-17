@@ -828,7 +828,7 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 	}
 
 	// Проверяем статус бана
-	if dbUser.Banned {
+	if dbUser.Status == UserStatusBanned {
 		return fmt.Errorf("user is banned")
 	}
 

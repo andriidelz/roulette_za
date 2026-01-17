@@ -25,3 +25,7 @@ CREATE TABLE IF NOT EXISTS user_ban_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_ban_logs_user_id ON user_ban_logs (user_id);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20);
+UPDATE users SET status = 'ACTIVE' WHERE registered = true AND banned = false;
+UPDATE users SET status = 'BANNED' WHERE registered = true AND banned = true;

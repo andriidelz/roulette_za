@@ -122,7 +122,7 @@ $(document).ready(function () {
                 $('#current-balance strong').text(data.user.Balance + ' $');
 
                 // Настройка статуса бана
-                if (data.user.Banned) {
+                if (data.user.Status === 'BANNED') {
                     $('#ban-user-btn').hide();
                     $('#unban-user-btn').show();
                 } else {

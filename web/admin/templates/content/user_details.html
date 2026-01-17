@@ -13,7 +13,7 @@
                     <a href="/admin/users" class="btn btn-outline-secondary mb-2 mb-sm-0 me-sm-2 w-100 d-flex align-items-center justify-content-center">
                         <i class="bi bi-arrow-left"></i> <span class="d-none d-sm-inline ms-1">Назад к списку</span>
                     </a>
-                    {{ if .user.Banned }}
+                    {{ if eq .user.Status "BANNED" }}
                     <button class="btn btn-success unban-user-btn w-100" data-id="{{ .user.ID }}">
                         <i class="bi bi-unlock"></i> <span class="d-none d-sm-inline">Разбанить пользователя</span><span class="d-sm-none">Разбанить</span>
                     </button>
@@ -56,11 +56,16 @@
                       Имя не указано
                     {{ end }}
                   </p>
-                  
-                  {{ if .user.Banned }}
-                  <div class="badge bg-danger p-2"><i class="bi bi-lock"></i> Забанен</div>
+                  {{ if eq .user.Status "ACTIVE" }}
+                  <div class="badge bg-success p-2"><i class="bi bi-check-circle"></i> ACTIVE</div>
+                  {{ else if eq .user.Status "BANNED" }}
+                  <div class="badge bg-danger p-2"><i class="bi bi-lock"></i> BANNED</div>
+                  {{ else if eq .user.Status "LOCKOUT" }}
+                  <div class="badge bg-danger p-2"><i class="bi bi-lock"></i> LOCKOUT</div>
+                  {{ else if eq .user.Status "CAPTCHA" }}
+                  <div class="badge bg-danger p-2"><i class="bi bi-lock"></i> CAPTCHA</div>
                   {{ else }}
-                  <div class="badge bg-success p-2"><i class="bi bi-check-circle"></i> Активен</div>
+                  <span class="badge bg-danger">Не зарегистрирован</span>
                   {{ end }}
                 </div>
                 <!-- КОНЕЦ ИЗМЕНЕННОГО БЛОКА -->

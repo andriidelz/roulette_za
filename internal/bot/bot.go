@@ -586,7 +586,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			}
 		}
 	}
-	if err == nil && dbUser.Banned || b.captchaBan(user.ID) {
+	if err == nil && dbUser.Status == UserStatusBanned || b.captchaBan(user.ID) {
 		// Если пользователь забанен, молча игнорируем сообщение
 		return
 	}
@@ -952,7 +952,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 			// Сохраняем выбранную страну и устанавливаем флаг бана
 			dbUser.Country = countryCode
-			dbUser.Banned = true
+			dbUser.Status = UserStatusBanned
 			if err := b.service.UpdateUser(dbUser); err != nil {
 				logger.Error.Printf("Error updating user: %v", err)
 			}
@@ -964,7 +964,9 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Для других стран - просто сохраняем выбор
 		dbUser.Country = countryCode
 		dbUser.Registered = b.isRegistrationComplete(dbUser)
-
+		if dbUser.Registered && dbUser.Status == "" {
+			dbUser.Status = UserStatusActive
+		}
 		if err := b.service.UpdateUser(dbUser); err != nil {
 			logger.Error.Printf("Error updating user country: %v", err)
 			if query.Message != nil {
@@ -1132,7 +1134,9 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		user.LanguageCode = langCode
 		dbUser.LanguageCode = langCode
 		dbUser.Registered = b.isRegistrationComplete(dbUser)
-
+		if dbUser.Registered && dbUser.Status == "" {
+			dbUser.Status = UserStatusActive
+		}
 		if err := b.service.UpdateUser(dbUser); err != nil {
 			b.answerCallbackQuery(query.ID, "Error saving language", true)
 			return

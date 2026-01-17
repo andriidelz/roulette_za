@@ -56,7 +56,7 @@ func (r *PostgresRepository) RecalculateWithdrawalsStat(id string) (models.Withd
 
 	// Сума балансів
 	var balance float64
-	err = r.db.Model(&models.User{}).Where("banned = ? ", false).Select("COALESCE(SUM(balance), 0)").Scan(&balance).Error
+	err = r.db.Model(&models.User{}).Where("status = ? ", "ACTIVE").Select("COALESCE(SUM(balance), 0)").Scan(&balance).Error
 	if err != nil {
 		return data, err
 	}

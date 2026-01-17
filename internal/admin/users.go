@@ -70,7 +70,7 @@ func (a *AdminPanel) usersList(c *gin.Context) {
 			"Country":      user.Country,
 			"CountryEmoji": countryEmoji,
 			"Balance":      user.Balance,
-			"Banned":       user.Banned,
+			"Status":       user.Status,
 			"Registered":   user.Registered,
 			"CreatedAt":    user.CreatedAt,
 			"UpdatedAt":    user.UpdatedAt,
@@ -381,7 +381,7 @@ func (a *AdminPanel) userBan(c *gin.Context) {
 	}
 
 	// Блокуємо користувача
-	user.Banned = true
+	user.Status = "BANNED"
 	if err := a.repo.UpdateUser(user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -414,7 +414,7 @@ func (a *AdminPanel) userUnban(c *gin.Context) {
 	}
 
 	// Розблокуємо користувача
-	user.Banned = false
+	user.Status = "ACTIVE"
 	if err := a.repo.UpdateUser(user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

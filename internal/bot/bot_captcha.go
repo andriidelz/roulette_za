@@ -336,6 +336,13 @@ func (b *Bot) captchaMessage(telegramID int64, language, status string) MessageO
 		if err := b.service.GetRepo().CreateBanLog(log); err != nil {
 			logger.Error.Printf("Failed to create ban log: %v", err)
 		}
+
+		// Оновлюєм статус на той що очікує капчу
+		dbUser.Status = UserStatusCaptcha
+		err = b.service.UpdateUser(dbUser)
+		if err != nil {
+			logger.Error.Printf("Error updating user: %v", err)
+		}
 	default:
 		logger.Error.Println("Unknown captcha status: ", status)
 	}
@@ -419,7 +426,8 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 
 	user := query.From
 
-	language, err := b.getUserLang(user.ID, user.LanguageCode)
+	dbUser, err := b.getUser(user.ID)
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 	if err != nil {
 		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
 	}
@@ -482,6 +490,13 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 		}
 
 		// неправильна відповідь на капчу 3 рази підряд - бан
+
+		// Оновлюєм статус на заблокований
+		dbUser.Status = UserStatusLockout
+		err = b.service.UpdateUser(dbUser)
+		if err != nil {
+			logger.Error.Printf("Error updating user: %v", err)
+		}
 
 		// Видаляємо зі списку користувачів які чекають на капчу
 		_, err = b.redisDB.LRem(cont, userCaptchaUpdateKey, 0, user.ID).Result()
@@ -584,7 +599,25 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 		}
 	}
 
+	res, err := b.service.GetRepo().GetBanLog(dbUser.ID)
+	if err != nil {
+		logger.Error.Printf("Failed to get ban log: %v", err)
+	}
+
+	res.Active = false
+	// Save to database
+	if err := b.service.GetRepo().UpdateBanLog(&res); err != nil {
+		logger.Error.Printf("Failed to create ban log: %v", err)
+	}
+
 	// Всі умови виконані, очищаєм все що пов'язано з капчею
+	// Оновлюєм статус на активний
+	dbUser.Status = UserStatusActive
+	err = b.service.UpdateUser(dbUser)
+	if err != nil {
+		logger.Error.Printf("Error updating user: %v", err)
+	}
+
 	// Используем Redis Pipeline для выполнения нескольких команд за один сетевой запрос
 	pipe := b.redisDB.Pipeline()
 
