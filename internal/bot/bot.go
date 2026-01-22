@@ -61,9 +61,9 @@ const (
 	CommandAccount  = "account"
 	CommandFAQ      = "faq"
 	CommandSettings = "settings"
+	CommandCaptcha  = "captcha"
 
-	CallbackBack    = "back"
-	CallbackCaptcha = "captcha_"
+	CallbackBack = "back"
 
 	sharedData = "/files" // локація для файлів
 
@@ -411,7 +411,7 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData st
 	}
 	if h.bot.captchaBetDuplicate(user.ID, string(option)) {
 		h.bot.answerCallbackQuery(query.ID, "", false)
-		h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language, "bet_duplicate"))
+		h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language, "captcha_bet_duplicate"))
 		return
 	}
 
@@ -599,6 +599,15 @@ func (b *Bot) handleMessage(message *telego.Message) {
 	switch dbUser.Status {
 	case UserStatusBanned, UserStatusLockout:
 		// Если пользователь забанен, молча игнорируем сообщение
+		return
+	case UserStatusCaptcha: // На Captcha
+		// Обработка команды капчи - оновлення капчі
+		if command == CommandCaptcha {
+			b.SendMessage(user.ID, b.captchaMessage(user.ID, language, "refresh"))
+			return
+		}
+
+		// всі інші запити крім команди капчі молча игнорируем сообщение
 		return
 	}
 
@@ -883,9 +892,12 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 	case UserStatusCaptcha: // На Captcha
 		// Обработка прохождения капчи
 		if strings.HasPrefix(callbackData, CallbackCaptcha) {
-		
-			b.captchaCheck(query)
-			
+			if callbackData == CallbackCaptchaRefresh {
+				// captchaRefresh оновлення капчі
+				b.SendMessage(user.ID, b.captchaMessage(user.ID, language, "refresh"))
+			} else {
+				b.captchaCheck(query)
+			}
 			return
 		}
 

@@ -44,6 +44,7 @@ type UserBanLog struct {
 	UserID     uint   `gorm:"index"`
 	TypeStatus string `gorm:"size:50"`
 	Reason     string `gorm:"size:50"`
+	ReasonMeta string `gorm:"size:500"`
 	Active     bool   `gorm:"default:false"` // true if user is currently banned because of this record
 	Stage      int    `gorm:"default:0"`
 	Wrong      int    `gorm:"default:0"`

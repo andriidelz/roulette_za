@@ -12,3 +12,7 @@ DELETE FROM settings WHERE key ='captcha_bet_duplicate_ttl';
 DROP INDEX IF EXISTS idx_user_ban_logs_user_id;
 -- Drop table
 DROP TABLE IF EXISTS user_ban_logs;
+
+DELETE FROM localizations
+WHERE key IN ('captcha_next', 'captcha_stage_title', 'captcha_refresh', 'captcha_blocked_action')
+    AND language IN ('ru', 'uk', 'en');

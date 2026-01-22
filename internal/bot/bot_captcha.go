@@ -43,6 +43,9 @@ const (
 	// В случае нахождения пользователя все дальнейшие действия будут заблокированы
 	// до прохождения истечения expiration
 	userCaptchaBanCountPrefix = "user:%d:captcha_ban_count" // кол-во полученых банов - если больше 3 то блокируем на больший термин
+
+	CallbackCaptcha        = "captcha_"
+	CallbackCaptchaRefresh = "captcha_refresh"
 )
 
 // captchaUserActivity - Проверка активности и если она слишком высокая - вывод капчи
@@ -246,7 +249,7 @@ func (b *Bot) captchaMessage(telegramID int64, language, status string) MessageO
 	// "captcha_user_activity"
 	// "captcha_bet_points"
 	// "captcha_bet_activity"
-	// "bet_duplicate"
+	// "captcha_bet_duplicate"
 
 	// "refresh"
 	// "wrong"
@@ -254,7 +257,10 @@ func (b *Bot) captchaMessage(telegramID int64, language, status string) MessageO
 
 	b.settingsMutex.Lock()
 	captchaTTL, _ := b.settings["captcha_ttl"]
+	countRefreshCaptcha, _ := b.settings["captcha_refresh_count"]
 	b.settingsMutex.Unlock()
+
+	showRefresh := true
 
 	dbUser, err := b.getUser(telegramID)
 	if err != nil {
@@ -277,12 +283,18 @@ func (b *Bot) captchaMessage(telegramID int64, language, status string) MessageO
 		case "stage":
 			res.Stage += 1
 		}
+
+		// Перевірка кількості оновлень капчі
+		if res.Refresh >= int(countRefreshCaptcha) {
+			showRefresh = false
+		}
+
 		// Save to database
 		if err := b.service.GetRepo().UpdateBanLog(&res); err != nil {
 			logger.Error.Printf("Failed to create ban log: %v", err)
 		}
 
-	case "captcha_user_activity", "captcha_bet_points", "captcha_bet_activity", "bet_duplicate":
+	case "captcha_user_activity", "captcha_bet_points", "captcha_bet_activity", "captcha_bet_duplicate":
 
 		// create new record
 		log := &models.UserBanLog{
@@ -305,6 +317,7 @@ func (b *Bot) captchaMessage(telegramID int64, language, status string) MessageO
 		if err != nil {
 			logger.Error.Printf("Error updating user: %v", err)
 		}
+		b.updateUserCache(telegramID)
 	default:
 		logger.Error.Println("Unknown captcha status: ", status)
 	}
@@ -344,6 +357,14 @@ func (b *Bot) captchaMessage(telegramID int64, language, status string) MessageO
 	nicknameKeyboard := &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{lines},
 	}
+
+	if showRefresh {
+		nicknameKeyboard.InlineKeyboard = append(nicknameKeyboard.InlineKeyboard,
+			[]telego.InlineKeyboardButton{
+				{Text: b.getText("captcha_refresh", language),
+					CallbackData: CallbackCaptchaRefresh}})
+	}
+
 	captchaText := b.getText("captcha_text", language)
 	mess := MessageOptions{
 		Text:           captchaText,
@@ -431,6 +452,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 		if err != nil {
 			logger.Error.Printf("Error updating user: %v", err)
 		}
+		b.updateUserCache(user.ID)
 
 		banCount, err := b.redisDB.Get(cont, captchaBanCountKey).Int64()
 		if err == redis.Nil {
@@ -491,7 +513,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 
 		// **** Перевірка мультифакторності ****
 		if res.Wrong > 0 {
-			if int(countNeedCaptcha) > res.Stage {
+			if int(countNeedCaptcha) > res.Stage+1 {
 				// кількість необхідних капч менше необхідного
 				nextCaptcha = true
 			}
@@ -503,7 +525,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 
 			// Відповідаєм на callback текстом что капча вірна але потрібно пройти ще
 			text := b.getText("captcha_stage_title", language)
-			text = fmt.Sprintf(text, res.Stage, countNeedCaptcha) + " " + b.getText("captcha_next", language)
+			text = fmt.Sprintf(text, res.Stage+1, countNeedCaptcha) + " " + b.getText("captcha_next", language)
 			b.answerCallbackQuery(query.ID, text, true)
 
 			// присилаєм нову капчу
@@ -520,19 +542,13 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 
 	// Всі умови виконані, очищаєм все що пов'язано з капчею
 
-	// отримуємо ID останньої капчі
-	captchaMess := fmt.Sprintf(userCaptchaMessPrefix, user.ID)
-	messageID, err := b.redisDB.Get(cont, captchaMess).Int()
-	if err != nil && err != redis.Nil {
-		logger.Error.Printf("Error Get %d: %v", user.ID, err)
-	}
-
 	// Оновлюєм статус на активний
 	dbUser.Status = UserStatusActive
 	err = b.service.UpdateUser(dbUser)
 	if err != nil {
 		logger.Error.Printf("Error updating user: %v", err)
 	}
+	b.updateUserCache(user.ID)
 
 	// Используем Redis Pipeline для выполнения нескольких команд за один сетевой запрос
 	pipe := b.redisDB.Pipeline()
@@ -568,12 +584,19 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 		},
 	}
 
-	if messageID > 0 {
-		// Обновляем существующее сообщение
-		b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), options)
-	} else {
-		// Якщо була помилка при знаходженні ключа скоріше за все повторне натискання
-		// відправляємо той же текст як нове повідомлення
-		b.SendMessage(query.Message.GetChat().ID, options)
-	}
+	// // отримуємо ID останньої капчі
+	// captchaMess := fmt.Sprintf(userCaptchaMessPrefix, user.ID)
+	// messageID, err := b.redisDB.Get(cont, captchaMess).Int()
+	// if err != nil && err != redis.Nil {
+	// 	logger.Error.Printf("Error Get %d: %v", user.ID, err)
+	// }
+	// if messageID > 0 {
+	// 	// Обновляем существующее сообщение
+	// == editMessageCaption ==
+	// 	b.UpdateMessage(query.Message.GetChat().ID, query.Message.GetMessageID(), options)
+	// } else {
+	// Якщо була помилка при знаходженні ключа скоріше за все повторне натискання
+	// відправляємо той же текст як нове повідомлення
+	b.SendMessage(query.Message.GetChat().ID, options)
+	// }
 }

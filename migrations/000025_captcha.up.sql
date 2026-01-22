@@ -13,8 +13,9 @@ INSERT INTO settings (key, value, default_value, description) VALUES
 CREATE TABLE IF NOT EXISTS user_ban_logs (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(id),
-    type_status VARCHAR(255),
-    reason VARCHAR(255),
+    type_status VARCHAR(50),
+    reason VARCHAR(50),
+    reason_meta VARCHAR(500),
     active BOOLEAN DEFAULT FALSE,
     stage INT DEFAULT 0,
     wrong INT DEFAULT 0,
@@ -29,3 +30,17 @@ CREATE INDEX IF NOT EXISTS idx_user_ban_logs_user_id ON user_ban_logs (user_id);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20);
 UPDATE users SET status = 'ACTIVE' WHERE registered = true AND banned = false;
 UPDATE users SET status = 'BANNED' WHERE registered = true AND banned = true;
+
+INSERT INTO localizations (key, language, value) VALUES
+    ('captcha_refresh', 'uk', 'Оновити капчу'),
+    ('captcha_blocked_action', 'uk', 'Пройдіть капчу'),
+    ('captcha_stage_title', 'uk', 'Етап %d / %d'),
+    ('captcha_next', 'uk', 'Вітаємо з успішним проходженням капчі! Пройдіть наступний етап'),
+    ('captcha_refresh', 'ru', 'Обновить капчу'),
+    ('captcha_blocked_action', 'ru', 'Пройдите капчу'),
+    ('captcha_stage_title', 'ru', 'Этап %d / %d'),
+    ('captcha_next', 'ru', 'Поздравляем с успешным прохождением капчи! Пройдите следующий этап'),
+    ('captcha_refresh', 'en', 'Refresh captcha'),
+    ('captcha_blocked_action', 'en', 'Resolve captcha'),
+    ('captcha_stage_title', 'en', 'Stage %d / %d'),
+    ('captcha_next', 'en', 'Congratulations on successfully passing the captcha! Go to the next stage');

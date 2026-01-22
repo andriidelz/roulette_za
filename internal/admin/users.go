@@ -394,7 +394,7 @@ func (a *AdminPanel) userBan(c *gin.Context) {
 	// create new record
 	banLog := &models.UserBanLog{
 		UserID:     user.ID,
-		TypeStatus: "ban",
+		TypeStatus: "BANNED",
 		Reason:     "manual",
 		Active:     true,
 		UntilTo:    time.Now().AddDate(1,0,0),

@@ -3,6 +3,7 @@ package repository
 import (
 	"time"
 
+	"roulette/internal/logger"
 	"roulette/internal/models"
 )
 
@@ -177,4 +178,31 @@ func (r *PostgresRepository) GetActiveBanLog(userID uint) (models.UserBanLog, er
 		return models.UserBanLog{}, err
 	}
 	return log, nil
+}
+
+// UserUnban переведення всіх забанених користувачів час який підійшов в статус active
+func (r *PostgresRepository) UserUnban() error {
+
+	// Actions last hour
+	current := time.Now()
+	var userBan []uint
+
+	if err := r.db.Model(&models.UserBanLog{}).Where("active = ? AND until_to >= ? AND until_to <= ?",
+		true, current.Add(-3*time.Hour), current).Pluck("user_id", &userBan).Error; err != nil {
+		return err
+	}
+
+	logger.Info.Println(userBan)
+	if len(userBan) == 0 {
+		return nil
+	}
+
+	if err := r.db.Model(&models.User{}).Where("id IN ?", userBan).UpdateColumn("status", "ACTIVE").Error; err != nil {
+		return err
+	}
+
+	if err := r.db.Model(&models.UserBanLog{}).Where("active = ? AND user_id IN ?", true, userBan).UpdateColumn("active", false).Error; err != nil {
+		return err
+	}
+	return nil
 }
