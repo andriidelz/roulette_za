@@ -164,14 +164,15 @@ func (r *PostgresRepository) CreateBanLog(log *models.UserBanLog) error {
 	return r.db.Create(log).Error
 }
 
-// UpdateBet обновляет информацию о ставке
+// UpdateBet оновлення інформації про бан
 func (r *PostgresRepository) UpdateBanLog(log *models.UserBanLog) error {
 	return r.db.Save(log).Error
 }
 
-func (r *PostgresRepository) GetBanLog(userID uint) (models.UserBanLog, error) {
+// GetActiveBanLog отримання активного бану по користувачу (якщо такий є)
+func (r *PostgresRepository) GetActiveBanLog(userID uint) (models.UserBanLog, error) {
 	var log models.UserBanLog
-	err := r.db.Where("id = ? AND active = ?", userID, true).First(&log).Error
+	err := r.db.Where("user_id = ? AND active = ?", userID, true).First(&log).Error
 	if err != nil {
 		return models.UserBanLog{}, err
 	}

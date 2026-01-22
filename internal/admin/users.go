@@ -244,7 +244,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 		withdrawals = []models.Withdrawal{}
 	}
 
-	banLog, err := a.repo.GetBanLog(user.ID)
+	banLog, err := a.repo.GetActiveBanLog(user.ID)
 	if err != nil {
 		logger.Error.Printf("Failed to get ban log: %v", err)
 		banLog = models.UserBanLog{}

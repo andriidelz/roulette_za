@@ -22,7 +22,7 @@ type Repository interface {
 	UpdateUserActivity(userID uint) error
 	CreateBanLog(log *models.UserBanLog) error
 	UpdateBanLog(log *models.UserBanLog) error
-	GetBanLog(userID uint) (models.UserBanLog, error) 
+	GetActiveBanLog(userID uint) (models.UserBanLog, error)
 
 	// Статистика
 	GetUserTotalBets(userID uint) (int, error)

@@ -42,51 +42,18 @@ const (
 	// Redis key для пользователей которые временно забанены
 	// В случае нахождения пользователя все дальнейшие действия будут заблокированы
 	// до прохождения истечения expiration
-	userBanKeyPrefix = "user:%d:ban" // користувачі в бані
-
-	userCaptchaWrongCountPrefix = "user:%d:captcha_wrong_count" // кол-во неправильных капч
-	userCaptchaBanCountPrefix   = "user:%d:captcha_ban_count"   // кол-во полученых банов - если больше 3 то блокируем на больший термин
+	userCaptchaBanCountPrefix = "user:%d:captcha_ban_count" // кол-во полученых банов - если больше 3 то блокируем на больший термин
 )
 
-// captchaBan - перевірка на наявність в списку тимчасово забанених
-func (b *Bot) captchaBan(telegramID int64) bool {
-
-	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	banKey := fmt.Sprintf(userBanKeyPrefix, telegramID)
-	count, err := b.redisDB.Exists(cont, banKey).Result()
-
-	if err != nil {
-		logger.Error.Printf("Error check banKey %d: %v", telegramID, err)
-		return true
-	}
-	if count > 0 {
-		return true
-	}
-	return false
-}
-
 // captchaUserActivity - Проверка активности и если она слишком высокая - вывод капчи
-func (b *Bot) captchaUserActivity(telegramID int64) string {
+func (b *Bot) captchaUserActivity(telegramID int64) bool {
 
 	if b.testMode {
-		return ""
+		return false
 	}
 
 	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	// Если пользователь в списке на прохожение капчи то никак не реагируем до прохождения капчи
-	captchaKey := fmt.Sprintf(userCaptchaKeyPrefix, telegramID)
-	count, err := b.redisDB.Exists(cont, captchaKey).Result()
-
-	if err != nil {
-		logger.Error.Printf("Error check captchaKey %d: %v", telegramID, err)
-		return "wait"
-	}
-	if count > 0 {
-		return "wait"
-	}
 
 	var limit int64
 	b.settingsMutex.Lock()
@@ -103,7 +70,7 @@ func (b *Bot) captchaUserActivity(telegramID int64) string {
 		if err != nil {
 			logger.Error.Printf("Error Set %d: %v", telegramID, err)
 		}
-		return ""
+		return false
 	}
 
 	val++
@@ -116,18 +83,17 @@ func (b *Bot) captchaUserActivity(telegramID int64) string {
 		if err != nil {
 			logger.Error.Printf("Error Set %d: %v", telegramID, err)
 		}
-		return ""
+		return false
 	}
-	logger.Error.Println(telegramID, " captchaUserActivity")
 	// Превышение активности за период выше лимита - необходимо пройти капчу
-	return "needCaptcha"
+	return true
 }
 
 // captchaBetActivity - Проверка активности - беспрерывная игра
-func (b *Bot) captchaBetActivity(telegramID int64) string {
+func (b *Bot) captchaBetActivity(telegramID int64) bool {
 
 	if b.testMode {
-		return ""
+		return false
 	}
 
 	cont, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -148,7 +114,7 @@ func (b *Bot) captchaBetActivity(telegramID int64) string {
 		if err != nil {
 			logger.Error.Printf("Error Set %d: %v", telegramID, err)
 		}
-		return ""
+		return false
 	}
 
 	val++
@@ -162,7 +128,7 @@ func (b *Bot) captchaBetActivity(telegramID int64) string {
 		if err != nil {
 			logger.Error.Printf("Error Set %d: %v", telegramID, err)
 		}
-		return ""
+		return false
 	}
 
 	logger.Error.Println(telegramID, " captchaBetActivity")
@@ -173,14 +139,14 @@ func (b *Bot) captchaBetActivity(telegramID int64) string {
 		logger.Error.Printf("Error Del %d: %v", telegramID, err)
 	}
 
-	return "needCaptcha"
+	return true
 }
 
 // captchaBetDuplicate - Проверка активности - ставка на одну и ту же опцию
-func (b *Bot) captchaBetDuplicate(telegramID int64, option string) string {
+func (b *Bot) captchaBetDuplicate(telegramID int64, option string) bool {
 
 	if b.testMode {
-		return ""
+		return false
 	}
 
 	b.settingsMutex.Lock()
@@ -197,7 +163,7 @@ func (b *Bot) captchaBetDuplicate(telegramID int64, option string) string {
 		if err != nil {
 			logger.Error.Printf("Error Set %d: %v", telegramID, err)
 		}
-		return ""
+		return false
 	}
 
 	// Ставка не повторилась с последней
@@ -207,14 +173,14 @@ func (b *Bot) captchaBetDuplicate(telegramID int64, option string) string {
 		if err != nil {
 			logger.Error.Printf("Error Set %d: %v", telegramID, err)
 		}
-		return ""
+		return false
 	}
 
 	// Ставка повторилась, проверяем время истечения.
 	ttl, err := b.redisDB.TTL(cont, userBetKey).Result()
 	if err != nil {
 		logger.Error.Printf("Error TTL %d: %v", telegramID, err)
-		return ""
+		return false
 	}
 	if ttl.Seconds() < 20 {
 		// Если время подходит к указанному expiration то он делал ставки все последнее время одинаковые.
@@ -222,21 +188,21 @@ func (b *Bot) captchaBetDuplicate(telegramID int64, option string) string {
 		_, err = b.redisDB.Del(cont, userBetKey).Result()
 		if err != nil {
 			logger.Error.Printf("Error del %d: %v", telegramID, err)
-			return ""
+			return false
 		}
 		logger.Error.Println(telegramID, " captchaBetDuplicate")
 		// Выводим капчу
-		return "needCaptcha"
+		return true
 	}
 
-	return ""
+	return false
 }
 
 // captchaBetPoints - Проверка активности - кол-во набранных баллов
-func (b *Bot) captchaBetPoints(telegramID int64, point int) string {
+func (b *Bot) captchaBetPoints(telegramID int64, point int) bool {
 
 	if b.testMode {
-		return ""
+		return false
 	}
 
 	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -249,7 +215,7 @@ func (b *Bot) captchaBetPoints(telegramID int64, point int) string {
 		if err != nil {
 			logger.Error.Printf("Error Set %d: %v", telegramID, err)
 		}
-		return ""
+		return false
 	}
 
 	val += point
@@ -266,11 +232,11 @@ func (b *Bot) captchaBetPoints(telegramID int64, point int) string {
 		if err != nil {
 			logger.Error.Printf("Error Set %d: %v", telegramID, err)
 		}
-		return ""
+		return false
 	}
 	logger.Error.Println(telegramID, " captchaBetPoints")
 	// Превышение активности за период выше лимита - необходимо пройти капчу
-	return "needCaptcha"
+	return true
 }
 
 // captchaMessage - Создание капчи
@@ -298,7 +264,7 @@ func (b *Bot) captchaMessage(telegramID int64, language, status string) MessageO
 	switch status {
 	case "refresh", "wrong", "stage":
 		// update log
-		res, err := b.service.GetRepo().GetBanLog(dbUser.ID)
+		res, err := b.service.GetRepo().GetActiveBanLog(dbUser.ID)
 		if err != nil {
 			logger.Error.Printf("Failed to get ban log: %v", err)
 		}
@@ -321,7 +287,7 @@ func (b *Bot) captchaMessage(telegramID int64, language, status string) MessageO
 		// create new record
 		log := &models.UserBanLog{
 			UserID:     dbUser.ID,
-			TypeStatus: "captcha",
+			TypeStatus: UserStatusCaptcha,
 			Reason:     status,
 			Active:     true,
 			UntilTo:    time.Now().Add(time.Minute * time.Duration(captchaTTL)),
