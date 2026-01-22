@@ -165,9 +165,9 @@ func (b *Bot) refreshMinuteCache() {
 
 	settingsMap := map[string]int64{}
 	params := []string{
-		"captcha_bet_activity",      // Лимит ставок за период betActivityExpiration
+		"captcha_bet_activity",      // Лимит ставок за период captcha_bet_activity_ttl
 		"captcha_bet_activity_ttl",  // Период ставок для лимита (сек)
-		"captcha_user_activity",     // Лимит действий за период userActivityExpiration
+		"captcha_user_activity",     // Лимит действий за период captcha_user_activity_ttl
 		"captcha_user_activity_ttl", // Период действий для лимита (сек)
 		"captcha_bet_points",        // Лимит баллов для запуска капчи
 		"captcha_bet_duplicate_ttl", // Период дубликатов ставок (сек)

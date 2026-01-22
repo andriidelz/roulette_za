@@ -159,7 +159,7 @@ func (r *PostgresRepository) GetUsersActivityCount(telegramIDs []int64, from, to
 	return counts, nil
 }
 
-// CreateBanLog creates a new ban log
+// CreateBanLog створення нового запису про бан
 func (r *PostgresRepository) CreateBanLog(log *models.UserBanLog) error {
 	return r.db.Create(log).Error
 }

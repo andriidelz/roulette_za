@@ -292,46 +292,21 @@
               </div>
               <div class="card-body">
                 {{ if .banLog.Active }}
-                <div class="row">
-                  <div class="col-4 text-center">
-                    <div class="circle-stat">
-                      <span>{{ .banLog.Reason }}</span>
-                    </div>
-                    <p class="mb-0 mt-2 small">Reason</p>
-                  </div>
-                  
-                  <div class="col-4 text-center">
-                    <div class="circle-stat">
-                      <span>{{ .banLog.TypeStatus }}</span>
-                    </div>
-                    <p class="mb-0 mt-2 small">Type</p>
-                  </div>
-                  
-                  <div class="col-4 text-center">
-                    <div class="circle-stat">
-                      <span>{{ .banLog.UntilTo }}</span>
-                    </div>
-                    <p class="mb-0 mt-2 small">Until</p>
-                  </div>
-
-                  <div class="col-4 text-center">
-                    <div class="circle-stat">
-                      <span>{{ .banLog.Stage }}</span>
-                    </div>
-                    <p class="mb-0 mt-2 small">Stage</p>
-                  </div>
-                  <div class="col-4 text-center">
-                    <div class="circle-stat">
-                      <span>{{ .banLog.Wrong }}</span>
-                    </div>
-                    <p class="mb-0 mt-2 small">Wrong</p>
-                  </div>
-                  <div class="col-4 text-center">
-                    <div class="circle-stat">
-                      <span>{{ .banLog.Refresh }}</span>
-                    </div>
-                    <p class="mb-0 mt-2 small">Refresh</p>
-                  </div>
+                <dl class="row mb-0">
+                  <dt class="col-sm-5">Reason:</dt>
+                  <dd class="col-sm-7">{{ .banLog.Reason }}</dd>
+                  <dt class="col-sm-5">Type:</dt>
+                  <dd class="col-sm-7">{{ .banLog.TypeStatus }}</dd>
+                  <dt class="col-sm-5">Until:</dt>
+                  <dd class="col-sm-7">{{ .banLog.UntilTo }} {{ .uptimeFormatted }}</dd>
+                  <dt class="col-sm-5">ReasonMeta:</dt>
+                  <dd class="col-sm-7">{{ .banLog.ReasonMeta }}</dd>                                                    
+                  <dt class="col-sm-5">Stage:</dt>
+                  <dd class="col-sm-7">{{ .banLog.Stage }}</dd>
+                  <dt class="col-sm-5">Wrong:</dt>
+                  <dd class="col-sm-7">{{ .banLog.Wrong }}</dd>
+                  <dt class="col-sm-5">Refresh:</dt>
+                  <dd class="col-sm-7">{{ .banLog.Refresh }}</dd>                      
                 </div>
                 {{ end }}
               </div>

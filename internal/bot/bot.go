@@ -956,6 +956,21 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 				})
 			}
 
+			// create new record
+			log := &models.UserBanLog{
+				UserID:     dbUser.ID,
+				TypeStatus: UserStatusBanned,
+				Reason:     countryCode,
+				Active:     true,
+				UntilTo:    time.Now().AddDate(1, 0, 0), // блокуємо на рік
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			}
+			// Save to database
+			if err := b.service.GetRepo().CreateBanLog(log); err != nil {
+				logger.Error.Printf("Failed to create ban log: %v", err)
+			}
+
 			// Сохраняем выбранную страну и устанавливаем флаг бана
 			dbUser.Country = countryCode
 			dbUser.Status = UserStatusBanned

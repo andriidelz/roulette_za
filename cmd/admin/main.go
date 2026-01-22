@@ -163,6 +163,16 @@ func main() {
 		}
 	}()
 
+	// Запуск переведення в активні користувачів в яких підійшов час розблокування
+	unbanTicker := time.NewTicker(1 * time.Minute)
+	go func() {
+		for range unbanTicker.C {
+			if err := repo.UserUnban(); err != nil {
+				logger.Error.Printf("Failed to UserUnban: %v", err)
+			}
+		}
+	}()
+
 	// Виводимо повідомлення про запуск
 	logger.Info.Printf("Admin panel started on http://localhost:%s", cfg.AdminPort)
 

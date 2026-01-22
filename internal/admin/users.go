@@ -250,10 +250,14 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 		banLog = models.UserBanLog{}
 	}
 
+	uptime := time.Since(banLog.UntilTo)
+	uptimeFormatted := formatDate(uptime)
+
 	c.HTML(http.StatusOK, "user_details", gin.H{
 		"title":            fmt.Sprintf("Admin-panel - Користувач %s", user.Username),
 		"user":             user,
 		"banLog":           banLog,
+		"uptimeFormatted":  uptimeFormatted,
 		"botName":          a.settings.BotName,
 		"stats":            stats,
 		"rating":           rating,
@@ -387,6 +391,21 @@ func (a *AdminPanel) userBan(c *gin.Context) {
 		return
 	}
 
+	// create new record
+	banLog := &models.UserBanLog{
+		UserID:     user.ID,
+		TypeStatus: "ban",
+		Reason:     "manual",
+		Active:     true,
+		UntilTo:    time.Now().AddDate(1,0,0),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+	// Save to database
+	if err := a.repo.CreateBanLog(banLog); err != nil {
+		logger.Error.Printf("Failed to create ban log: %v", err)
+	}
+
 	// Удаляем рейтинг пользователя и пересчитываем позиции всех в рейтинге
 	a.repo.DeleteRating(user.ID)
 
@@ -418,6 +437,18 @@ func (a *AdminPanel) userUnban(c *gin.Context) {
 	if err := a.repo.UpdateUser(user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	banLog, err := a.repo.GetActiveBanLog(user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	banLog.Active = false
+	// Save to database
+	if err := a.repo.UpdateBanLog(&banLog); err != nil {
+		logger.Error.Printf("Failed to create ban log: %v", err)
 	}
 
 	// Создаем рейтинг пользователя и пересчитываем позиции всех в рейтинге

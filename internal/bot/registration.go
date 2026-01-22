@@ -222,6 +222,21 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 		// Если пользователь младше 18 лет, баним его
 		stopAgeText := b.getText("stopage", language)
 
+		// create new record
+		log := &models.UserBanLog{
+			UserID:     dbUser.ID,
+			TypeStatus: UserStatusBanned,
+			Reason:     "stopage",
+			Active:     true,
+			UntilTo:    time.Now().AddDate(1, 0, 0), // блокуємо на рік
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		}
+		// Save to database
+		if err := b.service.GetRepo().CreateBanLog(log); err != nil {
+			logger.Error.Printf("Failed to create ban log: %v", err)
+		}
+
 		// Обновляем статус бана
 		dbUser.Status = UserStatusBanned
 		err = b.service.UpdateUser(dbUser)
