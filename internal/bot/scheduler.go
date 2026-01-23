@@ -1,99 +1,18 @@
 package bot
 
 import (
-	"context"
-	"fmt"
 	"strconv"
 	"time"
 
 	"roulette/internal/logger"
 	"roulette/internal/models"
-
-	"github.com/redis/go-redis/v9"
 )
-
-// StartUpdateCaptcha запускает планировщик заданий для обновления капчи
-func (b *Bot) StartUpdateCaptcha() {
-	// Запускаем планировщик для обновления капч
-
-	cont, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
-	// Список всіх користувачів що можуть отримати оновлення капчі через бездіяльність
-	allUsers, err := b.redisDB.LRange(cont, userCaptchaUpdateKey, 0, -1).Result()
-	if err != nil {
-		logger.Error.Printf("Failed to LRANGE all elements: %v", err)
-	}
-
-	if len(allUsers) == 0 {
-		return
-	}
-
-	for i := range allUsers {
-		userID, err := strconv.ParseInt(allUsers[i], 10, 64)
-		if err != nil {
-			logger.Error.Printf("Could not parse '%s': %v\n", allUsers[i], err)
-			continue
-		}
-
-		// Якщо користувач в списку на приймання капчі і немає відповіді протягом 30 сек оновлюєм капчу (3 рази)
-		userUpdateKey := fmt.Sprintf(userCaptchaUpdateCountPrefix, userID)
-		val, err := b.redisDB.Get(cont, userUpdateKey).Int64()
-		if err == redis.Nil {
-			// Ще не було відправки, створюємо запис
-			err = b.redisDB.Set(cont, userUpdateKey, 1, 0).Err()
-			if err != nil {
-				logger.Error.Printf("Error Set %d: %v", userID, err)
-			}
-			continue
-		} else if err != nil {
-			logger.Error.Printf("Error Get %d: %v", userID, err)
-			continue
-		}
-		val++
-
-		if val > 3 {
-
-			// Было отправлено 3 одновления капчи. Прекращаем отправку.
-			// Удаляем из список пользователей которые ожидают капчу
-			_, err := b.redisDB.LRem(cont, userCaptchaUpdateKey, 0, userID).Result()
-			if err != nil {
-				logger.Error.Printf("Failed to LREM: %d: %v", userID, err)
-			}
-			// Удаляем ключ
-			_, err = b.redisDB.Del(cont, userUpdateKey).Result()
-			if err != nil {
-				logger.Error.Printf("Error Del %d: %v", userID, err)
-			}
-
-		} else {
-
-			// Пользователь не превышает активность
-			// Обновляем кол-во
-			err = b.redisDB.Set(cont, userUpdateKey, val, redis.KeepTTL).Err()
-			if err != nil {
-				logger.Error.Printf("Error Set %d: %v", userID, err)
-			}
-
-			language, err := b.getUserLang(userID, "")
-			if err != nil {
-				logger.Error.Printf("Error getting user %d: %v", userID, err)
-				continue
-			}
-
-			// Присилаємо нову капчу
-			b.SendMessage(userID, b.captchaMessage(userID, language))
-		}
-	}
-}
 
 // StartUpdateCache запускает планировщик кеша
 func (b *Bot) StartUpdateCache() {
 	go func() {
 		fiveMinuteTicker := time.NewTicker(5 * time.Minute)
 		minuteTicker := time.NewTicker(1 * time.Minute)
-		thirtySecTicker := time.NewTicker(30 * time.Second)
-		defer thirtySecTicker.Stop()
 		defer fiveMinuteTicker.Stop()
 		defer minuteTicker.Stop()
 
@@ -103,8 +22,6 @@ func (b *Bot) StartUpdateCache() {
 
 		for {
 			select {
-			case <-thirtySecTicker.C:
-				b.StartUpdateCaptcha()
 			case <-minuteTicker.C:
 				b.refreshMinuteCache()
 				b.refreshUserCache()
@@ -161,9 +78,20 @@ func (b *Bot) refreshMinuteCache() {
 
 	settingsMap := map[string]int64{}
 	params := []string{
-		"captcha_bet_activity",  // Лимит ставок за период betActivityExpiration
-		"captcha_user_activity", // Лимит действий за период userActivityExpiration
-		"captcha_bet_points",    // Лимит баллов для запуска капчи
+		"captcha_bet_activity",      // Лимит ставок за период captcha_bet_activity_ttl
+		"captcha_bet_activity_ttl",  // Период ставок для лимита (сек)
+		"captcha_user_activity",     // Лимит действий за период captcha_user_activity_ttl
+		"captcha_user_activity_ttl", // Период действий для лимита (сек)
+		"captcha_bet_points",        // Лимит баллов для запуска капчи
+		"captcha_bet_duplicate_ttl", // Период дубликатов ставок (сек)
+
+		"captcha_ttl",           // Время ожидания капчи (мин)
+		"captcha_refresh_count", // Кол-во обновлений
+		"captcha_need_count",    // Кол-во этапов
+		"captcha_wrong_count",   // Кол-во неправильнх ответов
+		"captcha_ban_count",     // Кол-во банов
+		"captcha_ban_short_ttl", // Время бана short (мин)
+		"captcha_ban_long_ttl",  // Время бана long (мин)
 	}
 
 	for i := range params {

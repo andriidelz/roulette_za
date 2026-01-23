@@ -20,6 +20,10 @@ type Repository interface {
 	GetUserWithdrawals(userID uint, limit int) ([]models.Withdrawal, error)
 	SearchUsers(query string, page, perPage int) ([]models.User, int64, error)
 	UpdateUserActivity(userID uint) error
+	CreateBanLog(log *models.UserBanLog) error
+	UpdateBanLog(log *models.UserBanLog) error
+	GetActiveBanLog(userID uint) (models.UserBanLog, error)
+	UserUnban() error
 
 	// Статистика
 	GetUserTotalBets(userID uint) (int, error)

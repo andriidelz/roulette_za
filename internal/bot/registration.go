@@ -208,6 +208,9 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 	// Обновляем статус подтверждения возраста
 	dbUser.AgeVerified = &isAdult
 	dbUser.Registered = b.isRegistrationComplete(dbUser)
+	if dbUser.Registered && dbUser.Status == "" {
+		dbUser.Status = UserStatusActive
+	}
 	err = b.service.UpdateUser(dbUser)
 	if err != nil {
 		logger.Error.Printf("Error updating user age verification: %v", err)
@@ -219,8 +222,23 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 		// Если пользователь младше 18 лет, баним его
 		stopAgeText := b.getText("stopage", language)
 
+		// create new record
+		log := &models.UserBanLog{
+			UserID:     dbUser.ID,
+			TypeStatus: UserStatusBanned,
+			Reason:     "stopage",
+			Active:     true,
+			UntilTo:    time.Now().AddDate(1, 0, 0), // блокуємо на рік
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		}
+		// Save to database
+		if err := b.service.GetRepo().CreateBanLog(log); err != nil {
+			logger.Error.Printf("Failed to create ban log: %v", err)
+		}
+
 		// Обновляем статус бана
-		dbUser.Banned = true
+		dbUser.Status = UserStatusBanned
 		err = b.service.UpdateUser(dbUser)
 		if err != nil {
 			logger.Error.Printf("Error banning underage user: %v", err)
@@ -552,7 +570,7 @@ func (b *Bot) RequireCompleteRegistration(chatID, userID int64, command string) 
 	}
 
 	// Проверяем полноту регистрации
-	if dbUser.Banned || !b.isRegistrationComplete(dbUser) {
+	if dbUser.Status == UserStatusBanned || !b.isRegistrationComplete(dbUser) {
 
 		if dbUser.AgeVerified != nil && !*dbUser.AgeVerified {
 			// Пользователь не подтвердил совершеннолетие - показываем сообщение о блокировке
@@ -561,7 +579,7 @@ func (b *Bot) RequireCompleteRegistration(chatID, userID int64, command string) 
 			return false
 		}
 
-		if dbUser.Banned {
+		if dbUser.Status == UserStatusBanned {
 			// Пользователь забанен (RU/BY или несовершеннолетний)
 			if dbUser.Country == "RU" || dbUser.Country == "BY" {
 				b.SendMessage(chatID, b.prepareMessage("stopcountry", language))

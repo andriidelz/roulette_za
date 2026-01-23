@@ -61,9 +61,9 @@ const (
 	CommandAccount  = "account"
 	CommandFAQ      = "faq"
 	CommandSettings = "settings"
+	CommandCaptcha  = "captcha"
 
-	CallbackBack    = "back"
-	CallbackCaptcha = "captcha_"
+	CallbackBack = "back"
 
 	sharedData = "/files" // локація для файлів
 
@@ -401,19 +401,16 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData st
 	// Проверяем активность пользователя
 	// - беспрерывная игра
 	// - ставка на одну и ту же опцию
-	switch h.bot.captchaBetActivity(user.ID) {
-	case "needCaptcha":
+	if h.bot.captchaBetActivity(user.ID) {
 
 		// виводимо капчу у рендомний час з першої секунди 4 хвилини по 59 секунду 5 хвилини
 		go func() {
 			time.Sleep(time.Duration(rand.Intn(120)) * time.Second)
-			h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language))
+			h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language, "captcha_bet_activity"))
 		}()
-	}
-	switch h.bot.captchaBetDuplicate(user.ID, string(option)) {
-	case "needCaptcha":
+	} else if h.bot.captchaBetDuplicate(user.ID, string(option)) {
 		h.bot.answerCallbackQuery(query.ID, "", false)
-		h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language))
+		h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language, "captcha_bet_duplicate"))
 		return
 	}
 
@@ -586,23 +583,36 @@ func (b *Bot) handleMessage(message *telego.Message) {
 			}
 		}
 	}
-	if err == nil && dbUser.Banned {
-		// Если пользователь забанен, молча игнорируем сообщение
-		return
-	}
 
 	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
 
-	if b.captchaBan(user.ID) {
+	text := message.Text
+	command := ""
+	// Обработка команд, начинающихся с /
+	if len(text) > 0 && text[0] == '/' {
+		command = strings.Split(text[1:], " ")[0] // Получаем команду без аргументов
+		command = strings.ToLower(command)
+	}
+
+	// Перевірка статусів користувача
+	switch dbUser.Status {
+	case UserStatusBanned, UserStatusLockout:
+		// Если пользователь забанен, молча игнорируем сообщение
+		return
+	case UserStatusCaptcha: // На Captcha
+		// Обработка команды капчи - оновлення капчі
+		if command == CommandCaptcha {
+			b.SendMessage(user.ID, b.captchaMessage(user.ID, language, "refresh"))
+			return
+		}
+
+		// всі інші запити крім команди капчі молча игнорируем сообщение
 		return
 	}
 
 	// Проверка на повышенную активность пользователя
-	switch b.captchaUserActivity(user.ID) {
-	case "wait":
-		return
-	case "needCaptcha":
-		b.SendMessage(message.Chat.ID, b.captchaMessage(user.ID, language))
+	if b.captchaUserActivity(user.ID) {
+		b.SendMessage(message.Chat.ID, b.captchaMessage(user.ID, language, "captcha_user_activity"))
 		return
 	}
 
@@ -611,13 +621,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		user.LanguageCode = language
 	}
 
-	text := message.Text
-
-	// Обработка команд, начинающихся с /
-	if len(text) > 0 && text[0] == '/' {
-		command := strings.Split(text[1:], " ")[0] // Получаем команду без аргументов
-		command = strings.ToLower(command)
-
+	if command != "" {
 		switch command {
 		case CommandStart:
 			if isNewUser {
@@ -875,26 +879,35 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		user.LanguageCode = dbUser.LanguageCode
 	}
 
-	if b.captchaBan(user.ID) {
-		b.answerCallbackQuery(query.ID, b.getText("captcha_text", language), true)
-		return
-	}
-
 	callbackData := query.Data
 
-	// Обработка прохождения капчи
-	if strings.HasPrefix(callbackData, CallbackCaptcha) {
-		b.captchaCheck(query)
+	// Перевірка статусів користувача
+	switch dbUser.Status {
+	case UserStatusBanned: // На Banned не реагуємо
+		return
+	case UserStatusLockout: // На Lockout виводимо answerCallbackQuery
+		b.answerCallbackQuery(query.ID, b.getText("captcha_blocked_action", language), true)
+		return
+	case UserStatusCaptcha: // На Captcha
+		// Обработка прохождения капчи
+		if strings.HasPrefix(callbackData, CallbackCaptcha) {
+			if callbackData == CallbackCaptchaRefresh {
+				// captchaRefresh оновлення капчі
+				b.SendMessage(user.ID, b.captchaMessage(user.ID, language, "refresh"))
+			} else {
+				b.captchaCheck(query)
+			}
+			return
+		}
+
+		// всі інші колебеки крім проходження капчі виводимо answerCallbackQuery
+		b.answerCallbackQuery(query.ID, b.getText("captcha_text", language), true)
 		return
 	}
 
 	// Проверка на повышенную активность пользователя
-	switch b.captchaUserActivity(user.ID) {
-	case "wait":
-		b.answerCallbackQuery(query.ID, b.getText("captcha_text", language), true)
-		return
-	case "needCaptcha":
-		b.SendMessage(query.Message.GetChat().ID, b.captchaMessage(user.ID, language))
+	if b.captchaUserActivity(user.ID) {
+		b.SendMessage(query.Message.GetChat().ID, b.captchaMessage(user.ID, language, "captcha_user_activity"))
 		return
 	}
 
@@ -954,9 +967,24 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 				})
 			}
 
+			// create new record
+			log := &models.UserBanLog{
+				UserID:     dbUser.ID,
+				TypeStatus: UserStatusBanned,
+				Reason:     countryCode,
+				Active:     true,
+				UntilTo:    time.Now().AddDate(1, 0, 0), // блокуємо на рік
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			}
+			// Save to database
+			if err := b.service.GetRepo().CreateBanLog(log); err != nil {
+				logger.Error.Printf("Failed to create ban log: %v", err)
+			}
+
 			// Сохраняем выбранную страну и устанавливаем флаг бана
 			dbUser.Country = countryCode
-			dbUser.Banned = true
+			dbUser.Status = UserStatusBanned
 			if err := b.service.UpdateUser(dbUser); err != nil {
 				logger.Error.Printf("Error updating user: %v", err)
 			}
@@ -968,7 +996,9 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		// Для других стран - просто сохраняем выбор
 		dbUser.Country = countryCode
 		dbUser.Registered = b.isRegistrationComplete(dbUser)
-
+		if dbUser.Registered && dbUser.Status == "" {
+			dbUser.Status = UserStatusActive
+		}
 		if err := b.service.UpdateUser(dbUser); err != nil {
 			logger.Error.Printf("Error updating user country: %v", err)
 			if query.Message != nil {
@@ -1136,7 +1166,9 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		user.LanguageCode = langCode
 		dbUser.LanguageCode = langCode
 		dbUser.Registered = b.isRegistrationComplete(dbUser)
-
+		if dbUser.Registered && dbUser.Status == "" {
+			dbUser.Status = UserStatusActive
+		}
 		if err := b.service.UpdateUser(dbUser); err != nil {
 			b.answerCallbackQuery(query.ID, "Error saving language", true)
 			return
@@ -1686,6 +1718,7 @@ type MessageOptions struct {
 
 	// MethodName - Метод телеграма
 	MethodName string
+	Type       string
 
 	// MessageID - ID сообщения для изменения или удаления
 	MessageID int

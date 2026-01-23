@@ -106,28 +106,111 @@
               </div>
               <div class="card-body">
                 <form id="captcha-settings-form">
+                  <div>
+                    <h5 class="mb-0">Triggers</h5>
+                  </div>
                   <div class="mb-3">
-                    <label for="captcha_user_activity" class="form-label">Лимит действий за период 10 сек</label>
+                    <label for="captcha_user_activity" class="form-label">User activity Count</label>
                     <div class="input-group">
                       <input type="number" class="form-control" id="captcha_user_activity" name="captcha_user_activity" 
                              value="{{with index .settings "captcha_user_activity"}}{{.Value}}{{end}}" min="0" step="1">
                     </div>
                   </div>
                   <div class="mb-3">
-                    <label for="captcha_bet_activity" class="form-label">Лимит ставок за период 3 минуты</label>
+                    <label for="captcha_user_activity_ttl" class="form-label">User activity TTL (сек)</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_user_activity_ttl" name="captcha_user_activity_ttl" 
+                             value="{{with index .settings "captcha_user_activity_ttl"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="captcha_bet_activity" class="form-label">Bet activity Count</label>
                     <div class="input-group">
                       <input type="number" class="form-control" id="captcha_bet_activity" name="captcha_bet_activity" 
                              value="{{with index .settings "captcha_bet_activity"}}{{.Value}}{{end}}" min="0" step="1">
                     </div>
                   </div>
                   <div class="mb-3">
-                    <label for="captcha_bet_points" class="form-label">Лимит баллов</label>
+                    <label for="captcha_bet_activity_ttl" class="form-label">Bet activity TTL (сек)</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_bet_activity_ttl" name="captcha_bet_activity_ttl" 
+                             value="{{with index .settings "captcha_bet_activity_ttl"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="captcha_bet_duplicate_ttl" class="form-label">Bet duplicate TTL (сек)</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_bet_duplicate_ttl" name="captcha_bet_duplicate_ttl" 
+                             value="{{with index .settings "captcha_bet_duplicate_ttl"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="captcha_bet_points" class="form-label">Bet Points</label>
                     <div class="input-group">
                       <input type="number" class="form-control" id="captcha_bet_points" name="captcha_bet_points" 
                              value="{{with index .settings "captcha_bet_points"}}{{.Value}}{{end}}" min="0" step="1">
                     </div>
                   </div>
-                  
+                  <div>
+                    <h5 class="mb-0">Captcha</h5>
+                  </div>
+                  <div class="mb-3">
+                    <label for="captcha_ttl" class="form-label">Captcha TTL (мин)</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_ttl " name="captcha_ttl" 
+                             value="{{with index .settings "captcha_ttl"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="captcha_refresh_count" class="form-label">Captcha Refresh Count</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_refresh_count " name="captcha_refresh_count" 
+                             value="{{with index .settings "captcha_refresh_count"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="captcha_need_count" class="form-label">Captcha Need Count</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_need_count " name="captcha_need_count" 
+                             value="{{with index .settings "captcha_need_count"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+
+                  <div>
+                    <h5 class="mb-0">Bans</h5>
+                  </div>
+                  <div class="mb-3">
+                    <label for="captcha_wrong_count" class="form-label">Captcha Wrong Count</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_wrong_count " name="captcha_wrong_count" 
+                             value="{{with index .settings "captcha_wrong_count"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="captcha_ban_short_ttl" class="form-label">Captcha Ban Short TTL (мин)</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_ban_short_ttl" name="captcha_ban_short_ttl" 
+                             value="{{with index .settings "captcha_ban_short_ttl"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="captcha_ban_count" class="form-label">Captcha Ban Count</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_ban_count " name="captcha_ban_count" 
+                             value="{{with index .settings "captcha_ban_count"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="captcha_ban_long_ttl" class="form-label">Captcha Ban Long TTL (мин)</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="captcha_ban_long_ttl" name="captcha_ban_long_ttl" 
+                             value="{{with index .settings "captcha_ban_long_ttl"}}{{.Value}}{{end}}" min="0" step="1">
+                    </div>
+                  </div>
+
                   <button type="submit" class="btn btn-primary">Сохранить</button>
                 </form>
               </div>

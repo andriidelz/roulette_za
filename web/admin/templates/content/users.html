@@ -102,10 +102,14 @@
                                     <td>{{ printf "%.2f" .Balance }}$</td>
                                     <td class="d-none d-md-table-cell">{{ .DailyBets }}</td>
                                     <td>
-                                        {{ if .Banned }}
-                                        <span class="badge bg-danger">Бан</span>
-                                        {{ else if .Registered }}
-                                        <span class="badge bg-success">Активен</span>
+                                        {{ if eq .Status "ACTIVE" }}
+                                        <span class="badge bg-success">ACTIVE</span>
+                                        {{ else if eq .Status "BANNED" }}
+                                        <span class="badge bg-danger">BANNED</span>
+                                        {{ else if eq .Status "LOCKOUT" }}
+                                        <span class="badge bg-danger">LOCKOUT</span>
+                                        {{ else if eq .Status "CAPTCHA" }}
+                                        <span class="badge bg-danger">CAPTCHA</span>
                                         {{ else }}
                                         <span class="badge bg-danger">Не зарегистрирован</span>
                                         {{ end }}
@@ -126,7 +130,7 @@
                                             <button class="btn btn-sm btn-outline-warning quick-edit-btn" data-id="{{ .ID }}">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
-                                            {{ if .Banned }}
+                                            {{ if eq .Status "BANNED" }}
                                             <button class="btn btn-sm btn-outline-success unban-user" data-id="{{ .ID }}">
                                                 <i class="bi bi-unlock"></i>
                                             </button>

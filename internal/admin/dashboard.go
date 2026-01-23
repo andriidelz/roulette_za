@@ -46,24 +46,8 @@ func (a *AdminPanel) dashboard(c *gin.Context) {
 
 	// Расчет времени работы сервера
 	uptime := now.Sub(serverStartTime)
-
-	// Форматируем время работы в удобном для человека виде
-	days := int(uptime.Hours() / 24)
-	hours := int(uptime.Hours()) % 24
-	minutes := int(uptime.Minutes()) % 60
-	seconds := int(uptime.Seconds()) % 60
-
-	var uptimeFormatted string
-	if days > 0 {
-		uptimeFormatted = fmt.Sprintf("%d дн. %d ч. %d мин. %d сек.", days, hours, minutes, seconds)
-	} else if hours > 0 {
-		uptimeFormatted = fmt.Sprintf("%d ч. %d мин. %d сек.", hours, minutes, seconds)
-	} else if minutes > 0 {
-		uptimeFormatted = fmt.Sprintf("%d мин. %d сек.", minutes, seconds)
-	} else {
-		uptimeFormatted = fmt.Sprintf("%d сек.", seconds)
-	}
-
+	uptimeFormatted := formatDate(uptime)
+	
 	// Также сохраняем время запуска в удобном формате
 	serverStartFormatted := serverStartTime.Format("2006-01-02 15:04:05 MST")
 
@@ -108,4 +92,24 @@ func (a *AdminPanel) dashboard(c *gin.Context) {
 		"uptimeSeconds":   int(uptime.Seconds()),
 		"serverStartTime": serverStartFormatted,
 	})
+}
+
+// Форматируем время работы в удобном для человека виде
+func formatDate(uptime time.Duration) string {
+	days := int(uptime.Hours() / 24)
+	hours := int(uptime.Hours()) % 24
+	minutes := int(uptime.Minutes()) % 60
+	seconds := int(uptime.Seconds()) % 60
+
+	var uptimeFormatted string
+	if days > 0 {
+		uptimeFormatted = fmt.Sprintf("%d дн. %d ч. %d мин. %d сек.", days, hours, minutes, seconds)
+	} else if hours > 0 {
+		uptimeFormatted = fmt.Sprintf("%d ч. %d мин. %d сек.", hours, minutes, seconds)
+	} else if minutes > 0 {
+		uptimeFormatted = fmt.Sprintf("%d мин. %d сек.", minutes, seconds)
+	} else {
+		uptimeFormatted = fmt.Sprintf("%d сек.", seconds)
+	}
+	return uptimeFormatted
 }

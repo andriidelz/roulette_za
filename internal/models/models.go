@@ -30,7 +30,7 @@ type User struct {
 	WalletAddress  string  `gorm:"size:255"`
 	AvatarURL      string  `gorm:"size:512"`
 	Balance        float64 `gorm:"default:0"`
-	Banned         bool    `gorm:"default:false"`
+	Status         string  `gorm:"size:20"`       // BANNED|LOCKOUT|CAPTCHA|ACTIVE
 	Registered     bool    `gorm:"default:false"` // true if user finish registration
 	Bet            bool    `gorm:"default:false"` // true if user make bet
 	BetBoost       bool    `gorm:"default:false"` // true if user make boost bet
@@ -40,6 +40,22 @@ type User struct {
 	UpdatedAt      time.Time
 	BetAt          time.Time // time first Bet
 	BetBoostAt     time.Time // time first BetBoost
+}
+
+// UserBanLog
+type UserBanLog struct {
+	ID         uint   `gorm:"primaryKey"`
+	UserID     uint   `gorm:"index"`
+	TypeStatus string `gorm:"size:50"`
+	Reason     string `gorm:"size:50"`
+	ReasonMeta string `gorm:"size:500"`
+	Active     bool   `gorm:"default:false"` // true if user is currently banned because of this record
+	Stage      int    `gorm:"default:0"`
+	Wrong      int    `gorm:"default:0"`
+	Refresh    int    `gorm:"default:0"`
+	UntilTo    time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 // HashEntry представляє запис хешу (раунд) в базі даних

@@ -57,6 +57,22 @@ const (
 // MakeRequestDeferred Постановка сообщения в очередь на отправку
 func (b *Bot) MakeRequestDeferred(chatID, order int64, param MessageOptions) error {
 
+	// якщо не notify іде перевірка користувача
+	if param.Type != "notify" {
+		dbUser, _ := b.getUser(chatID)
+		// Перевірка статусів користувача
+		switch dbUser.Status {
+		case UserStatusBanned, UserStatusLockout:
+			// Если пользователь забанен, молча игнорируем сообщение
+			return nil
+		case UserStatusCaptcha:
+			if param.MethodName != sendCaptcha {
+				// всі інші запити крім команди капчі молча игнорируем сообщение
+				return nil
+			}
+		}
+	}
+
 	// Обрабатываем текст, заменяя литеральные \r\n на реальные переносы строк
 	// Используем двойной проход для избежания проблем с экранированием
 	processedText := strings.ReplaceAll(param.Text, "\\r\\n", "\n")
@@ -373,14 +389,25 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 			mes, err = b.sendPhoto(chatID, options)
 		} else {
 			mes, err = b.updatePhoto(chatID, messageID, options)
+			if err != nil {
+				// messageID існує в ключах
+				// якщо помилка при оновленні можливо повідолення з капчею видалено або очищено чат
+				b.redisDB.Del(cont, fmt.Sprintf(userCaptchaMessPrefix, chatID)).Err()
+				mes, err = b.sendPhoto(chatID, options)
+			}
 		}
+
 		if err != nil {
 			logger.Error.Printf("Error send %d: %v", chatID, err)
 		} else if mes != nil {
 			messageID = mes.MessageID
 
+			b.settingsMutex.Lock()
+			captchaTTL, _ := b.settings["captcha_ttl"]
+			b.settingsMutex.Unlock()
+
 			// для капчі зберігаємо id останньої відправленої капчі щоб замінити її
-			err = b.redisDB.Set(cont, captchaMess, messageID, userCaptchaExpiration).Err()
+			err = b.redisDB.Set(cont, captchaMess, messageID, time.Minute*time.Duration(captchaTTL)).Err()
 			if err != nil {
 				logger.Error.Printf("Error Set %d: %v", chatID, err)
 			}
