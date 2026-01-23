@@ -147,8 +147,14 @@ func PeriodControl(dateFrom, dateTo, period *string) (bool, error) {
 	} else if *dateTo == "" || *dateFrom == "" {
 		return false, errors.New("введенна только одна дата, введите вторую")
 	} else {
-		before, err := CheckTimeBefore(dateTo, dateFrom)
-		if err {
+		to, err := time.Parse("2006-01-02", *dateTo)
+		if err != nil {
+			return false, errors.New("формат даты указан неправильно, нужно YYYY-MM-DD")
+		}
+		to = to.AddDate(0, 0, 1)
+		*dateTo = to.Format("2006-01-02")
+		before, correct := CheckTimeBefore(dateTo, dateFrom)
+		if correct {
 			return false, errors.New("формат даты указан неправильно, нужно YYYY-MM-DD")
 		}
 		if !before {

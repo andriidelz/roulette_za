@@ -940,6 +940,23 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 		options.InlineKeyboard = inlineKeyboard
 
 		h.bot.SendMessage(userID, options)
+
+		// Якщо це перша ставка то оновлюємо профіль вказуючи що була зроблена ставка
+		if !dbUser.Bet {
+			dbUser.Bet = true
+			dbUser.BetAt = time.Now()
+			if err := h.service.UpdateUser(dbUser); err != nil {
+				logger.Error.Printf("Error updating user: %v", err)
+			}
+		}
+		// Якщо це перша ставка boost то оновлюємо профіль вказуючи що була зроблена ставка
+		if !dbUser.BetBoost && pointBoost > 0 {
+			dbUser.BetBoost = true
+			dbUser.BetBoostAt = time.Now()
+			if err := h.service.UpdateUser(dbUser); err != nil {
+				logger.Error.Printf("Error updating user: %v", err)
+			}
+		}
 	}()
 
 	return nil

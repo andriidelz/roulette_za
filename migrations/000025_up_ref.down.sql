@@ -1,0 +1,4 @@
+ALTER TABLE users DROP COLUMN bet;
+ALTER TABLE users DROP COLUMN bet_boost;
+ALTER TABLE users DROP COLUMN bet_at;
+ALTER TABLE users DROP COLUMN bet_boost_at;

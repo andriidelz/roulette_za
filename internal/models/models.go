@@ -32,10 +32,14 @@ type User struct {
 	Balance        float64 `gorm:"default:0"`
 	Status         string  `gorm:"size:20"`       // BANNED|LOCKOUT|CAPTCHA|ACTIVE
 	Registered     bool    `gorm:"default:false"` // true if user finish registration
+	Bet            bool    `gorm:"default:false"` // true if user make bet
+	BetBoost       bool    `gorm:"default:false"` // true if user make boost bet
 	AgeVerified    *bool   `gorm:"default:null"`  // Указатель на bool для возможности хранения NULL значения
 	LastActivityAt time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	BetAt          time.Time // time first Bet
+	BetBoostAt     time.Time // time first BetBoost
 }
 
 // UserBanLog
@@ -165,6 +169,18 @@ type SourceKey struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+// Вивід статистики по sources
+type (
+	SourcesKeysStruct struct {
+		Date       string    `json:"date"`
+		SourceKey  SourceKey `json:"source"`
+		CountOpen  int       `json:"count_open"`
+		CountReg   int       `json:"count_reg"`
+		CountBet   int       `json:"count_bet"`
+		CountBoost int       `json:"count_boost"`
+	}
+)
 
 // Призовий фонд за тиждень
 type PrizeFund struct {

@@ -8,14 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type (
-	sourcesKeysStruct struct {
-		SourceKey models.SourceKey
-		CountOpen interface{}
-		CountReg  interface{}
-	}
-)
-
 // Обработчик списка источников
 func (a *AdminPanel) sourcesKeysPage(c *gin.Context) {
 	sources, err := a.repo.GetAllSourceKeys()
@@ -35,17 +27,14 @@ func (a *AdminPanel) sourcesKeysPage(c *gin.Context) {
 		return
 	}
 
-	statData := []sourcesKeysStruct{}
+	statData := []models.SourcesKeysStruct{}
 	for i := range sources {
-		data := sourcesKeysStruct{SourceKey: sources[i]}
+		data := models.SourcesKeysStruct{}
 		if count, ok := stat[sources[i].Key]; ok {
-			if count_open, ok1 := count["count_open"]; ok1 {
-				data.CountOpen = count_open
-			}
-			if count_reg, ok1 := count["count_reg"]; ok1 {
-				data.CountReg = count_reg
-			}
+			data = count
 		}
+		data.SourceKey = sources[i]
+
 		statData = append(statData, data)
 	}
 

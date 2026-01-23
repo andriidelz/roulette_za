@@ -83,15 +83,11 @@ func (a *AdminPanel) sourcesGetAll(c *gin.Context) {
 		return
 	}
 
-	logger.Error.Println(params.Period, params.DateFrom, params.DateTo)
-
 	_, err := utils.PeriodControl(&params.DateFrom, &params.DateTo, &params.Period)
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-
-	logger.Error.Println(params.DateFrom, params.DateTo)
 
 	// Получаем статистику с разбивкой по источникам и по дням
 	result, err := a.service.GetSourceByDate(params.DateFrom, params.DateTo)

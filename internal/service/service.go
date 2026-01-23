@@ -52,8 +52,8 @@ type Service interface {
 	GetSuccessRateStats() (map[string]float64, error)
 	GetTopPlayersBySuccessRate(limit int) ([]map[string]interface{}, error)
 	GetTopPlayersByAttempts(limit int) ([]map[string]interface{}, error)
-	GetSourceByDate(dateFrom, dateTo string) ([]map[string]interface{}, error)
-	GetSource() (map[string]map[string]interface{}, error)
+	GetSourceByDate(dateFrom, dateTo string) ([]models.SourcesKeysStruct, error)
+	GetSource() (map[string]models.SourcesKeysStruct, error)
 
 	// Рейтинги
 	GetWeeklyRating(limit int) ([]models.WeeklyRating, error)
