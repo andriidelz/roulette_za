@@ -250,7 +250,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 		banLog = models.UserBanLog{}
 	}
 
-	uptime := time.Since(banLog.UntilTo)
+	uptime := time.Until(banLog.UntilTo)
 	uptimeFormatted := formatDate(uptime)
 
 	c.HTML(http.StatusOK, "user_details", gin.H{

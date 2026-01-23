@@ -408,8 +408,7 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData st
 			time.Sleep(time.Duration(rand.Intn(120)) * time.Second)
 			h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language, "captcha_bet_activity"))
 		}()
-	}
-	if h.bot.captchaBetDuplicate(user.ID, string(option)) {
+	} else if h.bot.captchaBetDuplicate(user.ID, string(option)) {
 		h.bot.answerCallbackQuery(query.ID, "", false)
 		h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language, "captcha_bet_duplicate"))
 		return
@@ -1719,6 +1718,7 @@ type MessageOptions struct {
 
 	// MethodName - Метод телеграма
 	MethodName string
+	Type       string
 
 	// MessageID - ID сообщения для изменения или удаления
 	MessageID int

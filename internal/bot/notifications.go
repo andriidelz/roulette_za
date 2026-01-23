@@ -161,6 +161,7 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 			PhotoFileID:    notificationData.ImageURL, // или PhotoPath, если это локальный путь
 			InlineKeyboard: inlineKeyboard,
 			ParseMode:      "HTML",
+			Type:           "notify",
 		})
 		if err != nil {
 			return fmt.Errorf("error sending notification with image: %w", err)
@@ -171,6 +172,7 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 			Text:           fmt.Sprintf("<b>%s</b>\n\n%s", notificationData.Title, notificationData.Message),
 			InlineKeyboard: inlineKeyboard,
 			ParseMode:      "HTML",
+			Type:           "notify",
 		})
 		if err != nil {
 			return fmt.Errorf("error sending notification: %w", err)
