@@ -32,23 +32,14 @@ UPDATE users SET status = 'ACTIVE' WHERE registered = true AND banned = false;
 UPDATE users SET status = 'BANNED' WHERE registered = true AND banned = true;
 
 INSERT INTO localizations (key, language, value) VALUES
-    ('captcha_manual_ban', 'uk', 'Вас було забанено'),
-    ('captcha_manual_captcha', 'uk', 'Вам пропонується пройти капчу'),
-    ('captcha_manual_active', 'uk', 'Вас розблоковано'),
     ('captcha_refresh', 'uk', 'Оновити капчу'),
     ('captcha_blocked_action', 'uk', 'Пройдіть капчу'),
     ('captcha_stage_title', 'uk', 'Етап %d / %d'),
     ('captcha_next', 'uk', 'Вітаємо з успішним проходженням капчі! Пройдіть наступний етап'),
-    ('captcha_manual_ban', 'ru', 'Вас был забанено'), 
-    ('captcha_manual_captcha', 'ru', 'Вам предлагается пройти капчу'), 
-    ('captcha_manual_active', 'ru', 'Вас разблокировано'),
     ('captcha_refresh', 'ru', 'Обновить капчу'),
     ('captcha_blocked_action', 'ru', 'Пройдите капчу'),
     ('captcha_stage_title', 'ru', 'Этап %d / %d'),
     ('captcha_next', 'ru', 'Поздравляем с успешным прохождением капчи! Пройдите следующий этап'),
-    ('captcha_manual_ban', 'en', 'You have been banned'),
-    ('captcha_manual_captcha', 'en', 'You are asked to pass the captcha'),
-    ('captcha_manual_active', 'en', 'You are unblocked'),
     ('captcha_refresh', 'en', 'Refresh captcha'),
     ('captcha_blocked_action', 'en', 'Resolve captcha'),
     ('captcha_stage_title', 'en', 'Stage %d / %d'),
