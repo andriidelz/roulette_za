@@ -250,6 +250,13 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 		banLog = models.UserBanLog{}
 	}
 
+	// історія блокувань користувача
+	banLogsHistory, err := a.repo.GetUserBanLogs(user.ID, 10)
+	if err != nil {
+		logger.Error.Printf("Error getting user withdrawals: %v", err)
+		banLogsHistory = []models.UserBanLog{}
+	}
+
 	uptime := time.Until(banLog.UntilTo)
 	uptimeFormatted := formatDate(uptime)
 
@@ -257,6 +264,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 		"title":            fmt.Sprintf("Admin-panel - Користувач %s", user.Username),
 		"user":             user,
 		"banLog":           banLog,
+		"banLogsHistory":   banLogsHistory,
 		"uptimeFormatted":  uptimeFormatted,
 		"botName":          a.settings.BotName,
 		"stats":            stats,
@@ -384,8 +392,18 @@ func (a *AdminPanel) userBan(c *gin.Context) {
 		return
 	}
 
+	duration := c.PostForm("duration")
+	untilTo, err := strconv.ParseInt(duration, 10, 64)
+	if err != nil || untilTo == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат периода"})
+		return
+	}
+
+	note := c.PostForm("note")
+	ban_type := c.PostForm("ban_type")
+
 	// Блокуємо користувача
-	user.Status = "BANNED"
+	user.Status = ban_type
 	if err := a.repo.UpdateUser(user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -394,10 +412,11 @@ func (a *AdminPanel) userBan(c *gin.Context) {
 	// create new record
 	banLog := &models.UserBanLog{
 		UserID:     user.ID,
-		TypeStatus: "BANNED",
+		TypeStatus: ban_type,
 		Reason:     "manual",
+		ReasonMeta: note,
 		Active:     true,
-		UntilTo:    time.Now().AddDate(1,0,0),
+		UntilTo:    time.Now().Add(time.Minute * time.Duration(untilTo)),
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
 	}
@@ -406,12 +425,14 @@ func (a *AdminPanel) userBan(c *gin.Context) {
 		logger.Error.Printf("Failed to create ban log: %v", err)
 	}
 
-	// Удаляем рейтинг пользователя и пересчитываем позиции всех в рейтинге
-	a.repo.DeleteRating(user.ID)
+	if user.Status == "BANNED" {
+		// Удаляем рейтинг пользователя и пересчитываем позиции всех в рейтинге
+		a.repo.DeleteRating(user.ID)
 
-	// Обновляем все рейтинги
-	year, week := time.Now().ISOWeek()
-	a.repo.RefreshWeeklyRatingsPosition(year, week)
+		// Обновляем все рейтинги
+		year, week := time.Now().ISOWeek()
+		a.repo.RefreshWeeklyRatingsPosition(year, week)
+	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
