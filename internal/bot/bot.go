@@ -3,7 +3,6 @@ package bot
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"runtime"
 	"strconv"
@@ -402,16 +401,9 @@ func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData st
 	// - беспрерывная игра
 	// - ставка на одну и ту же опцию
 	if h.bot.captchaBetActivity(user.ID) {
-
-		// виводимо капчу у рендомний час з першої секунди 4 хвилини по 59 секунду 5 хвилини
-		go func() {
-			time.Sleep(time.Duration(rand.Intn(120)) * time.Second)
-			h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language, "captcha_bet_activity"))
-		}()
+		h.bot.setCaptchaStatus(user.ID, "captcha_bet_activity")
 	} else if h.bot.captchaBetDuplicate(user.ID, string(option)) {
-		h.bot.answerCallbackQuery(query.ID, "", false)
-		h.bot.SendMessage(user.ID, h.bot.captchaMessage(user.ID, language, "captcha_bet_duplicate"))
-		return
+		h.bot.setCaptchaStatus(user.ID, "captcha_bet_duplicate")
 	}
 
 	// Отримуєм раунд
@@ -600,9 +592,25 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		// Если пользователь забанен, молча игнорируем сообщение
 		return
 	case UserStatusCaptcha: // На Captcha
+
+		cont, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		captchaKey := fmt.Sprintf(userCaptchaKeyPrefix, user.ID)
+		_, err := b.redisDB.Get(cont, captchaKey).Result()
+		if err == redis.Nil {
+
+			// Ключ не знайдений, отже капча ще не була надіслана, надсилаємо
+			b.MakeRequestDeferred(user.ID, 9, b.captchaMessage(user.ID, language, "new"))
+			return
+
+		} else if err != nil {
+			logger.Error.Printf("Error Get %d: %v", user.ID, err)
+		}
+
 		// Обработка команды капчи - оновлення капчі
 		if command == CommandCaptcha {
-			b.SendMessage(user.ID, b.captchaMessage(user.ID, language, "refresh"))
+			b.MakeRequestDeferred(user.ID, 9, b.captchaMessage(user.ID, language, "refresh"))
 			return
 		}
 
@@ -612,8 +620,7 @@ func (b *Bot) handleMessage(message *telego.Message) {
 
 	// Проверка на повышенную активность пользователя
 	if b.captchaUserActivity(user.ID) {
-		b.SendMessage(message.Chat.ID, b.captchaMessage(user.ID, language, "captcha_user_activity"))
-		return
+		b.setCaptchaStatus(user.ID, "captcha_user_activity")
 	}
 
 	// Обновляем язык пользователя из API, если он отличается
@@ -893,22 +900,40 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		if strings.HasPrefix(callbackData, CallbackCaptcha) {
 			if callbackData == CallbackCaptchaRefresh {
 				// captchaRefresh оновлення капчі
-				b.SendMessage(user.ID, b.captchaMessage(user.ID, language, "refresh"))
+				b.MakeRequestDeferred(user.ID, 9, b.captchaMessage(user.ID, language, "refresh"))
 			} else {
 				b.captchaCheck(query)
 			}
 			return
 		}
 
-		// всі інші колебеки крім проходження капчі виводимо answerCallbackQuery
-		b.answerCallbackQuery(query.ID, b.getText("captcha_text", language), true)
-		return
+		// При наявності капчі можна отримати результат
+		if !strings.HasPrefix(callbackData, CallbackGetResultRound) {
+
+			cont, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			captchaKey := fmt.Sprintf(userCaptchaKeyPrefix, user.ID)
+			_, err := b.redisDB.Get(cont, captchaKey).Result()
+			if err == redis.Nil {
+
+				// Ключ не знайдений, отже капча ще не була надіслана, надсилаємо
+				b.MakeRequestDeferred(user.ID, 9, b.captchaMessage(user.ID, language, "new"))
+				return
+
+			} else if err != nil {
+				logger.Error.Printf("Error Get %d: %v", user.ID, err)
+			}
+
+			// всі інші колебеки крім проходження капчі виводимо answerCallbackQuery
+			b.answerCallbackQuery(query.ID, b.getText("captcha_text", language), true)
+			return
+		}
 	}
 
 	// Проверка на повышенную активность пользователя
 	if b.captchaUserActivity(user.ID) {
-		b.SendMessage(query.Message.GetChat().ID, b.captchaMessage(user.ID, language, "captcha_user_activity"))
-		return
+		b.setCaptchaStatus(user.ID, "captcha_user_activity")
 	}
 
 	// Обработка нажатия на кнопку пагинации стран

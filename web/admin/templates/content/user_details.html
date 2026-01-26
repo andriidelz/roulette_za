@@ -298,7 +298,7 @@
                   <dt class="col-sm-5">Type:</dt>
                   <dd class="col-sm-7">{{ .banLog.TypeStatus }}</dd>
                   <dt class="col-sm-5">Until:</dt>
-                  <dd class="col-sm-7">{{ .banLog.UntilTo }} {{ .uptimeFormatted }}</dd>
+                  <dd class="col-sm-7">{{ .banLog.UntilTo }} / {{ .uptimeFormatted }}</dd>
                   <dt class="col-sm-5">ReasonMeta:</dt>
                   <dd class="col-sm-7">{{ .banLog.ReasonMeta }}</dd>                                                    
                   <dt class="col-sm-5">Stage:</dt>
@@ -306,13 +306,90 @@
                   <dt class="col-sm-5">Wrong:</dt>
                   <dd class="col-sm-7">{{ .banLog.Wrong }}</dd>
                   <dt class="col-sm-5">Refresh:</dt>
-                  <dd class="col-sm-7">{{ .banLog.Refresh }}</dd>                      
-                </div>
+                  <dd class="col-sm-7">{{ .banLog.Refresh }}</dd>
                 {{ end }}
+
+                <hr>
+                
               </div>
             </div>
           </div>
 
+        </div>
+
+        <div class="row">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header">
+                <h5 class="mb-0">История блокировок</h5>
+              </div>
+              <div class="card-body">
+                <div class="tab-content" >
+                  <div class="tab-pane fade show active" id="bets" role="tabpanel" aria-labelledby="bets-tab">
+                    <div class="table-responsive">
+                      <table class="table table-striped">
+                        <thead>
+                          <tr>
+                            <th>ID</th>
+                            <th>Created</th>
+                            <th>Until</th>
+                            <th>Type</th>
+                            <th>Reason</th>
+                            <th>Meta</th>
+                            <th>Active</th>
+                            <th>Stage</th>
+                            <th>Wrong</th>
+                            <th>Refresh</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {{ if .banLogsHistory }}
+                            {{ range .banLogsHistory }}
+                            <tr>
+                              <td>{{ .ID }}</td>
+                              <td>{{ .CreatedAt.Format "02.01.2006 15:04" }}</td>
+                              <td>{{ .UntilTo.Format "02.01.2006 15:04" }}</td>
+                              <td>
+                                {{ if eq .TypeStatus "BANNED" }}
+                                <span class="badge bg-danger">BANNED</span>
+                                {{ else if eq .TypeStatus "LOCKOUT" }}
+                                <span class="badge bg-warning">LOCKOUT</span>
+                                {{ else if eq .TypeStatus "CAPTCHA" }}
+                                <span class="badge bg-info">CAPTCHA</span>
+                                {{ else }}
+                                <span class="badge bg-success">?</span>
+                                {{ end }}
+                              </td>
+                              <td>{{ .Reason }}</td>
+                              <td>{{ .ReasonMeta }}</td>
+                              <td>
+                                {{ if .Active }}
+                                <span class="badge bg-danger">Активный</span>
+                                {{ end }}
+                              </td>
+                              <td>{{ .Stage }}</td>
+                              <td>{{ .Wrong }}</td>
+                              <td>{{ .Refresh }}</td>
+                            </tr>
+                            {{ end }}
+                          {{ else }}
+                            <tr>
+                              <td colspan="5" class="text-center">
+                                <div class="alert alert-info mb-0">
+                                  <i class="bi bi-info-circle me-2"></i>Нет блокировок
+                                </div>
+                              </td>
+                            </tr>
+                          {{ end }}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="row">
@@ -579,6 +656,49 @@
     </div>
   </div>
 
+    <!-- Модальное окно бана -->
+  <div class="modal fade" id="banModal" tabindex="-1" aria-labelledby="banModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="banModalLabel">Управление баном</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          
+          <form id="banForm">
+            <div class="mb-3">
+              <label for="ban_type" class="form-label">Тип</label>
+              <select class="form-select" id="ban_type" name="ban_type">
+                <option value="BANNED">BANNED</option>
+                <option value="CAPTCHA">CAPTCHA</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="duration" class="form-label">Период</label>
+              <select class="form-select" id="duration" name="duration">
+                <option value="15">15 минут</option>
+                <option value="60">1 Час</option>
+                <option value="1440">1 День</option>
+                <option value="525600">1 Год</option>
+              </select>
+            </div>
+            
+            <div class="mb-3">
+              <label for="ban-note" class="form-label">Примечание (не обязательно)</label>
+              <textarea class="form-control" id="ban-note" name="note" rows="2"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="button" class="btn btn-primary" id="update-ban-btn">Применить бан</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   {{block "additionalStyles" .}}
   <style>
     .wallet-address {
@@ -639,20 +759,38 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
   $(document).ready(function() {
-    // Бан пользователя
+    
+    // Открытие модального окна
     $('.ban-user-btn').click(function() {
-      var userId = $(this).data('id');
-      if (confirm('Вы уверены, что хотите забанить этого пользователя?')) {
-        $.post('/admin/user/' + userId + '/ban', function(data) {
-          if (data.success) {
-            window.location.reload();
-          } else {
-            alert('Ошибка: ' + data.error);
-          }
-        });
-      }
+      $('#banModal').modal('show');
     });
     
+    // Бан пользователя
+    $('#update-ban-btn').click(function() {
+      let duration = $('#duration').val();
+      let ban_type = $('#ban_type').val();
+      let note = $('#ban-note').val();
+
+      if (!duration || duration <= 0) {
+        alert('Пожалуйста, выберите период');
+        return;
+      }
+      
+      $.post('/admin/user/{{ .user.ID }}/ban', {
+        duration: duration,
+        ban_type: ban_type,
+        note: note
+      }, function(response) {
+        if (response.success) {
+          $('#banModal').modal('hide');
+          alert('Бан успешно применен');
+          window.location.reload();
+        } else {
+          alert('Ошибка: ' + response.error);
+        }
+      });
+    });
+
     // Разбан пользователя
     $('.unban-user-btn').click(function() {
       var userId = $(this).data('id');

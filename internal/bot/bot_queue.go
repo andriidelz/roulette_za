@@ -66,8 +66,9 @@ func (b *Bot) MakeRequestDeferred(chatID, order int64, param MessageOptions) err
 			// Если пользователь забанен, молча игнорируем сообщение
 			return nil
 		case UserStatusCaptcha:
-			if param.MethodName != sendCaptcha {
-				// всі інші запити крім команди капчі молча игнорируем сообщение
+			if param.MethodName != sendCaptcha && param.Type != "result" {
+				// всі інші запити крім команди капчі і результатів notifyPlayerAboutResult
+				// молча игнорируем сообщение
 				return nil
 			}
 		}
@@ -256,6 +257,15 @@ func (b *Bot) sendBotQueue() {
 			for w := 1; w <= workerCount; w++ {
 				go func(workerId int) {
 					for chatID := range jobs {
+
+						// якщо не notify іде перевірка користувача
+						dbUser, _ := b.getUser(chatID)
+						// Перевірка статусів користувача
+						switch dbUser.Status {
+						case UserStatusBanned, UserStatusLockout:
+							// Если пользователь забанен, молча игнорируем сообщение
+							continue
+						}
 						// Remove cleanup from here!
 						// Don't call ZRemRangeByScore in worker
 
@@ -277,18 +287,28 @@ func (b *Bot) sendBotQueue() {
 							continue
 						}
 
-						// Remove message from queue
-						err = b.redisDB.ZRem(ctx, queueKey, msgs[0]).Err()
-						if err != nil {
-							logger.Error.Printf("Error ZRem %s: %v", queueKey, err)
-						}
-
 						// Unmarshal and send
 						options := MessageOptions{}
 						if err = json.Unmarshal([]byte(msgs[0]), &options); err != nil {
 							logger.Error.Printf("Worker %d: Error Unmarshal for %s: %v\n", workerId, queueKey, err)
 							results <- false
 							continue
+						}
+
+						switch dbUser.Status {
+						case UserStatusCaptcha:
+							if options.MethodName != sendCaptcha && options.Type != "result" {
+								// всі інші запити крім команди капчі і результатів notifyPlayerAboutResult
+								// молча игнорируем сообщение
+								results <- false
+								continue
+							}
+						}
+
+						// Remove message from queue
+						err = b.redisDB.ZRem(ctx, queueKey, msgs[0]).Err()
+						if err != nil {
+							logger.Error.Printf("Error ZRem %s: %v", queueKey, err)
 						}
 
 						b.sendDeferredMessage(chatID, options)

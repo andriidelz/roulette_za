@@ -414,23 +414,6 @@
                   </div>
                 </div>
                 
-                <div class="col-md-6">
-                  <div class="card h-100">
-                    <div class="card-header">
-                      <h5 class="mb-0">Статус</h5>
-                    </div>
-                    <div class="card-body">
-                      <div id="user-status-controls">
-                        <button type="button" class="btn btn-danger w-100 mb-2" id="ban-user-btn">
-                          <i class="bi bi-lock"></i> Забанить пользователя
-                        </button>
-                        <button type="button" class="btn btn-success w-100" id="unban-user-btn" style="display:none">
-                          <i class="bi bi-unlock"></i> Разбанить пользователя
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </form>
           </div>
@@ -438,6 +421,49 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-primary" id="save-user-btn">Сохранить</button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+   <!-- Модальное окно бана -->
+  <div class="modal fade" id="banModal" tabindex="-1" aria-labelledby="banModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="banModalLabel">Управление баном</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          
+          <form id="banForm">
+            <input type="hidden" id="ban-user-id" name="id">
+            <div class="mb-3">
+              <label for="ban_type" class="form-label">Тип</label>
+              <select class="form-select" id="ban_type" name="ban_type">
+                <option value="BANNED">BANNED</option>
+                <option value="CAPTCHA">CAPTCHA</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="duration" class="form-label">Период</label>
+              <select class="form-select" id="duration" name="duration">
+                <option value="15">15 минут</option>
+                <option value="60">1 Час</option>
+                <option value="1440">1 День</option>
+                <option value="525600">1 Год</option>
+              </select>
+            </div>
+            
+            <div class="mb-3">
+              <label for="ban-note" class="form-label">Примечание (не обязательно)</label>
+              <textarea class="form-control" id="ban-note" name="note" rows="2"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="button" class="btn btn-primary" id="update-ban-btn">Применить бан</button>
         </div>
       </div>
     </div>

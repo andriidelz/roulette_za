@@ -23,6 +23,7 @@ type Repository interface {
 	CreateBanLog(log *models.UserBanLog) error
 	UpdateBanLog(log *models.UserBanLog) error
 	GetActiveBanLog(userID uint) (models.UserBanLog, error)
+	GetUserBanLogs(userID uint, limit int) ([]models.UserBanLog, error)
 	UserUnban() error
 
 	// Статистика

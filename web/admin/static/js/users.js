@@ -1,16 +1,37 @@
 $(document).ready(function () {
-    // Бан пользователя
+
+    // Открытие модального окна
     $('.ban-user').click(function () {
         var userId = $(this).data('id');
-        if (confirm('Вы уверены, что хотите забанить этого пользователя?')) {
-            $.post('/admin/user/' + userId + '/ban', function (data) {
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    alert('Ошибка: ' + data.error);
-                }
-            });
+        $('#ban-user-id').val(userId);
+        $('#banModal').modal('show');
+    });
+    
+    // Бан пользователя
+    $('#update-ban-btn').click(function() {
+      let duration = $('#duration').val();
+      let note = $('#ban-note').val();
+      let userId =  $('#ban-user-id').val();
+      let ban_type = $('#ban_type').val();
+
+      if (!duration || duration <= 0) {
+        alert('Пожалуйста, выберите период');
+        return;
+      }
+      
+      $.post('/admin/user/' + userId + '/ban', {
+        duration: duration,
+        ban_type: ban_type,
+        note: note
+      }, function(response) {
+        if (response.success) {
+          $('#banModal').modal('hide');
+          alert('Бан успешно применен');
+          window.location.reload();
+        } else {
+          alert('Ошибка: ' + response.error);
         }
+      });
     });
 
     // Разбан пользователя
@@ -120,44 +141,6 @@ $(document).ready(function () {
 
                 // Текущий баланс
                 $('#current-balance strong').text(data.user.Balance + ' $');
-
-                // Настройка статуса бана
-                if (data.user.Status === 'BANNED') {
-                    $('#ban-user-btn').hide();
-                    $('#unban-user-btn').show();
-                } else {
-                    $('#ban-user-btn').show();
-                    $('#unban-user-btn').hide();
-                }
-
-                // Устанавливаем обработчики для кнопок бана/разбана
-                $('#ban-user-btn').off('click').on('click', function () {
-                    if (confirm('Вы уверены, что хотите забанить этого пользователя?')) {
-                        $.post('/admin/user/' + data.user.ID + '/ban', function (response) {
-                            if (response.success) {
-                                $('#ban-user-btn').hide();
-                                $('#unban-user-btn').show();
-                                alert('Пользователь успешно забанен');
-                            } else {
-                                alert('Ошибка: ' + response.error);
-                            }
-                        });
-                    }
-                });
-
-                $('#unban-user-btn').off('click').on('click', function () {
-                    if (confirm('Вы уверены, что хотите разбанить этого пользователя?')) {
-                        $.post('/admin/user/' + data.user.ID + '/unban', function (response) {
-                            if (response.success) {
-                                $('#unban-user-btn').hide();
-                                $('#ban-user-btn').show();
-                                alert('Пользователь успешно разбанен');
-                            } else {
-                                alert('Ошибка: ' + response.error);
-                            }
-                        });
-                    }
-                });
 
                 // Обработчик для изменения баланса
                 $('#update-balance-btn').off('click').on('click', function () {

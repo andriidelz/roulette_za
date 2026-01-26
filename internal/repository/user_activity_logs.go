@@ -173,11 +173,27 @@ func (r *PostgresRepository) UpdateBanLog(log *models.UserBanLog) error {
 // GetActiveBanLog отримання активного бану по користувачу (якщо такий є)
 func (r *PostgresRepository) GetActiveBanLog(userID uint) (models.UserBanLog, error) {
 	var log models.UserBanLog
-	err := r.db.Where("user_id = ? AND active = ?", userID, true).First(&log).Error
+	err := r.db.Where("user_id = ? AND active = ?", userID, true).Order("id DESC").First(&log).Error
 	if err != nil {
 		return models.UserBanLog{}, err
 	}
 	return log, nil
+}
+
+// GetUserBanLogs історія блокувань користувача
+func (r *PostgresRepository) GetUserBanLogs(userID uint, limit int) ([]models.UserBanLog, error) {
+	var banLogsHistory []models.UserBanLog
+	query := r.db.Where("user_id = ?", userID).Order("created_at desc")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Find(&banLogsHistory).Error; err != nil {
+		return nil, err
+	}
+
+	return banLogsHistory, nil
 }
 
 // UserUnban переведення всіх забанених користувачів час який підійшов в статус active
@@ -192,11 +208,11 @@ func (r *PostgresRepository) UserUnban() error {
 		return err
 	}
 
-	logger.Info.Println(userBan)
 	if len(userBan) == 0 {
 		return nil
 	}
-
+	logger.Info.Println(userBan)
+	
 	if err := r.db.Model(&models.User{}).Where("id IN ?", userBan).UpdateColumn("status", "ACTIVE").Error; err != nil {
 		return err
 	}

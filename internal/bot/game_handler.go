@@ -803,14 +803,14 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 		options.VideoFileID = value
 	}
 
-	h.bot.SendMessage(userID, options)
+	// ВЫСОКИЙ ПРИОРИТЕТ для игровых сообщений
+	options.TTL = 15 * time.Second
+	options.Type = "result"
+	h.bot.MakeRequestDeferred(userID, 3, options)
 
 	// Проверяем активность пользователя - кол-во набранных баллов
-	if won {
-		if h.bot.captchaBetPoints(userID, points) {
-			h.bot.SendMessage(userID, h.bot.captchaMessage(userID, language, "captcha_bet_points"))
-			return nil
-		}
+	if won && h.bot.captchaBetPoints(userID, points) {
+		h.bot.setCaptchaStatus(userID, "captcha_bet_points")
 	}
 
 	return nil
