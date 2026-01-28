@@ -519,7 +519,7 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]
 		if bets[i].BetPoint > 0 {
 			if won {
 				if option == models.Zero {
-					points = bets[i].BetPoint * 35
+					points = bets[i].BetPoint * 10
 				} else {
 					points = bets[i].BetPoint
 				}
@@ -529,7 +529,7 @@ func (s *ServiceImpl) ProcessAndGetBets(hashEntryID uint, roundNumber int64) ([]
 
 		} else if won {
 			if option == models.Zero {
-				points = 1 * 35
+				points = 1 * 10
 			} else {
 				points = 1
 			}
