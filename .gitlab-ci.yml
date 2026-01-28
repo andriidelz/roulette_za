@@ -227,6 +227,9 @@ deploy:sandbox:
   <<: [*release_only, *deploy_job]
   variables:
     TARGET_ENV: "sandbox"
+    SSH_HOST: $SSH_HOST_SANDBOX 
+    SSH_USER: $SSH_USER_SANDBOX
+    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_SANDBOX         
   needs: ["build:kaniko"]
   when: manual
 
@@ -234,30 +237,51 @@ deploy:stage:
   <<: [*release_only, *deploy_job]
   variables:
     TARGET_ENV: "stage"
+    SSH_HOST: $SSH_HOST_STAGE 
+    SSH_USER: $SSH_USER_STAGE
+    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_STAGE         
   needs: ["promote:stage", "build:kaniko"]
   when: manual
 
 deploy:prod:
   <<: [*release_only, *deploy_job]
-  variables:
-    TARGET_ENV: "prod"
+  variables: 
+    TARGET_ENV: prod
+    SSH_HOST: $SSH_HOST_PROD
+    SSH_USER: $SSH_USER_PROD
+    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_PROD 
   needs: ["promote:prod", "build:kaniko"]
   when: manual
 
 rollback:db:stage:
   <<: [*release_only, *rollback_db_job]  
-  variables: { TARGET_ENV: "stage" }
+  variables: 
+    TARGET_ENV: stage
+    SSH_HOST: $SSH_HOST_STAGE
+    SSH_USER: $SSH_USER_STAGE
+    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_STAGE
 
 rollback:db:prod:
   <<: [*release_only, *rollback_db_job]  
-  variables: { TARGET_ENV: "prod" }
+  variables: 
+    TARGET_ENV: prod
+    SSH_HOST: $SSH_HOST_PROD
+    SSH_USER: $SSH_USER_PROD
+    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_PROD 
 
 rollback:stage:
   <<: [*release_only, *rollback_job]    
-  variables: { TARGET_ENV: "stage" }
-  environment: { name: stage, action: stop }
+  variables: 
+    TARGET_ENV: stage
+    SSH_HOST: $SSH_HOST_STAGE
+    SSH_USER: $SSH_USER_STAGE
+    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_STAGE
 
 rollback:prod:
   <<: [*release_only, *rollback_job] 
-  variables: { TARGET_ENV: "prod" }
+  variables: 
+    TARGET_ENV: prod
+    SSH_HOST: $SSH_HOST_PROD
+    SSH_USER: $SSH_USER_PROD
+    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_PROD 
   environment: { name: prod, action: stop }
