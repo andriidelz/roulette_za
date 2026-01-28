@@ -51,7 +51,7 @@ variables:
     - echo "Uploading migrations..."
     - tar -czf migrations.tar.gz -C migrations .
     - scp -o StrictHostKeyChecking=no  -P 17771 migrations.tar.gz $SSH_USER@$SSH_HOST:/tmp/migrations_${CI_PIPELINE_ID}.tar.gz
-    - ssh -p 17771 $SSH_USER@$SSH_HOST  "bash /home/$SSH_USER/roulette/deploy/deploy.sh ${TARGET_ENV} ${TARGET_ENV} ${CI_COMMIT_TAG} ${CI_COMMIT_SHORT_SHA} ${IMAGE_DIGEST} /tmp/migrations_${CI_PIPELINE_ID}.tar.gz"
+    - ssh -p 17771 $SSH_USER@$SSH_HOST  "bash /home/$SSH_USER/roulette-$TARGET_ENV/deploy/deploy.sh ${TARGET_ENV} ${TARGET_ENV} ${CI_COMMIT_TAG} ${CI_COMMIT_SHORT_SHA} ${IMAGE_DIGEST} /tmp/migrations_${CI_PIPELINE_ID}.tar.gz"
 
 .rollback_job: &rollback_job
   stage: deploy
@@ -60,7 +60,7 @@ variables:
   <<: *ssh_setup
   script:
     - echo "Rolling back ${TARGET_ENV}..."
-    - ssh -p 17771 $SSH_USER@$SSH_HOST  "bash /home/$SSH_USER/roulette/deploy/rollback.sh ${TARGET_ENV}"
+    - ssh -p 17771 $SSH_USER@$SSH_HOST  "bash /home/$SSH_USER/roulette-$TARGET_ENV/deploy/rollback.sh ${TARGET_ENV}"
 
 .rollback_db_job: &rollback_db_job
   stage: deploy
@@ -70,7 +70,7 @@ variables:
   script:
     - echo "Rolling back DATABASE on ${TARGET_ENV}..."
     # Викликаємо rollback_db.sh (1 крок назад за замовчуванням)
-    - ssh -p 17771 $SSH_USER@$SSH_HOST  "bash /home/$SSH_USER/roulette/deploy/rollback_db.sh ${TARGET_ENV} 1"
+    - ssh -p 17771 $SSH_USER@$SSH_HOST  "bash /home/$SSH_USER/roulette-$TARGET_ENV/deploy/rollback_db.sh ${TARGET_ENV} 1"
 
 # ============== LINT ==============
 lint:dockerfile-hadolint:
