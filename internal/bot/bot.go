@@ -1002,6 +1002,11 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 				CreatedAt:  time.Now(),
 				UpdatedAt:  time.Now(),
 			}
+
+			// Метрика бану за типом
+			if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+				metrics.Bot.RecordBanTriggered(log.Reason)
+			}
 			// Save to database
 			if err := b.service.GetRepo().CreateBanLog(log); err != nil {
 				logger.Error.Printf("Failed to create ban log: %v", err)

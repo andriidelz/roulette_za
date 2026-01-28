@@ -226,11 +226,15 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 		log := &models.UserBanLog{
 			UserID:     dbUser.ID,
 			TypeStatus: UserStatusBanned,
-			Reason:     "stopage",
+			Reason:     "age",
 			Active:     true,
 			UntilTo:    time.Now().AddDate(1, 0, 0), // блокуємо на рік
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
+		}
+		// Метрика бану за типом
+		if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+			metrics.Bot.RecordBanTriggered(log.Reason)
 		}
 		// Save to database
 		if err := b.service.GetRepo().CreateBanLog(log); err != nil {

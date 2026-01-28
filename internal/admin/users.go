@@ -420,6 +420,15 @@ func (a *AdminPanel) userBan(c *gin.Context) {
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
 	}
+
+	// Метрика бану за типом
+	if metrics := a.getMetrics(); metrics != nil && metrics.Bot != nil {
+		if ban_type == "CAPTCHA" {
+			metrics.Bot.RecordCaptchaTriggered(banLog.Reason)
+		} else {
+			metrics.Bot.RecordBanTriggered(banLog.Reason)
+		}
+	}
 	// Save to database
 	if err := a.repo.CreateBanLog(banLog); err != nil {
 		logger.Error.Printf("Failed to create ban log: %v", err)

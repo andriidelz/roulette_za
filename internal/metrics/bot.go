@@ -17,6 +17,12 @@ type BotMetrics struct {
 	BetsByType     *prometheus.CounterVec
 	CommandLatency *prometheus.HistogramVec
 	BetResults     *prometheus.CounterVec
+
+	BanTriggered     *prometheus.CounterVec
+	CaptchaTriggered *prometheus.CounterVec
+	CaptchaBan       *prometheus.CounterVec
+	CaptchaRefresh   *prometheus.CounterVec
+	CaptchaPassed    *prometheus.CounterVec
 }
 
 func NewBotMetrics(registry *prometheus.Registry) *BotMetrics {
@@ -92,6 +98,42 @@ func NewBotMetrics(registry *prometheus.Registry) *BotMetrics {
 			},
 			[]string{"result"}, // won, lost
 		),
+
+		BanTriggered: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "ban_triggered_total",
+				Help: "Total Ban",
+			},
+			[]string{"ban_reason"}, // country, age, manual
+		),
+		CaptchaTriggered: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "captcha_triggered_total",
+				Help: "Total Captcha",
+			},
+			[]string{"captcha_reason"}, // captcha_user_activity, captcha_bet_points, captcha_bet_activity, captcha_bet_duplicate, manual
+		),
+		CaptchaBan: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "captcha_lockout_total",
+				Help: "Total Captcha lockout",
+			},
+			[]string{"lockout_reason"}, // short, long
+		),
+		CaptchaRefresh: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "captcha_refresh_total",
+				Help: "Total Captcha refresh",
+			},
+			[]string{"refresh_reason"}, // "refresh", "wrong", "stage"
+		),
+		CaptchaPassed: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "captcha_passed_total",
+				Help: "Total Captcha passed",
+			},
+			[]string{"passed_reason"}, //
+		),
 	}
 
 	// Регистрируем все метрики
@@ -105,6 +147,12 @@ func NewBotMetrics(registry *prometheus.Registry) *BotMetrics {
 		bm.BetsByType,
 		bm.CommandLatency,
 		bm.BetResults,
+
+		bm.BanTriggered,
+		bm.CaptchaTriggered,
+		bm.CaptchaBan,
+		bm.CaptchaRefresh,
+		bm.CaptchaPassed,
 	)
 
 	return bm
@@ -148,4 +196,21 @@ func (bm *BotMetrics) RecordCommandLatency(command string, duration float64) {
 
 func (bm *BotMetrics) RecordBetResult(result string) {
 	bm.BetResults.WithLabelValues(result).Inc()
+}
+
+// Метрики капчі
+func (bm *BotMetrics) RecordBanTriggered(reason string) {
+	bm.BanTriggered.WithLabelValues(reason).Inc()
+}
+func (bm *BotMetrics) RecordCaptchaTriggered(reason string) {
+	bm.CaptchaTriggered.WithLabelValues(reason).Inc()
+}
+func (bm *BotMetrics) RecordCaptchaBan(reason string) {
+	bm.CaptchaBan.WithLabelValues(reason).Inc()
+}
+func (bm *BotMetrics) RecordCaptchaRefresh(reason string) {
+	bm.CaptchaRefresh.WithLabelValues(reason).Inc()
+}
+func (bm *BotMetrics) RecordCaptchaPassed(reason string) {
+	bm.CaptchaPassed.WithLabelValues(reason).Inc()
 }

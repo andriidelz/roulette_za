@@ -269,6 +269,10 @@ func (b *Bot) setCaptchaStatus(telegramID int64, reason string) {
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
 	}
+	// Метрика бану за типом
+	if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+		metrics.Bot.RecordCaptchaTriggered(log.Reason)
+	}
 	// Save to database
 	if err := b.service.GetRepo().CreateBanLog(log); err != nil {
 		logger.Error.Printf("Failed to create ban log: %v", err)
@@ -329,6 +333,11 @@ func (b *Bot) captchaMessage(telegramID int64, language, reason string) MessageO
 		// Save to database
 		if err := b.service.GetRepo().UpdateBanLog(&res); err != nil {
 			logger.Error.Printf("Failed to create ban log: %v", err)
+		}
+
+		// Метрика оновлення за типом
+		if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+			metrics.Bot.RecordCaptchaRefresh(reason)
 		}
 
 	case "new":
@@ -460,6 +469,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 
 		// неправильна відповідь на капчу 3 рази підряд - бан
 		durationTTL := shortTTL
+		reason := "short"
 
 		// Оновлюєм статус на заблокований
 		dbUser.Status = UserStatusLockout
@@ -496,6 +506,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 			// більше userCaptchaBanLimit банів на userBanShortExpiration за день
 			// - бан на longTTL
 			durationTTL = longTTL
+			reason = "long"
 
 			// Капча невірна і користувач іде в бан
 			b.SendMessage(query.Message.GetChat().ID, b.prepareMessage("banactive_mes3", language))
@@ -505,11 +516,15 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 		log := &models.UserBanLog{
 			UserID:     dbUser.ID,
 			TypeStatus: UserStatusLockout,
-			Reason:     "wrongcapcha",
+			Reason:     reason,
 			Active:     true,
 			UntilTo:    time.Now().Add(time.Minute * time.Duration(durationTTL)),
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
+		}
+		// Метрика бану за типом
+		if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+			metrics.Bot.RecordCaptchaBan(log.Reason)
 		}
 		// Save to database
 		if err := b.service.GetRepo().CreateBanLog(log); err != nil {
@@ -553,6 +568,11 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 	// Save to database
 	if err := b.service.GetRepo().UpdateBanLog(&res); err != nil {
 		logger.Error.Printf("Failed to create ban log: %v", err)
+	}
+
+	// Проходження капчі
+	if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+		metrics.Bot.RecordCaptchaPassed("passed")
 	}
 
 	// отримуємо ID останньої капчі
