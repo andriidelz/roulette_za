@@ -929,6 +929,8 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			b.answerCallbackQuery(query.ID, b.getText("captcha_text", language), true)
 			return
 		}
+		b.answerCallbackQuery(query.ID, b.getText("captcha_blocked_action", language), true)
+		return
 	}
 
 	// Проверка на повышенную активность пользователя
