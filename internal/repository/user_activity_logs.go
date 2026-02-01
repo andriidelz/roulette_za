@@ -3,6 +3,7 @@ package repository
 import (
 	"time"
 
+	"roulette/internal/config"
 	"roulette/internal/logger"
 	"roulette/internal/models"
 )
@@ -212,8 +213,8 @@ func (r *PostgresRepository) UserUnban() error {
 		return nil
 	}
 	logger.Info.Println(userBan)
-	
-	if err := r.db.Model(&models.User{}).Where("id IN ?", userBan).UpdateColumn("status", "ACTIVE").Error; err != nil {
+
+	if err := r.db.Model(&models.User{}).Where("id IN ?", userBan).UpdateColumn("status", config.UserStatusActive).Error; err != nil {
 		return err
 	}
 

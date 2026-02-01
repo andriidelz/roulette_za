@@ -2,50 +2,47 @@ $(document).ready(function () {
 
     // Открытие модального окна
     $('.ban-user').click(function () {
-        var userId = $(this).data('id');
+        let userId = $(this).data('id');
+        let status = $(this).data('status');
         $('#ban-user-id').val(userId);
         $('#banModal').modal('show');
+        $('#ban_type').empty();
+        switch (status) {
+        case 'BANNED':
+        case 'CAPTCHA':
+            $('#ban_type').append('<option value="ACTIVE">ACTIVE</option>');
+            $('.show_for_ban').hide();
+            break;
+        default:
+            // ACTIVE, unregistered
+            $('#ban_type').append('<option value="BANNED">BANNED</option>');
+            $('#ban_type').append('<option value="CAPTCHA">CAPTCHA</option>');
+
+           $('.show_for_ban').show();
+            break;
+        }
     });
-    
+
     // Бан пользователя
     $('#update-ban-btn').click(function() {
       let duration = $('#duration').val();
       let note = $('#ban-note').val();
       let userId =  $('#ban-user-id').val();
-      let ban_type = $('#ban_type').val();
-
-      if (!duration || duration <= 0) {
-        alert('Пожалуйста, выберите период');
-        return;
-      }
+      let status = $('#ban_type').val();
       
-      $.post('/admin/user/' + userId + '/ban', {
+      $.post('/admin/user/' + userId + '/status', {
         duration: duration,
-        ban_type: ban_type,
+        status: status,
         note: note
       }, function(response) {
         if (response.success) {
           $('#banModal').modal('hide');
-          alert('Бан успешно применен');
+          alert('Статус успешно применен на '+status);
           window.location.reload();
         } else {
           alert('Ошибка: ' + response.error);
         }
       });
-    });
-
-    // Разбан пользователя
-    $('.unban-user').click(function () {
-        var userId = $(this).data('id');
-        if (confirm('Вы уверены, что хотите разбанить этого пользователя?')) {
-            $.post('/admin/user/' + userId + '/unban', function (data) {
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    alert('Ошибка: ' + data.error);
-                }
-            });
-        }
     });
 
     // Быстрый просмотр пользователя

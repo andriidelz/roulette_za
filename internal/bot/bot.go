@@ -588,10 +588,10 @@ func (b *Bot) handleMessage(message *telego.Message) {
 
 	// Перевірка статусів користувача
 	switch dbUser.Status {
-	case UserStatusBanned, UserStatusLockout:
+	case config.UserStatusBanned, config.UserStatusLockout:
 		// Если пользователь забанен, молча игнорируем сообщение
 		return
-	case UserStatusCaptcha: // На Captcha
+	case config.UserStatusCaptcha: // На Captcha
 
 		cont, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
@@ -609,8 +609,12 @@ func (b *Bot) handleMessage(message *telego.Message) {
 		}
 
 		// Обработка команды капчи - оновлення капчі
-		if command == CommandCaptcha {
-			b.MakeRequestDeferred(user.ID, 9, b.captchaMessage(user.ID, language, "refresh"))
+		if command == CommandCaptcha || command == CommandStart {
+			mess := b.captchaMessage(user.ID, language, "refresh_command")
+			if mess.MethodName != "" {
+				// пустий якщо перевищення лімітів оновлення
+				b.MakeRequestDeferred(user.ID, 9, mess)
+			}
 			return
 		}
 
@@ -890,17 +894,22 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 	// Перевірка статусів користувача
 	switch dbUser.Status {
-	case UserStatusBanned: // На Banned не реагуємо
+	case config.UserStatusBanned: // На Banned не реагуємо
 		return
-	case UserStatusLockout: // На Lockout виводимо answerCallbackQuery
+	case config.UserStatusLockout: // На Lockout виводимо answerCallbackQuery
 		b.answerCallbackQuery(query.ID, b.getText("captcha_blocked_action", language), true)
 		return
-	case UserStatusCaptcha: // На Captcha
+	case config.UserStatusCaptcha: // На Captcha
 		// Обработка прохождения капчи
 		if strings.HasPrefix(callbackData, CallbackCaptcha) {
 			if callbackData == CallbackCaptchaRefresh {
 				// captchaRefresh оновлення капчі
-				b.MakeRequestDeferred(user.ID, 9, b.captchaMessage(user.ID, language, "refresh"))
+				b.answerCallbackQuery(query.ID, "", false)
+				mess := b.captchaMessage(user.ID, language, "refresh")
+				if mess.MethodName != "" {
+					// пустий якщо перевищення лімітів оновлення
+					b.MakeRequestDeferred(user.ID, 9, mess)
+				}
 			} else {
 				b.captchaCheck(query)
 			}
@@ -929,8 +938,6 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			b.answerCallbackQuery(query.ID, b.getText("captcha_text", language), true)
 			return
 		}
-		b.answerCallbackQuery(query.ID, b.getText("captcha_blocked_action", language), true)
-		return
 	}
 
 	// Проверка на повышенную активность пользователя
@@ -997,7 +1004,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 			// create new record
 			log := &models.UserBanLog{
 				UserID:     dbUser.ID,
-				TypeStatus: UserStatusBanned,
+				TypeStatus: config.UserStatusBanned,
 				Reason:     countryCode,
 				Active:     true,
 				UntilTo:    time.Now().AddDate(1, 0, 0), // блокуємо на рік
@@ -1016,7 +1023,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 			// Сохраняем выбранную страну и устанавливаем флаг бана
 			dbUser.Country = countryCode
-			dbUser.Status = UserStatusBanned
+			dbUser.Status = config.UserStatusBanned
 			if err := b.service.UpdateUser(dbUser); err != nil {
 				logger.Error.Printf("Error updating user: %v", err)
 			}
@@ -1029,7 +1036,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		dbUser.Country = countryCode
 		dbUser.Registered = b.isRegistrationComplete(dbUser)
 		if dbUser.Registered && dbUser.Status == "" {
-			dbUser.Status = UserStatusActive
+			dbUser.Status = config.UserStatusActive
 		}
 		if err := b.service.UpdateUser(dbUser); err != nil {
 			logger.Error.Printf("Error updating user country: %v", err)
@@ -1199,7 +1206,7 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 		dbUser.LanguageCode = langCode
 		dbUser.Registered = b.isRegistrationComplete(dbUser)
 		if dbUser.Registered && dbUser.Status == "" {
-			dbUser.Status = UserStatusActive
+			dbUser.Status = config.UserStatusActive
 		}
 		if err := b.service.UpdateUser(dbUser); err != nil {
 			b.answerCallbackQuery(query.ID, "Error saving language", true)

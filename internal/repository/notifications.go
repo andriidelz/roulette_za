@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"roulette/internal/config"
 	"roulette/internal/data"
 	"roulette/internal/models"
 )
@@ -227,7 +228,7 @@ func (r *PostgresRepository) GetUsersForNotificationTask(task *models.Notificati
 	var users []models.User
 
 	// Базовый запрос: пользователи не заблокированы
-	query := r.db.Model(&models.User{}).Where("status = ?", "ACTIVE")
+	query := r.db.Model(&models.User{}).Where("status = ?", config.UserStatusActive)
 
 	// Применяем фильтры в зависимости от типа таргетинга
 	switch task.TargetType {

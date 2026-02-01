@@ -105,8 +105,7 @@ func (a *AdminPanel) setupRoutes() {
 		// Раздел управления пользователями
 		admin.GET("/users", a.usersList)
 		admin.GET("/user/:id", a.userDetails)
-		admin.POST("/user/:id/ban", a.userBan)
-		admin.POST("/user/:id/unban", a.userUnban)
+		admin.POST("/user/:id/status", a.userStatus)
 		admin.POST("/user/:id/ref", a.userRef)
 		admin.POST("/user/:id/update", a.updateUserProfile)
 		admin.POST("/user/:id/balance", a.updateUserBalance)

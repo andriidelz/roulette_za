@@ -20,11 +20,6 @@ const (
 	CallbackSetAmount       = "withdraw_set_amount"
 	CallbackProcessWithdraw = "process_withdraw"
 	CallbackCancelInput     = "withdraw_cancel_input"
-
-	UserStatusActive  = "ACTIVE"
-	UserStatusBanned  = "BANNED"
-	UserStatusLockout = "LOCKOUT"
-	UserStatusCaptcha = "CAPTCHA"
 )
 
 // Константа с минимальной суммой для вывода, которую далее заменяем на получение из настроек
