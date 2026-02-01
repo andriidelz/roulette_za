@@ -79,6 +79,7 @@ func NewMetrics(serviceName string, port int, appType ApplicationType) *Metrics 
 	case AppTypeAdmin:
 		m.Business = NewBusinessMetrics(registry, appType)
 		m.Admin = NewAdminMetrics(registry)
+		m.Bot = NewBotMetrics(registry)
 	case AppTypeRotator:
 		m.Business = NewBusinessMetrics(registry, appType)
 		m.Rotator = NewRotatorMetrics(registry)

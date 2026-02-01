@@ -3,6 +3,7 @@ package admin
 import (
 	"fmt"
 	"net/http"
+	"roulette/internal/config"
 	"roulette/internal/data"
 	"roulette/internal/logger"
 	"roulette/internal/models"
@@ -246,7 +247,6 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 
 	banLog, err := a.repo.GetActiveBanLog(user.ID)
 	if err != nil {
-		logger.Error.Printf("Failed to get ban log: %v", err)
 		banLog = models.UserBanLog{}
 	}
 
@@ -376,8 +376,8 @@ func (a *AdminPanel) updateUserBalance(c *gin.Context) {
 	})
 }
 
-// Блокування користувача
-func (a *AdminPanel) userBan(c *gin.Context) {
+// Зміна статусу
+func (a *AdminPanel) userStatus(c *gin.Context) {
 	// Отримуємо ID користувача
 	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -392,88 +392,84 @@ func (a *AdminPanel) userBan(c *gin.Context) {
 		return
 	}
 
-	duration := c.PostForm("duration")
-	untilTo, err := strconv.ParseInt(duration, 10, 64)
-	if err != nil || untilTo == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат периода"})
+	note := c.PostForm("note")
+	status := c.PostForm("status")
+
+	if user.Status == status {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Статус уже используется"})
 		return
 	}
 
-	note := c.PostForm("note")
-	ban_type := c.PostForm("ban_type")
+	if status != config.UserStatusActive {
 
-	// Блокуємо користувача
-	user.Status = ban_type
+		duration := c.PostForm("duration")
+		untilTo, err := strconv.ParseInt(duration, 10, 64)
+		if err != nil || untilTo == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат периода"})
+			return
+		}
+
+		// create new record
+		banLog := &models.UserBanLog{
+			UserID:     user.ID,
+			TypeStatus: status,
+			Reason:     "manual",
+			ReasonMeta: note,
+			Active:     true,
+			UntilTo:    time.Now().Add(time.Minute * time.Duration(untilTo)),
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		}
+
+		// Метрика бану за типом
+		if metrics := a.getMetrics(); metrics != nil && metrics.Bot != nil {
+			if status == config.UserStatusCaptcha {
+				metrics.Bot.RecordCaptchaTriggered(banLog.Reason)
+			} else {
+				metrics.Bot.RecordBanTriggered(banLog.Reason)
+			}
+		}
+		// Save to database
+		if err := a.repo.CreateBanLog(banLog); err != nil {
+			logger.Error.Printf("Failed to create ban log: %v", err)
+		}
+	}
+
+	// Оновлюємо користувача в базі
+	user.Status = status
 	if err := a.repo.UpdateUser(user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	// create new record
-	banLog := &models.UserBanLog{
-		UserID:     user.ID,
-		TypeStatus: ban_type,
-		Reason:     "manual",
-		ReasonMeta: note,
-		Active:     true,
-		UntilTo:    time.Now().Add(time.Minute * time.Duration(untilTo)),
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-	}
-	// Save to database
-	if err := a.repo.CreateBanLog(banLog); err != nil {
-		logger.Error.Printf("Failed to create ban log: %v", err)
+	// Оновлюємо користувача в боті
+	if err := a.service.HandleUserUpdated(user.ID, "updateStatus"); err != nil {
+		logger.Error.Printf("Error sending update notification to user %d: %v", user.ID, err)
 	}
 
-	if user.Status == "BANNED" {
+	switch status {
+	case config.UserStatusBanned:
 		// Удаляем рейтинг пользователя и пересчитываем позиции всех в рейтинге
 		a.repo.DeleteRating(user.ID)
 
 		// Обновляем все рейтинги
 		year, week := time.Now().ISOWeek()
 		a.repo.RefreshWeeklyRatingsPosition(year, week)
+	case config.UserStatusActive:
+
+		banLog, err := a.repo.GetActiveBanLog(user.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		banLog.Active = false
+		// Save to database
+		if err := a.repo.UpdateBanLog(&banLog); err != nil {
+			logger.Error.Printf("Failed to create ban log: %v", err)
+		}
+		// Создаем рейтинг пользователя и пересчитываем позиции всех в рейтинге
+		a.repo.UpdateWeeklyRatingForUser(user.ID)
 	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true})
-}
-
-// Розблокування користувача
-func (a *AdminPanel) userUnban(c *gin.Context) {
-	// Отримуємо ID користувача
-	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Невірний ID користувача"})
-		return
-	}
-
-	// Отримуємо інформацію про користувача
-	user, err := a.repo.GetUserByID(uint(userID))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Розблокуємо користувача
-	user.Status = "ACTIVE"
-	if err := a.repo.UpdateUser(user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	banLog, err := a.repo.GetActiveBanLog(user.ID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	banLog.Active = false
-	// Save to database
-	if err := a.repo.UpdateBanLog(&banLog); err != nil {
-		logger.Error.Printf("Failed to create ban log: %v", err)
-	}
-
-	// Создаем рейтинг пользователя и пересчитываем позиции всех в рейтинге
-	a.repo.UpdateWeeklyRatingForUser(user.ID)
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

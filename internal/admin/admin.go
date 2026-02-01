@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"roulette/internal/metrics"
 	"roulette/internal/repository"
 	"roulette/internal/service"
 
@@ -19,6 +20,7 @@ type AdminPanel struct {
 	repo           repository.Repository
 	settings       *Settings
 	paymentService *service.PaymentService
+	metrics        *metrics.Metrics
 }
 
 // Настройки админ-панели
@@ -33,7 +35,8 @@ type Settings struct {
 }
 
 // Создание новой админ-панели
-func NewAdminPanel(service service.Service, repo repository.Repository, settings *Settings, paymentService *service.PaymentService) *AdminPanel {
+func NewAdminPanel(service service.Service, repo repository.Repository, settings *Settings,
+	paymentService *service.PaymentService, appMetrics *metrics.Metrics) *AdminPanel {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
@@ -48,6 +51,7 @@ func NewAdminPanel(service service.Service, repo repository.Repository, settings
 		repo:           repo,
 		settings:       settings,
 		paymentService: paymentService,
+		metrics:        appMetrics,
 	}
 
 	admin.setupRoutes()
@@ -101,8 +105,7 @@ func (a *AdminPanel) setupRoutes() {
 		// Раздел управления пользователями
 		admin.GET("/users", a.usersList)
 		admin.GET("/user/:id", a.userDetails)
-		admin.POST("/user/:id/ban", a.userBan)
-		admin.POST("/user/:id/unban", a.userUnban)
+		admin.POST("/user/:id/status", a.userStatus)
 		admin.POST("/user/:id/ref", a.userRef)
 		admin.POST("/user/:id/update", a.updateUserProfile)
 		admin.POST("/user/:id/balance", a.updateUserBalance)
@@ -259,4 +262,11 @@ func (a *AdminPanel) logout(c *gin.Context) {
 	session.Save()
 
 	c.Redirect(http.StatusFound, "/login")
+}
+
+func (a *AdminPanel) getMetrics() *metrics.Metrics {
+	if a == nil || a.metrics == nil {
+		return nil
+	}
+	return a.metrics
 }

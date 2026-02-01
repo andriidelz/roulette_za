@@ -46,6 +46,7 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 
 	// Приводим данные к типу NotificationData
 	var notificationData service.NotificationData
+	notifyType := "notify"
 
 	// Проверяем тип данных и обрабатываем соответствующим образом
 	switch data := message.Data.(type) {
@@ -59,6 +60,10 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 
 		if userID, ok := data["user_id"].(float64); ok {
 			notificationData.UserID = uint(userID)
+		}
+
+		if title, ok := data["type"].(string); ok {
+			notifyType = title
 		}
 
 		if title, ok := data["title"].(string); ok {
@@ -129,6 +134,9 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 		return fmt.Errorf("missing telegram_id in notification data")
 	}
 
+	// оновлюєм кеш
+	b.updateUserCache(notificationData.TelegramID)
+
 	// Логируем получение уведомления
 	logger.Info.Printf("Processing notification for user %d: %s", notificationData.TelegramID, notificationData.Title)
 
@@ -161,7 +169,7 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 			PhotoFileID:    notificationData.ImageURL, // или PhotoPath, если это локальный путь
 			InlineKeyboard: inlineKeyboard,
 			ParseMode:      "HTML",
-			Type:           "notify",
+			Type:           notifyType,
 		})
 		if err != nil {
 			return fmt.Errorf("error sending notification with image: %w", err)
@@ -172,7 +180,7 @@ func (b *Bot) handleNotificationMessage(message messaging.RouletteMessage) error
 			Text:           fmt.Sprintf("<b>%s</b>\n\n%s", notificationData.Title, notificationData.Message),
 			InlineKeyboard: inlineKeyboard,
 			ParseMode:      "HTML",
-			Type:           "notify",
+			Type:           notifyType,
 		})
 		if err != nil {
 			return fmt.Errorf("error sending notification: %w", err)

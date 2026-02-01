@@ -48,6 +48,13 @@ type Config struct {
 	RedisDB   int
 }
 
+const (
+	UserStatusActive  string = "ACTIVE"
+	UserStatusBanned  string = "BANNED"
+	UserStatusLockout string = "LOCKOUT"
+	UserStatusCaptcha string = "CAPTCHA"
+)
+
 // NewConfig створює новий екземпляр конфігурації
 func NewConfig() *Config {
 	// Інтервал ротації за замовчуванням - 30 секунд

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"roulette/internal/config"
 	"roulette/internal/data"
 	"roulette/internal/logger"
 	"roulette/internal/messaging"
@@ -641,6 +642,49 @@ func (s *ServiceImpl) HandleRegistration(userID uint) error {
 	return autoNotif.HandleRegistration(userID)
 }
 
+// HandleUserUpdated обробляє повідомлення при зміні статусу в адмінці
+func (s *ServiceImpl) HandleUserUpdated(userID uint, status string) error {
+
+	// Получаем пользователя
+	user, err := s.repo.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	key := ""
+	switch user.Status {
+	case config.UserStatusActive:
+		key = "captcha_status_active"
+	case config.UserStatusBanned:
+		key = "captcha_status_banned"
+	default:
+		return nil
+	}
+
+	title := s.GetText("captcha_status_title", user.LanguageCode)
+	message := s.GetText(key, user.LanguageCode)
+
+	// Создаем карту данных для отправки через RabbitMQ
+	notificationDataMap := map[string]interface{}{
+		"user_id":         user.ID,
+		"telegram_id":     user.TelegramID,
+		"type":            "manual_update",
+		"title":           title,
+		"message":         message,
+		"image_url":       "",
+		"button_text":     "",
+		"button_url":      "",
+		"button_callback": "",
+		"notification_id": "",
+	}
+
+	if err := s.publishToRabbit(notificationDataMap); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *ServiceImpl) GetPendingNotificationTasks() ([]models.NotificationTask, error) {
 	return s.repo.GetPendingNotificationTasks()
 }
@@ -774,6 +818,7 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 	notificationDataMap := map[string]interface{}{
 		"user_id":         user.ID,
 		"telegram_id":     user.TelegramID,
+		"type":            "notify",
 		"title":           title,
 		"message":         message,
 		"image_url":       imageURL,
@@ -783,6 +828,24 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 		"notification_id": notification.ID, // Передаем ID для обновления статуса
 	}
 
+	if err := s.publishToRabbit(notificationDataMap); err != nil {
+		return err
+	}
+
+	// После успешной отправки обновляем статус уведомления
+	if err := s.repo.MarkNotificationAsSent(notification.ID); err != nil {
+		logger.Error.Printf("Error marking notification as sent: %v", err)
+		// Не критическая ошибка, уведомление уже отправлено
+	}
+
+	// Если все прошло успешно, логируем информацию
+	logger.Info.Printf("Notification sent for user %d (%d): %s - %s",
+		user.ID, user.TelegramID, title, message)
+
+	return nil
+}
+
+func (s *ServiceImpl) publishToRabbit(notificationDataMap map[string]interface{}) error {
 	// Подключаемся к RabbitMQ
 	rmq, err := s.getRabbitMQConnection()
 	if err != nil {
@@ -799,17 +862,6 @@ func (s *ServiceImpl) sendNotificationToUser(userID uint, template *models.Notif
 		logger.Error.Printf("Error publishing notification to RabbitMQ: %v", err)
 		return err
 	}
-
-	// После успешной отправки обновляем статус уведомления
-	if err := s.repo.MarkNotificationAsSent(notification.ID); err != nil {
-		logger.Error.Printf("Error marking notification as sent: %v", err)
-		// Не критическая ошибка, уведомление уже отправлено
-	}
-
-	// Если все прошло успешно, логируем информацию
-	logger.Info.Printf("Notification sent for user %d (%d): %s - %s",
-		user.ID, user.TelegramID, title, message)
-
 	return nil
 }
 

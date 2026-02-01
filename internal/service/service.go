@@ -104,6 +104,7 @@ type Service interface {
 	// Автоматические уведомления
 	HandleBalanceUpdate(userID uint, amount float64) error
 	HandleTopRatingEntry(userID uint, position int) error
+	HandleUserUpdated(userID uint, status string) error
 	CheckPendingRegistration() error
 	CheckTopRatingEntries() error
 

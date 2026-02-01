@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"roulette/internal/config"
 	"roulette/internal/logger"
 	"roulette/internal/utils"
 
@@ -58,14 +59,14 @@ const (
 func (b *Bot) MakeRequestDeferred(chatID, order int64, param MessageOptions) error {
 
 	// якщо не notify іде перевірка користувача
-	if param.Type != "notify" {
+	if param.Type != "notify" && param.Type != "manual_update" {
 		dbUser, _ := b.getUser(chatID)
 		// Перевірка статусів користувача
 		switch dbUser.Status {
-		case UserStatusBanned, UserStatusLockout:
+		case config.UserStatusBanned, config.UserStatusLockout:
 			// Если пользователь забанен, молча игнорируем сообщение
 			return nil
-		case UserStatusCaptcha:
+		case config.UserStatusCaptcha:
 			if param.MethodName != sendCaptcha && param.Type != "result" {
 				// всі інші запити крім команди капчі і результатів notifyPlayerAboutResult
 				// молча игнорируем сообщение
@@ -258,14 +259,6 @@ func (b *Bot) sendBotQueue() {
 				go func(workerId int) {
 					for chatID := range jobs {
 
-						// якщо не notify іде перевірка користувача
-						dbUser, _ := b.getUser(chatID)
-						// Перевірка статусів користувача
-						switch dbUser.Status {
-						case UserStatusBanned, UserStatusLockout:
-							// Если пользователь забанен, молча игнорируем сообщение
-							continue
-						}
 						// Remove cleanup from here!
 						// Don't call ZRemRangeByScore in worker
 
@@ -295,13 +288,22 @@ func (b *Bot) sendBotQueue() {
 							continue
 						}
 
-						switch dbUser.Status {
-						case UserStatusCaptcha:
-							if options.MethodName != sendCaptcha && options.Type != "result" {
-								// всі інші запити крім команди капчі і результатів notifyPlayerAboutResult
-								// молча игнорируем сообщение
+						// якщо не notify іде перевірка користувача
+						if options.Type != "manual_update" {
+							dbUser, _ := b.getUser(chatID)
+							// Перевірка статусів користувача
+							switch dbUser.Status {
+							case config.UserStatusBanned, config.UserStatusLockout:
+								// Если пользователь забанен, молча игнорируем сообщение
 								results <- false
 								continue
+							case config.UserStatusCaptcha:
+								if options.MethodName != sendCaptcha && options.Type != "result" {
+									// всі інші запити крім команди капчі і результатів notifyPlayerAboutResult
+									// молча игнорируем сообщение
+									results <- false
+									continue
+								}
 							}
 						}
 
@@ -412,7 +414,7 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 			if err != nil {
 				// messageID існує в ключах
 				// якщо помилка при оновленні можливо повідолення з капчею видалено або очищено чат
-				b.redisDB.Del(cont, fmt.Sprintf(userCaptchaMessPrefix, chatID)).Err()
+				b.redisDB.Del(cont, captchaMess).Err()
 				mes, err = b.sendPhoto(chatID, options)
 			}
 		}

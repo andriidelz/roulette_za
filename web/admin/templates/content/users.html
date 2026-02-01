@@ -130,15 +130,9 @@
                                             <button class="btn btn-sm btn-outline-warning quick-edit-btn" data-id="{{ .ID }}">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
-                                            {{ if eq .Status "BANNED" }}
-                                            <button class="btn btn-sm btn-outline-success unban-user" data-id="{{ .ID }}">
-                                                <i class="bi bi-unlock"></i>
-                                            </button>
-                                            {{ else }}
-                                            <button class="btn btn-sm btn-outline-danger ban-user" data-id="{{ .ID }}">
+                                            <button class="btn btn-sm btn-outline-danger ban-user" data-id="{{ .ID }}" data-status="{{ .Status }}">
                                                 <i class="bi bi-lock"></i>
                                             </button>
-                                            {{ end }}
                                         </div>
                                     </td>
                                 </tr>
@@ -426,12 +420,12 @@
     </div>
   </div>
 
-   <!-- Модальное окно бана -->
+   <!-- Модальное окно статусов -->
   <div class="modal fade" id="banModal" tabindex="-1" aria-labelledby="banModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="banModalLabel">Управление баном</h5>
+          <h5 class="modal-title" id="banModalLabel">Управление статусом</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -441,10 +435,10 @@
             <div class="mb-3">
               <label for="ban_type" class="form-label">Тип</label>
               <select class="form-select" id="ban_type" name="ban_type">
-                <option value="BANNED">BANNED</option>
-                <option value="CAPTCHA">CAPTCHA</option>
               </select>
             </div>
+
+          <div class="show_for_ban">
             <div class="mb-3">
               <label for="duration" class="form-label">Период</label>
               <select class="form-select" id="duration" name="duration">
@@ -459,11 +453,12 @@
               <label for="ban-note" class="form-label">Примечание (не обязательно)</label>
               <textarea class="form-control" id="ban-note" name="note" rows="2"></textarea>
             </div>
+          </div>
           </form>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-          <button type="button" class="btn btn-primary" id="update-ban-btn">Применить бан</button>
+          <button type="button" class="btn btn-primary" id="update-ban-btn">Применить статус</button>
         </div>
       </div>
     </div>

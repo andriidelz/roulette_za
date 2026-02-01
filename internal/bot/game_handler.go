@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"roulette/internal/config"
 	"roulette/internal/logger"
 	"roulette/internal/messaging"
 	"roulette/internal/models"
@@ -827,7 +828,7 @@ func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOpt
 	}
 
 	// Проверяем статус бана
-	if dbUser.Status == UserStatusBanned {
+	if dbUser.Status == config.UserStatusBanned {
 		return fmt.Errorf("user is banned")
 	}
 

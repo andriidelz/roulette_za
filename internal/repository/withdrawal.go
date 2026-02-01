@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"roulette/internal/config"
 	"roulette/internal/models"
 	"time"
 
@@ -56,7 +57,7 @@ func (r *PostgresRepository) RecalculateWithdrawalsStat(id string) (models.Withd
 
 	// Сума балансів
 	var balance float64
-	err = r.db.Model(&models.User{}).Where("status = ? ", "ACTIVE").Select("COALESCE(SUM(balance), 0)").Scan(&balance).Error
+	err = r.db.Model(&models.User{}).Where("status = ? ", config.UserStatusActive).Select("COALESCE(SUM(balance), 0)").Scan(&balance).Error
 	if err != nil {
 		return data, err
 	}

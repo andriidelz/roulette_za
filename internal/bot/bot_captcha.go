@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"roulette/internal/captcha-go"
+	"roulette/internal/config"
 	"roulette/internal/logger"
 	"roulette/internal/models"
 	"strings"
@@ -254,6 +255,9 @@ func (b *Bot) setCaptchaStatus(telegramID int64, reason string) {
 	if err != nil {
 		logger.Error.Printf("Failed to getUser: %v", err)
 	}
+	if dbUser.Status == config.UserStatusCaptcha {
+		return
+	}
 
 	b.settingsMutex.Lock()
 	captchaTTL, _ := b.settings["captcha_ttl"]
@@ -262,12 +266,16 @@ func (b *Bot) setCaptchaStatus(telegramID int64, reason string) {
 	// create new record
 	log := &models.UserBanLog{
 		UserID:     dbUser.ID,
-		TypeStatus: UserStatusCaptcha,
+		TypeStatus: config.UserStatusCaptcha,
 		Reason:     reason,
 		Active:     true,
 		UntilTo:    time.Now().Add(time.Minute * time.Duration(captchaTTL)),
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
+	}
+	// Метрика бану за типом
+	if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+		metrics.Bot.RecordCaptchaTriggered(log.Reason)
 	}
 	// Save to database
 	if err := b.service.GetRepo().CreateBanLog(log); err != nil {
@@ -275,7 +283,7 @@ func (b *Bot) setCaptchaStatus(telegramID int64, reason string) {
 	}
 
 	// Оновлюєм статус на той що очікує капчу
-	dbUser.Status = UserStatusCaptcha
+	dbUser.Status = config.UserStatusCaptcha
 	err = b.service.UpdateUser(dbUser)
 	if err != nil {
 		logger.Error.Printf("Error updating user: %v", err)
@@ -287,7 +295,7 @@ func (b *Bot) setCaptchaStatus(telegramID int64, reason string) {
 // captchaMessage - Відправка капчі
 func (b *Bot) captchaMessage(telegramID int64, language, reason string) MessageOptions {
 
-	// "refresh"
+	// "refresh", "refresh_command"
 	// "wrong"
 	// "stage"
 	// "new"
@@ -305,7 +313,7 @@ func (b *Bot) captchaMessage(telegramID int64, language, reason string) MessageO
 	}
 
 	switch reason {
-	case "refresh", "wrong", "stage":
+	case "refresh", "refresh_command", "wrong", "stage":
 		// update log
 		res, err := b.service.GetRepo().GetActiveBanLog(dbUser.ID)
 		if err != nil {
@@ -313,7 +321,7 @@ func (b *Bot) captchaMessage(telegramID int64, language, reason string) MessageO
 		}
 
 		switch reason {
-		case "refresh":
+		case "refresh", "refresh_command":
 			res.Refresh += 1
 		case "wrong":
 			res.Wrong += 1
@@ -322,13 +330,45 @@ func (b *Bot) captchaMessage(telegramID int64, language, reason string) MessageO
 		}
 
 		// Перевірка кількості оновлень капчі
-		if res.Refresh >= int(countRefreshCaptcha) {
+		if res.Refresh == int(countRefreshCaptcha) {
 			showRefresh = false
+		} else if res.Refresh > int(countRefreshCaptcha) {
+			return MessageOptions{}
+		}
+
+		if reason == "refresh_command" {
+			// можливо було очищено чат, відправка як нове повідомлення
+			cont, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			// отримуємо ID останньої капчі
+			captchaMess := fmt.Sprintf(userCaptchaMessPrefix, telegramID)
+			messageID, err := b.redisDB.Get(cont, captchaMess).Int()
+			if err != nil && err != redis.Nil {
+				logger.Error.Printf("Error Get %d: %v", telegramID, err)
+			}
+
+			if messageID > 0 {
+				// 	Видаляємо повідомлення з капчею
+				b.redisDB.Del(cont, captchaMess).Err()
+
+				err = b.bot.DeleteMessage(b.ctx, &telego.DeleteMessageParams{
+					ChatID:    telego.ChatID{ID: telegramID},
+					MessageID: messageID,
+				})
+				if err != nil {
+					logger.Error.Printf("failed to delete message: %v", err)
+				}
+			}
 		}
 
 		// Save to database
 		if err := b.service.GetRepo().UpdateBanLog(&res); err != nil {
 			logger.Error.Printf("Failed to create ban log: %v", err)
+		}
+
+		// Метрика оновлення за типом
+		if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+			metrics.Bot.RecordCaptchaRefresh(reason)
 		}
 
 	case "new":
@@ -460,9 +500,10 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 
 		// неправильна відповідь на капчу 3 рази підряд - бан
 		durationTTL := shortTTL
+		reason := "short"
 
 		// Оновлюєм статус на заблокований
-		dbUser.Status = UserStatusLockout
+		dbUser.Status = config.UserStatusLockout
 		err = b.service.UpdateUser(dbUser)
 		if err != nil {
 			logger.Error.Printf("Error updating user: %v", err)
@@ -496,6 +537,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 			// більше userCaptchaBanLimit банів на userBanShortExpiration за день
 			// - бан на longTTL
 			durationTTL = longTTL
+			reason = "long"
 
 			// Капча невірна і користувач іде в бан
 			b.SendMessage(query.Message.GetChat().ID, b.prepareMessage("banactive_mes3", language))
@@ -504,12 +546,16 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 		// create new record
 		log := &models.UserBanLog{
 			UserID:     dbUser.ID,
-			TypeStatus: UserStatusLockout,
-			Reason:     "wrongcapcha",
+			TypeStatus: config.UserStatusLockout,
+			Reason:     reason,
 			Active:     true,
 			UntilTo:    time.Now().Add(time.Minute * time.Duration(durationTTL)),
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
+		}
+		// Метрика бану за типом
+		if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+			metrics.Bot.RecordCaptchaBan(log.Reason)
 		}
 		// Save to database
 		if err := b.service.GetRepo().CreateBanLog(log); err != nil {
@@ -555,6 +601,11 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 		logger.Error.Printf("Failed to create ban log: %v", err)
 	}
 
+	// Проходження капчі
+	if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+		metrics.Bot.RecordCaptchaPassed("passed")
+	}
+
 	// отримуємо ID останньої капчі
 	captchaMess := fmt.Sprintf(userCaptchaMessPrefix, user.ID)
 	messageID, err := b.redisDB.Get(cont, captchaMess).Int()
@@ -565,7 +616,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 	// Всі умови виконані, очищаєм все що пов'язано з капчею
 
 	// Оновлюєм статус на активний
-	dbUser.Status = UserStatusActive
+	dbUser.Status = config.UserStatusActive
 	err = b.service.UpdateUser(dbUser)
 	if err != nil {
 		logger.Error.Printf("Error updating user: %v", err)

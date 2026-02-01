@@ -209,7 +209,7 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 	dbUser.AgeVerified = &isAdult
 	dbUser.Registered = b.isRegistrationComplete(dbUser)
 	if dbUser.Registered && dbUser.Status == "" {
-		dbUser.Status = UserStatusActive
+		dbUser.Status = config.UserStatusActive
 	}
 	err = b.service.UpdateUser(dbUser)
 	if err != nil {
@@ -225,12 +225,16 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 		// create new record
 		log := &models.UserBanLog{
 			UserID:     dbUser.ID,
-			TypeStatus: UserStatusBanned,
-			Reason:     "stopage",
+			TypeStatus: config.UserStatusBanned,
+			Reason:     "age",
 			Active:     true,
 			UntilTo:    time.Now().AddDate(1, 0, 0), // блокуємо на рік
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
+		}
+		// Метрика бану за типом
+		if metrics := b.getMetrics(); metrics != nil && metrics.Bot != nil {
+			metrics.Bot.RecordBanTriggered(log.Reason)
 		}
 		// Save to database
 		if err := b.service.GetRepo().CreateBanLog(log); err != nil {
@@ -238,7 +242,7 @@ func (b *Bot) handleAgeVerificationCallback(query *telego.CallbackQuery) {
 		}
 
 		// Обновляем статус бана
-		dbUser.Status = UserStatusBanned
+		dbUser.Status = config.UserStatusBanned
 		err = b.service.UpdateUser(dbUser)
 		if err != nil {
 			logger.Error.Printf("Error banning underage user: %v", err)
@@ -570,7 +574,7 @@ func (b *Bot) RequireCompleteRegistration(chatID, userID int64, command string) 
 	}
 
 	// Проверяем полноту регистрации
-	if dbUser.Status == UserStatusBanned || !b.isRegistrationComplete(dbUser) {
+	if dbUser.Status == config.UserStatusBanned || !b.isRegistrationComplete(dbUser) {
 
 		if dbUser.AgeVerified != nil && !*dbUser.AgeVerified {
 			// Пользователь не подтвердил совершеннолетие - показываем сообщение о блокировке
@@ -579,7 +583,7 @@ func (b *Bot) RequireCompleteRegistration(chatID, userID int64, command string) 
 			return false
 		}
 
-		if dbUser.Status == UserStatusBanned {
+		if dbUser.Status == config.UserStatusBanned {
 			// Пользователь забанен (RU/BY или несовершеннолетний)
 			if dbUser.Country == "RU" || dbUser.Country == "BY" {
 				b.SendMessage(chatID, b.prepareMessage("stopcountry", language))

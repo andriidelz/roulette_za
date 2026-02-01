@@ -77,7 +77,7 @@ func main() {
 	}
 
 	// Створюємо адмін-панель
-	adminPanel := admin.NewAdminPanel(svc, repo, adminSettings, paymentSvc)
+	adminPanel := admin.NewAdminPanel(svc, repo, adminSettings, paymentSvc, appMetrics)
 
 	// Запускаємо адмін-панель у фоновому режимі
 	go func() {
