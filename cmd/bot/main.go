@@ -1,10 +1,14 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
+
+	_ "net/http/pprof"
 
 	"roulette/internal/bot"
 	"roulette/internal/config"
@@ -16,6 +20,15 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+func startDebug() {
+	runtime.SetBlockProfileRate(10000) // 1 подія на ~10µs блокування (підкручується)
+	runtime.SetMutexProfileFraction(10)
+
+	go func() {
+		_ = http.ListenAndServe("127.0.0.1:6060", nil)
+	}()
+}
 
 func main() {
 	// Загружаем переменные окружения
@@ -56,6 +69,8 @@ func main() {
 	if err := telegramBot.Start(); err != nil {
 		logger.Error.Fatalf("Failed to start bot: %v", err)
 	}
+
+	startDebug()
 
 	logger.Info.Printf("Bot started successfully and listening for updates")
 
