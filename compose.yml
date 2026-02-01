@@ -27,6 +27,13 @@ x-redis-config: &redis-config
   REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
   REDIS_DB: ${REDIS_DB:-0}
 
+# Debug/profiling configuration
+x-debug-config: &debug-config
+  PPROF_ENABLED: ${PPROF_ENABLED:-false}
+  PPROF_ADDR: ${PPROF_ADDR:-127.0.0.1:6060}
+  PPROF_BLOCK_PROFILE_RATE: ${PPROF_BLOCK_PROFILE_RATE:-10000}
+  PPROF_MUTEX_PROFILE_FRACTION: ${PPROF_MUTEX_PROFILE_FRACTION:-10}
+
 # Telegram configuration
 x-telegram-config: &telegram-config
   TELEGRAM_API_URL: ${TELEGRAM_API_URL}
@@ -337,6 +344,7 @@ services:
           *webhook-config,
           *payment-config,
           *redis-config,
+          *debug-config,
         ]
     depends_on:
       postgres:
@@ -361,6 +369,7 @@ services:
     ports:
       - "127.0.0.1:8443:8443"
       - "127.0.0.1:9101:9101"
+      - "127.0.0.1:6060:6060"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     logging: *default-logging

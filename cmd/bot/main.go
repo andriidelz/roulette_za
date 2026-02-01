@@ -21,12 +21,19 @@ import (
 	"gorm.io/gorm"
 )
 
-func startDebug() {
-	runtime.SetBlockProfileRate(10000) // 1 подія на ~10µs блокування (підкручується)
-	runtime.SetMutexProfileFraction(10)
+func startDebug(cfg *config.Config) {
+	if !cfg.PprofEnabled {
+		return
+	}
+
+	runtime.SetBlockProfileRate(cfg.PprofBlockProfileRate)
+	runtime.SetMutexProfileFraction(cfg.PprofMutexProfileFraction)
 
 	go func() {
-		_ = http.ListenAndServe("127.0.0.1:6060", nil)
+		logger.Info.Printf("Starting pprof server on %s", cfg.PprofAddr)
+		if err := http.ListenAndServe(cfg.PprofAddr, nil); err != nil {
+			logger.Error.Printf("pprof server failed: %v", err)
+		}
 	}()
 }
 
@@ -70,7 +77,7 @@ func main() {
 		logger.Error.Fatalf("Failed to start bot: %v", err)
 	}
 
-	startDebug()
+	startDebug(cfg)
 
 	logger.Info.Printf("Bot started successfully and listening for updates")
 

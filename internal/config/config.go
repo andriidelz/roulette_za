@@ -46,6 +46,12 @@ type Config struct {
 	RedisPort string
 	RedisPass string
 	RedisDB   int
+
+	// Profiling/Debug
+	PprofEnabled              bool
+	PprofAddr                 string
+	PprofBlockProfileRate     int
+	PprofMutexProfileFraction int
 }
 
 const (
@@ -99,6 +105,12 @@ func NewConfig() *Config {
 		RedisPort: getEnv("REDIS_PORT", "6379"),
 		RedisPass: getEnv("REDIS_PASSWORD", ""),
 		RedisDB:   getEnvInt("REDIS_DB", 0),
+
+		// Profiling/Debug
+		PprofEnabled:              getEnvBool("PPROF_ENABLED", false),
+		PprofAddr:                 getEnv("PPROF_ADDR", "0.0.0.0:6060"),
+		PprofBlockProfileRate:     getEnvInt("PPROF_BLOCK_PROFILE_RATE", 10000),
+		PprofMutexProfileFraction: getEnvInt("PPROF_MUTEX_PROFILE_FRACTION", 10),
 	}
 }
 
