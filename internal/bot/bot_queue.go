@@ -59,7 +59,7 @@ const (
 func (b *Bot) MakeRequestDeferred(chatID, order int64, param MessageOptions) error {
 
 	// якщо не notify іде перевірка користувача
-	if param.Type != "notify" && param.Type != "manual_update" {
+	if param.Type != "notify" && param.Type != "important" {
 		dbUser, _ := b.getUser(chatID)
 		// Перевірка статусів користувача
 		switch dbUser.Status {
@@ -257,6 +257,8 @@ func (b *Bot) sendBotQueue() {
 			// Start workers
 			for w := 1; w <= workerCount; w++ {
 				go func(workerId int) {
+
+					countFind, countBan, countSuccess := 0, 0, 0
 					for chatID := range jobs {
 
 						// Remove cleanup from here!
@@ -272,10 +274,12 @@ func (b *Bot) sendBotQueue() {
 							Count: 1,
 						}).Result()
 						if err != nil {
+							countFind++
 							logger.Error.Println("Error ZRangeByScore:", err)
 							results <- false
 							continue
 						} else if len(msgs) == 0 {
+							countFind++
 							results <- false
 							continue
 						}
@@ -284,16 +288,18 @@ func (b *Bot) sendBotQueue() {
 						options := MessageOptions{}
 						if err = json.Unmarshal([]byte(msgs[0]), &options); err != nil {
 							logger.Error.Printf("Worker %d: Error Unmarshal for %s: %v\n", workerId, queueKey, err)
+							countFind++
 							results <- false
 							continue
 						}
 
 						// якщо не notify іде перевірка користувача
-						if options.Type != "manual_update" {
+						if options.Type != "important" {
 							dbUser, _ := b.getUser(chatID)
 							// Перевірка статусів користувача
 							switch dbUser.Status {
 							case config.UserStatusBanned, config.UserStatusLockout:
+								countBan++
 								// Если пользователь забанен, молча игнорируем сообщение
 								results <- false
 								continue
@@ -301,6 +307,7 @@ func (b *Bot) sendBotQueue() {
 								if options.MethodName != sendCaptcha && options.Type != "result" {
 									// всі інші запити крім команди капчі і результатів notifyPlayerAboutResult
 									// молча игнорируем сообщение
+									countBan++
 									results <- false
 									continue
 								}
@@ -311,11 +318,16 @@ func (b *Bot) sendBotQueue() {
 						err = b.redisDB.ZRem(ctx, queueKey, msgs[0]).Err()
 						if err != nil {
 							logger.Error.Printf("Error ZRem %s: %v", queueKey, err)
+							countFind++
 						}
-
+						countSuccess++
 						b.sendDeferredMessage(chatID, options)
 						results <- true
 					}
+					if (countFind + countBan) > 0 {
+						logger.Error.Printf("Worker %d: Error find %d, ban: %d, success %d\n", workerId, countFind, countBan, countSuccess)
+					}
+
 				}(w)
 			}
 

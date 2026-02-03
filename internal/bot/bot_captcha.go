@@ -501,6 +501,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 		// неправильна відповідь на капчу 3 рази підряд - бан
 		durationTTL := shortTTL
 		reason := "short"
+		key := "banactive_mes"
 
 		// Оновлюєм статус на заблокований
 		dbUser.Status = config.UserStatusLockout
@@ -521,6 +522,7 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 
 		banCount++
 
+		// Капча невірна і користувач іде в бан
 		if banCount <= userCaptchaBanLimit {
 			// якщо кількість банів за день менше userCaptchaBanLimit то бан на shortTTL
 
@@ -530,18 +532,22 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 			if err != nil {
 				logger.Error.Printf("Error Set %d: %v", user.ID, err)
 			}
-
-			// Капча невірна і користувач іде в бан
-			b.SendMessage(query.Message.GetChat().ID, b.prepareMessage("banactive_mes", language))
 		} else {
 			// більше userCaptchaBanLimit банів на userBanShortExpiration за день
 			// - бан на longTTL
 			durationTTL = longTTL
 			reason = "long"
-
-			// Капча невірна і користувач іде в бан
-			b.SendMessage(query.Message.GetChat().ID, b.prepareMessage("banactive_mes3", language))
+			key = "banactive_mes3"
 		}
+
+		hours := durationTTL / 60
+		remainingMinutes := durationTTL % 60
+
+		options := b.prepareMessage(key, language)
+		options.Type = "important"
+		options.RemoveKeyboard = true
+		options.Text = fmt.Sprintf(options.Text, hours, remainingMinutes) // "%02d:%02d"
+		b.MakeRequestDeferred(user.ID, 9, options)
 
 		// create new record
 		log := &models.UserBanLog{
