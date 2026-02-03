@@ -668,7 +668,7 @@ func (s *ServiceImpl) HandleUserUpdated(userID uint, status string) error {
 	notificationDataMap := map[string]interface{}{
 		"user_id":         user.ID,
 		"telegram_id":     user.TelegramID,
-		"type":            "manual_update",
+		"type":            "important",
 		"title":           title,
 		"message":         message,
 		"image_url":       "",
