@@ -214,12 +214,18 @@ func (r *PostgresRepository) UserUnban() error {
 	}
 	logger.Info.Println(userBan)
 
-	if err := r.db.Model(&models.User{}).Where("id IN ?", userBan).UpdateColumn("status", config.UserStatusActive).Error; err != nil {
+	if err := r.db.Model(&models.UserBanLog{}).Where("active = ? AND until_to >= ? AND until_to <= ?",
+		true, current.Add(-3*time.Hour), current).UpdateColumn("active", false).Error; err != nil {
 		return err
 	}
 
-	if err := r.db.Model(&models.UserBanLog{}).Where("active = ? AND user_id IN ?", true, userBan).UpdateColumn("active", false).Error; err != nil {
-		return err
+	for i := range userBan {
+		res, _ := r.GetActiveBanLog(userBan[i])
+		if res.ID == 0 {
+			if err := r.db.Model(&models.User{}).Where("id = ?", userBan[i]).UpdateColumn("status", config.UserStatusActive).Error; err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

@@ -280,6 +280,12 @@ func (b *Bot) sendBotQueue() {
 							continue
 						} else if len(msgs) == 0 {
 							countFind++
+
+							// Remove message from queue
+							err = b.redisDB.Del(ctx, queueKey).Err()
+							if err != nil {
+								logger.Error.Printf("Error DEL %s: %v", queueKey, err)
+							}
 							results <- false
 							continue
 						}
@@ -519,6 +525,13 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 			b.MakeRequestDeferred(chatID, 2, options)
 
 			b.MakeRequestDeferredErr(chatID, "send_error")
+
+			// додати перевірку чи існує чат і чи бот не заблокований користувачем
+		} else if strings.Contains(err.Error(), "chat not found") {
+			logger.Error.Printf("Error %d found: %v", chatID, err)
+
+		} else if strings.Contains(err.Error(), "bot was blocked by the user") {
+			logger.Error.Printf("Error %d blocked: %v", chatID, err)
 		} else {
 			logger.Error.Printf("Error %d sending message: %v", chatID, err)
 			sleep = coolDownIntervalErr // Если была другая ошибка отправки то немного подождем
@@ -539,7 +552,8 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 
 	// Подготавливаем операции в pipeline
 	nextTimeKey := fmt.Sprintf(userNextSendTimeKeyPrefix, chatID)
-	pipe.Set(ctx, nextTimeKey, time.Now().Unix()+sleep, 0)
+
+	pipe.Set(ctx, nextTimeKey, time.Now().Unix()+sleep, time.Minute*10)
 
 	// Проверяем длину очереди
 	queueKey := fmt.Sprintf(userQueueKeyPrefix, chatID)

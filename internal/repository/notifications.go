@@ -228,7 +228,10 @@ func (r *PostgresRepository) GetUsersForNotificationTask(task *models.Notificati
 	var users []models.User
 
 	// Базовый запрос: пользователи не заблокированы
-	query := r.db.Model(&models.User{}).Where("status = ?", config.UserStatusActive)
+	query := r.db.Model(&models.User{})
+	if task.TargetType != "unregistered" {
+		query = query.Where("status = ?", config.UserStatusActive)
+	}
 
 	// Применяем фильтры в зависимости от типа таргетинга
 	switch task.TargetType {
