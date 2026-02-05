@@ -55,10 +55,11 @@ type Config struct {
 }
 
 const (
-	UserStatusActive  string = "ACTIVE"
-	UserStatusBanned  string = "BANNED"
-	UserStatusLockout string = "LOCKOUT"
-	UserStatusCaptcha string = "CAPTCHA"
+	UserStatusActive   string = "ACTIVE"
+	UserStatusDisabled string = "DISABLED" //присвоюється користувачу який забанив бота
+	UserStatusBanned   string = "BANNED"
+	UserStatusLockout  string = "LOCKOUT"
+	UserStatusCaptcha  string = "CAPTCHA"
 )
 
 // NewConfig створює новий екземпляр конфігурації

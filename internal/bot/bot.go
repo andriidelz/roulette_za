@@ -588,6 +588,11 @@ func (b *Bot) handleMessage(message *telego.Message) {
 
 	// Перевірка статусів користувача
 	switch dbUser.Status {
+	case config.UserStatusDisabled:
+		// Повернення користувача - запускаємо капчу
+		b.setCaptchaStatus(user.ID, "enabled_by_user")
+		b.MakeRequestDeferred(user.ID, 9, b.captchaMessage(user.ID, language, "new"))
+		return
 	case config.UserStatusBanned, config.UserStatusLockout:
 		// Если пользователь забанен, молча игнорируем сообщение
 		return
@@ -894,6 +899,11 @@ func (b *Bot) handleCallbackQuery(query *telego.CallbackQuery) {
 
 	// Перевірка статусів користувача
 	switch dbUser.Status {
+	case config.UserStatusDisabled:
+		// Повернення користувача - запускаємо капчу
+		b.setCaptchaStatus(user.ID, "enabled_by_user")
+		b.MakeRequestDeferred(user.ID, 9, b.captchaMessage(user.ID, language, "new"))
+		return
 	case config.UserStatusBanned: // На Banned не реагуємо
 		return
 	case config.UserStatusLockout: // На Lockout виводимо answerCallbackQuery

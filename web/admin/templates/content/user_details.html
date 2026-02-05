@@ -52,6 +52,8 @@
                   </p>
                   {{ if eq .user.Status "ACTIVE" }}
                   <div class="badge bg-success p-2"><i class="bi bi-check-circle"></i> ACTIVE</div>
+                  {{ else if eq .user.Status "DISABLED" }}
+                  <div class="badge bg-danger p-2"><i class="bi bi-lock"></i> DISABLED</div>
                   {{ else if eq .user.Status "BANNED" }}
                   <div class="badge bg-danger p-2"><i class="bi bi-lock"></i> BANNED</div>
                   {{ else if eq .user.Status "LOCKOUT" }}
@@ -346,6 +348,8 @@
                               <td>
                                 {{ if eq .TypeStatus "BANNED" }}
                                 <span class="badge bg-danger">BANNED</span>
+                                {{ else if eq .TypeStatus "DISABLED" }}
+                                <span class="badge bg-warning">DISABLED</span>
                                 {{ else if eq .TypeStatus "LOCKOUT" }}
                                 <span class="badge bg-warning">LOCKOUT</span>
                                 {{ else if eq .TypeStatus "CAPTCHA" }}
@@ -765,7 +769,7 @@
         $('.show_for_ban').hide();
         break;
       default:
-        // ACTIVE, unregistered
+        // ACTIVE, unregistered, DISABLED, LOCKOUT
         $('#ban_type').append('<option value="BANNED">BANNED</option>');
         $('#ban_type').append('<option value="CAPTCHA">CAPTCHA</option>');
 

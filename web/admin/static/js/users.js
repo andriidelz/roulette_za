@@ -14,7 +14,7 @@ $(document).ready(function () {
             $('.show_for_ban').hide();
             break;
         default:
-            // ACTIVE, unregistered
+            // ACTIVE, unregistered, DISABLED, LOCKOUT
             $('#ban_type').append('<option value="BANNED">BANNED</option>');
             $('#ban_type').append('<option value="CAPTCHA">CAPTCHA</option>');
 

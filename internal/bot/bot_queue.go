@@ -63,7 +63,7 @@ func (b *Bot) MakeRequestDeferred(chatID, order int64, param MessageOptions) err
 		dbUser, _ := b.getUser(chatID)
 		// Перевірка статусів користувача
 		switch dbUser.Status {
-		case config.UserStatusBanned, config.UserStatusLockout:
+		case config.UserStatusBanned, config.UserStatusLockout, config.UserStatusDisabled:
 			// Если пользователь забанен, молча игнорируем сообщение
 			return nil
 		case config.UserStatusCaptcha:
@@ -304,6 +304,10 @@ func (b *Bot) sendBotQueue() {
 							dbUser, _ := b.getUser(chatID)
 							// Перевірка статусів користувача
 							switch dbUser.Status {
+							case config.UserStatusDisabled:
+								b.disableUser(chatID, "", "")
+								results <- false
+								continue
 							case config.UserStatusBanned, config.UserStatusLockout:
 								countBan++
 								// Если пользователь забанен, молча игнорируем сообщение
@@ -529,9 +533,10 @@ func (b *Bot) sendDeferredMessage(chatID int64, options MessageOptions) {
 			// додати перевірку чи існує чат і чи бот не заблокований користувачем
 		} else if strings.Contains(err.Error(), "chat not found") {
 			logger.Error.Printf("Error %d found: %v", chatID, err)
-
+			b.disableUser(chatID, "chat_not_found", err.Error())
 		} else if strings.Contains(err.Error(), "bot was blocked by the user") {
 			logger.Error.Printf("Error %d blocked: %v", chatID, err)
+			b.disableUser(chatID, "blocked_by_user", err.Error())
 		} else {
 			logger.Error.Printf("Error %d sending message: %v", chatID, err)
 			sleep = coolDownIntervalErr // Если была другая ошибка отправки то немного подождем
