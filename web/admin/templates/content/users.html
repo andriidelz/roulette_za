@@ -104,6 +104,8 @@
                                     <td>
                                         {{ if eq .Status "ACTIVE" }}
                                         <span class="badge bg-success">ACTIVE</span>
+                                        {{ else if eq .Status "DISABLED" }}
+                                        <span class="badge bg-danger">DISABLED</span>
                                         {{ else if eq .Status "BANNED" }}
                                         <span class="badge bg-danger">BANNED</span>
                                         {{ else if eq .Status "LOCKOUT" }}

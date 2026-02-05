@@ -1,11 +1,13 @@
 package bot
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"roulette/internal/config"
 	"roulette/internal/logger"
 	"roulette/internal/models"
 
@@ -707,4 +709,56 @@ func (b *Bot) sendCancelMessage(chatID int64, language string) {
 	options.InlineKeyboard = inlineKeyboard
 	options.ReplyKeyboard = b.createAccountKeyboard(language)
 	b.SendMessage(chatID, options)
+}
+
+// UserStatusDisabled присвоюється користувачу який забанив бота
+func (b *Bot) disableUser(telegramID int64, reason, meta string) {
+
+	dbUser, err := b.getUser(telegramID)
+	if err != nil {
+		logger.Error.Printf("Failed to getUser: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Redis - видалити всі черги / ключі, пов’язані з user_id
+	err = b.redisDB.ZRem(ctx, userSendTaskKey, telegramID).Err()
+	if err != nil {
+		logger.Error.Printf("Error ZRem %d: %v", telegramID, err)
+	}
+
+	_, err = b.redisDB.Del(ctx, fmt.Sprintf(userQueueKeyPrefix, telegramID)).Result()
+	if err != nil {
+		logger.Error.Printf("Error Del %d: %v", telegramID, err)
+	}
+
+	if reason != "" {
+		// create new record
+		banLog := &models.UserBanLog{
+			UserID:     dbUser.ID,
+			TypeStatus: config.UserStatusDisabled,
+			Reason:     reason,
+			ReasonMeta: meta,
+			Active:     false,
+			UntilTo:    time.Now(),
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		}
+
+		// Save to database
+		if err := b.service.GetRepo().CreateBanLog(banLog); err != nil {
+			logger.Error.Printf("Failed to create ban log: %v", err)
+		}
+	}
+
+	if dbUser.Status != config.UserStatusBanned {
+		// Оновлюєм статус на відключений
+		dbUser.Status = config.UserStatusDisabled
+		err = b.service.UpdateUser(dbUser)
+		if err != nil {
+			logger.Error.Printf("Error updating user: %v", err)
+		}
+		b.updateUserCache(telegramID)
+	}
 }
