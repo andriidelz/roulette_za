@@ -568,6 +568,12 @@ func (b *Bot) captchaCheck(query *telego.CallbackQuery) {
 			logger.Error.Printf("Failed to create ban log: %v", err)
 		}
 
+		res.Active = false
+		// Save to database
+		if err := b.service.GetRepo().UpdateBanLog(&res); err != nil {
+			logger.Error.Printf("Failed to update ban log: %v", err)
+		}
+
 		// Отвечаем на callback, чтобы убрать индикатор загрузки
 		b.answerCallbackQuery(query.ID, "", false)
 		return
