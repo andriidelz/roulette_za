@@ -209,3 +209,105 @@ func (b *Bot) createRatingKeyboard(language string) *telego.ReplyKeyboardMarkup 
 		OneTimeKeyboard: false,
 	}
 }
+
+func (b *Bot) handleStatsCommand(message *telego.Message) {
+	user := message.From
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
+	if err != nil {
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
+		return
+	}
+
+	// Получаем локализированный текст для стартового сообщения статистики
+	options := b.prepareMessage("statisticsstart", language)
+
+	// Создаем клавиатуру выбора периода статистики
+	options.ReplyKeyboard = b.createStatsKeyboard(language)
+
+	// Отправляем сообщение с клавиатурой для выбора периода
+	b.SendMessage(message.Chat.ID, options)
+}
+
+// handleDayStatistics обрабатывает показ статистики за день
+func (b *Bot) handleDayStatistics(message *telego.Message) {
+	b.showStatisticsForPeriod(message, "day")
+}
+
+// handleWeekStatistics обрабатывает показ статистики за неделю
+func (b *Bot) handleWeekStatistics(message *telego.Message) {
+	b.showStatisticsForPeriod(message, "week")
+}
+
+// handleMonthStatistics обрабатывает показ статистики за месяц
+func (b *Bot) handleMonthStatistics(message *telego.Message) {
+	b.showStatisticsForPeriod(message, "month")
+}
+
+// handleAllStatistics обрабатывает показ статистики за все время
+func (b *Bot) handleAllStatistics(message *telego.Message) {
+	b.showStatisticsForPeriod(message, "all")
+}
+
+// showStatisticsForPeriod показывает статистику для выбранного периода
+func (b *Bot) showStatisticsForPeriod(message *telego.Message, period string) {
+	user := message.From
+
+	language, err := b.getUserLang(user.ID, user.LanguageCode)
+	if err != nil {
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
+		return
+	}
+
+	// Получаем подробную статистику пользователя
+	detailedStats, err := b.service.GetDetailedUserStats(user.ID, period)
+	if err != nil {
+		logger.Error.Printf("Error getting detailed stats: %v", err)
+		b.SendMessage(message.Chat.ID, MessageOptions{
+			Text: "Error retrieving statistics. Please try again.",
+		})
+		return
+	}
+
+	// Формируем ключ для текста статистики в зависимости от периода
+	statsMsgKey := period + "statm"
+
+	// Получаем шаблон для соответствующего периода
+	options := b.prepareMessage(statsMsgKey, language)
+
+	// Сформируем текст для вставки в шаблон
+	totalBets := detailedStats["totalBets"]
+	blackBets := detailedStats["blackBets"]
+	redBets := detailedStats["redBets"]
+	zeroBets := detailedStats["zeroBets"]
+
+	wonBets := detailedStats["wonBets"]
+	wonBlackBets := detailedStats["wonBlackBets"]
+	wonRedBets := detailedStats["wonRedBets"]
+	wonZeroBets := detailedStats["wonZeroBets"]
+
+	lostBets := detailedStats["lostBets"]
+	lostBlackBets := detailedStats["lostBlackBets"]
+	lostRedBets := detailedStats["lostRedBets"]
+	lostZeroBets := detailedStats["lostZeroBets"]
+
+	totalPoints := detailedStats["totalPoints"]
+
+	// Заполняем шаблон данными
+	options.Text = fmt.Sprintf(
+		options.Text,
+		totalBets, blackBets, redBets, zeroBets,
+		wonBets, wonBlackBets, wonRedBets, wonZeroBets,
+		lostBets, lostBlackBets, lostRedBets, lostZeroBets,
+		totalPoints,
+	)
+	options.ReplyKeyboard = b.createStatsKeyboard(language)
+
+	// Отправляем статистику пользователю
+	b.SendMessage(message.Chat.ID, options)
+
+	// Отправляем сообщение с предложением выбрать другой период
+	options = b.prepareMessage("statistics_next", language)
+	options.ReplyKeyboard = b.createStatsKeyboard(language)
+	b.SendMessage(message.Chat.ID, options)
+}
