@@ -384,6 +384,55 @@ func (b *Bot) handleChangeNameYes(query *telego.CallbackQuery) {
 	}
 }
 
+// handleInputNicknameState обрабатывает ввод никнейма при регистрации
+func (b *Bot) handleInputNicknameState(message *telego.Message) {
+	user := message.From
+
+	// Обработка ввода никнейма при регистрации
+	if len(message.Text) > 0 {
+		// Проверяем валидность никнейма (только латинские буквы и цифры)
+		nickname := strings.TrimSpace(message.Text)
+		isValid := true
+
+		// Проверяем, что никнейм состоит только из разрешенных символов
+		for _, r := range nickname {
+			if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+				isValid = false
+				break
+			}
+		}
+
+		// Обновляем никнейм пользователя
+		dbUser, err := b.getUser(user.ID)
+		if err != nil {
+			logger.Error.Printf("Error getting user: %v", err)
+			b.stateManager.ClearState(user.ID)
+			return
+		}
+		language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
+
+		if !isValid || len(nickname) < 3 || len(nickname) > 20 {
+			// Никнейм невалиден, отправляем сообщение об ошибке
+
+			b.SendMessage(message.Chat.ID, b.prepareMessage("invalid_nickname", language))
+			return
+		}
+
+		// Сохраняем никнейм в отдельное поле Nickname
+		dbUser.Nickname = nickname
+		if err := b.service.UpdateUser(dbUser); err != nil {
+			logger.Error.Printf("Error updating user nickname: %v", err)
+		}
+		b.updateUserCache(user.ID)
+
+		// Очищаем состояние
+		b.stateManager.ClearState(user.ID)
+
+		// Отправляем запрос на подписку
+		b.sendSubscriptionRequest(message.Chat.ID, language, "name_changesave_msg_start")
+	}
+}
+
 // 6.2 handleChangeNameNo обрабатывает отказ от изменения никнейма
 func (b *Bot) handleChangeNameNo(query *telego.CallbackQuery) {
 	user := query.From

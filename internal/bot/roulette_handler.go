@@ -100,15 +100,15 @@ const (
 	userWaitNewRoundPrefix  = "game:waiting_new_round"  // Карта игроков, ожидающих результатов
 	gameAnimationPrefix     = "game:animation"          // Карта анимаций
 
-	StickerNoBids    = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
-	StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
-	StickerLose      = "CAACAgUAAxkBAAEORL5n9lEOq_kczbL1CGpgN5-UhhhgqQAC3BIAAtGwqVdlepoFId2tMzYE" // lose
-	StickerBlackRes1 = "CAACAgUAAxkBAAEORMBn9lEUB8KMRJ8nduCQ-y32y5ns4AACNBUAArIsqVfUvoMXgG8VvzYE" // blackresult (вариант 1)
-	StickerBlackRes2 = "CAACAgUAAxkBAAEORMJn9lEXC6ByJRCY4_8Mu5vQQP-1zgACOxYAAnWOqVesBnNzFycGfDYE" // blackresult (вариант 2)
-	StickerRedRes1   = "CAACAgUAAxkBAAEORMhn9lEfopgbb8y7qi__V8deZr0MpAACYBcAAs4bqVeFX-l3HDBIFjYE" // redresult (вариант 1)
-	StickerRedRes2   = "CAACAgUAAxkBAAEORMpn9lEiRobEQnz4qg6GFSmfZQmjbwACiRgAAhuTqVdgysjb-Y-sLTYE" // redresult (вариант 2)
-	StickerZeroRes1  = "CAACAgUAAxkBAAEORMRn9lEar58eDwvent8Lp3TvMRvF5AACtxEAAlRRsFdySRXPzXyVqzYE" // zeroresult (вариант 1)
-	StickerZeroRes2  = "CAACAgUAAxkBAAEORMZn9lEd12gNsWFFxGXLAZoeJbSEsgACCxYAAmDwqVdsE7WC-rayWDYE" // zeroresult (вариант 2)
+	StickerNoBids = "CAACAgUAAxkBAAEORLpn9lEBwqSME7WwehtZBLt5ybqSrAACKRUAAvWxqVeH8hhzfq9SEjYE" // nomorebids
+	// StickerWin       = "CAACAgUAAxkBAAEORLxn9lEJolSTKIZrUxOLZbkMChpdWwACuBcAArzBqVdjiSsft06GCjYE" // win
+	// StickerLose      = "CAACAgUAAxkBAAEORL5n9lEOq_kczbL1CGpgN5-UhhhgqQAC3BIAAtGwqVdlepoFId2tMzYE" // lose
+	// StickerBlackRes1 = "CAACAgUAAxkBAAEORMBn9lEUB8KMRJ8nduCQ-y32y5ns4AACNBUAArIsqVfUvoMXgG8VvzYE" // blackresult (вариант 1)
+	// StickerBlackRes2 = "CAACAgUAAxkBAAEORMJn9lEXC6ByJRCY4_8Mu5vQQP-1zgACOxYAAnWOqVesBnNzFycGfDYE" // blackresult (вариант 2)
+	// StickerRedRes1   = "CAACAgUAAxkBAAEORMhn9lEfopgbb8y7qi__V8deZr0MpAACYBcAAs4bqVeFX-l3HDBIFjYE" // redresult (вариант 1)
+	// StickerRedRes2   = "CAACAgUAAxkBAAEORMpn9lEiRobEQnz4qg6GFSmfZQmjbwACiRgAAhuTqVdgysjb-Y-sLTYE" // redresult (вариант 2)
+	// StickerZeroRes1  = "CAACAgUAAxkBAAEORMRn9lEar58eDwvent8Lp3TvMRvF5AACtxEAAlRRsFdySRXPzXyVqzYE" // zeroresult (вариант 1)
+	// StickerZeroRes2  = "CAACAgUAAxkBAAEORMZn9lEd12gNsWFFxGXLAZoeJbSEsgACCxYAAmDwqVdsE7WC-rayWDYE" // zeroresult (вариант 2)
 
 )
 
@@ -818,6 +818,87 @@ func (h *GameHandler) notifyPlayerAboutResult(userID int64, round *models.HashEn
 }
 
 // MakeBet делает ставку в текущем раунде
+func (h *GameHandler) handleMakeBet(query *telego.CallbackQuery, callbackData string, option models.BetOption) {
+	user := query.From
+	// Получаем пользователя для определения языка
+	dbUser, userErr := h.bot.getUser(user.ID)
+	if userErr != nil {
+		logger.Error.Printf("Error getting user %d: %v", user.ID, userErr)
+		return
+	}
+
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
+
+	// Проверяем активность пользователя
+	// - беспрерывная игра
+	// - ставка на одну и ту же опцию
+	if h.bot.captchaBetActivity(user.ID) {
+		h.bot.setCaptchaStatus(user.ID, "captcha_bet_activity")
+	} else if h.bot.captchaBetDuplicate(user.ID, string(option)) {
+		h.bot.setCaptchaStatus(user.ID, "captcha_bet_duplicate")
+	}
+
+	// Отримуєм раунд
+	roundID, err := strconv.ParseUint(strings.TrimPrefix(query.Data, callbackData), 10, 64)
+	if err != nil {
+		logger.Error.Printf("failed to parse #%s: %v", query.Data, err)
+		return
+	}
+
+	// Вызываем MakeBet и обрабатываем возможные ошибки
+	err = h.bot.gameHandler.MakeBet(user.ID, roundID, option)
+	if err != nil {
+		// Определяем тип ошибки и отправляем соответствующее сообщение
+		var errorKey string
+		var remain int
+
+		if strings.Contains(err.Error(), "already made a bet") {
+			// Пользователь уже сделал ставку в этом раунде
+			errorKey = "bet_already_made"
+		} else if strings.Contains(err.Error(), "cannot bet on zero") {
+			// Пользователь не может ставить на Zero
+			canBetZero, remaining, _ := h.bot.service.CanBetZero(dbUser.ID)
+			if !canBetZero {
+				errorKey = "zero_limit"
+				remain = remaining
+			} else {
+				errorKey = "bet_error"
+			}
+		} else if strings.Contains(err.Error(), "no bets left") {
+			// У пользователя закончились ставки на сегодня
+			errorKey = "betsbalancelow"
+		} else if strings.Contains(err.Error(), "already completed") {
+			errorKey = "bet_time_completed"
+
+			h.bot.answerCallbackQuery(query.ID, "", false)
+
+			options := h.bot.prepareMessage(errorKey, language)
+			options.InlineKeyboard = &telego.InlineKeyboardMarkup{
+				InlineKeyboard: [][]telego.InlineKeyboardButton{
+					{{Text: h.bot.getText("next_round", language), CallbackData: CallbackStartRound}},
+				},
+			}
+			h.bot.SendMessage(user.ID, options)
+			return
+		} else {
+			// Общая ошибка ставки
+
+			logger.Error.Println("bet_error", err)
+			errorKey = "bet_error"
+		}
+		errText := h.bot.getText(errorKey, language)
+		if errorKey == "zero_limit" {
+			errText = fmt.Sprintf(errText, remain)
+		}
+
+		// Виводимо pop-up toast без підтвердження
+		h.bot.answerCallbackQuery(query.ID, errText, false)
+		return
+	}
+	h.bot.answerCallbackQuery(query.ID, "", false)
+}
+
+// MakeBet делает ставку в текущем раунде
 func (h *GameHandler) MakeBet(userID int64, roundID uint64, option models.BetOption) error {
 	// logger.Info.Printf("MakeBet called for user %d with option %s", userID, option)
 
@@ -1281,6 +1362,77 @@ func (h *GameHandler) handleInputBoost(message *telego.Message, messageID int) {
 		// Відправляємо новий раунд
 		_ = h.sendNewRound(language, user.ID, dbUser.ID)
 	}
+}
+
+// Bet boost
+func (h *GameHandler) handleStartBoost(query *telego.CallbackQuery) {
+
+	user := query.From
+	dbUser, err := h.bot.getUser(user.ID)
+	if err != nil {
+		logger.Error.Printf("Error getting user %d: %v", user.ID, err)
+		return
+	}
+	language := getLanguage(dbUser.LanguageCode, user.LanguageCode)
+
+	cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	pointBoost, err := h.bot.redisDB.Get(cont, fmt.Sprintf(userPointsBoostPrefix, user.ID)).Int()
+	if err != nil && err != redis.Nil {
+		logger.Error.Printf("Error Get %d: %v", user.ID, err)
+	}
+
+	callbackData := query.Data
+
+	switch callbackData {
+	case CallbackBetMulti:
+		pointBoost *= 2
+	case CallbackBetBoostTwo:
+		pointBoost += 2
+	case CallbackBetBoostFive:
+		pointBoost += 5
+	case CallbackBetBoostTen:
+		pointBoost += 10
+	case CallbackBetBoostFifteen:
+		pointBoost += 15
+	case CallbackBetBoostTwenty:
+		pointBoost += 20
+	case CallbackBetBoostKeep:
+		// не змінюєм PointBoost = PointBoost
+	case CallbackBetBoostSkip:
+		pointBoost = 0 // встановлюєм 0
+	default:
+		amountText := strings.TrimPrefix(callbackData, CallbackBetBoostManual)
+		// Преревірка валідності
+		point, err := strconv.ParseUint(amountText, 10, 64)
+		if err != nil {
+			// Невірний формат
+			h.bot.SendMessage(query.Message.GetChat().ID, h.bot.prepareMessage("input_invalid_msg", language))
+			return
+		}
+		pointBoost = int(point)
+	}
+
+	year, week := time.Now().ISOWeek()
+	points := h.service.GetPoints(dbUser.ID, year, week)
+	if points < pointBoost {
+		h.bot.answerCallbackQuery(query.ID, h.bot.getText("boost_limit", language), true)
+		return
+	}
+
+	// Оновлюємо буст
+	if callbackData != CallbackBetBoostKeep {
+		cont, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		err = h.bot.redisDB.Set(cont, fmt.Sprintf(userPointsBoostPrefix, user.ID), pointBoost, 0).Err()
+		if err != nil {
+			logger.Error.Printf("Error Set %d: %v", user.ID, err)
+		}
+	}
+
+	h.handleStartRound(query)
+
 }
 
 // handleStartRound - старт нового раунду гри
