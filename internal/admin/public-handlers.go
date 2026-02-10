@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"roulette/internal/models"
 	"roulette/internal/utils"
@@ -183,9 +184,13 @@ func (a *AdminPanel) publicHashes(c *gin.Context) {
 func (a *AdminPanel) publicHome(c *gin.Context) {
 	userLang := utils.GetUserLang(c)
 
+	// current year for the footer (all rights reserved)
+	currentYear := time.Now().Year()
+
 	c.HTML(http.StatusOK, "public_home", gin.H{
-		"lang": userLang,
-		"i18n": utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"common", "hashes"})),
+		"lang":        userLang,
+		"i18n":        utils.MapToBase64Json(utils.GetYAMLData(userLang, []string{"common", "hashes"})),
+		"currentYear": currentYear,
 
 		"title":     "Roulette Bot | Социальное казино в Telegram",
 		"activeTab": "home",
@@ -243,7 +248,7 @@ func (a *AdminPanel) publicPrivacy(c *gin.Context) {
 		"title":     "Roulette Bot | Социальное казино в Telegram",
 		"activeTab": "privacy",
 		"cssFiles":  []string{},
-		"jsFiles": []string{},
+		"jsFiles":   []string{},
 	})
 }
 
@@ -258,7 +263,7 @@ func (a *AdminPanel) publicRules(c *gin.Context) {
 		"title":     "Roulette Bot | Социальное казино в Telegram",
 		"activeTab": "rules",
 		"cssFiles":  []string{},
-		"jsFiles": []string{},
+		"jsFiles":   []string{},
 	})
 }
 
