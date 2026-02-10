@@ -164,10 +164,11 @@ roulette/
 - Rotation success/error rate
 
 ### Infrastructure Metrics
+
 - **PostgreSQL Exporter** (port 9187): база данных, подключения, запросы
 - **Redis Exporter** (port 9121): кеш, memory usage, операции
-- **RabbitMQ Exporter** (port 9419): очереди, сообщения, подключения  
-- **Node Exporter** (port 9100): системные метрики сервера
+- **RabbitMQ Exporter** (port 9419): очереди, сообщения, подключения
+- **Node Exporter** (port 9110): системные метрики сервера
 
 ## База данных
 

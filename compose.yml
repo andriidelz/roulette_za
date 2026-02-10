@@ -542,7 +542,7 @@ services:
       - "--path.rootfs=/rootfs"
       - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
     ports:
-      - "127.0.0.1:9100:9100"
+      - "127.0.0.1:9110:9100"
     deploy:
       resources:
         limits:
