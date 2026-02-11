@@ -64,3 +64,6 @@ temp/
 dist/
 build/
 data/
+
+# Test artifacts
+internal/captcha-go/captcha.png
