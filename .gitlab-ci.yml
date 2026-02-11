@@ -1,5 +1,6 @@
 stages: [lint, test, build, security, promote, deploy]
 
+
 workflow:
   rules:
     - if: '$CI_COMMIT_TAG'                                # Запускати на тегах
@@ -176,7 +177,24 @@ build:kaniko:
     paths:
       - digest.txt
     when: on_success
-    
+
+prepare:release:
+  stage: build
+  image: alpine:latest
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v1\.[0-9]{4}\.[0-9]{2}(\.[0-9]+)?(-rc[0-9]*)?$/'
+      when: always
+    - when: never
+  needs: ["build:kaniko"]    
+  script:
+    - mkdir -p release_pack
+    - tar -czf release_pack/migrations.tar.gz -C migrations .
+    - cp digest.txt release_pack/digest.txt
+  artifacts:
+    name: "release-$CI_COMMIT_TAG"
+    paths:
+      - release_pack/
+
 security:trivy:
   stage: security
   rules:
@@ -208,7 +226,6 @@ promote:stage:
   variables:
     TARGET_ENV: "stage"
   needs: ["security:trivy", "build:kaniko"]
-
   script:
     - export IMAGE_DIGEST=$(cat digest.txt)
     - crane auth login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
@@ -246,7 +263,6 @@ deploy:sandbox:
       when: manual
     - when: never  
 
-
 deploy:stage:
   <<: [*deploy_job]
   variables:
@@ -260,18 +276,21 @@ deploy:stage:
       when: manual
     - when: never  
 
-deploy:prod:
-  <<: [*deploy_job]
-  variables: 
+deploy:trigger-prod:
+  stage: deploy
+  variables:
+    UPSTREAM_REF: $CI_COMMIT_TAG
+    IMAGE_NAME: $IMAGE_NAME    
     TARGET_ENV: prod
-    SSH_HOST: $SSH_HOST_PROD
-    SSH_USER: $SSH_USER_PROD
-    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_PROD 
   needs: ["promote:prod", "build:kaniko"]
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v1\.[0-9]{4}\.[0-9]{2}(\.[0-9]+)?(-rc[0-9]*)?$/'
       when: manual
     - when: never  
+  trigger:
+    project: infra/prod-deploy
+    branch: master
+    strategy: depend
 
 rollback:db:stage:
   <<: [*rollback_db_job]  
@@ -285,18 +304,6 @@ rollback:db:stage:
       when: manual
     - when: never  
 
-rollback:db:prod:
-  <<: [*rollback_db_job]  
-  variables: 
-    TARGET_ENV: prod
-    SSH_HOST: $SSH_HOST_PROD
-    SSH_USER: $SSH_USER_PROD
-    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_PROD
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^v1\.[0-9]{4}\.[0-9]{2}(\.[0-9]+)?(-rc[0-9]*)?$/'
-      when: manual
-    - when: never      
-
 rollback:stage:
   <<: [*rollback_job]    
   variables: 
@@ -308,16 +315,3 @@ rollback:stage:
     - if: '$CI_COMMIT_TAG =~ /^v1\.[0-9]{4}\.[0-9]{2}(\.[0-9]+)?(-rc[0-9]*)?$/'
       when: manual
     - when: never  
-
-rollback:prod:
-  <<: [*rollback_job] 
-  variables: 
-    TARGET_ENV: prod
-    SSH_HOST: $SSH_HOST_PROD
-    SSH_USER: $SSH_USER_PROD
-    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_PROD 
-  environment: { name: prod, action: stop }
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^v1\.[0-9]{4}\.[0-9]{2}(\.[0-9]+)?(-rc[0-9]*)?$/'
-      when: manual
-    - when: never    
