@@ -6,7 +6,7 @@ set -e
 YEAR=$(date +%Y)
 WEEK=$(date +%V)
 
-PREFIX="v0.${YEAR}.${WEEK}"
+PREFIX="v1.${YEAR}.${WEEK}"
 TAG="$PREFIX"
 
 # 2. Ищем свободный тег (если основной занят — добавляем .1, .2, ...)
