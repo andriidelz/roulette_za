@@ -197,7 +197,7 @@ func (m *ActivityLoggerMiddleware) buildMessageLog(message *telego.Message, tele
 	}
 
 	// Photo
-	if message.Photo != nil && len(message.Photo) > 0 {
+	if len(message.Photo) > 0 {
 		photo := message.Photo[len(message.Photo)-1]
 		return &models.UserActivityLog{
 			TelegramID: telegramID,

@@ -12,10 +12,12 @@
                   <div class="d-flex flex-column align-items-stretch flex-sm-row">
                     <a href="/admin/users" class="btn btn-outline-secondary mb-2 mb-sm-0 me-sm-2 w-100 d-flex align-items-center justify-content-center">
                         <i class="bi bi-arrow-left"></i> <span class="d-none d-sm-inline ms-1">Назад к списку</span>
-                    </a>
+                    </a>                    
+                    {{ if hasPermission .admin_user "users" "can_write" }}
                     <button class="btn btn-danger ban-user-btn w-100" data-id="{{ .user.ID }}">
                         <i class="bi bi-lock"></i> <span class="d-none d-sm-inline">Управление статусом</span><span class="d-sm-none">Статус</span>
                     </button>
+                    {{ end }}
                   </div>
               </div>
           </div>
@@ -25,10 +27,12 @@
           <div class="col-md-4 mb-4">
             <div class="card h-100">
               <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Основная информация</h5>
+                <h5 class="mb-0">Основная информация</h5>                
+                {{ if hasPermission .admin_user "users" "can_edit" }}
                 <button class="btn btn-sm btn-outline-primary edit-profile-btn" data-toggle="tooltip" title="Редактировать профиль">
                   <i class="bi bi-pencil"></i>
                 </button>
+                {{ end }}
               </div>
               <div class="card-body">
                 <!-- ИЗМЕНЕНО: Блок с аватаркой пользователя -->
@@ -102,13 +106,15 @@
                   <dt class="col-sm-5">Реферальная ссылка:</dt>
                   <dd class="col-sm-7">
                     {{ if .user.RefKey }}
-                    https://t.me/{{ .botName}}?start={{ .user.RefKey }}
-                    <button class="btn btn-sm btn-link p-0 ms-1 copy-referral-btn" 
-                      data-clipboard-text="https://t.me/{{ .botName}}?start={{ .user.RefKey }}" title="Копировать ссылку">
-                      <i class="bi bi-clipboard"></i>
-                    </button>
+                      https://t.me/{{ .botName}}?start={{ .user.RefKey }}
+                      <button class="btn btn-sm btn-link p-0 ms-1 copy-referral-btn" 
+                        data-clipboard-text="https://t.me/{{ .botName}}?start={{ .user.RefKey }}" title="Копировать ссылку">
+                        <i class="bi bi-clipboard"></i>
+                      </button>
+                    {{ else if hasPermission .admin_user "users" "can_write" }}
+                      <button class="btn btn-info btn-sm ref-user-btn" data-id="{{ .user.ID }}">Сгенерировать</button>
                     {{ else }}
-                    <button class="btn btn-info ref-user-btn" data-id="{{ .user.ID }}">Сгенерировать</button>
+                      <span class="text-muted">Не сгенерирована</span>
                     {{ end }}
                   </dd>
                   
@@ -128,10 +134,12 @@
           <div class="col-md-4 mb-4">
             <div class="card h-100">
               <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Финансовая информация</h5>
+                <h5 class="mb-0">Финансовая информация</h5>                
+                {{ if hasPermission .admin_user "users" "can_edit" }}
                 <button class="btn btn-sm btn-outline-primary edit-balance-btn" data-toggle="tooltip" title="Управление балансом">
                   <i class="bi bi-cash-coin"></i>
                 </button>
+                {{ end }}
               </div>
               <div class="card-body">
                 <div class="mb-4">
@@ -303,6 +311,8 @@
                   <dd class="col-sm-7">{{ .banLog.Wrong }}</dd>
                   <dt class="col-sm-5">Refresh:</dt>
                   <dd class="col-sm-7">{{ .banLog.Refresh }}</dd>
+                {{ else }}
+                  <p class="text-success text-center mt-3">Користувач не має активних обмежень</p>
                 {{ end }}
 
                 <hr>
@@ -938,7 +948,8 @@
     var betTypeCtx = document.getElementById('betTypeChart');
     if (betTypeCtx) {
       var betTypeChart = new Chart(betTypeCtx, {
-        type: 'horizontalBar',
+        type: 'bar',
+        {% comment %} type: 'horizontalBar', {% endcomment %}
         data: {
           labels: ['Красное', 'Черное', 'Зеро'],
           datasets: [
@@ -967,6 +978,7 @@
           ]
         },
         options: {
+          indexAxis: 'y',
           scales: {
             x: {
               beginAtZero: true

@@ -6,6 +6,25 @@
     <main class="main-content flex-grow-1">
       <div class="container-fluid">
         <!-- Заголовок и информация о времени -->
+        <div class="row mb-4 mt-2">
+          <div class="col-12">
+            <div class="alert alert-dismissible fade show border-0 shadow-sm p-0 overflow-hidden" role="alert" style="background-color: #0d6efd !important;">
+                    <div class="d-flex align-items-center p-3 text-white">
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3">
+                            <i class="bi bi-person-badge fs-3 text-white"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0 fw-bold text-white">Вітаємо, {{ .Admin.FirstName }} {{ .Admin.LastName }}!</h4>
+                            <p class="mb-0 small text-white opacity-75">
+                                Ви увійшли як: <strong>{{ range $i, $r := .Admin.Roles }}{{ if $i }}, {{ end }}{{ $r.Name }}{{ end }}</strong>
+                            </p>
+                        </div>
+                       <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close" style="position: absolute; top: 1rem; right: 1rem;"></button> 
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row mb-4">
           <div class="col-12 col-lg-8">
             <h1 class="mb-0">Панель управления</h1>
@@ -61,6 +80,7 @@
         
         <!-- Сводная информация - основные метрики -->
         <div class="row g-3 mb-4">
+          {{ if hasModule .Admin "users" }}
           <div class="col-12 col-md-6 col-lg-3">
             <div class="card h-100 border-primary border-start border-5">
               <div class="card-body">
@@ -81,7 +101,9 @@
               </div>
             </div>
           </div>
+          {{ end }}
 
+          {{ if hasModule .Admin "ratings" }}
           <div class="col-12 col-md-6 col-lg-3">
             <div class="card h-100 border-warning border-start border-5">
               <div class="card-body">
@@ -102,6 +124,7 @@
               </div>
             </div>
           </div>
+          {{ end }}
 
           <div class="col-12 col-md-6 col-lg-3">
             <div class="card h-100 border-success border-start border-5">
@@ -122,6 +145,7 @@
             </div>
           </div>
 
+          {{ if hasModule .Admin "withdrawals" }}
           <div class="col-12 col-md-6 col-lg-3">
             <div class="card h-100 border-danger border-start border-5 position-relative">
               <!-- Полупрозрачная заглушка -->
@@ -149,6 +173,7 @@
               </div>
             </div>
           </div>
+          {{ end }}
         </div>
 
         <!-- Статистика активности и системная информация -->
@@ -327,11 +352,14 @@
               </div>
               <div class="card-body">
                 <div class="row g-2">
+                  {{ if hasModule .Admin "users" }}
                   <div class="col-6">
                     <a href="/admin/users" class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center py-2">
                       <i class="bi bi-people me-2"></i> Пользователи
                     </a>
                   </div>
+                  {{ end }}
+        
                   <div class="col-6">
                     <a href="/admin/ratings" class="btn btn-outline-warning w-100 d-flex align-items-center justify-content-center py-2">
                       <i class="bi bi-trophy me-2"></i> Рейтинги
@@ -352,11 +380,14 @@
                       <i class="bi bi-translate me-2"></i> Локализация
                     </a>
                   </div>
+
+                  {{ if hasModule .Admin "settings" }}
                   <div class="col-6">
                     <a href="/admin/settings" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center py-2">
                       <i class="bi bi-gear me-2"></i> Настройки
                     </a>
                   </div>
+                  {{ end }}
                 </div>
               </div>
             </div>

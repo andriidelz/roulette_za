@@ -52,6 +52,8 @@ type Config struct {
 	PprofAddr                 string
 	PprofBlockProfileRate     int
 	PprofMutexProfileFraction int
+
+	DebugMode bool
 }
 
 const (
@@ -112,6 +114,8 @@ func NewConfig() *Config {
 		PprofAddr:                 getEnv("PPROF_ADDR", "0.0.0.0:6060"),
 		PprofBlockProfileRate:     getEnvInt("PPROF_BLOCK_PROFILE_RATE", 10000),
 		PprofMutexProfileFraction: getEnvInt("PPROF_MUTEX_PROFILE_FRACTION", 10),
+
+		DebugMode: getEnvBool("DEBUG_MODE", false),
 	}
 }
 

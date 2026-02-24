@@ -19,7 +19,7 @@ func (a *AdminPanel) ratingsList(c *gin.Context) {
 	// Получаем данные о 10 последних недельных рейтингах
 	weeklyRatings, err := a.getWeeklyRatingsHistory(currentYear, currentWeek, 10)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Ошибка",
 			"error": err.Error(),
 		})
@@ -41,7 +41,7 @@ func (a *AdminPanel) ratingsList(c *gin.Context) {
 	// Получаем информацию о супер-рейтингах
 	superRatings, err := a.getSuperRatingsHistory()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Ошибка",
 			"error": err.Error(),
 		})
@@ -49,7 +49,7 @@ func (a *AdminPanel) ratingsList(c *gin.Context) {
 	}
 
 	// Отправляем данные в шаблон
-	c.HTML(http.StatusOK, "ratings", gin.H{
+	a.render(c, http.StatusOK, "ratings", gin.H{
 		"title":         "Рейтинги",
 		"activeTab":     "ratings",
 		"currentYear":   currentYear,
@@ -214,7 +214,7 @@ func (a *AdminPanel) ratingDetails(c *gin.Context) {
 	// Получаем параметры из URL
 	year, err := strconv.Atoi(c.Param("year"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+		a.render(c, http.StatusBadRequest, "error.html", gin.H{
 			"title": "Ошибка",
 			"error": "Неверный год",
 		})
@@ -223,7 +223,7 @@ func (a *AdminPanel) ratingDetails(c *gin.Context) {
 
 	week, err := strconv.Atoi(c.Param("week"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+		a.render(c, http.StatusBadRequest, "error.html", gin.H{
 			"title": "Ошибка",
 			"error": "Неверная неделя",
 		})
@@ -250,7 +250,7 @@ func (a *AdminPanel) ratingDetails(c *gin.Context) {
 	// Отримуємо рейтинг
 	ratings, err := a.repo.GetWeeklyRating(year, week, prizeFund.TopCount)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Ошибка",
 			"error": err.Error(),
 		})
@@ -281,7 +281,7 @@ func (a *AdminPanel) ratingDetails(c *gin.Context) {
 
 	currentYear, currentWeek := time.Now().ISOWeek()
 
-	c.HTML(http.StatusOK, "rating_details", gin.H{
+	a.render(c, http.StatusOK, "rating_details", gin.H{
 		"title":       fmt.Sprintf("Рейтинг %d/%d", year, week),
 		"ratings":     ratings,
 		"year":        year,
@@ -450,7 +450,7 @@ func (a *AdminPanel) superRatingsList(c *gin.Context) {
 	// Отримуємо список супер-рейтингів
 	// Тут потрібно додати метод для отримання списку супер-рейтингів
 
-	c.HTML(http.StatusOK, "super_ratings", gin.H{
+	a.render(c, http.StatusOK, "super_ratings", gin.H{
 		"title":     "Admin-panel - Super-ratings",
 		"activeTab": "super_ratings",
 	})
@@ -464,14 +464,14 @@ func (a *AdminPanel) superRatingDetails(c *gin.Context) {
 	// Отримуємо супер-рейтинг
 	ratings, err := a.repo.GetSuperRating(period, 100)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "super_rating_details", gin.H{
+	a.render(c, http.StatusOK, "super_rating_details", gin.H{
 		"title":     fmt.Sprintf("Admin-panel - Super-rating %s", period),
 		"ratings":   ratings,
 		"period":    period,

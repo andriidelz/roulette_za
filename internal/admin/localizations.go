@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
-	"time"
-
+	"roulette/internal/logger"
 	"roulette/internal/models"
 	"roulette/internal/utils"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -38,7 +38,7 @@ func (a *AdminPanel) localizationsList(c *gin.Context) {
 	// Получаем локализации для всех языков
 	enLocalizations, err := a.getLocalizationsForLanguage("en")
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
@@ -47,7 +47,7 @@ func (a *AdminPanel) localizationsList(c *gin.Context) {
 
 	ruLocalizations, err := a.getLocalizationsForLanguage("ru")
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
@@ -56,14 +56,14 @@ func (a *AdminPanel) localizationsList(c *gin.Context) {
 
 	ukLocalizations, err := a.getLocalizationsForLanguage("uk")
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "localizations", gin.H{
+	a.render(c, http.StatusOK, "localizations", gin.H{
 		"title":     "Admin-panel - Localizations",
 		"activeTab": "localizations",
 		"localizations": gin.H{
@@ -327,7 +327,11 @@ func (a *AdminPanel) localizationImport(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No file uploaded"})
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			logger.Error.Println(err)
+		}
+	}()
 
 	// Проверяем расширение файла
 	if !strings.HasSuffix(strings.ToLower(header.Filename), ".json") {

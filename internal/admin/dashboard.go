@@ -3,6 +3,7 @@ package admin
 import (
 	"fmt"
 	"net/http"
+	"roulette/internal/logger"
 	"roulette/internal/models"
 	"time"
 
@@ -18,10 +19,12 @@ func init() {
 }
 
 func (a *AdminPanel) dashboard(c *gin.Context) {
-	// Отримуємо загальну статистику
+	user := getAdminUser(c)
+
 	userCount, err := a.repo.GetUserCount()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		logger.Error.Printf("[ERROR] GetUserCount: %v\n", err)
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
@@ -69,7 +72,7 @@ func (a *AdminPanel) dashboard(c *gin.Context) {
 		_ = a.repo.UpdatePrizeFund(prizeFund) // Ігноруємо помилку, якщо вона виникне
 	}
 
-	c.HTML(http.StatusOK, "dashboard", gin.H{
+	a.render(c, http.StatusOK, "dashboard", gin.H{
 		"title":     "Admin-panel - Головна",
 		"userCount": userCount,
 		"year":      year,
@@ -91,6 +94,8 @@ func (a *AdminPanel) dashboard(c *gin.Context) {
 		"uptime":          uptimeFormatted,
 		"uptimeSeconds":   int(uptime.Seconds()),
 		"serverStartTime": serverStartFormatted,
+
+		"hasAccess": user != nil,
 	})
 }
 

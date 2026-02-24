@@ -43,11 +43,11 @@
     </script>
 
     <!-- Общие стили -->
-    <link href="/static/public/css/common.css" rel="stylesheet" />
+    <link href="/static/css/common.css" rel="stylesheet" />
 
     <!-- Дополнительные стили -->
     {{if .cssFiles}}{{range .cssFiles}}
-    <link href="/static/public/css/{{.}}" rel="stylesheet" />
+    <link href="/static/css/{{.}}" rel="stylesheet" />
     {{end}}{{end}}
   </head>
   <body>

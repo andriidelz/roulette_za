@@ -11,14 +11,29 @@
         
         <!-- На мобильных устройствах верхняя панель будет содержать только логотип и кнопку меню -->
         <div class="d-lg-none" style="width: 42px;"><!-- Пустой блок для выравнивания --></div>
-        
+                
         <!-- На десктопе показываем кнопку выхода в верхней панели -->
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Выход</a>
-                </li>
-            </ul>
+
+            <div class="navbar-nav ms-auto d-flex align-items-center">
+                {{ if .admin_user }}
+                <div class="nav-item me-3 text-end d-none d-md-flex flex-column my-auto">
+                    <span class="d-block text-white small fw-bold" style="line-height: 1.2;">
+                        {{ .admin_user.FirstName }} {{ .admin_user.LastName }}
+                    </span>
+                    <span class="text-muted" style="font-size: 0.7rem; line-height: 0.5;">
+                        {{ range $index, $role := .admin_user.Roles }}
+                            {{ if $index }}, {{ end }}{{ $role.Name }}
+                        {{ end }}
+                    </span>
+                </div>
+                {{ end }}
+
+                <div class="nav-item">
+                    <a class="btn btn-outline-light btn-sm" href="/logout">
+                        <i class="bi bi-box-arrow-right me-1"></i> Выход</a>
+                </div>
+            </div>
         </div>
     </div>
 </nav>

@@ -335,7 +335,8 @@ func (r *PostgresRepository) FixPartiallyDistributedPrizes(year, week int, actio
 	tx := r.db.Begin()
 
 	// Если действие - сбросить, удаляем все призы
-	if action == "reset" {
+	switch action {
+	case "reset":
 		// Сбрасываем все призы для указанной недели
 		if err := tx.Model(&models.WeeklyRating{}).
 			Where("year = ? AND week = ?", year, week).
@@ -355,7 +356,7 @@ func (r *PostgresRepository) FixPartiallyDistributedPrizes(year, week int, actio
 			tx.Rollback()
 			return err
 		}
-	} else if action == "mark-processed" {
+	case "mark-processed":
 		// Помечаем призовой фонд как обработанный
 		if err := tx.Model(&models.PrizeFund{}).
 			Where("year = ? AND week = ?", year, week).

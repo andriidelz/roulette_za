@@ -23,7 +23,7 @@ func (a *AdminPanel) hashesPage(c *gin.Context) {
 	// Получаем хеши с пагинацией
 	entries, totalPages, err := a.service.GetHashEntries(page, perPage)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Ошибка",
 			"error": err.Error(),
 		})
@@ -90,7 +90,7 @@ func (a *AdminPanel) hashesPage(c *gin.Context) {
 		pagination = append(pagination, totalPages)
 	}
 
-	c.HTML(http.StatusOK, "hashes", gin.H{
+	a.render(c, http.StatusOK, "hashes", gin.H{
 		"title":       "Admin-panel - Hashes",
 		"activeTab":   "hashes",
 		"entries":     hashEntries,

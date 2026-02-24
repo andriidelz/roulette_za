@@ -36,7 +36,7 @@ func (a *AdminPanel) usersList(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
@@ -100,7 +100,7 @@ func (a *AdminPanel) usersList(c *gin.Context) {
 		nextPage = totalPages
 	}
 
-	c.HTML(http.StatusOK, "users", gin.H{
+	a.render(c, http.StatusOK, "users", gin.H{
 		"title":      "Admin-panel - Пользователи",
 		"users":      enhancedUsers,
 		"query":      query,
@@ -119,7 +119,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	// Получаем ID пользователя
 	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+		a.render(c, http.StatusBadRequest, "error.html", gin.H{
 			"title": "Error",
 			"error": "Wrong user ID",
 		})
@@ -129,7 +129,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	// Получаем информацию о пользователе
 	user, err := a.repo.GetUserByID(uint(userID))
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
@@ -260,7 +260,7 @@ func (a *AdminPanel) userDetails(c *gin.Context) {
 	uptime := time.Until(banLog.UntilTo)
 	uptimeFormatted := formatDate(uptime)
 
-	c.HTML(http.StatusOK, "user_details", gin.H{
+	a.render(c, http.StatusOK, "user_details", gin.H{
 		"title":            fmt.Sprintf("Admin-panel - Користувач %s", user.Username),
 		"user":             user,
 		"banLog":           banLog,
@@ -348,16 +348,17 @@ func (a *AdminPanel) updateUserBalance(c *gin.Context) {
 	}
 
 	// В зависимости от операции изменяем баланс
-	if operation == "add" {
+	switch operation {
+	case "add":
 		user.Balance += amount
-	} else if operation == "subtract" {
+	case "subtract":
 		// Проверяем, не будет ли баланс отрицательным
 		if user.Balance < amount {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Недостаточно средств на балансе"})
 			return
 		}
 		user.Balance -= amount
-	} else {
+	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неизвестная операция"})
 		return
 	}
@@ -368,6 +369,8 @@ func (a *AdminPanel) updateUserBalance(c *gin.Context) {
 		return
 	}
 
+	action := fmt.Sprintf("change_balance_user_%d_%s_%f", userID, operation, amount)
+	a.logAccess(c, "users", action, true)
 	// TODO: Создаем запись в журнале операций (если нужно)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -471,6 +474,8 @@ func (a *AdminPanel) userStatus(c *gin.Context) {
 		a.repo.UpdateWeeklyRatingForUser(user.ID)
 	}
 
+	action := fmt.Sprintf("change_status_user_%d_to_%s", userID, status)
+	a.logAccess(c, "users", action, true)
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 

@@ -1,11 +1,32 @@
 $(document).ready(function () {
 
-    // Открытие модального окна
+    $('th').each(function (column) {
+    $(this).click(function () {
+        var table = $(this).parents('table').eq(0);
+        var rows = table.find('tr:gt(0)').toArray().sort(comparer($(this).index()));
+        this.asc = !this.asc;
+        if (!this.asc) { rows = rows.reverse(); }
+        for (var i = 0; i < rows.length; i++) { table.append(rows[i]); }
+    });
+});
+
+function comparer(index) {
+    return function (a, b) {
+        var valA = getCellValue(a, index), valB = getCellValue(b, index);
+        return $.isNumeric(valA) && $.isNumeric(valB) ? valA - valB : valA.toString().localeCompare(valB);
+    };
+}
+
+function getCellValue(row, index) { 
+    return $(row).children('td').eq(index).text(); 
+}
+
     $('.ban-user').click(function () {
         let userId = $(this).data('id');
         let status = $(this).data('status');
         $('#ban-user-id').val(userId);
-        $('#banModal').modal('show');
+        var banModal = new bootstrap.Modal(document.getElementById('banModal'));
+        banModal.show();
         $('#ban_type').empty();
         switch (status) {
         case 'BANNED':
@@ -36,7 +57,7 @@ $(document).ready(function () {
         note: note
       }, function(response) {
         if (response.success) {
-          $('#banModal').modal('hide');
+          bootstrap.Modal.getInstance(document.getElementById('banModal')).hide();
           alert('Статус успешно применен на '+status);
           window.location.reload();
         } else {
@@ -51,10 +72,10 @@ $(document).ready(function () {
         $('#quickViewLoader').show();
         $('#quickViewContent').hide();
         $('#quickViewModal').modal('show');
+        var modal = new bootstrap.Modal(document.getElementById('quickViewModal'));
+        modal.show();
 
-        // Загрузка данных пользователя
         $.getJSON('/admin/user/' + userId + '/json', function (data) {
-                // Заполняем основную информацию
                 $('#qv-id').text(data.user.ID);
                 $('#qv-telegram-id').text(data.user.TelegramID);
                 $('#qv-username').html(data.user.Username ? '<a href="https://t.me/' + data.user.Username + '" target="_blank">@' + data.user.Username + '</a>' : '<span class="text-muted">—</span>');
@@ -113,20 +134,18 @@ $(document).ready(function () {
             })
             .fail(function () {
                 alert('Ошибка при загрузке данных пользователя');
-                $('#quickViewModal').modal('hide');
+                bootstrap.Modal.getInstance(document.getElementById('quickViewModal')).hide();
             });
     });
 
-    // Быстрое редактирование пользователя
     $('.quick-edit-btn').click(function () {
         var userId = $(this).data('id');
         $('#quickEditLoader').show();
         $('#quickEditContent').hide();
-        $('#quickEditModal').modal('show');
+        var modal = new bootstrap.Modal(document.getElementById('quickEditModal'));
+        modal.show();
 
-        // Загрузка данных пользователя
         $.getJSON('/admin/user/' + userId + '/json', function (data) {
-                // Заполняем форму редактирования
                 $('#edit-user-id').val(data.user.ID);
                 $('#edit-username').val(data.user.Username);
                 $('#edit-telegram-id').val(data.user.TelegramID);
@@ -188,8 +207,8 @@ $(document).ready(function () {
         $.post('/admin/user/' + userId + '/update', formData, function (data) {
             if (data.success) {
                 alert('Данные пользователя успешно обновлены');
-                $('#quickEditModal').modal('hide');
-                // Обновляем строку пользователя в таблице
+                bootstrap.Modal.getInstance(document.getElementById('quickEditModal')).hide();
+                window.location.reload();
                 var row = $('tr[data-id="' + userId + '"]');
                 row.find('td:eq(2)').html(formData.username ? '<a href="https://t.me/' + formData.username + '" target="_blank">@' + formData.username + '</a>' : '<span class="text-muted">—</span>');
                 row.find('td:eq(3)').text((formData.firstName || '') + ' ' + (formData.lastName || ''));
@@ -321,3 +340,12 @@ $(document).ready(function () {
         document.body.removeChild(downloadLink);
     }
 });
+
+/**
+ * Безпечне читання поля з JSON — підтримує обидва формати
+ */
+function _field(data, pascal, snake) {
+    var v = data[pascal];
+    if (v !== undefined && v !== null) return v;
+    return data[snake];
+}

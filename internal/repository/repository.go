@@ -174,6 +174,38 @@ type Repository interface {
 	GetTopActionTypes(limit int) ([]models.ActionTypeDistribution, error)
 	DeleteOldActivityLogs(olderThan time.Time) (int64, error)
 
+	// RBAC - Модулі
+	GetAllModules() ([]models.Module, error)
+	GetModuleByCode(code string) (*models.Module, error)
+
+	// RBAC - Ролі
+	GetAllRoles() ([]models.Role, error)
+	GetRoleByID(id uint) (*models.Role, error)
+	GetRoleByCode(code string) (*models.Role, error)
+	CreateRole(role *models.Role, modulePermissions map[uint]models.RoleModule) error
+	UpdateRole(role *models.Role, modulePermissions map[uint]models.RoleModule) error
+	DeleteRole(id uint) error
+
+	// RBAC - Адмін-користувачі
+	GetAllAdminUsers() ([]models.AdminUser, error)
+	GetAdminUserByID(id uint) (*models.AdminUser, error)
+	GetAdminUserByUsername(username string) (*models.AdminUserWithAccess, error)
+	CreateAdminUser(username, password, email, firstName, lastName string, roleIDs []uint, creatorID *uint) (*models.AdminUser, error)
+	UpdateAdminUser(id uint, email, firstName, lastName string, isActive bool) error
+	UpdateAdminUserPassword(id uint, newPassword string) error
+	UpdateAdminUserRoles(userID uint, roleIDs []uint) error
+	UpdateAdminUserLastLogin(id uint) error
+	DeleteAdminUser(id uint) error
+
+	// RBAC - Аудит та логування
+	LogAccess(userID uint, moduleCode, action, ipAddress, userAgent string, isAllowed bool) error
+	GetAccessLogs(page, perPage int, userID *uint, moduleCode *string) ([]models.AccessLog, int64, error)
+
+	// RBAC - Допоміжні методи
+	ValidateAdminCredentials(username, password string) (*models.AdminUserWithAccess, error)
+	GetAdminFullContext(userID uint) (*models.AdminUserWithAccess, error)
+	DeactivateAdminUser(id uint) error
+
 	// Закрытие соединения
 	Close() error
 }

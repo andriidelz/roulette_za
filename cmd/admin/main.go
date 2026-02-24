@@ -3,15 +3,15 @@ package main
 import (
 	"os"
 	"os/signal"
-	"syscall"
-	"time"
-
 	"roulette/internal/admin"
 	"roulette/internal/config"
 	"roulette/internal/logger"
 	"roulette/internal/metrics"
+	"roulette/internal/models"
 	"roulette/internal/repository"
 	"roulette/internal/service"
+	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
@@ -40,6 +40,11 @@ func main() {
 	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{})
 	if err != nil {
 		logger.Error.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	// switch custom role AdminUser <-> Role
+	if err := db.SetupJoinTable(&models.AdminUser{}, "Roles", &models.AdminUserRole{}); err != nil {
+		logger.Error.Fatal(err)
 	}
 
 	// Створюємо репозиторій
@@ -74,6 +79,7 @@ func main() {
 		AllowedIPs:       cfg.AllowedIPs,
 		DisableIPFilters: cfg.DisableIPFilters,
 		BotName:          cfg.TelegramName,
+		DebugMode:        cfg.DebugMode,
 	}
 
 	// Створюємо адмін-панель

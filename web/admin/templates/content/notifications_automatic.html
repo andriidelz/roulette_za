@@ -17,8 +17,10 @@
           </tr>
         </thead>
         <tbody id="automatic-templates-list">
+          {{$found := false}}
           {{range .templates}}
             {{if eq .Type "automatic"}}
+            {{$found = true}}
               <tr class="template-row">
                 <td>{{.Name}}</td>
                 <td>
@@ -59,9 +61,12 @@
                 </td>
               </tr>
             {{end}}
-          {{else}}
+          {{end}}
+          {{if not $found}}
             <tr>
-              <td colspan="4" class="text-center">Автоматические шаблоны не найдены</td>
+              <td colspan="4" class="text-center text-muted py-3">
+                <i class="bi bi-inbox me-2"></i>Автоматические шаблоны не найдены
+              </td>
             </tr>
           {{end}}
         </tbody>

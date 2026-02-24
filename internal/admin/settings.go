@@ -15,7 +15,7 @@ func (a *AdminPanel) settingsPage(c *gin.Context) {
 	// Получаем настройки с дополнительной информацией
 	settingsWithInfo, err := a.service.GetSettingsWithInfo()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
@@ -33,7 +33,7 @@ func (a *AdminPanel) settingsPage(c *gin.Context) {
 		{"Value": "7", "Name": "Воскресенье"},
 	}
 
-	c.HTML(http.StatusOK, "settings", gin.H{
+	a.render(c, http.StatusOK, "settings", gin.H{
 		"title":       "Admin-panel - Настройки",
 		"settings":    settingsWithInfo,
 		"daysOfWeek":  daysOfWeek,
@@ -86,10 +86,11 @@ func (a *AdminPanel) saveSettings(c *gin.Context) {
 
 	// Сохраняем настройки
 	if err := a.service.SaveSettings(formData); err != nil {
-		logger.Error.Printf("Ошибка сохранения настроек: %v", err)
+		a.logAccess(c, "settings", "save_settings_failed", false)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	a.logAccess(c, "settings", "update_system_config", true)
 
 	// Если изменились настройки призового фонда, обновляем текущий фонд напрямую
 	if prizeAmountChanged && topCountChanged {

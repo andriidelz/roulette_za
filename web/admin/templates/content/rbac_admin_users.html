@@ -1,0 +1,252 @@
+{{define "rbac_admin_users"}}
+  {{template "header" .}}
+  {{template "navbar" .}}
+
+  <style>
+      .css-serial {
+          counter-reset: serial-number;
+      }
+      .css-serial tbody tr {
+          counter-increment: serial-number;
+      }
+      .css-serial tbody tr td:first-child::before {
+          content: counter(serial-number);
+          font-weight: bold;
+          display: inline-block;
+          min-width: 15px;
+      }
+      /* Центрування номера */
+      .css-serial tbody tr td:first-child {
+          text-align: center;
+      }
+      .table thead th {
+        cursor: pointer;
+        position: relative;
+        transition: background-color 0.2s;
+      }
+
+      .table thead th:hover {
+        background-color: #f8f9fa;
+    }
+
+      /* Маленька стрілочка для підказки, що тут є сортування */
+      .table thead th::after {
+        content: " ↕";
+        font-size: 1.2em;
+        color: #ccc;
+    }
+  </style>
+
+  <div class="d-flex">
+    {{template "sidebar" .}}
+    <main class="main-content flex-grow-1">
+      <div class="container-fluid">
+        <h1 class="mb-4">Адміністратори системи</h1>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Список користувачів з доступом до панелі</h5>
+
+                {{ if can .admin_user "rbac_management" "can_write" }}
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createAdminModal">
+                    <i class="bi bi-person-plus"></i> Додати адміна
+                </button>
+                {{ end }}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 css-serial">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 60px;">№</th>
+                                <th>Email / Username</th>
+                                <th>First Name</th> 
+                                <th>Last Name</th>                                  
+                                <th>Ролі</th>
+                                <th>Статус</th>
+                                <th>Створено</th>
+                                <th>Видалено</th>
+                                <th class="text-end">Дії</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .adminUsers}}
+                            <tr data-admin-id="{{.ID}}" 
+
+                                data-admin-email="{{.Email}}"
+                                data-admin-firstname="{{.FirstName}}"
+                                data-admin-lastname="{{.LastName}}"
+                                data-admin-active="{{.IsActive}}"
+                                data-admin-roles="{{range $i, $r := .Roles}}{{if $i}},{{end}}{{$r.ID}}{{end}}">
+
+                                <td></td>                                      
+                                <td><strong>{{.Email}}</strong></td>
+                                <td>{{.FirstName}}</td> 
+                                <td>{{.LastName}}</td>
+                                <td>
+                                    {{range .Roles}}
+                                        <span class="badge bg-info text-dark">{{.Name}}</span>
+                                    {{else}}
+                                        <span class="text-muted small">Немає ролей</span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    {{ if can $.admin_user "administrator_management" "can_edit" }}
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" 
+                                               id="status_{{.ID}}" 
+                                               {{if and .IsActive (not .DeletedAt.Valid)}}checked{{end}}
+                                               {{if .DeletedAt.Valid}}disabled{{end}}
+                                               onchange="window.toggleStatus({{.ID}}, this.checked)"
+                                               title="{{if .IsActive}}Деактивувати{{else}}Активувати{{end}}">
+                                    </div>
+                                    {{else}}
+                                    {{if .IsActive}}
+                                        <span class="badge bg-success">Активний</span>
+                                        {{else}}
+                                        <span class="badge bg-danger">Заблокований</span>
+                                        {{end}}
+                                    {{end}}
+                                </td>
+
+                                <td>
+                                    <small class="text-muted">{{formatDate .CreatedAt}}</small>
+                                </td>
+
+                                <td>
+                                    {{ if .DeletedAt.Valid }}
+                                        <small class="text-danger">{{formatDate .DeletedAt.Time}}</small>
+                                    {{else}}
+                                        <span class="text-muted">—</span>
+                                    {{end}}
+                                </td>
+
+                                <td class="text-end">
+                                    <div class="btn-group">
+                                    {{ if can $.admin_user "administrator_management" "can_edit" }}
+                                    <button class="btn btn-sm btn-outline-primary edit-admin-btn" title="Редагувати">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {{ end }}
+
+                                    {{ if can $.admin_user "administrator_management" "can_delete" }}
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                                onclick="deleteAdmin('{{.ID}}', '{{.Username}}')" title="Видалити">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {{ end }}
+                                    </div>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal fade" id="createAdminModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" action="/admin/rbac/users" method="POST">
+            <div class="modal-header">
+                <h5 class="modal-title">Новий адміністратор</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Email (використовується як логін)</label>
+                    <input type="email" name="email" class="form-control" required>
+                    <small class="text-muted">Email виконує роль username</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control" required minlength="6">
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">First Name</label>
+                        <input type="text" name="first_name" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Last Name</label>
+                        <input type="text" name="last_name" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Ролі</label>
+                    <select name="role_ids" class="form-select" multiple required>
+                        {{range .roles}}
+                        <option value="{{.ID}}">{{.Name}}</option>
+                        {{end}}
+                    </select>
+                    <small class="text-muted">Затисніть Ctrl/Cmd для вибору декількох</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-success">Створити</button>
+            </div>
+        </form>
+    </div>
+  </div>
+
+  <div class="modal fade" id="editAdminModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" id="editAdminForm" method="POST">
+            <div class="modal-header">
+                <h5 class="modal-title">Редагування адміністратора</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="id" id="edit-admin-id">                
+                <input type="hidden" id="edit-admin-username" name="username">
+
+                <div class="mb-3">
+                    <label class="form-label">Email / Username</label>
+                    <input type="email" id="edit-admin-email" name="email" class="form-control" required>
+                    <small class="text-muted">Email виконує роль username</small>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">First Name</label>
+                        <input type="text" id="edit-admin-firstname" name="first_name" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Last Name</label>
+                        <input type="text" id="edit-admin-lastname" name="last_name" class="form-control" required>
+                    </div>
+                </div>               
+                <div class="mb-3">
+                    <label class="form-label">Ролі</label>
+                    <select id="edit-admin-roles" name="role_ids" class="form-select" multiple required size="5">
+                        {{range .roles}}
+                        <option value="{{.ID}}">{{.Name}}</option>
+                        {{end}}
+                    </select>
+                    <small class="text-muted">Затисніть Ctrl/Cmd для вибору декількох</small>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check form-switch mt-4">
+                        <input class="form-check-input" type="checkbox" id="edit-admin-active" name="is_active" value="true">
+                        <label class="form-check-label" for="edit-admin-active">Адміністратор активний</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="submit" class="btn btn-primary">Зберегти зміни</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script src="/admin/static/js/rbac.js"></script>
+
+{{template "footer" .}}
+{{end}}

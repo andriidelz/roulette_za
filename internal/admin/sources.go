@@ -12,7 +12,7 @@ import (
 func (a *AdminPanel) sourcesKeysPage(c *gin.Context) {
 	sources, err := a.repo.GetAllSourceKeys()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
@@ -38,7 +38,7 @@ func (a *AdminPanel) sourcesKeysPage(c *gin.Context) {
 		statData = append(statData, data)
 	}
 
-	c.HTML(http.StatusOK, "sources_keys", gin.H{
+	a.render(c, http.StatusOK, "sources_keys", gin.H{
 		"title":        "Admin-panel - Referral Link",
 		"activeTab":    "sources",
 		"activeSubTab": "keys",

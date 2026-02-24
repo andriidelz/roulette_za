@@ -352,7 +352,9 @@ func (r *RabbitMQ) messageConsumer(msgs <-chan amqp.Delivery, handler func(messa
 		}
 
 		// Подтверждаем успешную обработку сообщения
-		msg.Ack(false)
+		if err := msg.Ack(false); err != nil {
+			logger.Error.Printf("[%s] Error acknowledging message: %v", r.componentName, err)
+		}
 	}
 
 	logger.Info.Printf("[%s] Subscription to queue '%s' was closed", r.componentName, queueName)

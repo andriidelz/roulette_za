@@ -2,9 +2,10 @@ package admin
 
 import (
 	"html/template"
-	"time"
-
+	"roulette/internal/logger"
+	"roulette/internal/models"
 	"roulette/internal/utils"
+	"time"
 
 	"github.com/kataras/i18n"
 )
@@ -59,5 +60,57 @@ var tplFuncMap = template.FuncMap{
 			seq[i] = start + i
 		}
 		return seq
+	},
+	// hasPermission chack right for user
+	"hasPermission": func(user interface{}, module, permission string) bool {
+		if user == nil {
+			return false
+		}
+		admin, ok := user.(*models.AdminUserWithAccess)
+		if !ok {
+			logger.Error.Printf("TEMPLATE ERROR: expected *AdminUserWithAccess, got %T", user)
+			val, ok := user.(models.AdminUserWithAccess)
+			if !ok {
+				return false
+			}
+			admin = &val
+		}
+		return admin.HasPermission(module, permission)
+	},
+
+	"can": func(user interface{}, module, permission string) bool {
+		if user == nil {
+			return false
+		}
+		adminUser, ok := user.(*models.AdminUserWithAccess)
+		if !ok {
+			return false
+		}
+
+		if permission == "can_read" {
+			return adminUser.HasPermission(module, "can_read") ||
+				adminUser.HasPermission(module, "can_write") ||
+				adminUser.HasPermission(module, "can_edit") ||
+				adminUser.HasPermission(module, "can_delete") ||
+				adminUser.HasPermission(module, "can_add_balance")
+		}
+
+		return adminUser.HasPermission(module, permission)
+	},
+
+	// hasModule - validate if user has access to module
+	"hasModule": func(user interface{}, module string) bool {
+		if user == nil {
+			return false
+		}
+		adminUser, ok := user.(*models.AdminUserWithAccess)
+		if !ok {
+			return false
+		}
+
+		return adminUser.HasPermission(module, "can_read") ||
+			adminUser.HasPermission(module, "can_write") ||
+			adminUser.HasPermission(module, "can_edit") ||
+			adminUser.HasPermission(module, "can_delete")
 	},
 }

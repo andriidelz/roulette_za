@@ -2,6 +2,7 @@ package admin
 
 import (
 	"net/http"
+	"roulette/internal/logger"
 	"roulette/internal/models"
 	"strconv"
 
@@ -128,4 +129,21 @@ func (a *AdminPanel) getUserDetailedStats(c *gin.Context) {
 		"monthly": monthlyStats,
 		"allTime": allTimeStats,
 	})
+}
+
+func (a *AdminPanel) logAccess(c *gin.Context, module string, action string, isAllowed bool) {
+	adminObj, exists := c.Get("admin_user")
+	var adminID uint
+	if exists {
+		if admin, ok := adminObj.(*models.AdminUserWithAccess); ok {
+			adminID = admin.ID
+		}
+	}
+
+	ipAddress := c.ClientIP()
+	userAgent := c.Request.UserAgent()
+
+	if err := a.repo.LogAccess(adminID, module, action, ipAddress, userAgent, isAllowed); err != nil {
+		logger.Error.Printf("ERROR: Failed to write access log: %v\n", err)
+	}
 }

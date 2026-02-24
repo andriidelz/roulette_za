@@ -1,0 +1,172 @@
+{{define "rbac_roles"}}
+  {{template "header" .}}
+  {{template "navbar" .}}
+
+  <style>
+      .css-serial {
+          counter-reset: serial-number;
+      }
+      .css-serial tbody tr {
+          counter-increment: serial-number;
+      }
+      .css-serial tbody tr td:first-child::before {
+          content: counter(serial-number);
+          font-weight: bold;
+          display: inline-block;
+          min-width: 15px;
+      }
+      /* Центрування номера */
+      .css-serial tbody tr td:first-child {
+          text-align: center;
+      }
+  </style>
+  
+  <div class="d-flex">
+    {{template "sidebar" .}}
+    <main class="main-content flex-grow-1">
+      <div class="container-fluid">
+
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4">Керування ролями (RBAC)</h1>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                    <h5 class="mb-3 mb-md-0">Список ролей доступу</h5>
+                    <div class="d-flex flex-column flex-md-row w-100 w-md-auto">
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createRoleModal">
+                            <i class="bi bi-plus-lg"></i> Створити роль
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle css-serial">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">№</th>
+                                <th>Назва ролі</th>
+                                <th>Код (System Code)</th>
+                                <th>Опис</th>
+                                <th class="text-end">Дії</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ if .roles }}
+                                {{ range .roles }}
+                                <tr>
+
+                                    <td title="ID у базі: {{.ID}}"></td>
+                                    <td>
+                                        <span class="fw-bold">{{ .Name }}</span>
+                                        {{ if eq .Code "super_admin" }}
+                                            <span class="badge bg-danger ms-2">System</span>
+                                        {{ end }}
+                                    </td>
+                                    <td><code>{{ .Code }}</code></td>
+                                    <td>{{ .Description }}</td>
+                                    <td class="text-end">
+                                        <div class="btn-group">
+                                            <a href="/admin/rbac/roles/{{ .ID }}" class="btn btn-sm btn-outline-primary" title="Налаштувати права">
+                                                <i class="bi bi-gear-fill"></i> Налаштувати
+                                            </a>
+                                            
+                                            {{ if ne .Code "super_admin" }}
+                                            <button class="btn btn-sm btn-outline-danger delete-role-btn" 
+                                                    data-id="{{ .ID }}" 
+                                                    data-name="{{ .Name }}"
+                                                    title="Видалити роль">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            {{ end }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {{ end }}
+                            {{ else }}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="bi bi-info-circle me-2"></i>Ролі ще не створені
+                                        </div>
+                                    </td>
+                                </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-info mt-4">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <strong>Довідка:</strong> Ролі визначають доступ користувачів до модулів. Натисніть "Налаштувати", щоб вибрати конкретні права (читання, редагування) для кожного модуля.
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <div class="modal fade" id="createRoleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Створення нової ролі</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="/admin/rbac/roles" method="POST">
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="roleName" class="form-label">Назва ролі <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="roleName" name="name" placeholder="Напр: Support Manager" required>
+              </div>
+              <div class="mb-3">
+                <label for="roleCode" class="form-label">Код (латиницею) <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="roleCode" name="code" placeholder="Напр: support_manager" required pattern="[a-z0-9_]+">
+                <div class="form-text">Використовується в коді. Тільки маленькі літери та підкреслення.</div>
+              </div>
+              <div class="mb-3">
+                <label for="roleDesc" class="form-label">Опис</label>
+                <textarea class="form-control" id="roleDesc" name="description" rows="3" placeholder="Короткий опис прав цієї ролі..."></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+              <button type="submit" class="btn btn-success">Створити роль</button>
+            </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {{template "footer" .}}
+{{end}}
+
+{{define "additionalScripts_rbac_roles"}}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteBtns = document.querySelectorAll('.delete-role-btn');
+        deleteBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const name = this.dataset.name;
+                if(confirm(`Ви дійсно хочете видалити роль "${name}"? Це може вплинути на користувачів, які мають цю роль.`)) {
+                    fetch(`/admin/rbac/roles/${id}`, {
+                        method: 'DELETE',
+                    }).then(response => {
+                        if (response.ok) {
+                            window.location.reload();
+                        } else {
+                            alert('Помилка при видаленні ролі');
+                        }
+                    });
+                }
+            });
+        });
+    });
+</script>
+{{end}}

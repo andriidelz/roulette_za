@@ -5,15 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
-	"time"
-
 	"roulette/internal/config"
 	"roulette/internal/data"
 	"roulette/internal/logger"
 	"roulette/internal/messaging"
 	"roulette/internal/models"
 	"roulette/internal/utils"
+	"strconv"
+	"time"
 )
 
 // Constants for RabbitMQ messaging
@@ -644,7 +643,6 @@ func (s *ServiceImpl) HandleRegistration(userID uint) error {
 
 // HandleUserUpdated обробляє повідомлення при зміні статусу в адмінці
 func (s *ServiceImpl) HandleUserUpdated(userID uint, status string) error {
-
 	// Получаем пользователя
 	user, err := s.repo.GetUserByID(userID)
 	if err != nil {
@@ -867,7 +865,6 @@ func (s *ServiceImpl) publishToRabbit(notificationDataMap map[string]interface{}
 
 // CheckPendingRegistration обробляє повідомлення про незавершену реєстрацію
 func (s *ServiceImpl) CheckPendingRegistration() error {
-
 	task := &models.NotificationTask{
 		TargetType: "unregistered",
 	}

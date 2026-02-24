@@ -5,6 +5,9 @@
     {{template "sidebar" .}}
     <main class="main-content flex-grow-1">
       <div class="container-fluid">
+
+        {{ $canEdit := hasPermission .admin_user "settings" "can_edit" }}
+       
         <div class="row">
           <div class="col-12">
               <h1 class="mb-4">Настройки</h1>
@@ -22,14 +25,14 @@
                   <div class="mb-3">
                     <label for="daily_bets_limit" class="form-label">Лимит ставок за день</label>
                     <input type="number" class="form-control" id="daily_bets_limit" name="daily_bets_limit" 
-                           value="{{with index .settings "daily_bets_limit"}}{{.Value}}{{end}}" min="1">
+                           value="{{with index .settings "daily_bets_limit"}}{{.Value}}{{end}}" min="1" {{ if not $canEdit }}disabled{{ end }}>
                     <div class="form-text">Максимальное количество ставок, которое может сделать пользователь за день</div>
                   </div>
                   
                   <div class="mb-3">
                     <label for="daily_bets_zero_limit" class="form-label">Лимит ставок для Zero</label>
                     <input type="number" class="form-control" id="daily_bets_zero_limit" name="daily_bets_zero_limit" 
-                           value="{{with index .settings "daily_bets_zero_limit"}}{{.Value}}{{end}}" min="1">
+                           value="{{with index .settings "daily_bets_zero_limit"}}{{.Value}}{{end}}" min="1" {{ if not $canEdit }}disabled{{ end }}>
                     <div class="form-text">Количество ставок, которые пользователь должен сделать, прежде чем сможет ставить на Zero</div>
                   </div>
                   
@@ -37,13 +40,15 @@
                     <label for="minimum_withdrawal" class="form-label">Минимальная сумма для вывода</label>
                     <div class="input-group">
                       <input type="number" class="form-control" id="minimum_withdrawal" name="minimum_withdrawal" 
-                             value="{{with index .settings "minimum_withdrawal"}}{{.Value}}{{end}}" min="0" step="0.01">
+                             value="{{with index .settings "minimum_withdrawal"}}{{.Value}}{{end}}" min="0" step="0.01" {{ if not $canEdit }}disabled{{ end }}> 
                       <span class="input-group-text">$</span>
                     </div>
                     <div class="form-text">Минимальная сумма, которую пользователь может вывести</div>
                   </div>
                   
+                  {{ if $canEdit }}
                   <button type="submit" class="btn btn-primary">Сохранить</button>
+                  {{ end }}
                 </form>
               </div>
             </div>
@@ -60,7 +65,7 @@
                     <label for="weekly_prize_amount" class="form-label">Сумма недельного призового фонда</label>
                     <div class="input-group">
                       <input type="number" class="form-control" id="weekly_prize_amount" name="weekly_prize_amount" 
-                             value="{{with index .settings "weekly_prize_amount"}}{{.Value}}{{end}}" min="0" step="0.01">
+                             value="{{with index .settings "weekly_prize_amount"}}{{.Value}}{{end}}" min="0" step="0.01" {{ if not $canEdit }}disabled{{ end }}>
                       <span class="input-group-text">$</span>
                     </div>
                   </div>
@@ -68,7 +73,7 @@
                   <div class="mb-3">
                     <label for="weekly_prize_top" class="form-label">Количество призовых мест</label>
                     <input type="number" class="form-control" id="weekly_prize_top" name="weekly_prize_top" 
-                           value="{{with index .settings "weekly_prize_top"}}{{.Value}}{{end}}" min="1">
+                           value="{{with index .settings "weekly_prize_top"}}{{.Value}}{{end}}" min="1" {{ if not $canEdit }}disabled{{ end }}>
                     <div class="form-text">Количество мест в еженедельном рейтинге, которые получат призы</div>
                   </div>
                   
@@ -87,11 +92,13 @@
                   <div class="mb-3">
                     <label for="prize_distribution_time" class="form-label">Время раздачи призов (UTC+0)</label>
                     <input type="time" class="form-control" id="prize_distribution_time" name="prize_distribution_time" 
-                           value="{{with index .settings "prize_distribution_time"}}{{.Value}}{{end}}">
+                           value="{{with index .settings "prize_distribution_time"}}{{.Value}}{{end}}" {{ if not $canEdit }}disabled{{ end }}>
                     <div class="form-text">Время раздачи призов в часовом поясе UTC+0</div>
                   </div>
                   
+                  {{ if $canEdit }}
                   <button type="submit" class="btn btn-primary">Сохранить</button>
+                  {{ end }}
                 </form>
               </div>
             </div>
@@ -113,7 +120,7 @@
                     <label for="captcha_user_activity" class="form-label">User activity Count</label>
                     <div class="input-group">
                       <input type="number" class="form-control" id="captcha_user_activity" name="captcha_user_activity" 
-                             value="{{with index .settings "captcha_user_activity"}}{{.Value}}{{end}}" min="0" step="1">
+                             value="{{with index .settings "captcha_user_activity"}}{{.Value}}{{end}}" min="0" step="1" {{ if not $canEdit }}disabled{{ end }}>
                     </div>
                   </div>
                   <div class="mb-3">
@@ -211,7 +218,9 @@
                     </div>
                   </div>
 
+                  {{ if $canEdit }}
                   <button type="submit" class="btn btn-primary">Сохранить</button>
+                  {{ end }}
                 </form>
               </div>
             </div>
@@ -224,6 +233,6 @@
   {{template "footer" .}}
 {{end}}
 
-{{define "additionalScripts_settings"}}
+{{define "extra_js"}}
 <script src="/static/admin/js/settings.js"></script>
 {{end}}

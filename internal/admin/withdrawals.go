@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"fmt"
 	"net/http"
 	"roulette/internal/utils"
 	"strconv"
@@ -9,7 +10,6 @@ import (
 )
 
 func (a *AdminPanel) withdrawalsStat(c *gin.Context) {
-
 	params := struct {
 		Period   string `form:"period" json:"period"`
 		DateFrom string `form:"dateFrom" json:"dateFrom"`
@@ -41,7 +41,7 @@ func (a *AdminPanel) withdrawalsList(c *gin.Context) {
 	// Получаем список запросов на вывод со статусом "pending"
 	pendingWithdrawals, err := a.repo.GetPendingWithdrawals()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
@@ -51,14 +51,14 @@ func (a *AdminPanel) withdrawalsList(c *gin.Context) {
 	// Получаем историю выводов (все кроме pending)
 	historyWithdrawals, err := a.repo.GetWithdrawalsHistory(50) // Ограничиваем 50 последними записями
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "withdrawals", gin.H{
+	a.render(c, http.StatusOK, "withdrawals", gin.H{
 		"title":              "Admin-panel - Withdrawals",
 		"withdrawals":        pendingWithdrawals,
 		"historyWithdrawals": historyWithdrawals, // Добавляем в контекст историю выводов
@@ -84,7 +84,7 @@ func (a *AdminPanel) withdrawalApprove(c *gin.Context) {
 				return
 			}
 		}
-
+		a.logAccess(c, "withdrawals", "approve_all_pending", true)
 		c.JSON(http.StatusOK, gin.H{"success": true})
 		return
 	}
@@ -100,7 +100,7 @@ func (a *AdminPanel) withdrawalApprove(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
+	a.logAccess(c, "withdrawals", fmt.Sprintf("approve_withdrawal_id_%d", withdrawalID), true)
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
@@ -139,5 +139,6 @@ func (a *AdminPanel) withdrawalReject(c *gin.Context) {
 		return
 	}
 
+	a.logAccess(c, "withdrawals", fmt.Sprintf("reject_withdrawal_id_%d", withdrawalID), true)
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

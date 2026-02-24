@@ -13,7 +13,7 @@ func (a *AdminPanel) statistics(c *gin.Context) {
 	// Получаем общую статистику
 	totalStats, err := a.service.GetTotalStats()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
@@ -50,7 +50,7 @@ func (a *AdminPanel) statistics(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "statistics", gin.H{
+	a.render(c, http.StatusOK, "statistics", gin.H{
 		"title":                 "Admin-panel - Statistics",
 		"activeTab":             "stats",
 		"totalStats":            totalStats,
@@ -62,7 +62,7 @@ func (a *AdminPanel) statistics(c *gin.Context) {
 
 // Статистика по источникам
 func (a *AdminPanel) sourcesPage(c *gin.Context) {
-	c.HTML(http.StatusOK, "sources_statistics", gin.H{
+	a.render(c, http.StatusOK, "sources_statistics", gin.H{
 		"title":        "Admin-panel - Statistics by source",
 		"activeTab":    "sources",
 		"activeSubTab": "",

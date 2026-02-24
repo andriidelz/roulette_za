@@ -17,6 +17,7 @@
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
                     <h5 class="mb-3 mb-md-0">Список пользователей</h5>
                     <div class="d-flex flex-column flex-md-row w-100 w-md-auto">
+                      {{ if hasPermission $.admin_user "statistics" "can_read" }}
                         <div class="btn-group me-md-2 mb-3 mb-md-0">
                             <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-download"></i> <span class="d-none d-sm-inline">Экспорт</span>
@@ -26,6 +27,7 @@
                                 <li><a class="dropdown-item" href="#" id="exportExcel">Excel</a></li>
                             </ul>
                         </div>
+                        {{ end }}
                         <form class="d-flex w-100" action="/admin/users" method="GET">
                             <input class="form-control me-2" type="search" placeholder="Поиск..." name="query" value="{{.query}}">
                             <button class="btn btn-outline-primary" type="submit">
@@ -118,23 +120,33 @@
                                     </td>
                                     <td>
                                         <div class="btn-group d-flex flex-wrap">
-                                            <a href="/admin/user/{{ .ID }}" class="btn btn-sm btn-outline-primary">
-                                                <i class="bi bi-eye"></i>
+                                            <a href="/admin/user/{{ .ID }}" class="btn btn-sm btn-outline-primary" title="Деталі">
+                                                <i class="bi bi-eye"></i> 
                                             </a>
+                                            
+                                            {{ if hasPermission $.admin_user "activity_analyzer" "can_read" }}
                                             <a href="/admin/activity-analyzer/user/{{ .TelegramID }}"
                                               class="btn btn-sm btn-outline-info"
                                               title="Анализ активности">
                                                 <i class="bi bi-shield-check"></i>
                                             </a>
-                                            <button class="btn btn-sm btn-outline-secondary quick-view-btn" data-id="{{ .ID }}">
+                                            {{ end }}
+
+                                            <button class="btn btn-sm btn-outline-secondary quick-view-btn" data-id="{{ .ID }}" title="Швидкий перегляд">
                                                 <i class="bi bi-card-list"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-warning quick-edit-btn" data-id="{{ .ID }}">
+
+                                            {{ if hasPermission $.admin_user "users" "can_edit" }}
+                                            <button class="btn btn-sm btn-outline-warning quick-edit-btn" data-id="{{ .ID }}" title="Редагувати">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-danger ban-user" data-id="{{ .ID }}" data-status="{{ .Status }}">
+                                            {{ end }}
+
+                                            {{ if hasPermission $.admin_user "users" "can_write" }}
+                                            <button class="btn btn-sm btn-outline-danger ban-user" data-id="{{ .ID }}" data-status="{{ .Status }}" title="Заблокувати">
                                                 <i class="bi bi-lock"></i>
                                             </button>
+                                            {{ end }}
                                         </div>
                                     </td>
                                 </tr>
@@ -415,7 +427,9 @@
           </div>
         </div>
         <div class="modal-footer">
+          {{ if hasPermission .admin_user "users" "can_edit" }}
           <button type="button" class="btn btn-primary" id="save-user-btn">Сохранить</button>
+          {{ end }}
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
         </div>
       </div>
@@ -459,9 +473,11 @@
           </form>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-          <button type="button" class="btn btn-primary" id="update-ban-btn">Применить статус</button>
-        </div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        {{ if hasPermission $.admin_user "users" "can_write" }} 
+        <button type="button" class="btn btn-primary" id="update-ban-btn">Применить статус</button>
+        {{ end }}
+      </div>
       </div>
     </div>
   </div>
@@ -469,6 +485,6 @@
   {{template "footer" .}}
 {{end}}
 
-{{define "additionalScripts_users"}}
-<script src="/static/admin/js/users.js"></script>
+{{ define "extra_js" }}
+<script src="/admin/static/js/users.js"></script>
 {{end}}

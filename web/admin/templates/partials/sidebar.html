@@ -2,61 +2,109 @@
 <!-- Десктопное боковое меню -->
 <div class="sidebar d-none d-lg-block">
     <ul class="nav flex-column">
+        {{ if can .admin_user "dashboard" "can_read" }}
         <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "dashboard"}}active{{end}}" href="/admin">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
         </li>
+        {{ end }}
+
+        {{ if can .admin_user "users" "can_read" }}
         <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "users"}}active{{end}}" href="/admin/users">
                 <i class="bi bi-people"></i> Пользователи
             </a>
         </li>
+        {{ end }}
+
+        {{ if can .admin_user "administrator_management" "can_read" }}
+        <li class="nav-item">
+            <a class="nav-link {{if eq .activeTab "admins"}}active{{end}}" href="/admin/admins">
+                <i class="bi bi-people-fill"></i> Администраторы
+            </a>
+        </li>
+        {{ end }}
+
+        {{ if can .admin_user "activity_analyzer" "can_read" }}
         <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "activity_analyzer"}}active{{end}}" href="/admin/activity-analyzer/">
                 <i class="bi bi-shield-check"></i> Activity Analyzer
             </a>
         </li>
+        {{ end }}
+
+        {{ if can .admin_user "rbac_management" "can_read" }}
+        <li class="nav-item">
+            <a class="nav-link {{if eq .activeTab "rbac"}}active{{end}}" href="/admin/rbac/roles">
+                <i class="bi bi-shield-lock"></i> RBAC Управление
+            </a>
+        </li>
+        {{ end }}
+        
+        {{ if can .admin_user "statistics" "can_read" }}
         <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "stats"}}active{{end}}" href="/admin/stats">
                 <i class="bi bi-bar-chart"></i> Статистика
             </a>
         </li>
+        {{ end }}
+
+        {{ if can .admin_user "sources" "can_read" }}
         <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "sources"}}active{{end}}" href="/admin/sources/keys">
                 <i class="bi bi-database-add"></i> Реф.ссылки
             </a>
         </li>
+        {{ end }}
+
+        {{ if can .admin_user "ratings" "can_read" }}
         <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
                 <i class="bi bi-trophy"></i> Рейтинг
             </a>
         </li>
+        {{ end }}
+
+        {{ if can .admin_user "notifications" "can_read" }}
         <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "notifications"}}active{{end}}" href="/admin/notifications">
                 <i class="bi bi-bell"></i> Уведомления
             </a>
         </li>
+        {{ end }}
+
+        {{ if can .admin_user "withdrawals" "can_read" }}
         <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "withdrawals"}}active{{end}}" href="/admin/withdrawals">
                 <i class="bi bi-cash-coin"></i> Выплаты
             </a>
         </li>
+        {{ end }}
+
+        {{ if can .admin_user "hashes" "can_read" }}
         <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "hashes"}}active{{end}}" href="/admin/hashes">
                 <i class="bi bi-hash"></i> Хэши рулетки
             </a>
         </li>
+        {{ end }}
+
+        {{ if can .admin_user "localizations" "can_read" }}
         <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "localizations"}}active{{end}}" href="/admin/localizations">
                 <i class="bi bi-translate"></i> Локализация
             </a>
         </li>
+        {{ end }}
+
+        {{ if can .admin_user "settings" "can_read" }}
         <li class="nav-item">
             <a class="nav-link {{if eq .activeTab "settings"}}active{{end}}" href="/admin/settings">
                 <i class="bi bi-gear"></i> Настройки
             </a>
         </li>
+        {{ end }}
     </ul>
 </div>
 
@@ -67,70 +115,126 @@
         <button type="button" class="btn-close btn-close-white text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body p-0">
-<!--
-        <div class="user-info p-3 border-bottom border-secondary mb-2">
+
+    <div class="user-info p-3 border-bottom border-secondary mb-2">
             <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-light text-dark d-flex justify-content-center align-items-center me-2" style="width: 40px; height: 40px;">
-                    <i class="bi bi-person"></i>
+                <div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center me-2" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person-badge"></i>
                 </div>
                 <div>
-                    <div class="fw-bold">Администратор</div>
-                    <small class="text-muted">Активен</small>
+                    <div class="fw-bold">{{ .admin_user.Username }}</div>
+                    <small class="text-muted">
+                        {{ range $i, $r := .admin_user.Roles }}{{ if $i }}, {{ end }}{{ $r.Name }}{{ end }}
+                    </small>
                 </div>
             </div>
         </div>
--->
+
         <ul class="nav flex-column">
+            {{ if can .admin_user "dashboard" "can_read" }}
             <li class="nav-item">
                 <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "dashboard"}}active{{end}}" href="/admin">
                     <i class="bi bi-speedometer2 me-2"></i> Dashboard
                 </a>
             </li>
+            {{ end }}
+
+            {{ if can .admin_user "users" "can_read" }}
             <li class="nav-item">
                 <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "users"}}active{{end}}" href="/admin/users">
                     <i class="bi bi-people me-2"></i> Пользователи
                 </a>
             </li>
+            {{ end }}
+
+            {{ if can .admin_user "administrator_management" "can_read" }}                        
+                <li class="nav-item">
+                    <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "admins"}}active{{end}}" href="/admin/admins">
+                        <i class="bi bi-person-workspace me-2"></i> Администраторы
+                    </a>
+                </li>
+            {{ end }}
+
+            {{ if can .admin_user "activity_analyzer" "can_read" }}
+            <li class="nav-item">
+                <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "activity_analyzer"}}active{{end}}" href="/admin/activity-analyzer/">
+                    <i class="bi bi-shield-check me-2"></i> Activity Analyzer
+                </a>
+            </li>
+            {{ end }}
+
+            {{ if can .admin_user "rbac_management" "can_read" }}
+            <li class="nav-item">
+                <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "rbac"}}active{{end}}" href="/admin/rbac/roles">
+                    <i class="bi bi-shield-lock me-2"></i> RBAC Управление
+                </a>
+            </li>
+            {{ end }}
+
+            {{ if can .admin_user "statistics" "can_read" }}
             <li class="nav-item">
                 <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "stats"}}active{{end}}" href="/admin/stats">
                     <i class="bi bi-bar-chart me-2"></i> Статистика
                 </a>
             </li>
+            {{ end }}
+
+            {{ if can .admin_user "sources" "can_read" }}
             <li class="nav-item">
                 <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "sources"}}active{{end}}" href="/admin/sources/keys">
                     <i class="bi bi-database-add me-2"></i> Реф.ссылки
                 </a>
             </li>
+            {{ end }}
+
+            {{ if can .admin_user "ratings" "can_read" }}
             <li class="nav-item">
                 <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "ratings"}}active{{end}}" href="/admin/ratings">
                     <i class="bi bi-trophy me-2"></i> Рейтинг
                 </a>
             </li>
+            {{ end }}
+
+            {{ if can .admin_user "notifications" "can_read" }}
             <li class="nav-item">
                 <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "notifications"}}active{{end}}" href="/admin/notifications">
                     <i class="bi bi-bell me-2"></i> Уведомления
                 </a>
             </li>
+            {{ end }}
+
+            {{ if can .admin_user "withdrawals" "can_read" }}
             <li class="nav-item">
                 <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "withdrawals"}}active{{end}}" href="/admin/withdrawals">
                     <i class="bi bi-cash-coin me-2"></i> Выплаты
                 </a>
             </li>
+            {{ end }}
+
+            {{ if can .admin_user "hashes" "can_read" }}
             <li class="nav-item">
                 <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "hashes"}}active{{end}}" href="/admin/hashes">
                     <i class="bi bi-hash me-2"></i> Хэши рулетки
                 </a>
             </li>
+            {{ end }}
+
+            {{ if can .admin_user "localizations" "can_read" }}
             <li class="nav-item">
                 <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "localizations"}}active{{end}}" href="/admin/localizations">
                     <i class="bi bi-translate me-2"></i> Локализация
                 </a>
             </li>
+            {{ end }}
+
+            {{ if can .admin_user "settings" "can_read" }}
             <li class="nav-item">
                 <a class="nav-link text-white py-3 px-3 {{if eq .activeTab "settings"}}active{{end}}" href="/admin/settings">
                     <i class="bi bi-gear me-2"></i> Настройки
                 </a>
             </li>
+            {{ end }}
+                        
             <li class="nav-item mt-2 border-top border-secondary">
                 <a class="nav-link text-white py-3 px-3" href="/logout">
                     <i class="bi bi-box-arrow-right me-2"></i> Выход

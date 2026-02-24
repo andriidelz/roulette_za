@@ -12,7 +12,7 @@ import (
 // setupNotificationsRoutes настраивает маршруты для раздела уведомлений
 func (a *AdminPanel) setupNotificationsRoutes() {
 	admin := a.router.Group("/admin")
-	admin.Use(a.ipFilterMiddleware(), a.authRequired())
+	admin.Use(a.ipFilterMiddleware(), a.rbacAuthRequired())
 
 	// Страницы уведомлений
 	admin.GET("/notifications", a.notificationsPage)
@@ -48,7 +48,7 @@ func (a *AdminPanel) notificationsManualPage(c *gin.Context) {
 	// Получаем список шаблонов
 	templates, _, err := a.service.GetNotificationTemplates("", 1, 100)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
@@ -58,14 +58,14 @@ func (a *AdminPanel) notificationsManualPage(c *gin.Context) {
 	// Получаем список активных задач
 	tasks, _, err := a.service.GetNotificationTasks("", 1, 100)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "notifications", gin.H{
+	a.render(c, http.StatusOK, "notifications", gin.H{
 		"title":        "Ручные уведомления",
 		"activeTab":    "notifications",
 		"activeSubTab": "manual",
@@ -79,14 +79,14 @@ func (a *AdminPanel) notificationsAutomaticPage(c *gin.Context) {
 	// Получаем список автоматических шаблонов
 	templates, _, err := a.service.GetNotificationTemplates("automatic", 1, 100)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "notifications", gin.H{
+	a.render(c, http.StatusOK, "notifications", gin.H{
 		"title":        "Автоматические уведомления",
 		"activeTab":    "notifications",
 		"activeSubTab": "automatic",
@@ -103,7 +103,7 @@ func (a *AdminPanel) notificationsHistoryPage(c *gin.Context) {
 	// Получаем историю завершенных задач
 	tasks, total, err := a.service.GetNotificationTasks("completed,failed,canceled", page, perPage)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+		a.render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"title": "Error",
 			"error": err.Error(),
 		})
@@ -113,7 +113,7 @@ func (a *AdminPanel) notificationsHistoryPage(c *gin.Context) {
 	// Вычисляем общее количество страниц
 	totalPages := (int(total) + perPage - 1) / perPage
 
-	c.HTML(http.StatusOK, "notifications", gin.H{
+	a.render(c, http.StatusOK, "notifications", gin.H{
 		"title":        "История отправок",
 		"activeTab":    "notifications",
 		"activeSubTab": "history",

@@ -373,7 +373,11 @@ func (b *Bot) sendAnimationFile(chatID int64, videoPath string, params *telego.S
 	if err != nil {
 		return nil, fmt.Errorf("failed to open animation %s: %w", videoPath, err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			logger.Error.Println(err)
+		}
+	}()
 	params.Animation = tu.File(file)
 
 	// Отправляем анимацию
@@ -404,7 +408,11 @@ func (b *Bot) sendVideoFile(chatID int64, videoPath string, params *telego.SendV
 	if err != nil {
 		return nil, fmt.Errorf("failed to open video file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			logger.Error.Println(err)
+		}
+	}()
 	params.Video = tu.File(file)
 
 	// Отправляем фото
@@ -423,7 +431,11 @@ func (b *Bot) sendPhotoFile(chatID int64, photoPath string, delPhoto bool, param
 	if err != nil {
 		return nil, fmt.Errorf("failed to open photo file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			logger.Error.Println(err)
+		}
+	}()
 
 	if delPhoto {
 		// Если был передан параметр на удаление
@@ -470,7 +482,11 @@ func (b *Bot) updatePhoto(chatID int64, messageID int, options MessageOptions) (
 		if err != nil {
 			return nil, fmt.Errorf("failed to open photo file: %w", err)
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				logger.Error.Println(err)
+			}
+		}()
 
 		if options.DelPhoto {
 			// Если был передан параметр на удаление

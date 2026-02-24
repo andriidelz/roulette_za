@@ -6,25 +6,10 @@
 </footer>
 
 <!-- JavaScript для адаптивных таблиц -->
-<script src="/static/admin/js/adaptive-styles.js"></script>
-
+<script src="/admin/static/js/adaptive-styles.js"></script>
+<script src="/admin/static/js/toast_notifications.js"></script>
+<script src="/admin/static/js/notifications.js"></script>
+{{ block "extra_js" . }}{{ end }}
 </body>
-
-{{if eq .activeTab "users"}}
-  {{template "additionalScripts_users" .}}
-{{else if eq .activeTab "withdrawals"}}
-  {{template "additionalScripts_withdrawals" .}}
-{{else if eq .activeTab "notifications"}}
-  {{template "additionalScripts_notifications" .}}
-{{else if eq .activeTab "ratings"}}
-  {{template "additionalScripts_rating_details" .}}
-{{else if eq .activeTab "settings"}}
-  {{template "additionalScripts_settings" .}}
-{{else if eq .activeTab "activity_analyzer"}}
-  {{template "additionalScripts_activity_analyzer_dashboard" .}}
-{{else if eq .activeTab "activity_analyzer_user"}}
-  {{template "additionalScripts_user_activity_detail" .}}
-{{end}}
-
 </html>
 {{end}}

@@ -9,10 +9,8 @@ import (
 )
 
 // setupActivityAnalyzerRoutes sets up all activity analyzer routes
-func (a *AdminPanel) setupActivityAnalyzerAPIRoutes() {
-	// Activity analyzer API group - protected by auth
-	analyzer := a.router.Group("/admin/api/user-activity-analyzer")
-	analyzer.Use(a.ipFilterMiddleware(), a.authRequired())
+func (a *AdminPanel) setupActivityAnalyzerAPIRoutes(rg *gin.RouterGroup) {
+	analyzer := rg.Group("/api/user-activity-analyzer", a.requireModule("analyzer"))
 	{
 		// Dashboard & overview
 		analyzer.GET("/dashboard", a.getActivityDashboard)
@@ -165,7 +163,7 @@ func (a *AdminPanel) getOverallActivityTimeline(c *gin.Context) {
 // Page Handlers
 
 func (a *AdminPanel) activityAnalyzerDashboardPage(c *gin.Context) {
-	c.HTML(http.StatusOK, "activity_analyzer_dashboard", gin.H{
+	a.render(c, http.StatusOK, "activity_analyzer_dashboard", gin.H{
 		"Title":     "Activity Analyzer - Dashboard",
 		"activeTab": "activity_analyzer",
 	})
@@ -173,7 +171,7 @@ func (a *AdminPanel) activityAnalyzerDashboardPage(c *gin.Context) {
 
 func (a *AdminPanel) userActivityDetailPage(c *gin.Context) {
 	telegramID := c.Param("telegram_id")
-	c.HTML(http.StatusOK, "user_activity_detail", gin.H{
+	a.render(c, http.StatusOK, "user_activity_detail", gin.H{
 		"Title":      "User Activity Detail",
 		"TelegramID": telegramID,
 		"activeTab":  "activity_analyzer_user",
