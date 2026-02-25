@@ -29,7 +29,7 @@ type Config struct {
 
 	// Адмін-панель
 	AdminPort        string
-	AdminUsername    string
+	AdminEmail       string
 	AdminPassword    string
 	SessionSecret    string
 	AllowedIPs       []string
@@ -91,7 +91,7 @@ func NewConfig() *Config {
 
 		// Адмін-панель
 		AdminPort:        getEnv("ADMIN_PORT", "8080"),
-		AdminUsername:    getEnv("ADMIN_USERNAME", "admin"),
+		AdminEmail:       getEnv("ADMIN_EMAIL", "admin@example.com"),
 		AdminPassword:    getEnv("ADMIN_PASSWORD", "admin"),
 		SessionSecret:    getEnv("SESSION_SECRET", "super-secret-key"),
 		AllowedIPs:       getEnvStringSlice("ALLOWED_IPS", []string{"127.0.0.1"}),

@@ -189,8 +189,8 @@ type Repository interface {
 	// RBAC - Адмін-користувачі
 	GetAllAdminUsers() ([]models.AdminUser, error)
 	GetAdminUserByID(id uint) (*models.AdminUser, error)
-	GetAdminUserByUsername(username string) (*models.AdminUserWithAccess, error)
-	CreateAdminUser(username, password, email, firstName, lastName string, roleIDs []uint, creatorID *uint) (*models.AdminUser, error)
+	GetAdminUserByEmail(email string) (*models.AdminUserWithAccess, error)
+	CreateAdminUser(password, email, firstName, lastName string, roleIDs []uint, creatorID *uint) (*models.AdminUser, error)
 	UpdateAdminUser(id uint, email, firstName, lastName string, isActive bool) error
 	UpdateAdminUserPassword(id uint, newPassword string) error
 	UpdateAdminUserRoles(userID uint, roleIDs []uint) error
@@ -204,6 +204,7 @@ type Repository interface {
 	// RBAC - Допоміжні методи
 	ValidateAdminCredentials(username, password string) (*models.AdminUserWithAccess, error)
 	GetAdminFullContext(userID uint) (*models.AdminUserWithAccess, error)
+	GetPermissionsForUser(userID uint) (map[string]map[string]bool, error)
 	DeactivateAdminUser(id uint) error
 
 	// Закрытие соединения

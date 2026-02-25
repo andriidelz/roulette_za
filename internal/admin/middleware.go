@@ -13,9 +13,9 @@ import (
 func (a *AdminPanel) rbacAuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
-		username := session.Get("rbac_user")
+		email := session.Get("rbac_user")
 
-		if username == nil {
+		if email == nil {
 			logger.Info.Println("[AUTH DEBUG] Session 'rbac_user' is NIL.")
 
 			if isAJAX(c) {
@@ -27,10 +27,10 @@ func (a *AdminPanel) rbacAuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		user, err := a.repo.GetAdminUserByUsername(username.(string))
+		user, err := a.repo.GetAdminUserByEmail(email.(string))
 
 		if err != nil || user == nil || !user.IsActive {
-			logger.Warning.Printf("[AUTH SECURITY] Access blocked: User=%v, Active=%v", username, user != nil && user.IsActive)
+			logger.Warning.Printf("[AUTH SECURITY] Access blocked: User=%v, Active=%v", email, user != nil && user.IsActive)
 
 			session.Clear()
 			session.Save()
@@ -42,6 +42,27 @@ func (a *AdminPanel) rbacAuthRequired() gin.HandlerFunc {
 				c.Abort()
 			}
 			return
+		}
+
+		permissions, err := a.repo.GetPermissionsForUser(user.ID)
+		if err != nil {
+			logger.Error.Printf("[RBAC] Failed to load permissions for %s: %v", user.Email, err)
+		}
+
+		isSuper := false
+		for _, role := range user.Roles {
+			if role.Code == "super_admin" {
+				isSuper = true
+				break
+			}
+		}
+
+		user.Permissions = permissions
+		user.IsSuperAdmin = isSuper
+
+		user.ModuleCodes = make(map[string]bool)
+		for modCode := range permissions {
+			user.ModuleCodes[modCode] = true
 		}
 
 		c.Set("admin_user", user)
@@ -58,6 +79,12 @@ func (a *AdminPanel) globalTemplateData() gin.HandlerFunc {
 func (a *AdminPanel) requireRead(moduleCode string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user := getAdminUser(c)
+
+		if moduleCode == "dashboard" && user != nil {
+			c.Next()
+			return
+		}
+
 		hasAnyAccess := user != nil && (user.HasPermission(moduleCode, "can_read") ||
 			user.HasPermission(moduleCode, "can_write") ||
 			user.HasPermission(moduleCode, "can_edit") ||
@@ -65,7 +92,7 @@ func (a *AdminPanel) requireRead(moduleCode string) gin.HandlerFunc {
 
 		if !hasAnyAccess {
 			a.handlePermissionDenied(c, "Ви не маєте прав на перегляд цього розділу")
-			logger.Warning.Printf("[RBAC] Access DENIED: User=%s, Module=%s, Perm=any_read", user.Username, moduleCode)
+			logger.Warning.Printf("[RBAC] Access DENIED: User=%s, Module=%s, Perm=any_read", user.Email, moduleCode)
 			return
 		}
 		c.Next()
@@ -78,7 +105,7 @@ func (a *AdminPanel) requireWrite(moduleCode string) gin.HandlerFunc {
 		user := getAdminUser(c)
 		if user == nil || !user.HasPermission(moduleCode, "can_write") {
 			a.handlePermissionDenied(c, "Ви не маєте прав на створення записів у цьому розділі")
-			logger.Warning.Printf("[RBAC] Access DENIED: User=%s, Module=%s, Perm=can_write", user.Username, moduleCode)
+			logger.Warning.Printf("[RBAC] Access DENIED: User=%s, Module=%s, Perm=can_write", user.Email, moduleCode)
 			return
 		}
 		c.Next()
@@ -91,7 +118,7 @@ func (a *AdminPanel) requireEdit(moduleCode string) gin.HandlerFunc {
 		user := getAdminUser(c)
 		if user == nil || !user.HasPermission(moduleCode, "can_edit") {
 			a.handlePermissionDenied(c, "Ви не маєте прав на редагування записів у цьому розділі")
-			logger.Warning.Printf("[RBAC] Access DENIED: User=%s, Module=%s, Perm=can_edit", user.Username, moduleCode)
+			logger.Warning.Printf("[RBAC] Access DENIED: User=%s, Module=%s, Perm=can_edit", user.Email, moduleCode)
 			return
 		}
 		c.Next()
@@ -104,7 +131,7 @@ func (a *AdminPanel) requireDelete(moduleCode string) gin.HandlerFunc {
 		user := getAdminUser(c)
 		if user == nil || !user.HasPermission(moduleCode, "can_delete") {
 			a.handlePermissionDenied(c, "Ви не маєте прав на видалення записів у цьому розділі")
-			logger.Warning.Printf("[RBAC] Access DENIED: User=%s, Module=%s, Perm=can_delete", user.Username, moduleCode)
+			logger.Warning.Printf("[RBAC] Access DENIED: User=%s, Module=%s, Perm=can_delete", user.Email, moduleCode)
 			return
 		}
 		c.Next()
@@ -127,7 +154,7 @@ func (a *AdminPanel) requireModule(moduleCode string) gin.HandlerFunc {
 
 		if !hasAnyAccess {
 			a.handlePermissionDenied(c, "Ви не маєте доступу до цього модуля")
-			logger.Warning.Printf("[RBAC] Access DENIED: User=%s, Module=%s, Perm=any_module", user.Username, moduleCode)
+			logger.Warning.Printf("[RBAC] Access DENIED: User=%s, Module=%s, Perm=any_module", user.Email, moduleCode)
 			return
 		}
 		c.Next()
@@ -150,7 +177,7 @@ func (a *AdminPanel) requirePermission(moduleCode string, permission string) gin
 		}
 
 		if !user.HasPermission(moduleCode, permission) {
-			logger.Warning.Printf("[RBAC] Access DENIED: User=%s, Module=%s, Perm=%s", user.Username, moduleCode, permission)
+			logger.Warning.Printf("[RBAC] Access DENIED: User=%s, Module=%s, Perm=%s", user.Email, moduleCode, permission)
 
 			go a.repo.LogAccess(user.ID, moduleCode, permission, c.ClientIP(), c.Request.UserAgent(), false)
 

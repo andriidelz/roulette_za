@@ -97,7 +97,7 @@ func (a *AdminPanel) localizationSave(c *gin.Context) {
 	}
 
 	// Проверяем, что все необходимые данные предоставлены
-	if request.Key == "" || len(request.Message) != 3 {
+	if request.Key == "" || request.Message["en"] == "" || request.Message["ru"] == "" || request.Message["uk"] == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Все поля должны быть заполнены"})
 		return
 	}
@@ -168,7 +168,7 @@ func (a *AdminPanel) localizationAdd(c *gin.Context) {
 	}
 
 	// Проверяем, что все необходимые данные предоставлены
-	if request.Key == "" || len(request.Message) != 3 {
+	if request.Key == "" || request.Message["en"] == "" || request.Message["ru"] == "" || request.Message["uk"] == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Все поля должны быть заполнены"})
 		return
 	}

@@ -68,7 +68,6 @@ type RoleModule struct {
 
 type AdminUser struct {
 	ID           uint           `gorm:"primaryKey" json:"id"`
-	Username     string         `gorm:"size:100;uniqueIndex" json:"username"`
 	PasswordHash string         `gorm:"size:255" json:"-"`
 	Email        string         `gorm:"size:255;uniqueIndex" json:"email"`
 	FirstName    string         `json:"first_name"`

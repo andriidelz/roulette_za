@@ -74,7 +74,7 @@ func main() {
 	adminSettings := &admin.Settings{
 		Port:             cfg.AdminPort,
 		SessionSecret:    cfg.SessionSecret,
-		AdminUsername:    cfg.AdminUsername,
+		AdminEmail:       cfg.AdminEmail,
 		AdminPassword:    cfg.AdminPassword,
 		AllowedIPs:       cfg.AllowedIPs,
 		DisableIPFilters: cfg.DisableIPFilters,

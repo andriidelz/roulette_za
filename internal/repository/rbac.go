@@ -66,7 +66,7 @@ func (r *PostgresRepository) hydrateAdminAccess(user models.AdminUser) *models.A
 	return userWithAccess
 }
 
-func (r *PostgresRepository) GetAdminUserByUsername(email string) (*models.AdminUserWithAccess, error) {
+func (r *PostgresRepository) GetAdminUserByEmail(email string) (*models.AdminUserWithAccess, error) {
 	var user models.AdminUser
 
 	err := r.db.Preload("Roles.Permissions.Module").
@@ -217,13 +217,14 @@ func (r *PostgresRepository) DeleteRole(id uint) error {
 	}
 
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&role).Association("Permissions").Clear(); err != nil {
+		if err := tx.Exec("DELETE FROM role_modules WHERE role_id = ?", id).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&role).Association("Users").Clear(); err != nil {
+
+		if err := tx.Exec("DELETE FROM admin_user_roles WHERE role_id = ?", id).Error; err != nil {
 			return err
 		}
-		// Delete the role itself
+
 		return tx.Delete(&role).Error
 	})
 }
@@ -250,7 +251,7 @@ func (r *PostgresRepository) GetAdminUserByID(id uint) (*models.AdminUser, error
 	return &user, err
 }
 
-func (r *PostgresRepository) CreateAdminUser(username, password, email, firstName, lastName string, roleIDs []uint, creatorID *uint) (*models.AdminUser, error) {
+func (r *PostgresRepository) CreateAdminUser(password, email, firstName, lastName string, roleIDs []uint, creatorID *uint) (*models.AdminUser, error) {
 	// Password hashing using bcrypt for secure storage
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -258,9 +259,8 @@ func (r *PostgresRepository) CreateAdminUser(username, password, email, firstNam
 	}
 
 	user := &models.AdminUser{
-		Username:     username,
-		PasswordHash: string(hashedPassword),
 		Email:        email,
+		PasswordHash: string(hashedPassword),
 		FirstName:    firstName,
 		LastName:     lastName,
 		IsActive:     true,
@@ -292,11 +292,12 @@ func (r *PostgresRepository) CreateAdminUser(username, password, email, firstNam
 }
 
 func (r *PostgresRepository) UpdateAdminUser(id uint, email, firstName, lastName string, isActive bool) error {
-	return r.db.Model(&models.AdminUser{}).Where("id = ?", id).Updates(map[string]interface{}{
+	return r.db.Unscoped().Model(&models.AdminUser{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"email":      email,
 		"first_name": firstName,
 		"last_name":  lastName,
 		"is_active":  isActive,
+		"deleted_at": nil,
 		"updated_at": time.Now(),
 	}).Error
 }
@@ -413,20 +414,43 @@ func (r *PostgresRepository) GetAccessLogs(page, perPage int, userID *uint, modu
 func (r *PostgresRepository) ValidateAdminCredentials(email, password string) (*models.AdminUserWithAccess, error) {
 	logger.Info.Printf("[RBAC AUTH] Validating credentials for email: %s", email)
 
-	userWithAccess, err := r.GetAdminUserByUsername(email)
+	userWithAccess, err := r.GetAdminUserByEmail(email)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			logger.Error.Printf("[RBAC AUTH] Email not found: %s", email)
-			return nil, nil
-		}
 		return nil, err
+	}
+
+	if userWithAccess == nil {
+		logger.Error.Printf("[RBAC AUTH] User not found or inactive: %s", email)
+		return nil, errors.New("Користувача не знайдено або він деактивований")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(userWithAccess.PasswordHash), []byte(password)); err != nil {
 		logger.Error.Printf("[RBAC AUTH] Password mismatch for %s", email)
-		return nil, err
+		return nil, errors.New("Невірний пароль")
 	}
 
 	logger.Info.Printf("[RBAC AUTH] Login successful: %s", email)
 	return userWithAccess, nil
+}
+
+func (r *PostgresRepository) GetPermissionsForUser(userID uint) (map[string]map[string]bool, error) {
+	var roles []models.Role
+	r.db.Preload("Permissions.Module").Joins("JOIN admin_user_roles ON admin_user_roles.role_id = roles.id").
+		Where("admin_user_roles.user_id = ?", userID).Find(&roles)
+
+	res := make(map[string]map[string]bool)
+
+	for _, role := range roles {
+		for _, pm := range role.Permissions {
+			modCode := pm.Module.Code
+			if res[modCode] == nil {
+				res[modCode] = make(map[string]bool)
+			}
+			res[modCode][models.PermRead] = res[modCode][models.PermRead] || pm.CanRead
+			res[modCode][models.PermWrite] = res[modCode][models.PermWrite] || pm.CanWrite
+			res[modCode][models.PermEdit] = res[modCode][models.PermEdit] || pm.CanEdit
+			res[modCode][models.PermDelete] = res[modCode][models.PermDelete] || pm.CanDelete
+		}
+	}
+	return res, nil
 }

@@ -212,8 +212,6 @@ func (a *AdminPanel) rbacCreateAdminUser(c *gin.Context) {
 		return
 	}
 
-	username := req.Email
-
 	currentUser := getAdminUser(c)
 	var creatorID *uint
 	if currentUser != nil {
@@ -221,60 +219,48 @@ func (a *AdminPanel) rbacCreateAdminUser(c *gin.Context) {
 		creatorID = &id
 	}
 
-	_, err := a.repo.CreateAdminUser(username, req.Password, req.Email, req.FirstName, req.LastName, req.RoleIDs, creatorID)
+	_, err := a.repo.CreateAdminUser(req.Password, req.Email, req.FirstName, req.LastName, req.RoleIDs, creatorID)
 	if err != nil {
 		a.render(c, http.StatusInternalServerError, "error.html", gin.H{"message": "Помилка створення: " + err.Error()})
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/admin/rbac/users")
+	c.Redirect(http.StatusFound, "/admin/admins")
 }
 
 func (a *AdminPanel) rbacUpdateAdminUser(c *gin.Context) {
 	userID, _ := strconv.ParseUint(c.Param("id"), 10, 32)
 
-	var req struct {
-		Email     string `form:"email" binding:"required,email"`
-		FirstName string `form:"first_name" binding:"required"`
-		LastName  string `form:"last_name" binding:"required"`
-		IsActive  string `form:"is_active"`
-		RoleIDs   []uint `form:"role_ids"`
-	}
-
-	if err := c.ShouldBind(&req); err != nil {
-		logger.Error.Printf("[ERROR] Binding update admin: %v", err)
-		if c.GetHeader("X-Requested-With") == "XMLHttpRequest" {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
-			return
-		}
-		a.render(c, http.StatusBadRequest, "error.html", gin.H{"message": "Некоректні дані: " + err.Error()})
+	currentUser, err := a.repo.GetAdminUserByID(uint(userID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Користувача не знайдено"})
 		return
 	}
 
-	isActiveStr := req.IsActive
-	if isActiveStr == "" {
-		isActiveStr = c.PostForm("is_active")
-	}
-	isActive := (isActiveStr == "true")
+	isActiveRaw := c.PostForm("is_active")
+	isActive := (isActiveRaw == "on" || isActiveRaw == "true")
 
-	// Renew the user with new details (except password, which is handled separately)
-	if err := a.repo.UpdateAdminUser(uint(userID), req.Email, req.FirstName, req.LastName, isActive); err != nil {
-		if c.GetHeader("X-Requested-With") == "XMLHttpRequest" {
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
-			return
-		}
-		a.render(c, http.StatusInternalServerError, "error.html", gin.H{"message": err.Error()})
+	firstName := c.PostForm("first_name")
+	lastName := c.PostForm("last_name")
+	email := c.PostForm("email")
+	if email == "" {
+		email = currentUser.Email
+	}
+
+	if err := a.repo.UpdateAdminUser(uint(userID), email, firstName, lastName, isActive); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
 		return
 	}
 
-	// Roles are updated separately to avoid complications with the main user update logic
-	if err := a.repo.UpdateAdminUserRoles(uint(userID), req.RoleIDs); err != nil {
-		if c.GetHeader("X-Requested-With") == "XMLHttpRequest" {
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
-			return
+	roleIDsRaw := c.PostFormArray("role_ids")
+	if len(roleIDsRaw) > 0 {
+		var roleIDs []uint
+		for _, idStr := range roleIDsRaw {
+			if id, err := strconv.Atoi(idStr); err == nil {
+				roleIDs = append(roleIDs, uint(id))
+			}
 		}
-		a.render(c, http.StatusInternalServerError, "error.html", gin.H{"message": err.Error()})
-		return
+		_ = a.repo.UpdateAdminUserRoles(uint(userID), roleIDs)
 	}
 
 	if c.GetHeader("X-Requested-With") == "XMLHttpRequest" {
@@ -282,7 +268,7 @@ func (a *AdminPanel) rbacUpdateAdminUser(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/admin/rbac/users")
+	c.Redirect(http.StatusFound, "/admin/admins")
 }
 
 func (a *AdminPanel) rbacUpdateAdminUserPassword(c *gin.Context) {

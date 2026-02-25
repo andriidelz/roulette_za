@@ -87,8 +87,8 @@ func TestRbacAuthRequired(t *testing.T) {
 		repo := new(MockRepository)
 		r, panel := setupTestRouter(repo)
 
-		repo.On("GetAdminUserByUsername", "bad_user").Return(&models.AdminUserWithAccess{
-			AdminUser: models.AdminUser{Username: "bad_user", IsActive: false},
+		repo.On("GetAdminUserByEmail", "bad_user").Return(&models.AdminUserWithAccess{
+			AdminUser: models.AdminUser{Email: "bad_user", IsActive: false},
 		}, nil)
 
 		r.GET("/login_sim", func(c *gin.Context) {
@@ -125,7 +125,7 @@ func TestRequireRead_ComplexLogic(t *testing.T) {
 
 		r.GET("/test-read", func(c *gin.Context) {
 			user := &models.AdminUserWithAccess{
-				AdminUser:   models.AdminUser{Username: "tester"},
+				AdminUser:   models.AdminUser{Email: "tester@example.com"},
 				Permissions: map[string]map[string]bool{"other": {"can_read": true}},
 			}
 			c.Set("admin_user", user)
@@ -147,7 +147,7 @@ func TestSuperAdminAccess(t *testing.T) {
 
 		r.POST("/test-super", func(c *gin.Context) {
 			user := &models.AdminUserWithAccess{
-				AdminUser:    models.AdminUser{ID: 1, Username: "god_mode"},
+				AdminUser:    models.AdminUser{ID: 1, Email: "god_mode@example.com"},
 				IsSuperAdmin: true,
 				Permissions:  make(map[string]map[string]bool),
 			}
@@ -168,7 +168,7 @@ func TestAllPermissionsMethods(t *testing.T) {
 	r, panel := setupTestRouter(repo)
 
 	user := &models.AdminUserWithAccess{
-		AdminUser: models.AdminUser{Username: "limited_user"},
+		AdminUser: models.AdminUser{Email: "limited_user@example.com"},
 		Permissions: map[string]map[string]bool{
 			"reports": {"can_read": true},
 			"users":   {"can_edit": true},
@@ -234,7 +234,7 @@ func TestLogAccess_Triggered(t *testing.T) {
 
 	r.POST("/users/edit/:id", func(c *gin.Context) {
 		user := &models.AdminUserWithAccess{
-			AdminUser:   models.AdminUser{ID: 1, Username: "admin"},
+			AdminUser:   models.AdminUser{ID: 1, Email: "admin@example.com"},
 			Permissions: map[string]map[string]bool{"users": {"can_edit": true}},
 		}
 		c.Set("admin_user", user)
