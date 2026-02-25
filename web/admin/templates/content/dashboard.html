@@ -14,7 +14,13 @@
                             <i class="bi bi-person-badge fs-3 text-white"></i>
                         </div>
                         <div>
-                            <h4 class="mb-0 fw-bold text-white">Вітаємо, {{ .Admin.FirstName }} {{ .Admin.LastName }}!</h4>
+                            <h4 class="mb-0 fw-bold text-white">
+                              {{ if .Admin }}
+                                  Вітаємо {{ .Admin.FirstName }} {{ .Admin.LastName }}!
+                              {{ else }}
+                                  Вітаємо Гість! (Об'єкт Admin не знайдено)
+                              {{ end }}
+                            </h4>
                             <p class="mb-0 small text-white opacity-75">
                                 Ви увійшли як: <strong>{{ range $i, $r := .Admin.Roles }}{{ if $i }}, {{ end }}{{ $r.Name }}{{ end }}</strong>
                             </p>
@@ -126,6 +132,7 @@
           </div>
           {{ end }}
 
+          {{ if hasModule .Admin "ratings" }}
           <div class="col-12 col-md-6 col-lg-3">
             <div class="card h-100 border-success border-start border-5">
               <div class="card-body">
@@ -144,6 +151,7 @@
               </div>
             </div>
           </div>
+          {{ end }}
 
           {{ if hasModule .Admin "withdrawals" }}
           <div class="col-12 col-md-6 col-lg-3">
@@ -311,6 +319,7 @@
           </div>
           
           <div class="col-lg-4">
+            {{ if hasModule .Admin "settings" }}
             <div class="card mb-4">
               <div class="card-header">
                 <h5 class="mb-0">Системная информация</h5>
@@ -345,6 +354,7 @@
                 </table>
               </div>
             </div>
+            {{ end }}
             
             <div class="card">
               <div class="card-header">
@@ -360,11 +370,13 @@
                   </div>
                   {{ end }}
         
+                  {{ if hasModule .Admin "ratings" }}
                   <div class="col-6">
                     <a href="/admin/ratings" class="btn btn-outline-warning w-100 d-flex align-items-center justify-content-center py-2">
                       <i class="bi bi-trophy me-2"></i> Рейтинги
                     </a>
                   </div>
+                  {{ end }}
                   <div class="col-6">
                     <a href="/admin/withdrawals" class="btn btn-outline-success w-100 d-flex align-items-center justify-content-center py-2">
                       <i class="bi bi-cash-coin me-2"></i> Выплаты
@@ -375,11 +387,13 @@
                       <i class="bi bi-hash me-2"></i> Хэши
                     </a>
                   </div>
+                  {{ if hasModule .Admin "localizations" }}
                   <div class="col-6">
                     <a href="/admin/localizations" class="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center py-2">
                       <i class="bi bi-translate me-2"></i> Локализация
                     </a>
                   </div>
+                  {{ end }}
 
                   {{ if hasModule .Admin "settings" }}
                   <div class="col-6">

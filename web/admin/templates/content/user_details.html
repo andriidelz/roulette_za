@@ -135,7 +135,7 @@
             <div class="card h-100">
               <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Финансовая информация</h5>                
-                {{ if hasPermission .admin_user "users" "can_edit" }}
+                {{ if hasPermission .admin_user "users" "can_add_balance" }}
                 <button class="btn btn-sm btn-outline-primary edit-balance-btn" data-toggle="tooltip" title="Управление балансом">
                   <i class="bi bi-cash-coin"></i>
                 </button>

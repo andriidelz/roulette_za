@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,32 +13,52 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            margin: 0;
         }
         .error-container {
             max-width: 500px;
             width: 100%;
-            padding: 2rem;
+            padding: 2.5rem;
             background-color: #fff;
-            border-radius: 10px;
+            border-radius: 15px;
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
             text-align: center;
         }
         .error-icon {
-            font-size: 4rem;
+            font-size: 4.5rem;
             color: #dc3545;
             margin-bottom: 1rem;
+        }
+        .module-info {
+            background-color: #fff3f3;
+            border: 1px solid #f8d7da;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 15px;
+            color: #842029;
+            font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container d-flex justify-content-center">
         <div class="error-container">
             <div class="error-icon">
                 <i class="bi bi-exclamation-triangle-fill"></i>
             </div>
-            <h2 class="mb-3">Ошибка</h2>
-            <p class="text-danger">{{ .message }}</p>
-            <a href="/admin" class="btn btn-primary mt-3">На главную</a>
+            <h2 class="mb-3">Доступ заборонено</h2>
+            <p class="text-muted">{{ .message }}</p>
+
+            {{ if .detail }}
+            <div class="module-info">
+                <strong>Модуль:</strong> {{ .detail }}
+            </div>
+            {{ end }}
+
+            <div class="mt-4">
+                <a href="/admin" class="btn btn-primary px-4">На головну</a>
+                <button onclick="window.history.back()" class="btn btn-outline-secondary ms-2">Назад</button>
+            </div>
         </div>
     </div>
 </body>

@@ -45,10 +45,7 @@
                     </div>
                     <div class="form-text">Минимальная сумма, которую пользователь может вывести</div>
                   </div>
-                  
-                  {{ if $canEdit }}
                   <button type="submit" class="btn btn-primary">Сохранить</button>
-                  {{ end }}
                 </form>
               </div>
             </div>
@@ -79,7 +76,7 @@
                   
                   <div class="mb-3">
                     <label for="prize_distribution_day" class="form-label">День раздачи призов</label>
-                    <select class="form-select" id="prize_distribution_day" name="prize_distribution_day">
+                    <select class="form-select" id="prize_distribution_day" name="prize_distribution_day" {{ if not $canEdit }}disabled{{ end }}>
                       {{$selectedDay := ""}}
                       {{with index .settings "prize_distribution_day"}}{{$selectedDay = .Value}}{{end}}
                       {{range .daysOfWeek}}
@@ -95,10 +92,7 @@
                            value="{{with index .settings "prize_distribution_time"}}{{.Value}}{{end}}" {{ if not $canEdit }}disabled{{ end }}>
                     <div class="form-text">Время раздачи призов в часовом поясе UTC+0</div>
                   </div>
-                  
-                  {{ if $canEdit }}
                   <button type="submit" class="btn btn-primary">Сохранить</button>
-                  {{ end }}
                 </form>
               </div>
             </div>
@@ -127,7 +121,8 @@
                     <label for="captcha_user_activity_ttl" class="form-label">User activity TTL (сек)</label>
                     <div class="input-group">
                       <input type="number" class="form-control" id="captcha_user_activity_ttl" name="captcha_user_activity_ttl" 
-                             value="{{with index .settings "captcha_user_activity_ttl"}}{{.Value}}{{end}}" min="0" step="1">
+                        value="{{with index .settings "captcha_user_activity_ttl"}}{{.Value}}{{end}}" 
+                        min="0" step="1" {{ if not $canEdit }}disabled{{ end }}> </div>
                     </div>
                   </div>
 
@@ -217,10 +212,7 @@
                              value="{{with index .settings "captcha_ban_long_ttl"}}{{.Value}}{{end}}" min="0" step="1">
                     </div>
                   </div>
-
-                  {{ if $canEdit }}
                   <button type="submit" class="btn btn-primary">Сохранить</button>
-                  {{ end }}
                 </form>
               </div>
             </div>

@@ -76,12 +76,11 @@
                                             </a>
                                             
                                             {{ if ne .Code "super_admin" }}
-                                            <button class="btn btn-sm btn-outline-danger delete-role-btn" 
-                                                    data-id="{{ .ID }}" 
-                                                    data-name="{{ .Name }}"
-                                                    title="Видалити роль">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
+                                            <form action="/admin/rbac/roles/{{ .ID }}/delete" method="POST" style="display:inline;" onsubmit="return confirm('Ви впевнені, що хочете видалити роль {{ .Name }}?');">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Видалити роль">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
                                             {{ end }}
                                         </div>
                                     </td>
@@ -146,27 +145,7 @@
   {{template "footer" .}}
 {{end}}
 
-{{define "additionalScripts_rbac_roles"}}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const deleteBtns = document.querySelectorAll('.delete-role-btn');
-        deleteBtns.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = this.dataset.id;
-                const name = this.dataset.name;
-                if(confirm(`Ви дійсно хочете видалити роль "${name}"? Це може вплинути на користувачів, які мають цю роль.`)) {
-                    fetch(`/admin/rbac/roles/${id}`, {
-                        method: 'DELETE',
-                    }).then(response => {
-                        if (response.ok) {
-                            window.location.reload();
-                        } else {
-                            alert('Помилка при видаленні ролі');
-                        }
-                    });
-                }
-            });
-        });
-    });
+{{define "extra_js"}}
+<script src="/admin/static/js/rbac.js"></script> <script>
 </script>
 {{end}}

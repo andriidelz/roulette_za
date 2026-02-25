@@ -122,7 +122,7 @@
                     <i class="bi bi-person-badge"></i>
                 </div>
                 <div>
-                    <div class="fw-bold">{{ .admin_user.Username }}</div>
+                    <div class="fw-bold">{{ .admin_user.Email }}</div>
                     <small class="text-muted">
                         {{ range $i, $r := .admin_user.Roles }}{{ if $i }}, {{ end }}{{ $r.Name }}{{ end }}
                     </small>

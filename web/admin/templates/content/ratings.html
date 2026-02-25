@@ -39,7 +39,7 @@
                                           <td><span class="badge {{.badgeClass}}">{{.statusText}}</span></td>
                                           <td>
                                               {{ if can $.admin_user "ratings" "can_read" }}
-                                                <a href="/admin/rating/{{.year}}/{{.week}}" class="btn btn-sm btn-outline-primary">Подробнее</a>
+                                                <a href="/admin/ratings/{{.year}}/{{.week}}" class="btn btn-sm btn-outline-primary">Подробнее</a>
                                               {{ else }}
                                                 <button class="btn btn-sm btn-outline-secondary" disabled title="Немає доступу">
                                                 <i class="bi bi-lock"></i> Немає доступу

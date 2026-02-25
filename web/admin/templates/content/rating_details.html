@@ -72,7 +72,7 @@
                       <div>
                           {{if eq .prizeStatus "PENDING"}}
                             {{if or (lt .year .currentYear) (and (eq .year .currentYear) (lt .week .currentWeek))}}
-                                <form id="distributeForm" action="/admin/rating/{{.year}}/{{.week}}/distribute" method="post" class="d-inline">
+                                <form id="distributeForm" action="/admin/ratings/{{.year}}/{{.week}}/distribute" method="post" class="d-inline">
                                     <input type="hidden" name="amount" value="{{.prizeFund.Amount}}">
                                     <input type="hidden" name="top_count" value="{{.prizeFund.TopCount}}">
                                     <input type="hidden" name="action" value="distribute">

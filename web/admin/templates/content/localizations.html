@@ -22,7 +22,7 @@
                   <li>
                     <a
                       class="dropdown-item"
-                      href="/admin/localization/export"
+                      href="/admin/localizations/export"
                       download
                     >
                       <i class="bi bi-globe"></i> Все языки
@@ -32,7 +32,7 @@
                   <li>
                     <a
                       class="dropdown-item"
-                      href="/admin/localization/export?lang=uk"
+                      href="/admin/localizations/export?lang=uk"
                       download
                     >
                       <i class="bi bi-flag"></i> Украинский
@@ -41,7 +41,7 @@
                   <li>
                     <a
                       class="dropdown-item"
-                      href="/admin/localization/export?lang=ru"
+                      href="/admin/localizations/export?lang=ru"
                       download
                     >
                       <i class="bi bi-flag"></i> Русский
@@ -50,7 +50,7 @@
                   <li>
                     <a
                       class="dropdown-item"
-                      href="/admin/localization/export?lang=en"
+                      href="/admin/localizations/export?lang=en"
                       download
                     >
                       <i class="bi bi-flag"></i> Английский
@@ -867,7 +867,7 @@
       const key = $(this).data("key");
 
       $.ajax({
-        url: "/admin/localization/" + key + "/delete",
+        url: "/admin/localizations/" + key + "/delete",
         type: "POST",
         success: function (response) {
           if (response.success) {
@@ -927,7 +927,7 @@
       const requestUrl = id ? `${id}` : "add";
 
       $.ajax({
-        url: "/admin/localization/" + requestUrl,
+        url: "/admin/localizations/" + requestUrl,
         type: "POST",
         dataType: "json",
         contentType: "application/json",
@@ -1008,7 +1008,7 @@
       }, 200);
 
       $.ajax({
-        url: "/admin/localization/import",
+        url: "/admin/localizations/import",
         type: "POST",
         data: formData,
         processData: false,
