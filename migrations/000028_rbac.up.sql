@@ -56,15 +56,16 @@ CREATE TABLE role_modules (
 -- Admin users table
 CREATE TABLE admin_users (
     id SERIAL PRIMARY KEY,
-    username VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,    
     first_name VARCHAR(100),
     last_name VARCHAR(100),    
     is_active BOOLEAN DEFAULT true,
     last_login_at TIMESTAMP,
+    created_by INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
 );
 
 -- Trigger for admin_users
@@ -93,7 +94,7 @@ CREATE TABLE access_logs (
 );
 
 -- Indexes for optimization
-CREATE INDEX idx_admin_users_username ON admin_users(username);
+CREATE INDEX idx_admin_users_email ON admin_users(email);
 CREATE INDEX idx_admin_users_is_active ON admin_users(is_active);
 CREATE INDEX idx_roles_code ON roles(code);
 CREATE INDEX idx_modules_code ON modules(code);
@@ -101,6 +102,7 @@ CREATE INDEX idx_access_logs_user_id ON access_logs(user_id);
 CREATE INDEX idx_access_logs_created_at ON access_logs(created_at);
 CREATE INDEX idx_role_modules_role_id ON role_modules(role_id);
 CREATE INDEX idx_role_modules_module_id ON role_modules(module_id);
+CREATE INDEX idx_admin_users_deleted_at ON admin_users(deleted_at);
 
 -- Initial data
 INSERT INTO modules (code, name, description) VALUES
@@ -115,7 +117,8 @@ INSERT INTO modules (code, name, description) VALUES
     ('sources', 'Sources & Keys', 'Джерела трафіку'),
     ('hashes', 'Hashes', 'Перевірка хешів'),
     ('activity_analyzer', 'Activity Analyzer', 'Аналіз активності користувачів'),
-    ('rbac_management', 'RBAC Management', 'Управління ролями та правами доступу');
+    ('rbac_management', 'RBAC Management', 'Управління ролями та правами доступу'),
+    ('administrator_management', 'Admins Management', 'Управління адміністраторами');
 
 -- System roles
 INSERT INTO roles (code, name, description, is_system) VALUES
@@ -124,10 +127,6 @@ INSERT INTO roles (code, name, description, is_system) VALUES
     ('editor', 'Editor', 'Редактор (Уведомления, Локализация)', true),
     ('copywriter', 'Copywriter', 'Копірайтер (Тільки читання текстів)', true),
     ('media_buyer', 'Media Buyer', 'Медіа-баєр (Реф. посилання)', true);
--- was with extended permissions in admin
-
--- ALTER TABLE role_modules 
--- ADD COLUMN can_add_balance BOOLEAN DEFAULT false;
 
 -- ============ PERMISSIONS FOR SUPER ADMIN (all modules, all permissions) ============
 INSERT INTO role_modules (role_id, module_id, can_read, can_write, can_edit, can_delete, can_add_balance)
@@ -136,25 +135,26 @@ FROM roles r
 CROSS JOIN modules m 
 WHERE r.code = 'super_admin';
 
+DELETE FROM role_modules 
+WHERE role_id IN (SELECT id FROM roles WHERE code IN ('admin', 'media_buyer'));
+
 -- ============ PERMISSIONS FOR ADMIN (all modules instead of rbac_management, read/write/edit) ============
 INSERT INTO role_modules (role_id, module_id, can_read, can_write, can_edit, can_delete, can_add_balance)
 SELECT r.id, m.id, true, true, true, true, false
 FROM roles r 
 CROSS JOIN modules m 
-WHERE r.code = 'admin' AND m.code NOT IN ('settings', 'rbac_management');
+WHERE r.code = 'admin' 
+  AND m.code NOT IN ('rbac_management', 'administrator_management');
 
--- Admin can read settings, but not edit or delete
-INSERT INTO role_modules (role_id, module_id, can_read, can_write, can_edit, can_delete, can_add_balance)
-SELECT r.id, m.id, true, false, false, false, false
-FROM roles r 
-CROSS JOIN modules m 
-WHERE r.code = 'admin' AND m.code = 'settings';
-
--- Admin: WITHOUT delete і add_balance for users
-UPDATE role_modules SET can_delete = false, can_add_balance = false
+UPDATE role_modules 
+SET can_edit = true 
 WHERE role_id = (SELECT id FROM roles WHERE code = 'admin') 
-AND module_id = (SELECT id FROM modules WHERE code = 'users');
--- (NOTE: Prohibition "Add balance" realized in code admin by IsSuperAdmin validation, because there is no distinct column for balance
+  AND module_id = (SELECT id FROM modules WHERE code = 'settings');
+
+UPDATE role_modules 
+SET can_delete = false, can_add_balance = false
+WHERE role_id = (SELECT id FROM roles WHERE code = 'admin') 
+  AND module_id = (SELECT id FROM modules WHERE code = 'users');
 
 -- ============ PERMISSIONS FOR EDITOR: Notifications + Localizations (Full) ============
 INSERT INTO role_modules (role_id, module_id, can_read, can_write, can_edit, can_delete, can_add_balance)
@@ -163,6 +163,13 @@ FROM roles r
 CROSS JOIN modules m 
 WHERE r.code = 'editor' AND m.code IN ('notifications', 'localizations');
 
+UPDATE role_modules 
+SET can_delete = true
+WHERE role_id = (SELECT id FROM roles WHERE code = 'editor')
+  AND module_id IN (
+    SELECT id FROM modules WHERE code IN ('notifications', 'localizations')
+  );
+
 -- ============ PERMISSIONS FOR COPYWRITER: Notifications + Localizations (Read Only) ============
 INSERT INTO role_modules (role_id, module_id, can_read, can_write, can_edit, can_delete, can_add_balance)
 SELECT r.id, m.id, true, false, false, false, false
@@ -170,37 +177,16 @@ FROM roles r
 CROSS JOIN modules m 
 WHERE r.code = 'copywriter' AND m.code IN ('notifications', 'localizations');
 
--- COPYWRITER can create nnotifications
--- UPDATE role_modules 
--- SET can_write = true 
--- WHERE role_id = (SELECT id FROM roles WHERE code = 'copywriter') 
---   AND module_id = (SELECT id FROM modules WHERE code = 'notifications');
-
 -- ============ PERMISSIONS FOR MEDIA BUYER: Sources (Read, Write, Edit) ============
 INSERT INTO role_modules (role_id, module_id, can_read, can_write, can_edit, can_delete, can_add_balance)
 SELECT r.id, m.id, true, true, true, false, false
 FROM roles r 
 CROSS JOIN modules m 
-WHERE r.code = 'media_buyer' AND m.code IN ('sources');
+WHERE r.code = 'media_buyer' AND m.code = 'sources';
 
--- =========== CREATE FIRST ADMIN USER AUTOMATICALLY ============
--- Password: admin (IT'S NECESSARY TO CHANGE after first entrance!!!)
--- Bcrypt hash for password "admin": $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
--- INSERT INTO admin_users (username, password_hash, email, full_name, is_active) 
--- VALUES (
---     'admin', 
---     '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
---     'admin@example.com',
---     'System Administrator',
---     true
--- );
-
--- -- Assign super_admin role to the first admin user
--- INSERT INTO admin_user_roles (user_id, role_id)
--- VALUES (
---     (SELECT id FROM admin_users WHERE username = 'admin'),
---     (SELECT id FROM roles WHERE code = 'super_admin')
--- );
+DELETE FROM role_modules 
+WHERE role_id = (SELECT id FROM roles WHERE code = 'media_buyer') 
+AND module_id = (SELECT id FROM modules WHERE code = 'settings');
 
 -- Comment with instructions
 COMMENT ON TABLE admin_users IS 'IMPORTANT: First admin user is created automatically (admin/admin). It is mandatory to change the password after the first login!';
