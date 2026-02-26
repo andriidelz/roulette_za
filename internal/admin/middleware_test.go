@@ -36,12 +36,20 @@ type MockRepository struct {
 	mock.Mock
 }
 
-func (m *MockRepository) GetAdminUserByUsername(username string) (*models.AdminUserWithAccess, error) {
-	args := m.Called(username)
+func (m *MockRepository) GetAdminUserByEmail(email string) (*models.AdminUserWithAccess, error) {
+	args := m.Called(email)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*models.AdminUserWithAccess), args.Error(1)
+}
+
+func (m *MockRepository) GetPermissionsForUser(userID uint) (map[string]map[string]bool, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return make(map[string]map[string]bool), args.Error(1)
+	}
+	return args.Get(0).(map[string]map[string]bool), args.Error(1)
 }
 
 func (m *MockRepository) LogAccess(userID uint, module, perm, ip, ua string, allowed bool) error {
@@ -90,6 +98,8 @@ func TestRbacAuthRequired(t *testing.T) {
 		repo.On("GetAdminUserByEmail", "bad_user").Return(&models.AdminUserWithAccess{
 			AdminUser: models.AdminUser{Email: "bad_user", IsActive: false},
 		}, nil)
+
+		repo.On("GetPermissionsForUser", uint(1)).Return(make(map[string]map[string]bool), nil)
 
 		r.GET("/login_sim", func(c *gin.Context) {
 			s := sessions.Default(c)
