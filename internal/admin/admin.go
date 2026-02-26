@@ -310,11 +310,11 @@ func (a *AdminPanel) setupRBACRoutes(parentGroup *gin.RouterGroup) {
 		rbac.GET("/users/:id", a.rbacAdminUserDetails)
 		rbac.POST("/users", a.rbacCreateAdminUser)
 
-		rbac.POST("/users/:id/update", a.requireEdit(models.ModRBAC), a.rbacUpdateAdminUser)
-		rbac.POST("/users/:id/password", a.requireEdit(models.ModRBAC), a.rbacUpdateAdminUserPassword)
-		rbac.POST("/users/:id/delete", a.requireDelete(models.ModRBAC), a.rbacDeleteAdminUser)
+		rbac.POST("/users/:id/update", a.requireEdit(models.ModAdmins), a.rbacUpdateAdminUser)
+		rbac.POST("/users/:id/password", a.requireEdit(models.ModAdmins), a.rbacUpdateAdminUserPassword)
+		rbac.POST("/users/:id/delete", a.requireDelete(models.ModAdmins), a.rbacDeleteAdminUser)
 
-		rbac.GET("/logs", a.rbacAccessLogsPage)
+		rbac.GET("/logs", a.requireRead(models.ModRBAC), a.rbacAccessLogsPage)
 	}
 
 	// ============ NEW MODULE: Administrators ============

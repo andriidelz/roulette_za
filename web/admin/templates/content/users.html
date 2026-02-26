@@ -416,7 +416,13 @@
                           <option value="add">+</option>
                           <option value="subtract">-</option>
                         </select>
+
+                        {{ if hasPermission .admin_user "users" "can_add_balance" }}
                         <button class="btn btn-outline-primary" type="button" id="update-balance-btn">OK</button>
+                        {{ else }}
+                          <button class="btn btn-outline-primary" type="button" onclick="alert('У вас немає прав на здійснення цієї операції');">OK</button>
+                        {{ end }}
+                        
                       </div>
                     </div>
                   </div>

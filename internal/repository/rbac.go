@@ -73,6 +73,7 @@ func (r *PostgresRepository) GetAdminUserByEmail(email string) (*models.AdminUse
 		Where("email = ? AND is_active = ?", email, true).
 		First(&user).Error
 	if err != nil {
+		fmt.Printf("DEBUG REPO: User %s, Roles: %d\n", user.Email, len(user.Roles))
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}

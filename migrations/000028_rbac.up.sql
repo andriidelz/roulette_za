@@ -140,7 +140,7 @@ WHERE role_id IN (SELECT id FROM roles WHERE code IN ('admin', 'media_buyer'));
 
 -- ============ PERMISSIONS FOR ADMIN (all modules instead of rbac_management, read/write/edit) ============
 INSERT INTO role_modules (role_id, module_id, can_read, can_write, can_edit, can_delete, can_add_balance)
-SELECT r.id, m.id, true, true, true, true, false
+SELECT r.id, m.id, true, true, true, false, false
 FROM roles r 
 CROSS JOIN modules m 
 WHERE r.code = 'admin' 
@@ -183,10 +183,6 @@ SELECT r.id, m.id, true, true, true, false, false
 FROM roles r 
 CROSS JOIN modules m 
 WHERE r.code = 'media_buyer' AND m.code = 'sources';
-
-DELETE FROM role_modules 
-WHERE role_id = (SELECT id FROM roles WHERE code = 'media_buyer') 
-AND module_id = (SELECT id FROM modules WHERE code = 'settings');
 
 -- Comment with instructions
 COMMENT ON TABLE admin_users IS 'IMPORTANT: First admin user is created automatically (admin/admin). It is mandatory to change the password after the first login!';

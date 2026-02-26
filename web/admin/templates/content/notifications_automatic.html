@@ -54,9 +54,11 @@
                     <button type="button" class="btn btn-sm btn-primary view-template" data-id="{{.ID}}" title="Просмотреть шаблон">
                       <i class="bi bi-eye"></i>
                     </button>
+                    {{ if can $.admin_user "notifications" "can_edit" }}
                     <button type="button" class="btn btn-sm btn-warning edit-template" data-id="{{.ID}}" title="Редактировать шаблон">
                       <i class="bi bi-pencil"></i>
                     </button>
+                    {{ end }}
                   </div>
                 </td>
               </tr>

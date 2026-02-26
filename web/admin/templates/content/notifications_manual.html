@@ -43,17 +43,23 @@
                     <button type="button" class="btn btn-sm btn-primary view-template" data-id="{{.ID}}" title="Просмотреть шаблон">
                       <i class="bi bi-eye"></i>
                     </button>
+                    {{ if $canWrite }}
                     {{if .Active}}
                       <button type="button" class="btn btn-sm btn-success create-task" data-id="{{.ID}}" data-name="{{.Name}}" title="Создать задачу">
                         <i class="bi bi-send"></i>
                       </button>
                     {{end}}
+                    {{ end }}
+                    {{ if $canEdit }}
                     <button type="button" class="btn btn-sm btn-warning edit-template" data-id="{{.ID}}" title="Редактировать шаблон">
                       <i class="bi bi-pencil"></i>
                     </button>
+                    {{ end }}
+                    {{ if $canDelete }}
                     <button type="button" class="btn btn-sm btn-danger delete-template" data-id="{{.ID}}" title="Удалить шаблон">
                       <i class="bi bi-trash"></i>
                     </button>
+                    {{ end }}
                   </div>
                 </td>
               </tr>
