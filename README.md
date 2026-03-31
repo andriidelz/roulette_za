@@ -1,92 +1,92 @@
 # Roulette Bot
 
-Телеграм-бот для социального казино на основе упрощенного принципа игры в рулетку.
+Telegram bot for social casino on roulette game principle.
 
-## Описание проекта
+## Project's description
 
-Roulette Bot - это Telegram-бот, который позволяет пользователям играть в упрощенную версию рулетки с возможностью делать ставки на красное, черное или зеро. Система включает еженедельные рейтинги, распределение призовых фондов и многоязычный интерфейс.
+Roulette Bot - is a Telegram-bot, which allows users to play a simplified version of roulette with the option to bet on red, black, or zero. The system includes weekly rankings, prize pool distribution, and a multilingual interface.
 
-## Основные возможности
+## Main possibilities
 
-- **Упрощенная игра в рулетку**: ставки на красное, черное или зеро
-- **Еженедельный рейтинг игроков** с распределением призовых фондов
-- **Супер-рейтинг**: формируется на основе позиций в еженедельных рейтингах
-- **Многоязычная поддержка**: украинский, английский и русский языки
-- **Система проверки честности**: прозрачный механизм проверки результатов игры
-- **Вывод выигрышей**: автоматизация и контроль вывода средств
-- **Админ-панель**: удобный интерфейс управления проектом
+- **Simplified Roulette**: bet on red, black, or zero
+- **Weekly player rankings** with prize pool distribution
+- **Super ranking**: formed based on weekly rankings
+- **Multilingual support**: Ukrainian, English, and Russian
+- **Fairness verification system**: transparent mechanism for verifying game results
+- **Withdrawal of winnings**: automated and controlled withdrawals
+- **Admin panel**: user-friendly project management interface
 
-## Архитектура проекта
+## Project's architecture
 
-Проект состоит из трех основных компонентов:
+It consists of three main components:
 
-1. **Telegram-бот**: основной интерфейс взаимодействия с пользователем
-2. **Ротатор хешей**: генерирует и управляет раундами рулетки
-3. **Админ-панель**: веб-интерфейс для управления проектом
+1. **Telegram Bot**: The main user interface
+2. **Hash Rotator**: Generates and manages roulette rounds
+3. **Admin Panel**: A web interface for managing the project
 
-Компоненты взаимодействуют через PostgreSQL и RabbitMQ.
+Components interact via PostgreSQL and RabbitMQ.
 
-## Структура проекта
+## Project's structure
 
 ```
 roulette-bot/
-├── cmd/                    # Точки входа
-│   ├── bot/                # Запуск бота
-│   ├── admin/              # Запуск админ-панели
-│   └── rotator/            # Запуск ротатора хешей
-├── internal/               # Внутренний код
-│   ├── admin/              # Админ-панель
-│   ├── bot/                # Логика бота
-│   ├── config/             # Конфигурация
-│   ├── conv/               # Утилиты конвертации
-│   ├── data/               # Данные (страны и т.д.)
-│   ├── i18n/               # Интернационализация
-│   ├── logger/             # Логирование
-│   ├── messaging/          # Работа с RabbitMQ
-│   ├── models/             # Модели данных
-│   ├── repository/         # Работа с БД
-│   ├── rotator/            # Ротатор хешей
-│   ├── service/            # Бизнес-логика
-│   └── utils/              # Утилиты
-├── migrations/             # Миграции PostgreSQL
+├── cmd/                    # Executable points
+│   ├── bot/                # Bot launching
+│   ├── admin/              # Admin-panel launching
+│   └── rotator/            # Hashes' rotator launching
+├── internal/               # Inner code
+│   ├── admin/              # Admin-panel
+│   ├── bot/                # Bot's logic
+│   ├── config/             # Configuration
+│   ├── conv/               # Conversion utilities
+│   ├── data/               # Datas (countries' and etc.)
+│   ├── i18n/               # Internationalization
+│   ├── logger/             # Logging
+│   ├── messaging/          # Work with RabbitMQ
+│   ├── models/             # Data's models
+│   ├── repository/         # Work with DB
+│   ├── rotator/            # hashes' rotator
+│   ├── service/            # Business logic
+│   └── utils/              # Utilities
+├── migrations/             # PostgreSQL migrations
 ├── shared-data/            # Docker volumes data + files
-├── web/                    # Веб-ресурсы
-│   ├── templates/          # Шаблоны
-│   └── static/             # Статические файлы
-├── .env.example            # Пример переменных окружения
-├── docker-compose.yml      # Docker Compose конфигурация
+├── web/                    # Web-resourses
+│   ├── templates/          # Templates
+│   └── static/             # Static files
+├── .env.example            # Sample of alternate environment
+├── docker-compose.yml      # Docker Compose configuration
 ├── Dockerfile              # Dockerfile
-├── go.mod                  # Go модуль
-├── go.sum                  # Go модуль чексуммы
-├── Makefile                # Makefile для удобных команд
-└── README.md               # Документация
+├── go.mod                  # Go module
+├── go.sum                  # Go module checksum
+├── Makefile                # Makefile for convenient command
+└── README.md               # Documentation
 ```
 
-## Технические требования
+## Tech requirement
 
 - Go 1.18+
 - PostgreSQL 12+
 - Telegram Bot API Token
-- Docker (для контейнеризации)
+- Docker (for containerization)
 
-## Установка и запуск
+## Setting and launching
 
-### Локальный запуск
+### Local launch
 
-1. Клонируйте репозиторий:
+1. Clone repo:
 
    ```bash
    git clone https://github.com/your-username/roulette-bot.git
    cd roulette-bot
    ```
 
-2. Инициализируйте проект:
+2. Init project:
 
    ```bash
    make init
    ```
 
-3. Отредактируйте файл `.env` с вашими настройками:
+3. Edit file `.env` with your devices:
 
    ```
    TELEGRAM_TOKEN=your_token_here
@@ -97,38 +97,39 @@ roulette-bot/
    SESSION_SECRET=your_session_secret
    ```
 
-   необходимо заполнить папку:
-   shared-data/files - содержит файлы необходимые для работы бота.
-   На данный момент содержит видео, исходники которого отправляются из бота в сообщениях и содержатся в redis, ключ game:animation
+   
+The folder needs to be filled in:
+shared-data/files - contains files necessary for the bot to function.
+Currently, it contains videos, the source files of which are sent from the bot in messages and stored in Redis, with the key game:animation
 
-4. Создайте базу данных и выполните миграции:
+4. Create database and accomplish migrations:
 
    ```bash
    make migrate
    ```
 
-5. Запустите компоненты:
+5. Launch comments:
 
    ```bash
-   # Запуск всех компонентов
+   # Launch all components
    make run
 
-   # Запуск отдельных компонентов
+   # Launch segregate components
    make run-bot
    make run-admin
    make run-rotator
    ```
 
-### Запуск через Docker
+### Launch via Docker
 
-1. Клонируйте репозиторий:
+1. Clone repo:
 
    ```bash
    git clone https://github.com/your-username/roulette-bot.git
    cd roulette-bot
    ```
 
-2. Создайте и настройте файл `.env`:
+2. Create and set up file `.env`:
 
    ```
    TELEGRAM_TOKEN=your_token_here
@@ -138,68 +139,68 @@ roulette-bot/
    SESSION_SECRET=your_session_secret
    ```
 
-   необходимо заполнить папку:
-   shared-data/files - содержит файлы необходимые для работы бота.
-   На данный момент содержит видео, исходники которого отправляются из бота в сообщениях и содержатся в redis, ключ game:animation
+   The folder needs to be filled in:
+shared-data/files - contains files necessary for the bot to function.
+Currently, it contains videos, the source files of which are sent from the bot in messages and stored in Redis, with the key game:animation
 
-   При копировании всей папки shared-data необходимо учитывать что redis содержит в себе локальные данные которые индивидуальны для телеграм бота (Для каждого телеграм бота свои уникальные file_id) - при переносе с другого бота нужно удалить ключи `DEL "game:animation"`
+   When copying the entire shared-data folder, keep in mind that redis contains local data that is specific to the telegram bot (each telegram bot has its own unique file_id) - when transferring from another bot, you need to delete the `DEL "game:animation"` keys
 
-3. Запустите через Docker Compose:
+4. Launch via Docker Compose:
 
    ```bash
    docker-compose up -d
    ```
 
-4. Админ-панель будет доступна по адресу: <http://localhost:8080>
+5. Admin-panel is available on address: <http://localhost:8080>
 
-## Использование
+## Usage
 
-### Команды бота
+### Bot's commands
 
-- `/start` - Начало работы с ботом
-- `/play` - Начать игру
-- `/statistics` - Просмотреть статистику
-- `/rating` - Просмотреть еженедельный рейтинг
-- `/account` - Управление аккаунтом
-- `/faq` - Частые вопросы
-- `/settings` - Настройки профиля
+- `/start` - Beginning of work with a bot
+- `/play` - Launch game
+- `/statistics` - Watch statistics
+- `/rating` - Watch weekly rate
+- `/account` - Account management
+- `/faq` - Frequent questions
+- `/settings` - Profile settings
 
-### Админ-панель
+### Admin-panel
 
-Админ-панель предоставляет следующие возможности:
+The admin panel provides the following features:
 
-- **Управление пользователями**: просмотр, блокировка/разблокировка, редактирование
-- **Статистика**: обзор общих показателей, успешность ставок, ТОП игроков
-- **Рейтинги**: управление еженедельными и супер-рейтингами
-- **Призовые фонды**: настройка и распределение призов
-- **Локализации**: управление языковыми строками
-- **Обработка выводов**: рассмотрение и одобрение запросов на вывод средств
-- **Проверка хешей**: верификация результатов рулетки
+- **User Management**: View, block/unblock, edit
+- **Statistics**: Overview of overall stats, betting success, top players
+- **Ratings**: Manage weekly and super-ratings
+- **Prize Pools**: Configure and distribute prizes
+- **Localizations**: Manage language strings
+- **Withdrawal Processing**: Review and approve withdrawal requests
+- **Hash Verification**: Verify roulette results
 
-## Система честной игры
+## Fair play system
 
-Для обеспечения честности игры используется система предварительного хеширования результатов:
+To ensure the fairness of the game, a pre-hashing system of results is used:
 
-1. Перед началом раунда генерируется случайное число от 0 до 36
-2. Число хешируется вместе с криптографической солью
-3. Хеш публикуется в начале раунда
-4. После окончания раунда, число и соль раскрываются
-5. Пользователи могут проверить, что хеш соответствует раскрытому числу и соли
+1. Before the start of the round, a random number between 0 and 36 is generated.
+2. The number is hashed along with a cryptographic salt.
+3. The hash is published at the start of the round.
+4. After the round ends, the number and salt are revealed.
+5. Users can verify that the hash matches the revealed number and salt.
 
-Благодаря этой системе, результат нельзя изменить после начала раунда, и он остается непредсказуемым для игроков до его завершения.
+With this system, the outcome cannot be changed once the round has begun and remains unpredictable for players until its completion.
 
-### Проверка результата
+### Checking the result
 
-Пользователи и администраторы могут самостоятельно проверить честность результатов:
+Users and administrators can independently verify the fairness of the results:
 
-1. Получите число и соль из бота после завершения раунда
-2. Составьте строку в формате: `[число]:[соль]` (например, `5:a1b2c3d4e5f6`)
-3. Вычислите SHA-256 хеш от этой строки
-4. Сравните полученный хеш с хешем, который был предоставлен в начале раунда
+1. Obtain the number and salt from the bot after the round is completed.
+2. Create a string in the format: `[number]:[salt]` (e.g., `5:a1b2c3d4e5f6`).
+3. Calculate the SHA-256 hash of this string.
+4. Compare the resulting hash with the hash provided at the beginning of the round.
 
-Если хеши совпадают, результат честный.
+If the hashes match, the result is fair.
 
-#### Пример проверки (Go)
+#### Test example (Go)
 
 ```go
 package main
@@ -211,98 +212,98 @@ import (
 )
 
 func main() {
-    number := 5                  // Число, которое выпало
-    salt := "a1b2c3d4e5f6"       // Соль из сообщения бота
-    originalHash := "e37f...0840" // Хеш из начала раунда
+    number := 5                  // The number that came up
+    salt := "a1b2c3d4e5f6"       // Salt from the bot message
+    originalHash := "e37f...0840" // Hash from the beginning of the round
     
-    // Формируем строку и вычисляем хеш
+    // We form a string and calculate the hash
     data := fmt.Sprintf("%d:%s", number, salt)
     hasher := sha256.New()
     hasher.Write([]byte(data))
     computedHash := hex.EncodeToString(hasher.Sum(nil))
     
-    // Проверяем совпадение
+    // Checking the match
     if computedHash == originalHash {
-        fmt.Println("Результат верен!")
+        fmt.Println("Result is right!")
     } else {
-        fmt.Println("Результат не соответствует хешу!")
+        fmt.Println("The result does not match the hash!")
     }
 }
 ```
 
-## Настройка и администрирование
+## Setup and administration
 
-### Конфигурационные параметры
+### Configuration parameters
 
-Основные настройки доступны через переменные окружения:
+Basic settings are available through environment variables:
 
-| Параметр | Описание | Значение по умолчанию |
+| Parameter | Description | Default Value |
 |----------|----------|----------------------|
-| `TELEGRAM_TOKEN` | Токен Telegram бота | - |
-| `TELEGRAM_NAME` | Название Telegram бота | - |
-| `DATABASE_URL` | URL подключения к PostgreSQL | `postgres://postgres:postgres@localhost:5432/roulette?sslmode=disable` |
-| `ADMIN_PORT` | Порт для админ-панели | `8080` |
-| `ADMIN_USERNAME` | Имя пользователя админ-панели | `admin` |
-| `ADMIN_PASSWORD` | Пароль админ-панели | `admin` |
-| `SESSION_SECRET` | Секрет для сессий | `super-secret-key` |
-| `RABBITMQ_URL` | URL для подключения к RabbitMQ | `amqp://guest:guest@rabbitmq:5672/` |
-| `ROTATION_INTERVAL` | Интервал ротации раундов | `30s` |
+| `TELEGRAM_TOKEN` | Telegram bot token | - |
+| `TELEGRAM_NAME` | Telegram bot name | - |
+| `DATABASE_URL` | PostgreSQL connection URL | `postgres://postgres:postgres@localhost:5432/roulette?sslmode=disable` |
+| `ADMIN_PORT` | Admin panel port | `8080` |
+| `ADMIN_USERNAME` | Admin panel username | `admin` |
+| `ADMIN_PASSWORD` | Admin panel password | `admin` |
+| `SESSION_SECRET` | Session Secret | `super-secret-key` |
+| `RABBITMQ_URL` | URL for connecting to RabbitMQ | `amqp://guest:guest@rabbitmq:5672/` |
+| `ROTATION_INTERVAL` | Round rotation interval | `30s` |
 
-### Настройки игры
+### Game Settings
 
-Через админ-панель можно настроить следующие параметры:
+The following parameters can be configured through the admin panel:
 
-- **Лимит ставок** для пользователя в день
-- **Лимит ставок на Zero**: минимальное количество обычных ставок для возможности ставки на Zero
-- **Сумма призового фонда** для еженедельного рейтинга
-- **Количество призовых мест** в рейтинге
-- **Минимальная сумма для вывода** средств
-- **День и время распределения призов**
+- **Bet Limit** per user per day
+- **Zero Bet Limit**: the minimum number of regular bets to bet on Zero
+- **Prize Pool Amount** for the Weekly Leaderboard
+- **Number of Prize Places** in the Leaderboard
+- **Minimum Withdrawal Amount**
+- **Prize Distribution Day and Time**
 
-## Полезные команды Makefile
+## Useful commands Makefile
 
-- `make build` - Собрать проект
-- `make run-bot` - Запустить бота
-- `make run-admin` - Запустить админ-панель
-- `make run-rotator` - Запустить ротатор хешей
-- `make run` - Запустить все сервисы
-- `make migrate` - Применить начальные миграции
-- `make migrate-update` - Применить миграцию обновления схемы
-- `make docker` - Собрать Docker образы
-- `make docker-up` - Запустить через Docker Compose
-- `make docker-down` - Остановить Docker Compose
-- `make clean` - Очистить сборки
-- `make test` - Запустить тесты
-- `make init` - Инициализировать проект
+- `make build` - Build the project
+- `make run-bot` - Run the bot
+- `make run-admin` - Run the admin panel
+- `make run-rotator` - Run the hash rotator
+- `make run` - Run all services
+- `make migrate` - Apply initial migrations
+- `make migrate-update` - Apply the schema update migration
+- `make docker` - Build Docker images
+- `make docker-up` - Run via Docker Compose
+- `make docker-down` - Stop Docker Compose
+- `make clean` - Clean builds
+- `make test` - Run tests
+- `make init` - Initialize the project
 
-## Технологии
+## Technologies
 
-- [Go](https://golang.org/) - Основной язык программирования
-- [Telego](https://github.com/mymmrac/telego) - Библиотека для Telegram Bot API
-- [Gin](https://github.com/gin-gonic/gin) - Веб-фреймворк для админ-панели
-- [GORM](https://gorm.io/) - ORM для работы с базой данных
-- [PostgreSQL](https://www.postgresql.org/) - Реляционная база данных
-- [RabbitMQ](https://www.rabbitmq.com/) - Система обмена сообщениями
-- [Docker](https://www.docker.com/) - Контейнеризация
-- [Bootstrap](https://getbootstrap.com/) - Фреймворк для интерфейса админ-панели
+- [Go](https://golang.org/) - Primary programming language
+- [Telego](https://github.com/mymmrac/telego) - Library for the Telegram Bot API
+- [Gin](https://github.com/gin-gonic/gin) - Web framework for the admin panel
+- [GORM](https://gorm.io/) - ORM for working with the database
+- [PostgreSQL](https://www.postgresql.org/) - Relational database
+- [RabbitMQ](https://www.rabbitmq.com/) - Messaging system
+- [Docker](https://www.docker.com/) - Containerization
+- [Bootstrap](https://getbootstrap.com/) - Framework for the admin panel interface
 
-## Масштабирование и производительность
+## Scalability and performance
 
-Архитектура проекта позволяет легко масштабировать систему при росте нагрузки:
+The project's architecture allows for easy system scaling as the load increases:
 
-1. **Горизонтальное масштабирование**: можно запустить несколько экземпляров бота и админ-панели
-2. **Разделение базы данных**: возможно разделение записей по времени или по пользователям
-3. **Оптимизация RabbitMQ**: настройка под конкретные паттерны использования
+1. **Horizontal scaling**: multiple instances of the bot and admin panel can be launched
+2. **Database partitioning**: records can be separated by time or by user
+3. **RabbitMQ optimization**: customization for specific usage patterns
 
-## Мониторинг и обслуживание
+## Monitoring and maintenance
 
-Для эффективного мониторинга рекомендуется:
+For effective monitoring, we recommend:
 
-1. Настроить логирование в файлы или сервис сбора логов
-2. Регулярно создавать резервные копии базы данных
-3. Мониторить использование ресурсов с помощью Prometheus/Grafana
-4. Настроить алерты при критических ситуациях (отказ сервисов, проблемы с базой данных)
+1. Configure logging to files or a log collection service.
+2. Create regular database backups.
+3. Monitor resource usage using Prometheus/Grafana.
+4. Set up alerts for critical situations (service failures, database problems).
 
-## Дополнительная информация
+## Additional information
 
-За дополнительной информацией обращайтесь к автору.
+For further information, please contact the author.
